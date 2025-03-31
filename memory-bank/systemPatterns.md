@@ -5,26 +5,26 @@
 ```mermaid
 flowchart TD
     subgraph "Data Sources"
-        A[Postgres Database\nNYC Landmarks Data] 
+        A[Postgres Database\nNYC Landmarks Data]
         B[Azure Blob Storage\nLandmark PDFs]
     end
-    
+
     subgraph "Processing Pipeline"
         C[PDF Text Extractor]
         D[Text Chunker]
         E[OpenAI Embedding Generator]
     end
-    
+
     subgraph "Storage"
         F[Pinecone Vector Database]
         G[Conversation Memory Store]
     end
-    
+
     subgraph "API Layer"
         H[Query API]
         I[Chat API]
     end
-    
+
     A --> C
     B --> C
     C --> D
@@ -33,7 +33,7 @@ flowchart TD
     F --> H
     F --> I
     G --> I
-    
+
     H --> J[Existing Frontend]
     I --> J
 ```

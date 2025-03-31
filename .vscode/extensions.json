@@ -1,0 +1,25 @@
+{
+  "recommendations": [
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "matangover.mypy",
+    "charliermarsh.ruff",
+    "littlefoxteam.vscode-python-test-adapter",
+    "ms-python.pytest-adapter",
+    "njpwerner.autodocstring",
+    "eamodio.gitlens",
+    "yzhang.markdown-all-in-one",
+    "bierner.markdown-mermaid",
+    "streetsidesoftware.code-spell-checker",
+    "gruntfuggly.todo-tree",
+    "visualstudioexptteam.vscodeintellicode",
+    "usernamehw.errorlens",
+    "esbenp.prettier-vscode",
+    "editorconfig.editorconfig",
+    "mikestead.dotenv",
+    "mechatroner.rainbow-csv",
+    "redhat.vscode-yaml",
+    "donjayamanne.githistory",
+    "bungcip.better-toml"
+  ]
+}

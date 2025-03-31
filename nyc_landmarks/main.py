@@ -11,7 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from nyc_landmarks.api import query, chat
+from nyc_landmarks.api import chat, query
 from nyc_landmarks.config.settings import settings
 
 # Configure logging
@@ -71,7 +71,7 @@ async def root() -> Dict[str, str]:
 if __name__ == "__main__":
     """Run the application using Uvicorn when this module is executed directly."""
     import uvicorn
-    
+
     logger.info(f"Starting application on {settings.APP_HOST}:{settings.APP_PORT}")
     uvicorn.run(
         "nyc_landmarks.main:app",

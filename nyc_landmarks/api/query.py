@@ -6,15 +6,16 @@ landmark information.
 """
 
 import logging
-from typing import Dict, List, Optional, Tuple, Any, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-from fastapi import APIRouter, Depends, HTTPException, Query as QueryParam
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi import Query as QueryParam
 from pydantic import BaseModel, Field
 
+from nyc_landmarks.config.settings import settings
+from nyc_landmarks.db.postgres import PostgresDB
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
-from nyc_landmarks.db.postgres import PostgresDB
-from nyc_landmarks.config.settings import settings
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -29,15 +30,20 @@ router = APIRouter(
 
 # --- Pydantic models for requests and responses ---
 
+
 class TextQuery(BaseModel):
     """Text query for vector search."""
+
     query: str = Field(..., description="Text query for semantic search")
-    landmark_id: Optional[str] = Field(None, description="Optional landmark ID to filter results")
+    landmark_id: Optional[str] = Field(
+        None, description="Optional landmark ID to filter results"
+    )
     top_k: int = Field(5, description="Number of results to return", ge=1, le=20)
 
 
 class SearchResult(BaseModel):
     """Search result model."""
+
     text: str = Field(..., description="Text content of the search result")
     score: float = Field(..., description="Similarity score")
     landmark_id: str = Field(..., description="ID of the landmark")
@@ -47,14 +53,18 @@ class SearchResult(BaseModel):
 
 class SearchResponse(BaseModel):
     """Response model for text search."""
+
     results: List[SearchResult] = Field([], description="Search results")
     query: str = Field(..., description="Original query")
-    landmark_id: Optional[str] = Field(None, description="Landmark ID filter that was applied")
+    landmark_id: Optional[str] = Field(
+        None, description="Landmark ID filter that was applied"
+    )
     count: int = Field(0, description="Number of results")
 
 
 class LandmarkInfo(BaseModel):
     """Landmark information model."""
+
     id: str = Field(..., description="Landmark ID")
     name: str = Field(..., description="Landmark name")
     location: Optional[str] = Field(None, description="Landmark location")
@@ -66,11 +76,13 @@ class LandmarkInfo(BaseModel):
 
 class LandmarkListResponse(BaseModel):
     """Response model for landmark list."""
+
     landmarks: List[LandmarkInfo] = Field([], description="List of landmarks")
     count: int = Field(0, description="Number of landmarks")
 
 
 # --- Dependency injection functions ---
+
 
 def get_embedding_generator():
     """Get an instance of EmbeddingGenerator."""
@@ -89,6 +101,7 @@ def get_postgres_db():
 
 # --- API endpoints ---
 
+
 @router.post("/search", response_model=SearchResponse)
 async def search_text(
     query: TextQuery,
@@ -97,28 +110,28 @@ async def search_text(
     postgres_db: PostgresDB = Depends(get_postgres_db),
 ):
     """Search for text using vector similarity.
-    
+
     Args:
         query: Text query model
         embedding_generator: EmbeddingGenerator instance
         vector_db: PineconeDB instance
         postgres_db: PostgresDB instance
-        
+
     Returns:
         SearchResponse with results
     """
     try:
         # Generate embedding for the query
         query_embedding = embedding_generator.generate_embedding(query.query)
-        
+
         # Prepare filter if landmark_id is provided
         filter_dict = None
         if query.landmark_id:
             filter_dict = {"landmark_id": query.landmark_id}
-        
+
         # Query the vector database
         matches = vector_db.query_vectors(query_embedding, query.top_k, filter_dict)
-        
+
         # Process results
         results = []
         for match in matches:
@@ -126,13 +139,13 @@ async def search_text(
             text = match.metadata.get("text", "")
             landmark_id = match.metadata.get("landmark_id", "")
             score = match.score
-            
+
             # Get landmark name from PostgreSQL if available
             landmark_name = None
             landmark = postgres_db.get_landmark_by_id(landmark_id)
             if landmark:
                 landmark_name = landmark.get("name")
-            
+
             # Create SearchResult
             result = SearchResult(
                 text=text,
@@ -141,9 +154,9 @@ async def search_text(
                 landmark_name=landmark_name,
                 metadata={k: v for k, v in match.metadata.items() if k != "text"},
             )
-            
+
             results.append(result)
-        
+
         # Create and return response
         return SearchResponse(
             results=results,
@@ -158,22 +171,24 @@ async def search_text(
 
 @router.get("/landmarks", response_model=LandmarkListResponse)
 async def get_landmarks(
-    limit: int = QueryParam(20, description="Maximum number of landmarks to return", ge=1, le=100),
+    limit: int = QueryParam(
+        20, description="Maximum number of landmarks to return", ge=1, le=100
+    ),
     postgres_db: PostgresDB = Depends(get_postgres_db),
 ):
     """Get a list of landmarks.
-    
+
     Args:
         limit: Maximum number of landmarks to return
         postgres_db: PostgresDB instance
-        
+
     Returns:
         LandmarkListResponse with list of landmarks
     """
     try:
         # Get landmarks from PostgreSQL
         landmarks_data = postgres_db.get_all_landmarks(limit)
-        
+
         # Convert to LandmarkInfo objects
         landmarks = []
         for landmark_data in landmarks_data:
@@ -187,7 +202,7 @@ async def get_landmarks(
                 description=landmark_data.get("description"),
             )
             landmarks.append(landmark)
-        
+
         # Create and return response
         return LandmarkListResponse(
             landmarks=landmarks,
@@ -204,21 +219,23 @@ async def get_landmark(
     postgres_db: PostgresDB = Depends(get_postgres_db),
 ):
     """Get information about a specific landmark.
-    
+
     Args:
         landmark_id: ID of the landmark
         postgres_db: PostgresDB instance
-        
+
     Returns:
         LandmarkInfo with landmark information
     """
     try:
         # Get landmark from PostgreSQL
         landmark_data = postgres_db.get_landmark_by_id(landmark_id)
-        
+
         if not landmark_data:
-            raise HTTPException(status_code=404, detail=f"Landmark not found: {landmark_id}")
-        
+            raise HTTPException(
+                status_code=404, detail=f"Landmark not found: {landmark_id}"
+            )
+
         # Convert to LandmarkInfo
         landmark = LandmarkInfo(
             id=landmark_data.get("id", ""),
@@ -229,7 +246,7 @@ async def get_landmark(
             designation_date=str(landmark_data.get("designation_date", "")),
             description=landmark_data.get("description"),
         )
-        
+
         return landmark
     except HTTPException:
         raise
@@ -241,26 +258,28 @@ async def get_landmark(
 @router.get("/search/text", response_model=LandmarkListResponse)
 async def search_landmarks_text(
     q: str = QueryParam(..., description="Search query"),
-    limit: int = QueryParam(20, description="Maximum number of landmarks to return", ge=1, le=100),
+    limit: int = QueryParam(
+        20, description="Maximum number of landmarks to return", ge=1, le=100
+    ),
     postgres_db: PostgresDB = Depends(get_postgres_db),
 ):
     """Search for landmarks by text (direct database search, not vector search).
-    
+
     Args:
         q: Search query
         limit: Maximum number of landmarks to return
         postgres_db: PostgresDB instance
-        
+
     Returns:
         LandmarkListResponse with matching landmarks
     """
     try:
         # Search landmarks in PostgreSQL
         landmarks_data = postgres_db.search_landmarks(q)
-        
+
         # Limit results
         landmarks_data = landmarks_data[:limit]
-        
+
         # Convert to LandmarkInfo objects
         landmarks = []
         for landmark_data in landmarks_data:
@@ -274,7 +293,7 @@ async def search_landmarks_text(
                 description=landmark_data.get("description"),
             )
             landmarks.append(landmark)
-        
+
         # Create and return response
         return LandmarkListResponse(
             landmarks=landmarks,
