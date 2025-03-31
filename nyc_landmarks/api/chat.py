@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 from nyc_landmarks.chat.conversation import Conversation, conversation_store
 from nyc_landmarks.config.settings import settings
-from nyc_landmarks.db.postgres import PostgresDB
+from nyc_landmarks.db.db_client import DbClient
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
@@ -79,9 +79,9 @@ def get_vector_db():
     return PineconeDB()
 
 
-def get_postgres_db():
-    """Get an instance of PostgresDB."""
-    return PostgresDB()
+def get_db_client():
+    """Get an instance of DbClient."""
+    return DbClient()
 
 
 # --- API endpoints ---
@@ -92,7 +92,7 @@ async def chat_message(
     request: ChatRequest,
     embedding_generator: EmbeddingGenerator = Depends(get_embedding_generator),
     vector_db: PineconeDB = Depends(get_vector_db),
-    postgres_db: PostgresDB = Depends(get_postgres_db),
+    db_client: DbClient = Depends(get_db_client),
 ):
     """Process a chat message and generate a response.
 
@@ -155,9 +155,9 @@ async def chat_message(
             # Add to context text
             context_text += f"\nContext {i+1}:\n{text}\n"
 
-            # Get landmark name from PostgreSQL if available
+            # Get landmark name from database if available
             landmark_name = None
-            landmark = postgres_db.get_landmark_by_id(landmark_id)
+            landmark = db_client.get_landmark_by_id(landmark_id)
             if landmark:
                 landmark_name = landmark.get("name")
 

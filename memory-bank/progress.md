@@ -6,17 +6,23 @@ The project is in the initial setup phase. We have completed the following:
 - ✅ Created project documentation in memory bank
 - ✅ Defined system architecture and core components
 - ✅ Identified technical requirements and constraints
+- ✅ Implemented CoreDataStore API client for landmark data access
+- ✅ Created database abstraction layer to support multiple data sources
+- ✅ Updated API endpoints to use the database abstraction
 
 ## What Works
-- 🚫 No implemented functionality yet
+- ✅ Database abstraction layer supporting both PostgreSQL and CoreDataStore API
+- ✅ Basic configuration management with settings for toggling data sources
+- ✅ Extended landmark data access capabilities through CoreDataStore API
 
 ## What's Left to Build
 
 ### Phase 1: Project Setup & Infrastructure
-- [ ] Set up project structure with appropriate directories
-- [ ] Create configuration management module
-- [ ] Set up connections to external services
-- [ ] Implement error handling and logging
+- [x] Set up project structure with appropriate directories
+- [x] Create configuration management module
+- [x] Set up connections to external services (PostgreSQL and CoreDataStore API)
+- [x] Create database abstraction layer
+- [ ] Implement comprehensive error handling and logging
 
 ### Phase 2: PDF Processing & Embedding Pipeline
 - [ ] Implement PDF text extraction from Azure Blob Storage

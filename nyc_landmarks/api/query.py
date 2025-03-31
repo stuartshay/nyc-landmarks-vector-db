@@ -13,7 +13,7 @@ from fastapi import Query as QueryParam
 from pydantic import BaseModel, Field
 
 from nyc_landmarks.config.settings import settings
-from nyc_landmarks.db.postgres import PostgresDB
+from nyc_landmarks.db.db_client import DbClient
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
@@ -94,9 +94,9 @@ def get_vector_db():
     return PineconeDB()
 
 
-def get_postgres_db():
-    """Get an instance of PostgresDB."""
-    return PostgresDB()
+def get_db_client():
+    """Get an instance of DbClient."""
+    return DbClient()
 
 
 # --- API endpoints ---
@@ -107,7 +107,7 @@ async def search_text(
     query: TextQuery,
     embedding_generator: EmbeddingGenerator = Depends(get_embedding_generator),
     vector_db: PineconeDB = Depends(get_vector_db),
-    postgres_db: PostgresDB = Depends(get_postgres_db),
+    db_client: DbClient = Depends(get_db_client),
 ):
     """Search for text using vector similarity.
 
@@ -140,9 +140,9 @@ async def search_text(
             landmark_id = match.metadata.get("landmark_id", "")
             score = match.score
 
-            # Get landmark name from PostgreSQL if available
+            # Get landmark name from database if available
             landmark_name = None
-            landmark = postgres_db.get_landmark_by_id(landmark_id)
+            landmark = db_client.get_landmark_by_id(landmark_id)
             if landmark:
                 landmark_name = landmark.get("name")
 
@@ -174,7 +174,7 @@ async def get_landmarks(
     limit: int = QueryParam(
         20, description="Maximum number of landmarks to return", ge=1, le=100
     ),
-    postgres_db: PostgresDB = Depends(get_postgres_db),
+    db_client: DbClient = Depends(get_db_client),
 ):
     """Get a list of landmarks.
 
@@ -186,8 +186,8 @@ async def get_landmarks(
         LandmarkListResponse with list of landmarks
     """
     try:
-        # Get landmarks from PostgreSQL
-        landmarks_data = postgres_db.get_all_landmarks(limit)
+        # Get landmarks from database
+        landmarks_data = db_client.get_all_landmarks(limit)
 
         # Convert to LandmarkInfo objects
         landmarks = []
@@ -216,7 +216,7 @@ async def get_landmarks(
 @router.get("/landmark/{landmark_id}", response_model=LandmarkInfo)
 async def get_landmark(
     landmark_id: str,
-    postgres_db: PostgresDB = Depends(get_postgres_db),
+    db_client: DbClient = Depends(get_db_client),
 ):
     """Get information about a specific landmark.
 
@@ -228,8 +228,8 @@ async def get_landmark(
         LandmarkInfo with landmark information
     """
     try:
-        # Get landmark from PostgreSQL
-        landmark_data = postgres_db.get_landmark_by_id(landmark_id)
+        # Get landmark from database
+        landmark_data = db_client.get_landmark_by_id(landmark_id)
 
         if not landmark_data:
             raise HTTPException(
@@ -261,7 +261,7 @@ async def search_landmarks_text(
     limit: int = QueryParam(
         20, description="Maximum number of landmarks to return", ge=1, le=100
     ),
-    postgres_db: PostgresDB = Depends(get_postgres_db),
+    db_client: DbClient = Depends(get_db_client),
 ):
     """Search for landmarks by text (direct database search, not vector search).
 
@@ -274,8 +274,8 @@ async def search_landmarks_text(
         LandmarkListResponse with matching landmarks
     """
     try:
-        # Search landmarks in PostgreSQL
-        landmarks_data = postgres_db.search_landmarks(q)
+        # Search landmarks in database
+        landmarks_data = db_client.search_landmarks(q)
 
         # Limit results
         landmarks_data = landmarks_data[:limit]

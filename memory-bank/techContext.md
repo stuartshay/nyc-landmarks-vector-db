@@ -7,8 +7,9 @@
 2. **OpenAI API**: For generating text embeddings using their embedding models
 3. **Pinecone**: Vector database for storing and searching text embeddings
 4. **PostgreSQL**: Existing database containing NYC landmarks structured data
-5. **Azure Blob Storage**: Current storage location for landmark PDF reports
-6. **Google Cloud Secret Store**: For secure credential management
+5. **CoreDataStore API**: REST API alternative for accessing NYC landmarks data
+6. **Azure Blob Storage**: Current storage location for landmark PDF reports
+7. **Google Cloud Secret Store**: For secure credential management
 
 ### Python Libraries & Frameworks
 1. **FastAPI**: For creating API endpoints
@@ -16,11 +17,12 @@
 3. **OpenAI Python Client**: For interacting with OpenAI API
 4. **Pinecone-client**: For interacting with Pinecone vector database
 5. **Psycopg2/SQLAlchemy**: For PostgreSQL database interactions
-6. **Azure Blob Storage SDK**: For retrieving PDFs from Azure
-7. **Google Cloud Secret Manager**: For accessing Google Cloud Secret Store
-8. **Pydantic**: For data validation and settings management
-9. **Pytest**: For testing
-10. **Langchain (Optional)**: May be used for some components as it provides helpful abstractions
+6. **Requests**: For making HTTP requests to CoreDataStore API
+7. **Azure Blob Storage SDK**: For retrieving PDFs from Azure
+8. **Google Cloud Secret Manager**: For accessing Google Cloud Secret Store
+9. **Pydantic**: For data validation and settings management
+10. **Pytest**: For testing
+11. **Langchain (Optional)**: May be used for some components as it provides helpful abstractions
 
 ### Development Tools
 1. **GitHub**: Version control and repository hosting
@@ -40,7 +42,8 @@
 5. Access to Pinecone (via key)
 6. Access to Google Cloud Secret Store (for production credentials)
 7. Access to PostgreSQL database (via connection string)
-8. Access to Azure Blob Storage (via connection string)
+8. Access to CoreDataStore API (via API key, if using)
+9. Access to Azure Blob Storage (via connection string)
 
 ### Development Workflow
 1. Clone repository from GitHub
@@ -57,13 +60,15 @@
 1. **OpenAI Rate Limits**: OpenAI has rate limits on API calls that need to be managed
 2. **OpenAI Token Limits**: Text-embedding models have maximum token limits per request
 3. **Pinecone Free Tier Limits**: Limited index size and operation rate on free tier
-4. **Azure Blob Storage Access**: Need to manage efficient access to avoid excessive costs
+4. **CoreDataStore API Limits**: May have rate limiting or usage restrictions
+5. **Azure Blob Storage Access**: Need to manage efficient access to avoid excessive costs
 
 ### Performance Considerations
 1. **Embedding Generation Time**: OpenAI API calls add latency to processing pipeline
 2. **Vector Search Performance**: Need to optimize Pinecone queries for response time
 3. **PDF Processing Overhead**: PDF extraction can be resource-intensive for large documents
 4. **API Response Time**: Need to maintain reasonable response times for user queries
+5. **CoreDataStore API Latency**: External API calls can add latency compared to direct database access
 
 ### Security Constraints
 1. **API Key Management**: Must securely handle all API keys and credentials
@@ -82,12 +87,15 @@
 2. **Pinecone Service**: Essential for vector storage and search
 3. **Google Cloud Secret Store**: Essential for credential management
 4. **Azure Blob Storage**: Essential for PDF access
-5. **PostgreSQL Database**: Essential for landmark data
+5. **PostgreSQL Database**: Essential for landmark data (if using direct database access)
+6. **CoreDataStore API**: Alternative source for landmark data
 
 ### Internal Integration Points
-1. **Existing Postgres Database**: Need to query landmark data
-2. **Existing API**: May need to integrate with other NYC landmark services
-3. **Frontend Applications**: Will consume the new vector search and chat APIs
+1. **Database Abstraction Layer**: Allows switching between data sources
+2. **Existing Postgres Database**: Option for direct query of landmark data
+3. **CoreDataStore API**: Alternative for accessing landmark data
+4. **Existing API**: May need to integrate with other NYC landmark services
+5. **Frontend Applications**: Will consume the new vector search and chat APIs
 
 ## Monitoring and Maintenance
 

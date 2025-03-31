@@ -5,8 +5,13 @@
 ```mermaid
 flowchart TD
     subgraph "Data Sources"
-        A[Postgres Database\nNYC Landmarks Data]
+        A1[Postgres Database\nNYC Landmarks Data]
+        A2[CoreDataStore API\nNYC Landmarks Data]
         B[Azure Blob Storage\nLandmark PDFs]
+    end
+
+    subgraph "Database Layer"
+        DB[Database Client Abstraction]
     end
 
     subgraph "Processing Pipeline"
@@ -25,7 +30,9 @@ flowchart TD
         I[Chat API]
     end
 
-    A --> C
+    A1 --> DB
+    A2 --> DB
+    DB --> C
     B --> C
     C --> D
     D --> E
@@ -33,6 +40,8 @@ flowchart TD
     F --> H
     F --> I
     G --> I
+    DB --> H
+    DB --> I
 
     H --> J[Existing Frontend]
     I --> J
@@ -69,43 +78,52 @@ flowchart TD
   - Date of embedding generation
   - Other relevant landmark metadata for filtering
 
-### 6. Credential Management
-- All credentials (OpenAI API keys, Azure storage credentials, Postgres credentials, Pinecone API keys) will be managed through Google Cloud Secret Store.
+### 6. Database Abstraction Strategy
+- We've implemented a database abstraction layer that supports both direct PostgreSQL connections and the CoreDataStore REST API.
+- A configuration toggle (COREDATASTORE_USE_API) determines which data source is used at runtime.
+- The DbClient class provides a unified interface that abstracts away the differences between data sources.
+- The CoreDataStore API client provides extended functionality beyond what's available in the PostgreSQL client.
+- Error handling is implemented at both the client level and in the abstraction layer.
+
+### 7. Credential Management
+- All credentials (OpenAI API keys, Azure storage credentials, Postgres credentials, Pinecone API keys, CoreDataStore API keys) will be managed through Google Cloud Secret Store.
 - A secure configuration manager will retrieve and provide credentials to the application components that need them.
 - Development environments will support fallback to environment variables or local files.
 
-### 7. Conversation Memory Implementation
+### 8. Conversation Memory Implementation
 - The chat system will maintain conversation history using a simple key-value store.
 - Each conversation will have a unique ID.
 - History will be used to provide context for follow-up questions.
 - Conversation context will have a reasonable time limit before expiring.
 
-### 8. API Design Patterns
+### 9. API Design Patterns
 - RESTful API design for the query endpoints.
 - JSON for all request and response formats.
 - Versioned API endpoints to support future changes.
 - Rate limiting and authentication for production.
 
-### 9. Error Handling and Logging
+### 10. Error Handling and Logging
 - Comprehensive error handling throughout the application.
 - Structured logging with different levels (DEBUG, INFO, WARNING, ERROR).
 - Monitoring for key metrics (API calls, response times, error rates).
 - Alerts for critical failures.
 
-### 10. Testing Strategy
+### 11. Testing Strategy
 - Unit tests for individual components.
 - Integration tests for component interactions.
 - End-to-end tests for critical user flows.
 - Testing of vector search quality using sample queries.
 
-### 11. CI/CD Implementation
+### 12. CI/CD Implementation
 - GitHub Actions for continuous integration and deployment.
 - Automated testing on pull requests.
 - Deployment pipeline with appropriate staging environments.
 - Infrastructure as code for any cloud resources.
 
-### 12. Design Patterns
-- Repository pattern for database access.
+### 13. Design Patterns
+- Repository pattern for database access, with concrete implementations for different data sources.
+- Adapter pattern for the CoreDataStore API client to map API responses to our internal data structures.
+- Strategy pattern for switching between database implementations at runtime.
 - Factory pattern for creating service instances.
 - Strategy pattern for different text processing approaches.
 - Decorator pattern for adding cross-cutting concerns (logging, error handling).

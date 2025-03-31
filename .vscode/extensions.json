@@ -20,6 +20,8 @@
     "mechatroner.rainbow-csv",
     "redhat.vscode-yaml",
     "donjayamanne.githistory",
-    "bungcip.better-toml"
+    "ccrobertson.cline",
+    "github.copilot",
+    "github.copilot-chat"
   ]
 }

@@ -76,6 +76,10 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = Field(default="")
     POSTGRES_CONNECTION_STRING: Optional[str] = Field(default=None)
 
+    # CoreDataStore API settings
+    COREDATASTORE_API_KEY: str = Field(default="")
+    COREDATASTORE_USE_API: bool = Field(default=False)  # Toggle between PostgreSQL and API
+
     # Application settings
     APP_HOST: str = Field(default="0.0.0.0")
     APP_PORT: int = Field(default=8000)
@@ -183,6 +187,10 @@ def load_settings_from_secrets(settings: Settings) -> Settings:
             },
             "postgres": {
                 "POSTGRES_CONNECTION_STRING": "connection_string",
+            },
+            "coredatastore": {
+                "COREDATASTORE_API_KEY": "api_key",
+                "COREDATASTORE_USE_API": "use_api",
             },
         }
 
