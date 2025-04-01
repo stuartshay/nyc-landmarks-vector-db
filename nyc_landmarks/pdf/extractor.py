@@ -1,7 +1,7 @@
 """
 PDF text extraction module for NYC Landmarks Vector Database.
 
-This module handles retrieving PDFs from Azure Blob Storage and
+This module handles retrieving PDFs from CoreDataStore API URLs and
 extracting text content from those PDFs.
 """
 
@@ -10,10 +10,10 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 import pypdf
-from azure.core.exceptions import ResourceNotFoundError
-from azure.storage.blob import BlobClient, BlobServiceClient, ContainerClient
+import requests
 
 from nyc_landmarks.config.settings import settings
+from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -21,100 +21,32 @@ logging.basicConfig(level=settings.LOG_LEVEL.value)
 
 
 class PDFExtractor:
-    """PDF text extraction from Azure Blob Storage."""
+    """PDF text extraction from CoreDataStore API URLs."""
 
     def __init__(self):
-        """Initialize the PDF extractor with Azure Blob Storage credentials."""
-        self.connection_string = settings.AZURE_STORAGE_CONNECTION_STRING
-        self.container_name = settings.AZURE_STORAGE_CONTAINER_NAME
-        self.blob_service_client = None
-        self.container_client = None
+        """Initialize the PDF extractor."""
+        self.api_client = CoreDataStoreAPI()
+        logger.info("Initialized PDF extractor with CoreDataStore API client")
 
-        # Initialize Azure Blob Storage client if connection string is provided
-        if self.connection_string and self.container_name:
-            try:
-                self.blob_service_client = BlobServiceClient.from_connection_string(
-                    self.connection_string
-                )
-                self.container_client = self.blob_service_client.get_container_client(
-                    self.container_name
-                )
-                logger.info(
-                    f"Connected to Azure Blob Storage container: {self.container_name}"
-                )
-            except Exception as e:
-                logger.error(f"Error connecting to Azure Blob Storage: {e}")
-                raise
-
-    def list_pdfs(self) -> List[str]:
-        """List all PDFs in the Azure Blob Storage container.
-
-        Returns:
-            List of PDF blob names
-        """
-        if not self.container_client:
-            logger.error("Azure Blob Storage not configured")
-            return []
-
-        try:
-            # List all blobs in the container and filter for PDFs
-            all_blobs = self.container_client.list_blobs()
-            pdf_blobs = [
-                blob.name for blob in all_blobs if blob.name.lower().endswith(".pdf")
-            ]
-
-            logger.info(f"Found {len(pdf_blobs)} PDFs in container")
-            return pdf_blobs
-        except Exception as e:
-            logger.error(f"Error listing PDFs: {e}")
-            return []
-
-    def get_pdf_blob(self, blob_name: str) -> Optional[bytes]:
-        """Download a PDF blob from Azure Blob Storage.
+    def download_pdf_from_url(self, url: str) -> Optional[bytes]:
+        """Download a PDF from a URL.
 
         Args:
-            blob_name: Name of the PDF blob to download
+            url: URL of the PDF to download
 
         Returns:
-            PDF content as bytes, or None if the blob couldn't be downloaded
+            PDF content as bytes, or None if the download failed
         """
-        if not self.container_client:
-            logger.error("Azure Blob Storage not configured")
-            return None
-
         try:
-            # Get a blob client for the specified blob
-            blob_client = self.container_client.get_blob_client(blob_name)
+            # Download the PDF from the URL
+            response = requests.get(url, timeout=30)
+            response.raise_for_status()
 
-            # Download the blob
-            download_stream = blob_client.download_blob()
-            blob_content = download_stream.readall()
-
-            logger.info(f"Downloaded PDF blob: {blob_name}")
-            return blob_content
-        except ResourceNotFoundError:
-            logger.error(f"PDF blob not found: {blob_name}")
-            return None
+            logger.info(f"Downloaded PDF from URL: {url}")
+            return response.content
         except Exception as e:
-            logger.error(f"Error downloading PDF blob {blob_name}: {e}")
+            logger.error(f"Error downloading PDF from URL {url}: {e}")
             return None
-
-    def extract_text_from_blob(self, blob_name: str) -> Optional[str]:
-        """Extract text from a PDF blob in Azure Blob Storage.
-
-        Args:
-            blob_name: Name of the PDF blob to extract text from
-
-        Returns:
-            Extracted text, or None if extraction failed
-        """
-        # Download the PDF blob
-        pdf_bytes = self.get_pdf_blob(blob_name)
-        if not pdf_bytes:
-            return None
-
-        # Extract text from the PDF
-        return self.extract_text_from_bytes(pdf_bytes)
 
     def extract_text_from_bytes(self, pdf_bytes: bytes) -> Optional[str]:
         """Extract text from PDF bytes.
@@ -129,7 +61,7 @@ class PDFExtractor:
             # Create a file-like object from the bytes
             pdf_file = io.BytesIO(pdf_bytes)
 
-            # Extract text using PyPDF2
+            # Extract text using PyPDF
             extracted_text = []
 
             with pypdf.PdfReader(pdf_file) as pdf:
@@ -151,63 +83,70 @@ class PDFExtractor:
             logger.error(f"Error extracting text from PDF: {e}")
             return None
 
-    def extract_text_with_metadata(self, blob_name: str) -> Dict[str, Any]:
-        """Extract text and metadata from a PDF blob.
+    def extract_text_from_url(self, url: str) -> Optional[str]:
+        """Extract text from a PDF at the given URL.
 
         Args:
-            blob_name: Name of the PDF blob to extract from
+            url: URL of the PDF to extract text from
 
         Returns:
-            Dictionary containing extracted text and metadata
+            Extracted text, or None if extraction failed
         """
-        text = self.extract_text_from_blob(blob_name)
+        # Download the PDF from the URL
+        pdf_bytes = self.download_pdf_from_url(url)
+        if not pdf_bytes:
+            return None
 
-        # We could extract more metadata here, like landmark ID from filename
-        # For now, just include the blob name and success status
-        result = {
-            "blob_name": blob_name,
-            "success": text is not None,
-        }
-
-        if text:
-            result["text"] = text
-            result["page_count"] = text.count("\n\n") + 1  # Approximate count
-
-        return result
+        # Extract text from the PDF
+        return self.extract_text_from_bytes(pdf_bytes)
 
     def process_landmark_pdf(
-        self, landmark_id: str, blob_name: Optional[str] = None
+        self, landmark_id: str, pdf_url: Optional[str] = None
     ) -> Dict[str, Any]:
         """Process a PDF for a specific landmark.
 
         Args:
             landmark_id: ID of the landmark
-            blob_name: Name of the PDF blob (if None, will attempt to find based on landmark_id)
+            pdf_url: URL of the PDF (if None, will get from API)
 
         Returns:
             Dictionary containing extracted text and metadata
         """
-        # If blob_name is not provided, try to find it based on landmark_id
-        if not blob_name:
-            # List all PDFs and find one that matches the landmark_id
-            all_pdfs = self.list_pdfs()
-            matching_pdfs = [pdf for pdf in all_pdfs if landmark_id in pdf]
+        result = {
+            "landmark_id": landmark_id,
+            "success": False,
+        }
 
-            if not matching_pdfs:
-                logger.error(f"No PDF found for landmark ID: {landmark_id}")
-                return {
-                    "landmark_id": landmark_id,
-                    "success": False,
-                    "error": "No matching PDF found",
-                }
+        try:
+            # Get PDF URL from API if not provided
+            if not pdf_url:
+                pdf_url = self.api_client.get_landmark_pdf_url(landmark_id)
 
-            # Use the first matching PDF
-            blob_name = matching_pdfs[0]
+            if not pdf_url:
+                error = "No PDF URL found for landmark"
+                logger.error(f"{error}: {landmark_id}")
+                result["error"] = error
+                return result
 
-        # Extract text from the PDF
-        result = self.extract_text_with_metadata(blob_name)
+            # Extract text from the PDF
+            text = self.extract_text_from_url(pdf_url)
 
-        # Add landmark_id to the result
-        result["landmark_id"] = landmark_id
+            if not text:
+                error = "Failed to extract text from PDF"
+                logger.error(f"{error}: {landmark_id}")
+                result["error"] = error
+                return result
 
-        return result
+            # Add text and metadata to result
+            result["text"] = text
+            result["page_count"] = text.count("\n\n") + 1  # Approximate count
+            result["pdf_url"] = pdf_url
+            result["success"] = True
+
+            return result
+
+        except Exception as e:
+            error = str(e)
+            logger.error(f"Error processing landmark PDF {landmark_id}: {error}")
+            result["error"] = error
+            return result

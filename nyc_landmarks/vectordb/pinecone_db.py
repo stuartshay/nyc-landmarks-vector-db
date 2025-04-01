@@ -10,7 +10,7 @@ import time
 import uuid
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import pinecone
+from pinecone import Pinecone, ServerlessSpec
 
 from nyc_landmarks.config.settings import settings
 
@@ -30,12 +30,14 @@ class PineconeDB:
         self.namespace = settings.PINECONE_NAMESPACE
         self.dimensions = settings.PINECONE_DIMENSIONS
         self.metric = settings.PINECONE_METRIC
+        self.pinecone_client = None
         self.index = None
 
         # Initialize Pinecone client if API key is provided
         if self.api_key and self.environment:
             try:
-                pinecone.init(api_key=self.api_key, environment=self.environment)
+                # Initialize Pinecone client with new API
+                self.pinecone_client = Pinecone(api_key=self.api_key)
                 logger.info(
                     f"Initialized Pinecone client in environment: {self.environment}"
                 )
@@ -51,12 +53,16 @@ class PineconeDB:
         """Connect to the Pinecone index, creating it if it doesn't exist."""
         try:
             # Check if index exists
-            if self.index_name not in pinecone.list_indexes():
+            index_list = self.pinecone_client.list_indexes()
+            if self.index_name not in index_list.names():
                 logger.info(f"Index '{self.index_name}' does not exist, creating...")
 
-                # Create index
-                pinecone.create_index(
-                    name=self.index_name, dimension=self.dimensions, metric=self.metric
+                # Create index with ServerlessSpec
+                self.pinecone_client.create_index(
+                    name=self.index_name,
+                    dimension=self.dimensions,
+                    metric=self.metric,
+                    spec=ServerlessSpec(cloud="aws", region="us-west-2"),
                 )
 
                 # Wait for index to be ready
@@ -64,7 +70,7 @@ class PineconeDB:
                 time.sleep(30)
 
             # Connect to index
-            self.index = pinecone.Index(self.index_name)
+            self.index = self.pinecone_client.Index(self.index_name)
             logger.info(f"Connected to Pinecone index: {self.index_name}")
         except Exception as e:
             logger.error(f"Error connecting to Pinecone index: {e}")
@@ -105,9 +111,10 @@ class PineconeDB:
             return False
 
         try:
-            # Upsert the vector
+            # Upsert the vector using new API
             self.index.upsert(
-                vectors=[(vector_id, vector, metadata)], namespace=self.namespace
+                vectors=[{"id": vector_id, "values": vector, "metadata": metadata}],
+                namespace=self.namespace,
             )
             logger.debug(f"Stored vector with ID: {vector_id}")
             return True
@@ -135,8 +142,14 @@ class PineconeDB:
             return True
 
         try:
-            # Upsert the vectors
-            self.index.upsert(vectors=vectors, namespace=self.namespace)
+            # Convert tuples to the format expected by the new API
+            formatted_vectors = [
+                {"id": id, "values": values, "metadata": metadata}
+                for id, values, metadata in vectors
+            ]
+
+            # Upsert the vectors using new API
+            self.index.upsert(vectors=formatted_vectors, namespace=self.namespace)
             logger.info(f"Stored {len(vectors)} vectors")
             return True
         except Exception as e:
@@ -214,7 +227,7 @@ class PineconeDB:
             return []
 
         try:
-            # Query the index
+            # Query the index using new API
             results = self.index.query(
                 vector=query_vector,
                 top_k=top_k,
@@ -224,7 +237,7 @@ class PineconeDB:
             )
 
             # Process results
-            matches = results.get("matches", [])
+            matches = results.matches
             logger.info(f"Query returned {len(matches)} matches")
 
             return matches

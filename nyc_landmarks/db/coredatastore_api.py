@@ -7,8 +7,9 @@ that provides NYC landmark information.
 
 import logging
 from typing import Any, Dict, List, Optional, Union, cast
-import requests
 from urllib.parse import urljoin
+
+import requests
 
 from nyc_landmarks.config.settings import settings
 
@@ -32,8 +33,13 @@ class CoreDataStoreAPI:
 
         logger.info(f"Initialized CoreDataStore API client")
 
-    def _make_request(self, method: str, endpoint: str, params: Optional[Dict[str, Any]] = None,
-                     json_data: Optional[Dict[str, Any]] = None) -> Union[Dict[str, Any], List[Any]]:
+    def _make_request(
+        self,
+        method: str,
+        endpoint: str,
+        params: Optional[Dict[str, Any]] = None,
+        json_data: Optional[Dict[str, Any]] = None,
+    ) -> Union[Dict[str, Any], List[Any]]:
         """Make a request to the CoreDataStore API.
 
         Args:
@@ -57,7 +63,7 @@ class CoreDataStoreAPI:
                 headers=self.headers,
                 params=params,
                 json=json_data,
-                timeout=30
+                timeout=30,
             )
 
             # Raise exception for error status codes
@@ -103,7 +109,7 @@ class CoreDataStoreAPI:
                 "borough": response.get("borough", ""),
                 "type": response.get("objectType", ""),
                 "designation_date": response.get("dateDesignated", ""),
-                "description": ""  # API doesn't seem to provide a description field
+                "description": "",  # API doesn't seem to provide a description field
             }
 
             return landmark
@@ -127,10 +133,7 @@ class CoreDataStoreAPI:
             page = 1
 
             # Make API request
-            response = self._make_request(
-                "GET",
-                f"/api/LpcReport/{page_limit}/{page}"
-            )
+            response = self._make_request("GET", f"/api/LpcReport/{page_limit}/{page}")
 
             results = []
             if response and "results" in response:
@@ -143,7 +146,7 @@ class CoreDataStoreAPI:
                         "borough": item.get("borough", ""),
                         "type": item.get("objectType", ""),
                         "designation_date": item.get("dateDesignated", ""),
-                        "description": ""  # API doesn't seem to provide a description field
+                        "description": "",  # API doesn't seem to provide a description field
                     }
                     results.append(landmark)
 
@@ -171,7 +174,7 @@ class CoreDataStoreAPI:
             response = self._make_request(
                 "GET",
                 "/api/LpcReport/10/1",  # Default to 10 results on page 1
-                params={"SearchText": search_term}
+                params={"SearchText": search_term},
             )
 
             results = []
@@ -185,7 +188,7 @@ class CoreDataStoreAPI:
                         "borough": item.get("borough", ""),
                         "type": item.get("objectType", ""),
                         "designation_date": item.get("dateDesignated", ""),
-                        "description": ""  # API doesn't seem to provide a description field
+                        "description": "",  # API doesn't seem to provide a description field
                     }
                     results.append(landmark)
 
@@ -222,7 +225,9 @@ class CoreDataStoreAPI:
 
         return metadata
 
-    def get_landmark_buildings(self, landmark_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_landmark_buildings(
+        self, landmark_id: str, limit: int = 50
+    ) -> List[Dict[str, Any]]:
         """Get buildings associated with a landmark.
 
         Args:
@@ -243,7 +248,7 @@ class CoreDataStoreAPI:
             response = self._make_request(
                 "GET",
                 f"/api/LpcReport/landmark/{limit}/1",
-                params={"LpcNumber": lpc_number}
+                params={"LpcNumber": lpc_number},
             )
 
             # The response is an array of landmark buildings
@@ -260,7 +265,7 @@ class CoreDataStoreAPI:
                         "borough": building.get("boroughId", ""),
                         "latitude": building.get("latitude", None),
                         "longitude": building.get("longitude", None),
-                        "designated_date": building.get("designatedDate", "")
+                        "designated_date": building.get("designatedDate", ""),
                     }
                     buildings.append(building_info)
 
@@ -270,7 +275,9 @@ class CoreDataStoreAPI:
             logger.error(f"Error getting landmark buildings: {e}")
             return []
 
-    def get_landmark_photos(self, landmark_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_landmark_photos(
+        self, landmark_id: str, limit: int = 10
+    ) -> List[Dict[str, Any]]:
         """Get photo archive items for a landmark.
 
         Args:
@@ -289,9 +296,7 @@ class CoreDataStoreAPI:
 
             # Make the API request
             response = self._make_request(
-                "GET",
-                f"/api/PhotoArchive/{limit}/1",
-                params={"LpcId": lpc_id}
+                "GET", f"/api/PhotoArchive/{limit}/1", params={"LpcId": lpc_id}
             )
 
             photos = []
@@ -303,7 +308,7 @@ class CoreDataStoreAPI:
                         "description": photo.get("description", ""),
                         "collection": photo.get("collection", ""),
                         "photo_url": photo.get("photoUrl", ""),
-                        "date_period": f"{photo.get('startDate', '')} - {photo.get('endDate', '')}"
+                        "date_period": f"{photo.get('startDate', '')} - {photo.get('endDate', '')}",
                     }
                     photos.append(photo_info)
 
@@ -352,7 +357,9 @@ class CoreDataStoreAPI:
         """
         try:
             params = {"borough": borough} if borough else None
-            response = self._make_request("GET", "/api/Reference/neighborhood", params=params)
+            response = self._make_request(
+                "GET", "/api/Reference/neighborhood", params=params
+            )
             if response and isinstance(response, list):
                 return cast(List[Dict[str, Any]], response)
             return []
@@ -408,3 +415,40 @@ class CoreDataStoreAPI:
         except Exception as e:
             logger.error(f"Error getting architecture styles: {e}")
             return []
+
+    def get_landmark_pdf_url(self, landmark_id: str) -> Optional[str]:
+        """Get the PDF report URL for a landmark.
+
+        Args:
+            landmark_id: ID of the landmark (LP number, e.g., "LP-00001")
+
+        Returns:
+            The PDF report URL, or None if not found
+        """
+        try:
+            # Ensure landmark_id is properly formatted with LP prefix
+            if not landmark_id.startswith("LP-"):
+                lpc_id = f"LP-{landmark_id.zfill(5)}"
+            else:
+                lpc_id = landmark_id
+
+            # Get the LPC report using the API
+            response = self._make_request("GET", f"/api/LpcReport/{lpc_id}")
+
+            if not response:
+                logger.warning(f"Landmark not found with ID: {landmark_id}")
+                return None
+
+            # Extract the PDF report URL
+            pdf_url = response.get("pdfReportUrl")
+            if not pdf_url:
+                logger.warning(
+                    f"No PDF report URL found for landmark ID: {landmark_id}"
+                )
+                return None
+
+            return pdf_url
+
+        except Exception as e:
+            logger.error(f"Error getting PDF report URL for landmark: {e}")
+            return None

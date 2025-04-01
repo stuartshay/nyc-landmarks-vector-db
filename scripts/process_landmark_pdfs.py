@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from nyc_landmarks.config.settings import settings
-from nyc_landmarks.db.postgres import PostgresDB
+from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.pdf.extractor import PDFExtractor
 from nyc_landmarks.pdf.text_chunker import TextChunker
@@ -41,7 +41,7 @@ def process_landmark(
     text_chunker: TextChunker,
     embedding_generator: EmbeddingGenerator,
     vector_db: PineconeDB,
-    postgres_db: PostgresDB,
+    api_client: CoreDataStoreAPI,
     delete_existing: bool = False,
 ) -> Dict[str, Any]:
     """Process a landmark PDF and store embeddings.
@@ -52,7 +52,7 @@ def process_landmark(
         text_chunker: TextChunker instance
         embedding_generator: EmbeddingGenerator instance
         vector_db: PineconeDB instance
-        postgres_db: PostgresDB instance
+        api_client: CoreDataStoreAPI instance
         delete_existing: Whether to delete existing vectors for this landmark
 
     Returns:
@@ -69,8 +69,8 @@ def process_landmark(
     try:
         logger.info(f"Processing landmark: {landmark_id}")
 
-        # Get landmark metadata from PostgreSQL
-        landmark_metadata = postgres_db.get_landmark_metadata(landmark_id)
+        # Get landmark metadata from CoreDataStore API
+        landmark_metadata = api_client.get_landmark_metadata(landmark_id)
 
         # Delete existing vectors if requested
         if delete_existing:
@@ -149,7 +149,7 @@ def process_all_landmarks(
     text_chunker = TextChunker()
     embedding_generator = EmbeddingGenerator()
     vector_db = PineconeDB()
-    postgres_db = PostgresDB()
+    api_client = CoreDataStoreAPI()
 
     results = {
         "total_landmarks": 0,
@@ -161,8 +161,8 @@ def process_all_landmarks(
     }
 
     try:
-        # Get landmarks from PostgreSQL
-        landmarks = postgres_db.get_all_landmarks(limit=limit)
+        # Get landmarks from CoreDataStore API
+        landmarks = api_client.get_all_landmarks(limit=limit)
 
         results["total_landmarks"] = len(landmarks)
 
@@ -181,7 +181,7 @@ def process_all_landmarks(
                 text_chunker=text_chunker,
                 embedding_generator=embedding_generator,
                 vector_db=vector_db,
-                postgres_db=postgres_db,
+                api_client=api_client,
                 delete_existing=delete_existing,
             )
 
@@ -225,7 +225,7 @@ def process_specific_landmark(
     text_chunker = TextChunker()
     embedding_generator = EmbeddingGenerator()
     vector_db = PineconeDB()
-    postgres_db = PostgresDB()
+    api_client = CoreDataStoreAPI()
 
     # Process landmark
     return process_landmark(
@@ -234,7 +234,7 @@ def process_specific_landmark(
         text_chunker=text_chunker,
         embedding_generator=embedding_generator,
         vector_db=vector_db,
-        postgres_db=postgres_db,
+        api_client=api_client,
         delete_existing=delete_existing,
     )
 

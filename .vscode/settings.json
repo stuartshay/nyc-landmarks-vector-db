@@ -54,5 +54,44 @@
     "**/node_modules/**": true,
     "**/.ipynb_checkpoints/**": true
   },
-  "autoDocstring.docstringFormat": "google"
+  "autoDocstring.docstringFormat": "google",
+  "github.copilot.chat.codeGeneration.instructions": [
+    {
+      "text": "Generate Python code following PEP 8 style guidelines. Focus on backend processing for PDF extraction, text chunking, vector embedding generation, and database operations. Handle errors gracefully with appropriate logging. Follow the established patterns for API design, database operations, and external service integrations. Optimize performance for batch processing where appropriate. Include docstrings and type hints for all functions and classes."
+    },
+    {
+      "file": ".github/copilot_instructions.md"
+    },
+    {
+      "file": "memory-bank/activeContext.md"
+    },
+    {
+      "file": "memory-bank/techContext.md"
+    },
+    {
+      "file": "memory-bank/systemPatterns.md"
+    }
+  ],
+  "github.copilot.chat.testGeneration.instructions": [
+    {
+      "text": "Generate pytest tests for Python modules. Include separate test cases for normal operation, error handling, and edge cases. Mock external dependencies like OpenAI, Pinecone, Azure, and database connections. Structure tests using pytest fixtures for reusable setup and teardown. For API tests, verify proper response formats and status codes. For PDF processing, test with sample PDF content. For embedding generation, test with sample text chunks. For database operations, test with mock data. Follow the project's established patterns for test organization and naming."
+    },
+    {
+      "file": ".github/copilot_instructions.md"
+    },
+    {
+      "file": "memory-bank/techContext.md"
+    }
+  ],
+  "github.copilot.chat.reviewSelection.instructions": [
+    {
+      "text": "When reviewing code for the NYC Landmarks Vector Database project, check for these key areas: 1) Python best practices - verify PEP 8 compliance, proper docstrings, and type hints. 2) Error handling - ensure proper exception handling with meaningful error messages and logging. 3) Performance - check for efficient processing of PDF files, batch operations for embeddings, and optimized database queries. 4) Security - verify proper handling of credentials and API keys through the config module. 5) Integration - ensure proper interaction with external services like OpenAI, Pinecone, Azure, and databases. 6) Documentation - check for clear comments explaining complex operations, especially in PDF processing and vector operations. 7) Testing considerations - note areas where tests should cover normal operation, error cases, and edge cases."
+    },
+    {
+      "file": ".github/copilot_instructions.md"
+    },
+    {
+      "file": "memory-bank/activeContext.md"
+    }
+  ]
 }

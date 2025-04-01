@@ -13,7 +13,8 @@ from typing import Any, Dict, List, Optional, Union
 
 from dotenv import load_dotenv
 from google.cloud import secretmanager
-from pydantic import BaseSettings, Field, validator
+from pydantic import Field, validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Load environment variables from .env file if it exists
 load_dotenv()
@@ -68,17 +69,11 @@ class Settings(BaseSettings):
     AZURE_STORAGE_CONNECTION_STRING: str = Field(default="")
     AZURE_STORAGE_CONTAINER_NAME: str = Field(default="")
 
-    # PostgreSQL Database settings
-    POSTGRES_USER: str = Field(default="")
-    POSTGRES_PASSWORD: str = Field(default="")
-    POSTGRES_HOST: str = Field(default="")
-    POSTGRES_PORT: str = Field(default="5432")
-    POSTGRES_DB: str = Field(default="")
-    POSTGRES_CONNECTION_STRING: Optional[str] = Field(default=None)
-
     # CoreDataStore API settings
     COREDATASTORE_API_KEY: str = Field(default="")
-    COREDATASTORE_USE_API: bool = Field(default=False)  # Toggle between PostgreSQL and API
+    COREDATASTORE_USE_API: bool = Field(
+        default=True
+    )  # Set API as the default data source
 
     # Application settings
     APP_HOST: str = Field(default="0.0.0.0")
@@ -93,25 +88,6 @@ class Settings(BaseSettings):
         default=3600
     )  # Time to live for conversation history in seconds
 
-    @validator("POSTGRES_CONNECTION_STRING", pre=True, always=True)
-    def assemble_postgres_connection(
-        cls, v: Optional[str], values: Dict[str, Any]
-    ) -> str:
-        """Build PostgreSQL connection string if not provided."""
-        if v is not None:
-            return v
-
-        user = values.get("POSTGRES_USER")
-        password = values.get("POSTGRES_PASSWORD")
-        host = values.get("POSTGRES_HOST")
-        port = values.get("POSTGRES_PORT")
-        db = values.get("POSTGRES_DB")
-
-        if all([user, password, host, port, db]):
-            return f"postgresql://{user}:{password}@{host}:{port}/{db}"
-
-        return ""
-
     @validator("PINECONE_DIMENSIONS", pre=True, always=True)
     def match_embedding_dimensions(cls, v: int, values: Dict[str, Any]) -> int:
         """Ensure Pinecone dimensions match OpenAI embedding dimensions."""
@@ -120,11 +96,9 @@ class Settings(BaseSettings):
             return embedding_dimensions
         return v
 
-    class Config:
-        """Pydantic config."""
-
-        env_file = ".env"
-        case_sensitive = True
+    model_config = SettingsConfigDict(
+        env_file=".env", case_sensitive=True, extra="ignore"  # Allow extra fields
+    )
 
 
 class SecretManager:
