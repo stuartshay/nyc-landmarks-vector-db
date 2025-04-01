@@ -7,18 +7,20 @@ This is a local test script for the NYC Landmarks Vector Database project.
 
 import argparse
 import json
-import logging
 import os
+import sys
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urljoin
 
 import requests
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
+# Add the project root to the path so we can import nyc_landmarks modules
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+from nyc_landmarks.utils.logger import get_logger
+
+# Configure logger for this script
+logger = get_logger(name="fetch_landmark_reports")
 
 
 class CoreDataStoreClient:

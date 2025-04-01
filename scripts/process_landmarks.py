@@ -14,32 +14,21 @@ Usage:
 
 import argparse
 import json
-import logging
 import os
 import sys
 import time
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
 from urllib.parse import urljoin
 
 import requests
 
-# Create logs directory if it doesn't exist
-logs_dir = Path("logs")
-logs_dir.mkdir(exist_ok=True)
+# Add the project root to the path so we can import nyc_landmarks modules
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+from nyc_landmarks.utils.logger import get_logger
 
-# Generate log filename with timestamp
-log_filename = f"pipeline_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-log_filepath = logs_dir / log_filename
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout), logging.FileHandler(log_filepath)],
-)
-logger = logging.getLogger(__name__)
+# Configure logger for this script
+logger = get_logger(name="process_landmarks")
 
 
 class CoreDataStoreClient:
