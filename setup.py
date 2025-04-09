@@ -1,4 +1,47 @@
+import os
+import subprocess
+
 from setuptools import find_packages, setup
+from setuptools.command.develop import develop
+from setuptools.command.install import install
+
+
+# Custom command to install pre-commit hooks
+class PreCommitCommand:
+    """Base class for installing pre-commit hooks."""
+
+    def run_pre_commit_install(self):
+        try:
+            print("Installing pre-commit hooks...")
+            subprocess.check_call(["pre-commit", "install"])
+            print("Pre-commit hooks installed successfully!")
+        except subprocess.CalledProcessError:
+            print(
+                "Failed to install pre-commit hooks. Make sure pre-commit is installed."
+            )
+        except FileNotFoundError:
+            print(
+                "Pre-commit not found. Please install it with 'pip install pre-commit'"
+            )
+
+
+class PostDevelopCommand(develop, PreCommitCommand):
+    """Post-installation for development mode."""
+
+    def run(self):
+        develop.run(self)
+        self.run_pre_commit_install()
+
+
+class PostInstallCommand(install, PreCommitCommand):
+    """Post-installation for installation mode."""
+
+    def run(self):
+        install.run(self)
+        # Only install pre-commit hooks in development environments
+        if os.environ.get("INSTALL_PRE_COMMIT", "false").lower() == "true":
+            self.run_pre_commit_install()
+
 
 setup(
     name="nyc-landmarks-vector-db",
@@ -14,6 +57,10 @@ setup(
         "Programming Language :: Python :: 3.11",
     ],
     python_requires=">=3.11",
+    cmdclass={
+        "develop": PostDevelopCommand,
+        "install": PostInstallCommand,
+    },
     install_requires=[
         "fastapi>=0.95.0",
         "uvicorn>=0.21.0",

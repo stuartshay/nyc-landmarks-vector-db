@@ -114,8 +114,8 @@ venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Set up environment variables or configure Google Cloud Secret Store
-cp .env.sample .env
+# Set up environment variables
+cp .env.example .env
 # Edit .env with your preferred editor
 
 # Run the application
@@ -157,7 +157,7 @@ This project includes a fully configured development container that provides a c
 
 6. Copy the sample environment file and edit it:
    ```bash
-   cp .env.sample .env
+   cp .env.example .env
    # Edit .env with your credentials
    ```
 
