@@ -5,13 +5,12 @@
 ```mermaid
 flowchart TD
     subgraph "Data Sources"
-        A1[Postgres Database\nNYC Landmarks Data]
-        A2[CoreDataStore API\nNYC Landmarks Data]
+        A[CoreDataStore API\nNYC Landmarks Data]
         B[Azure Blob Storage\nLandmark PDFs]
     end
 
     subgraph "Database Layer"
-        DB[Database Client Abstraction]
+        DB[Database Client]
     end
 
     subgraph "Processing Pipeline"
@@ -30,8 +29,7 @@ flowchart TD
         I[Chat API]
     end
 
-    A1 --> DB
-    A2 --> DB
+    A --> DB
     DB --> C
     B --> C
     C --> D
@@ -43,7 +41,7 @@ flowchart TD
     DB --> H
     DB --> I
 
-    H --> J[Existing Frontend]
+    H --> J[Client Applications]
     I --> J
 ```
 
@@ -78,15 +76,15 @@ flowchart TD
   - Date of embedding generation
   - Other relevant landmark metadata for filtering
 
-### 6. Database Abstraction Strategy
-- We've implemented a database abstraction layer that supports both direct PostgreSQL connections and the CoreDataStore REST API.
-- A configuration toggle (COREDATASTORE_USE_API) determines which data source is used at runtime.
-- The DbClient class provides a unified interface that abstracts away the differences between data sources.
-- The CoreDataStore API client provides extended functionality beyond what's available in the PostgreSQL client.
-- Error handling is implemented at both the client level and in the abstraction layer.
+### 6. Database Access Strategy
+- We're using the CoreDataStore REST API exclusively as our data source for NYC landmarks information.
+- The DbClient class provides a unified interface that abstracts away the complexity of the API calls.
+- The CoreDataStore API client provides extensive functionality including access to landmark data, buildings, photos, PLUTO data, etc.
+- Error handling is implemented at the client level with appropriate logging and fallback mechanisms.
+- An MCP server wraps the CoreDataStore API, providing additional tools for interacting with the API directly.
 
 ### 7. Credential Management
-- All credentials (OpenAI API keys, Azure storage credentials, Postgres credentials, Pinecone API keys, CoreDataStore API keys) will be managed through Google Cloud Secret Store.
+- All credentials (OpenAI API keys, Azure storage credentials, Pinecone API keys, CoreDataStore API keys) will be managed through Google Cloud Secret Store.
 - A secure configuration manager will retrieve and provide credentials to the application components that need them.
 - Development environments will support fallback to environment variables or local files.
 
@@ -121,9 +119,9 @@ flowchart TD
 - Infrastructure as code for any cloud resources.
 
 ### 13. Design Patterns
-- Repository pattern for database access, with concrete implementations for different data sources.
+- Repository pattern for database access via the CoreDataStore API.
 - Adapter pattern for the CoreDataStore API client to map API responses to our internal data structures.
-- Strategy pattern for switching between database implementations at runtime.
 - Factory pattern for creating service instances.
 - Strategy pattern for different text processing approaches.
 - Decorator pattern for adding cross-cutting concerns (logging, error handling).
+- Facade pattern to simplify interactions with complex external services.

@@ -17,8 +17,13 @@ This project aims to make information about New York City landmarks more accessi
 ```mermaid
 flowchart TD
     subgraph "Data Sources"
-        A[Postgres Database\nNYC Landmarks Data]
+        A1[Postgres Database\nNYC Landmarks Data]
+        A2[CoreDataStore API\nNYC Landmarks Data]
         B[Azure Blob Storage\nLandmark PDFs]
+    end
+
+    subgraph "Database Layer"
+        DB[Database Client Abstraction]
     end
 
     subgraph "Processing Pipeline"
@@ -37,7 +42,9 @@ flowchart TD
         I[Chat API]
     end
 
-    A --> C
+    A1 --> DB
+    A2 --> DB
+    DB --> C
     B --> C
     C --> D
     D --> E
@@ -45,6 +52,8 @@ flowchart TD
     F --> H
     F --> I
     G --> I
+    DB --> H
+    DB --> I
 
     H --> J[Existing Frontend]
     I --> J
@@ -59,14 +68,16 @@ flowchart TD
 - Provide vector search API for semantic queries
 - Enable chatbot functionality with conversation memory
 - Filter results by landmark ID and other metadata
-- Integrate with existing PostgreSQL database and frontend applications
+- Connect to both PostgreSQL database and CoreDataStore API with configurable switching
+- Integrate with existing frontend applications
 
 ## Tech Stack
 
 - **Python**: Primary programming language
 - **OpenAI API**: For generating text embeddings
 - **Pinecone**: Vector database for storing and searching embeddings
-- **PostgreSQL**: Existing database containing NYC landmarks data
+- **PostgreSQL**: Optional database connection for NYC landmarks data
+- **CoreDataStore API**: Alternative REST API for accessing NYC landmarks data
 - **Azure Blob Storage**: Storage for landmark PDF reports
 - **Google Cloud Secret Store**: For credential management
 - **FastAPI**: For API endpoints
@@ -285,6 +296,9 @@ nyc-landmarks-vector-db/
 │   ├── api/                     # API endpoints
 │   ├── chat/                    # Chat functionality
 │   ├── db/                      # Database interactions
+│   │   ├── db_client.py         # Database client abstraction
+│   │   ├── postgres.py          # PostgreSQL client
+│   │   └── coredatastore_api.py # CoreDataStore API client
 │   └── utils/                   # Utility functions
 ├── tests/                       # Test suite
 ├── docs/                        # Documentation
@@ -295,6 +309,16 @@ nyc-landmarks-vector-db/
 ├── setup.py                     # Package setup
 └── README.md                    # This file
 ```
+
+## Configuration
+
+The project supports two data sources for NYC landmarks information:
+1. **PostgreSQL database**: Direct database connection to the landmarks database
+2. **CoreDataStore API**: REST API client that provides the same data plus additional endpoints
+
+To toggle between these data sources, set the `COREDATASTORE_USE_API` environment variable:
+- `COREDATASTORE_USE_API=true` - Use the CoreDataStore API
+- `COREDATASTORE_USE_API=false` - Use direct PostgreSQL connection
 
 ## Documentation
 
@@ -314,5 +338,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Acknowledgments
 
 - NYC Landmarks Preservation Commission for the data
+- CoreDataStore for the API access
 - OpenAI for the embedding models
 - Pinecone for the vector database

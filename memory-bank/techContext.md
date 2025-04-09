@@ -6,8 +6,8 @@
 1. **Python**: Primary programming language for the project
 2. **OpenAI API**: For generating text embeddings using their embedding models
 3. **Pinecone**: Vector database for storing and searching text embeddings
-4. **PostgreSQL**: Existing database containing NYC landmarks structured data
-5. **CoreDataStore API**: REST API alternative for accessing NYC landmarks data
+4. **CoreDataStore API**: REST API for accessing NYC landmarks data
+5. **coredatastore-swagger-mcp**: MCP server providing tools for CoreDataStore API
 6. **Azure Blob Storage**: Current storage location for landmark PDF reports
 7. **Google Cloud Secret Store**: For secure credential management
 
@@ -16,13 +16,13 @@
 2. **PyPDF2/PDFPlumber**: For extracting text from PDFs
 3. **OpenAI Python Client**: For interacting with OpenAI API
 4. **Pinecone-client**: For interacting with Pinecone vector database
-5. **Psycopg2/SQLAlchemy**: For PostgreSQL database interactions
-6. **Requests**: For making HTTP requests to CoreDataStore API
-7. **Azure Blob Storage SDK**: For retrieving PDFs from Azure
-8. **Google Cloud Secret Manager**: For accessing Google Cloud Secret Store
-9. **Pydantic**: For data validation and settings management
-10. **Pytest**: For testing
-11. **Langchain (Optional)**: May be used for some components as it provides helpful abstractions
+5. **Requests**: For making HTTP requests to CoreDataStore API
+6. **Azure Blob Storage SDK**: For retrieving PDFs from Azure
+7. **Google Cloud Secret Manager**: For accessing Google Cloud Secret Store
+8. **Pydantic**: For data validation and settings management
+9. **Pytest**: For testing
+10. **Langchain (Optional)**: May be used for some components as it provides helpful abstractions
+11. **MCP SDK**: For interacting with the Model Context Protocol server
 
 ### Development Tools
 1. **GitHub**: Version control and repository hosting
@@ -41,9 +41,9 @@
 4. Access to OpenAI API (via key)
 5. Access to Pinecone (via key)
 6. Access to Google Cloud Secret Store (for production credentials)
-7. Access to PostgreSQL database (via connection string)
-8. Access to CoreDataStore API (via API key, if using)
-9. Access to Azure Blob Storage (via connection string)
+7. Access to CoreDataStore API (via API key)
+8. Access to Azure Blob Storage (via connection string)
+9. Configured coredatastore-swagger-mcp server
 
 ### Development Workflow
 1. Clone repository from GitHub
@@ -87,15 +87,15 @@
 2. **Pinecone Service**: Essential for vector storage and search
 3. **Google Cloud Secret Store**: Essential for credential management
 4. **Azure Blob Storage**: Essential for PDF access
-5. **PostgreSQL Database**: Essential for landmark data (if using direct database access)
-6. **CoreDataStore API**: Alternative source for landmark data
+5. **CoreDataStore API**: Essential source for NYC landmarks data
+6. **MCP Server**: For providing CoreDataStore API tools
 
 ### Internal Integration Points
-1. **Database Abstraction Layer**: Allows switching between data sources
-2. **Existing Postgres Database**: Option for direct query of landmark data
-3. **CoreDataStore API**: Alternative for accessing landmark data
-4. **Existing API**: May need to integrate with other NYC landmark services
-5. **Frontend Applications**: Will consume the new vector search and chat APIs
+1. **Database Client**: Provides interface to CoreDataStore API
+2. **CoreDataStore MCP Server**: Provides direct tools for API access
+3. **Vector Search API**: Connects vector results with landmark data
+4. **Chat API**: Provides conversational interface to vector database
+5. **Frontend Applications**: Will consume the vector search and chat APIs
 
 ## Monitoring and Maintenance
 

@@ -4,9 +4,10 @@ NYC Landmarks Pipeline Script
 This script implements a processing pipeline for NYC landmarks data:
 1. Fetches landmark data from the CoreDataStore API
 2. Extracts PDF URLs and downloads PDF reports
-3. (Placeholder) Processes PDFs to extract text
-4. (Placeholder) Generates embeddings from text
-5. (Placeholder) Stores embeddings in vector database
+3. Processes PDFs to extract text
+4. Chunks text into manageable segments
+5. Generates embeddings from text chunks
+6. Stores embeddings in Pinecone vector database with enhanced metadata
 
 Usage:
   python scripts/process_landmarks.py --pages 2 --download
@@ -17,75 +18,52 @@ import json
 import os
 import sys
 import time
+import uuid
+from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
-from urllib.parse import urljoin
 
 import requests
+from tqdm import tqdm
 
 # Add the project root to the path so we can import nyc_landmarks modules
 sys.path.append(str(Path(__file__).resolve().parent.parent))
+from nyc_landmarks.config.settings import settings
+from nyc_landmarks.db.db_client import get_db_client
+from nyc_landmarks.embeddings.generator import EmbeddingGenerator
+from nyc_landmarks.pdf.extractor import PDFExtractor
+from nyc_landmarks.pdf.text_chunker import TextChunker
 from nyc_landmarks.utils.logger import get_logger
+from nyc_landmarks.vectordb.enhanced_metadata import get_metadata_collector
+from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
 # Configure logger for this script
 logger = get_logger(name="process_landmarks")
-
-
-class CoreDataStoreClient:
-    """CoreDataStore API client for landmark operations."""
-
-    def __init__(self, api_key: Optional[str] = None) -> None:
-        """Initialize the CoreDataStore API client."""
-        self.base_url = "https://api.coredatastore.com"
-        self.api_key = api_key
-        self.headers = {}
-
-        # Set up authorization header if API key is provided
-        if self.api_key:
-            self.headers["Authorization"] = f"Bearer {self.api_key}"
-
-        logger.info("Initialized CoreDataStore API client")
-
-    def _make_request(
-        self,
-        method: str,
-        endpoint: str,
-        params: Optional[Dict[str, Any]] = None,
-        json_data: Optional[Dict[str, Any]] = None,
-    ) -> Union[Dict[str, Any], List[Any]]:
-        """Make a request to the CoreDataStore API."""
-        url = urljoin(self.base_url, endpoint)
-
-        try:
-            response = requests.request(
-                method=method,
-                url=url,
-                headers=self.headers,
-                params=params,
-                json=json_data,
-                timeout=30,
-            )
-
-            # Raise exception for error status codes
-            response.raise_for_status()
-
-            # Return JSON response if available
-            if response.content:
-                # Cast the response to the expected return type
-                return cast(Union[Dict[str, Any], List[Any]], response.json())
-            return {}
-
-        except requests.exceptions.RequestException as e:
-            logger.error(f"API request error: {e}")
-            raise Exception(f"Error making API request: {e}")
 
 
 class LandmarkPipeline:
     """Pipeline for processing NYC landmark data."""
 
     def __init__(self, api_key: Optional[str] = None):
-        """Initialize the pipeline components."""
-        self.api_client = CoreDataStoreClient(api_key)
+        """Initialize the pipeline components.
+
+        Args:
+            api_key: Optional API key for CoreDataStore API
+        """
+        # Set up database client using the abstraction layer
+        self.db_client = get_db_client()
+
+        # Initialize other components
+        self.pdf_extractor = PDFExtractor()
+        self.text_chunker = TextChunker(
+            chunk_size=settings.CHUNK_SIZE,
+            chunk_overlap=settings.CHUNK_OVERLAP
+        )
+        self.embedding_generator = EmbeddingGenerator()
+        self.pinecone_db = PineconeDB()
+        self.metadata_collector = get_metadata_collector()
+
+        # Set up directories
         self.data_dir = Path("data")
         self.pdfs_dir = self.data_dir / "pdfs"
         self.text_dir = self.data_dir / "text"
@@ -95,31 +73,39 @@ class LandmarkPipeline:
         self.pdfs_dir.mkdir(exist_ok=True)
         self.text_dir.mkdir(exist_ok=True)
 
-        # Initialize statistics with proper typing
+        # Initialize statistics
         self.stats: Dict[str, Any] = {
             "landmarks_fetched": 0,
             "pdfs_downloaded": 0,
             "pdfs_processed": 0,
-            "errors": [],  # This is now explicitly a list
+            "chunks_created": 0,
+            "embeddings_generated": 0,
+            "vectors_stored": 0,
+            "errors": [],
+            "processed_landmarks": []
         }
 
     def get_landmarks(
         self, page_size: int = 10, pages: int = 1
     ) -> List[Dict[str, Any]]:
-        """Get landmark reports from the API."""
+        """Get landmark reports from the API.
+
+        Args:
+            page_size: Number of landmarks per page
+            pages: Number of pages to fetch
+
+        Returns:
+            List of landmark dictionaries
+        """
         all_landmarks = []
 
         for page in range(1, pages + 1):
             logger.info(f"Fetching page {page} of {pages}")
             try:
-                # Make the direct API request
-                response = self.api_client._make_request(
-                    "GET", f"/api/LpcReport/{page_size}/{page}"
-                )
+                # Use the database client to get landmarks
+                landmarks = self.db_client.get_landmarks_page(page_size, page)
 
-                # Extract results
-                if response and isinstance(response, dict) and "results" in response:
-                    landmarks = response["results"]
+                if landmarks:
                     all_landmarks.extend(landmarks)
                     logger.info(f"Found {len(landmarks)} landmarks on page {page}")
                 else:
@@ -132,7 +118,7 @@ class LandmarkPipeline:
             except Exception as e:
                 error_msg = f"Error fetching landmarks on page {page}: {str(e)}"
                 logger.error(error_msg)
-                self.stats["errors"].append(error_msg)  # Now properly typed
+                self.stats["errors"].append(error_msg)
                 break
 
         self.stats["landmarks_fetched"] = len(all_landmarks)
@@ -140,29 +126,44 @@ class LandmarkPipeline:
 
     def download_pdfs(
         self, landmarks: List[Dict[str, Any]], limit: Optional[int] = None
-    ) -> List[Tuple[str, Path]]:
+    ) -> List[Tuple[str, Path, Dict[str, Any]]]:
         """Download PDFs for landmarks.
 
+        Args:
+            landmarks: List of landmark dictionaries
+            limit: Maximum number of PDFs to download
+
         Returns:
-            List of tuples with (landmark_id, pdf_path)
+            List of tuples with (landmark_id, pdf_path, landmark_data)
         """
         downloaded = []
 
         # Filter landmarks that have PDF URLs
         landmarks_with_pdfs = [
-            landmark
-            for landmark in landmarks
-            if "pdfReportUrl" in landmark and landmark["pdfReportUrl"]
+            landmark for landmark in landmarks
+            if landmark.get("pdfReportUrl") or self.db_client.get_landmark_pdf_url(landmark.get("id", ""))
         ]
 
         # Apply limit if specified
-        if limit is not None:
+        if limit is not None and limit > 0:
             landmarks_with_pdfs = landmarks_with_pdfs[:limit]
 
-        for landmark in landmarks_with_pdfs:
+        for landmark in tqdm(landmarks_with_pdfs, desc="Downloading PDFs"):
             try:
-                landmark_id = landmark.get("lpNumber", "")
-                pdf_url = landmark["pdfReportUrl"]
+                # Get landmark ID
+                landmark_id = landmark.get("id", "") or landmark.get("lpNumber", "")
+                if not landmark_id:
+                    logger.warning(f"Landmark missing ID: {landmark}")
+                    continue
+
+                # Get PDF URL - either from the landmark data directly or using the client
+                pdf_url = landmark.get("pdfReportUrl")
+                if not pdf_url:
+                    pdf_url = self.db_client.get_landmark_pdf_url(landmark_id)
+
+                if not pdf_url:
+                    logger.warning(f"No PDF URL found for landmark {landmark_id}")
+                    continue
 
                 # Generate filename
                 filename = f"{landmark_id.replace('/', '_')}.pdf"
@@ -171,7 +172,7 @@ class LandmarkPipeline:
                 # Skip if already downloaded
                 if filepath.exists():
                     logger.info(f"PDF for {landmark_id} already exists at {filepath}")
-                    downloaded.append((landmark_id, filepath))
+                    downloaded.append((landmark_id, filepath, landmark))
                     continue
 
                 # Download the PDF
@@ -183,62 +184,199 @@ class LandmarkPipeline:
                     for chunk in response.iter_content(chunk_size=8192):
                         f.write(chunk)
 
-                downloaded.append((landmark_id, filepath))
+                downloaded.append((landmark_id, filepath, landmark))
                 logger.info(f"Successfully downloaded {filepath}")
 
                 # Add a small delay
                 time.sleep(0.5)
 
             except Exception as e:
-                error_msg = f"Error downloading PDF for landmark {landmark.get('lpNumber', 'unknown')}: {str(e)}"
+                error_msg = f"Error downloading PDF for landmark {landmark.get('id', '') or landmark.get('lpNumber', 'unknown')}: {str(e)}"
                 logger.error(error_msg)
                 self.stats["errors"].append(error_msg)
 
         self.stats["pdfs_downloaded"] = len(downloaded)
         return downloaded
 
-    def extract_text(self, pdf_paths: List[Tuple[str, Path]]) -> List[Tuple[str, str]]:
+    def extract_text(
+        self, pdf_items: List[Tuple[str, Path, Dict[str, Any]]]
+    ) -> List[Tuple[str, str, Dict[str, Any]]]:
         """Extract text from PDFs.
 
-        Note: This is a placeholder function. In a real implementation, this would
-        use a PDF text extraction library to process the PDFs.
+        Args:
+            pdf_items: List of tuples with (landmark_id, pdf_path, landmark_data)
 
         Returns:
-            List of tuples with (landmark_id, text_content)
+            List of tuples with (landmark_id, text_content, landmark_data)
         """
-        logger.info("Text extraction not yet implemented")
-        return [(landmark_id, "") for landmark_id, _ in pdf_paths]
+        extracted_texts = []
+
+        for landmark_id, pdf_path, landmark_data in tqdm(pdf_items, desc="Extracting text from PDFs"):
+            try:
+                # Extract text from PDF
+                text = self.pdf_extractor.extract_text(pdf_path)
+
+                if text:
+                    # Save text to file
+                    text_filename = pdf_path.stem + ".txt"
+                    text_filepath = self.text_dir / text_filename
+                    with open(text_filepath, "w", encoding="utf-8") as f:
+                        f.write(text)
+
+                    extracted_texts.append((landmark_id, text, landmark_data))
+                    logger.info(f"Successfully extracted text from {pdf_path}")
+                else:
+                    logger.warning(f"No text extracted from {pdf_path}")
+
+            except Exception as e:
+                error_msg = f"Error extracting text from PDF {pdf_path}: {str(e)}"
+                logger.error(error_msg)
+                self.stats["errors"].append(error_msg)
+
+        self.stats["pdfs_processed"] = len(extracted_texts)
+        return extracted_texts
+
+    def chunk_texts(
+        self, text_items: List[Tuple[str, str, Dict[str, Any]]]
+    ) -> List[Tuple[str, List[Dict[str, Any]], Dict[str, Any]]]:
+        """Chunk text into smaller segments.
+
+        Args:
+            text_items: List of tuples with (landmark_id, text_content, landmark_data)
+
+        Returns:
+            List of tuples with (landmark_id, chunks, landmark_data)
+        """
+        all_chunked_items = []
+
+        for landmark_id, text, landmark_data in tqdm(text_items, desc="Chunking text"):
+            try:
+                # Create chunks from text
+                chunks = self.text_chunker.create_chunks(text)
+
+                # Add metadata to each chunk
+                enriched_chunks = []
+                for i, chunk in enumerate(chunks):
+                    chunk_dict = {
+                        "text": chunk,
+                        "chunk_index": i,
+                        "total_chunks": len(chunks),
+                        "metadata": {
+                            "landmark_id": landmark_id,
+                            "chunk_index": i,
+                            "total_chunks": len(chunks),
+                            "source_type": "pdf",
+                            "processing_date": time.strftime("%Y-%m-%d"),
+                        }
+                    }
+                    enriched_chunks.append(chunk_dict)
+
+                all_chunked_items.append((landmark_id, enriched_chunks, landmark_data))
+                logger.info(f"Created {len(chunks)} chunks for landmark {landmark_id}")
+
+                # Update statistics
+                self.stats["chunks_created"] += len(chunks)
+
+            except Exception as e:
+                error_msg = f"Error chunking text for landmark {landmark_id}: {str(e)}"
+                logger.error(error_msg)
+                self.stats["errors"].append(error_msg)
+
+        return all_chunked_items
 
     def generate_embeddings(
-        self, texts: List[Tuple[str, str]]
-    ) -> List[Tuple[str, List[float]]]:
-        """Generate embeddings from text.
+        self, chunked_items: List[Tuple[str, List[Dict[str, Any]], Dict[str, Any]]]
+    ) -> List[Tuple[str, List[Dict[str, Any]], Dict[str, Any]]]:
+        """Generate embeddings for text chunks.
 
-        Note: This is a placeholder function. In a real implementation, this would
-        use OpenAI or another embedding model to generate embeddings.
+        Args:
+            chunked_items: List of tuples with (landmark_id, chunks, landmark_data)
 
         Returns:
-            List of tuples with (landmark_id, embedding_vector)
+            List of tuples with (landmark_id, chunks_with_embeddings, landmark_data)
         """
-        logger.info("Embedding generation not yet implemented")
-        return [(landmark_id, []) for landmark_id, _ in texts]
+        items_with_embeddings = []
 
-    def store_in_vector_db(self, embeddings: List[Tuple[str, List[float]]]) -> bool:
-        """Store embeddings in vector database.
+        for landmark_id, chunks, landmark_data in tqdm(chunked_items, desc="Generating embeddings"):
+            try:
+                # Prepare texts for embedding
+                texts = [chunk["text"] for chunk in chunks]
 
-        Note: This is a placeholder function. In a real implementation, this would
-        use Pinecone or another vector database to store the embeddings.
+                # Generate embeddings in batch
+                embeddings = self.embedding_generator.generate_embeddings(texts)
+
+                # Add embeddings to chunks
+                chunks_with_embeddings = chunks.copy()
+                for i, embedding in enumerate(embeddings):
+                    chunks_with_embeddings[i]["embedding"] = embedding
+
+                items_with_embeddings.append((landmark_id, chunks_with_embeddings, landmark_data))
+                logger.info(f"Generated {len(embeddings)} embeddings for landmark {landmark_id}")
+
+                # Update statistics
+                self.stats["embeddings_generated"] += len(embeddings)
+
+            except Exception as e:
+                error_msg = f"Error generating embeddings for landmark {landmark_id}: {str(e)}"
+                logger.error(error_msg)
+                self.stats["errors"].append(error_msg)
+
+        return items_with_embeddings
+
+    def store_in_vector_db(
+        self, items_with_embeddings: List[Tuple[str, List[Dict[str, Any]], Dict[str, Any]]]
+    ) -> bool:
+        """Store embeddings in vector database with enhanced metadata.
+
+        Args:
+            items_with_embeddings: List of tuples with (landmark_id, chunks_with_embeddings, landmark_data)
 
         Returns:
             Success status
         """
-        logger.info("Vector database storage not yet implemented")
-        return True
+        all_success = True
+
+        for landmark_id, chunks_with_embeddings, _ in tqdm(items_with_embeddings, desc="Storing vectors"):
+            try:
+                # Create a prefix with landmark ID for better vector organization
+                id_prefix = f"{landmark_id}-"
+
+                # Store chunks with enhanced metadata from landmark_id
+                vector_ids = self.pinecone_db.store_chunks(
+                    chunks=chunks_with_embeddings,
+                    id_prefix=id_prefix,
+                    landmark_id=landmark_id
+                )
+
+                if vector_ids:
+                    logger.info(f"Stored {len(vector_ids)} vectors for landmark {landmark_id}")
+                    self.stats["vectors_stored"] += len(vector_ids)
+                    self.stats["processed_landmarks"].append(landmark_id)
+                else:
+                    logger.warning(f"Failed to store vectors for landmark {landmark_id}")
+                    all_success = False
+
+            except Exception as e:
+                error_msg = f"Error storing vectors for landmark {landmark_id}: {str(e)}"
+                logger.error(error_msg)
+                self.stats["errors"].append(error_msg)
+                all_success = False
+
+        return all_success
 
     def run(
         self, page_size: int = 10, pages: int = 1, download_limit: Optional[int] = None
     ) -> Dict[str, Any]:
-        """Run the pipeline."""
+        """Run the pipeline.
+
+        Args:
+            page_size: Number of landmarks per page
+            pages: Number of pages to fetch
+            download_limit: Maximum number of PDFs to download
+
+        Returns:
+            Dictionary with pipeline statistics
+        """
         start_time = time.time()
 
         # Step 1: Fetch landmarks
@@ -247,19 +385,23 @@ class LandmarkPipeline:
 
         # Step 2: Download PDFs
         logger.info("STEP 2: Downloading PDFs")
-        pdf_paths = self.download_pdfs(landmarks, download_limit)
+        pdf_items = self.download_pdfs(landmarks, download_limit)
 
-        # Step 3: Extract text (placeholder)
-        logger.info("STEP 3: Extracting text (placeholder)")
-        texts = self.extract_text(pdf_paths)
+        # Step 3: Extract text
+        logger.info("STEP 3: Extracting text from PDFs")
+        text_items = self.extract_text(pdf_items)
 
-        # Step 4: Generate embeddings (placeholder)
-        logger.info("STEP 4: Generating embeddings (placeholder)")
-        embeddings = self.generate_embeddings(texts)
+        # Step 4: Chunk text
+        logger.info("STEP 4: Chunking text")
+        chunked_items = self.chunk_texts(text_items)
 
-        # Step 5: Store in vector database (placeholder)
-        logger.info("STEP 5: Storing in vector database (placeholder)")
-        store_success = self.store_in_vector_db(embeddings)
+        # Step 5: Generate embeddings
+        logger.info("STEP 5: Generating embeddings")
+        items_with_embeddings = self.generate_embeddings(chunked_items)
+
+        # Step 6: Store in vector database
+        logger.info("STEP 6: Storing in vector database")
+        store_success = self.store_in_vector_db(items_with_embeddings)
 
         # Save landmarks data
         landmarks_file = self.data_dir / "landmarks.json"
@@ -269,7 +411,7 @@ class LandmarkPipeline:
         # Calculate statistics
         elapsed_time = time.time() - start_time
         self.stats["elapsed_time"] = f"{elapsed_time:.2f} seconds"
-        self.stats["pipeline_success"] = len(self.stats["errors"]) == 0
+        self.stats["pipeline_success"] = len(self.stats["errors"]) == 0 and store_success
 
         # Save statistics
         stats_file = self.data_dir / "pipeline_stats.json"
@@ -279,6 +421,10 @@ class LandmarkPipeline:
         logger.info(f"Pipeline completed in {elapsed_time:.2f} seconds")
         logger.info(f"Landmarks fetched: {self.stats['landmarks_fetched']}")
         logger.info(f"PDFs downloaded: {self.stats['pdfs_downloaded']}")
+        logger.info(f"PDFs processed: {self.stats['pdfs_processed']}")
+        logger.info(f"Text chunks created: {self.stats['chunks_created']}")
+        logger.info(f"Embeddings generated: {self.stats['embeddings_generated']}")
+        logger.info(f"Vectors stored: {self.stats['vectors_stored']}")
 
         if self.stats["errors"]:
             logger.warning(
@@ -319,11 +465,15 @@ def main():
     print("\nPipeline Summary:")
     print(f"Landmarks fetched: {stats['landmarks_fetched']}")
     print(f"PDFs downloaded: {stats['pdfs_downloaded']}")
+    print(f"PDFs processed: {stats['pdfs_processed']}")
+    print(f"Text chunks created: {stats['chunks_created']}")
+    print(f"Embeddings generated: {stats['embeddings_generated']}")
+    print(f"Vectors stored: {stats['vectors_stored']}")
     print(f"Elapsed time: {stats['elapsed_time']}")
 
     if stats["errors"]:
         print(f"Errors: {len(stats['errors'])}")
-        print("Check pipeline.log for details")
+        print("Check the logs for details")
     else:
         print("Status: Success")
 

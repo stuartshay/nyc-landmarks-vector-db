@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from pinecone import Pinecone, ServerlessSpec
 
 from nyc_landmarks.config.settings import settings
+from nyc_landmarks.vectordb.enhanced_metadata import get_metadata_collector
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ class PineconeDB:
         self.metric = settings.PINECONE_METRIC
         self.pinecone_client = None
         self.index = None
+        self.metadata_collector = get_metadata_collector()
 
         # Initialize Pinecone client if API key is provided
         if self.api_key and self.environment:
@@ -157,13 +159,14 @@ class PineconeDB:
             return False
 
     def store_chunks(
-        self, chunks: List[Dict[str, Any]], id_prefix: str = ""
+        self, chunks: List[Dict[str, Any]], id_prefix: str = "", landmark_id: Optional[str] = None
     ) -> List[str]:
         """Store text chunks with embeddings in the index.
 
         Args:
             chunks: List of chunk dictionaries with text, metadata, and embedding
             id_prefix: Prefix for vector IDs (optional)
+            landmark_id: Landmark ID to fetch enhanced metadata (optional)
 
         Returns:
             List of stored vector IDs
@@ -171,6 +174,12 @@ class PineconeDB:
         if not chunks:
             logger.warning("Attempted to store empty chunks list")
             return []
+
+        # Get enhanced metadata if landmark_id is provided
+        enhanced_metadata = {}
+        if landmark_id:
+            enhanced_metadata = self.metadata_collector.collect_landmark_metadata(landmark_id)
+            logger.info(f"Retrieved enhanced metadata for landmark: {landmark_id}")
 
         # Prepare vectors for batch storage
         vectors = []
@@ -191,9 +200,19 @@ class PineconeDB:
 
             # Get the metadata and add the text for retrieval
             metadata = chunk["metadata"].copy()
-            metadata["text"] = chunk[
-                "text"
-            ]  # Include the text in metadata for retrieval
+            metadata["text"] = chunk["text"]  # Include the text in metadata for retrieval
+
+            # Merge with enhanced metadata if available
+            if enhanced_metadata:
+                # Keep only metadata fields that won't conflict with chunk-specific metadata
+                # and don't exceed Pinecone's metadata size limits
+                for key, value in enhanced_metadata.items():
+                    if key not in metadata and key != "text":
+                        metadata[key] = value
+
+            # Add chunk position information if available
+            if "chunk_index" in chunk:
+                metadata["chunk_index"] = chunk["chunk_index"]
 
             # Add to vectors list
             vectors.append((vector_id, embedding, metadata))

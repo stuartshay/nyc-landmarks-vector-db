@@ -1,16 +1,17 @@
 """
-Database client module for NYC Landmarks Vector Database.
+Database client interface for the NYC Landmarks Vector Database.
 
-This module provides a unified interface for database operations that can
-switch between PostgreSQL and CoreDataStore API based on configuration.
+This module provides a unified interface for database operations,
+abstracting away the differences between PostgreSQL and CoreDataStore API.
 """
 
 import logging
+import os
 from typing import Any, Dict, List, Optional, Union, cast
 
 from nyc_landmarks.config.settings import settings
-from nyc_landmarks.db.postgres import PostgresDB
 from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
+from nyc_landmarks.db.postgres import PostgresDB
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -18,39 +19,30 @@ logging.basicConfig(level=settings.LOG_LEVEL.value)
 
 
 class DbClient:
-    """Database client that can switch between PostgreSQL and CoreDataStore API."""
+    """Database client interface that abstracts away the underlying implementation."""
 
-    def __init__(self) -> None:
-        """Initialize the database client.
+    def __init__(self):
+        """Initialize the client based on configuration."""
+        # Determine which implementation to use
+        use_api = settings.COREDATASTORE_USE_API
 
-        The client uses either PostgreSQL or CoreDataStore API based on settings.
-        """
-        self.use_api = settings.COREDATASTORE_USE_API
-
-        # Initialize the appropriate client based on settings
-        if self.use_api:
-            logger.info("Using CoreDataStore API for database operations")
-            self.api_client = CoreDataStoreAPI()
-            self.postgres_client = None
+        if use_api:
+            logger.info("Using CoreDataStore API client")
+            self.client = CoreDataStoreAPI()
         else:
-            logger.info("Using PostgreSQL for database operations")
-            self.postgres_client = PostgresDB()
-            self.api_client = None
+            logger.info("Using PostgreSQL client")
+            self.client = PostgresDB()
 
     def get_landmark_by_id(self, landmark_id: str) -> Optional[Dict[str, Any]]:
         """Get landmark information by ID.
 
         Args:
-            landmark_id: ID of the landmark
+            landmark_id: ID of the landmark (LP number)
 
         Returns:
             Dictionary containing landmark information, or None if not found
         """
-        if self.use_api and self.api_client:
-            return self.api_client.get_landmark_by_id(landmark_id)
-        elif self.postgres_client:
-            return self.postgres_client.get_landmark_by_id(landmark_id)
-        return None
+        return self.client.get_landmark_by_id(landmark_id)
 
     def get_all_landmarks(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
         """Get all landmarks.
@@ -61,14 +53,42 @@ class DbClient:
         Returns:
             List of dictionaries containing landmark information
         """
-        if self.use_api and self.api_client:
-            return self.api_client.get_all_landmarks(limit)
-        elif self.postgres_client:
-            return self.postgres_client.get_all_landmarks(limit)
-        return []
+        return self.client.get_all_landmarks(limit)
+
+    def get_landmarks_page(
+        self, page_size: int = 10, page: int = 1
+    ) -> List[Dict[str, Any]]:
+        """Get a page of landmarks.
+
+        Args:
+            page_size: Number of landmarks per page
+            page: Page number (starting from 1)
+
+        Returns:
+            List of landmarks for the requested page
+        """
+        # If we're using the CoreDataStore API, it supports pagination directly
+        if hasattr(self.client, "get_landmarks_page"):
+            return self.client.get_landmarks_page(page_size, page)
+
+        # For PostgreSQL or other clients that don't support pagination directly,
+        # we'll implement it here
+        try:
+            # Get all landmarks
+            all_landmarks = self.get_all_landmarks()
+
+            # Calculate start and end indices
+            start_idx = (page - 1) * page_size
+            end_idx = start_idx + page_size
+
+            # Return the slice of landmarks for this page
+            return all_landmarks[start_idx:end_idx]
+        except Exception as e:
+            logger.error(f"Error getting landmarks page: {e}")
+            return []
 
     def search_landmarks(self, search_term: str) -> List[Dict[str, Any]]:
-        """Search for landmarks by name or description.
+        """Search for landmarks by name or other attributes.
 
         Args:
             search_term: Search term
@@ -76,11 +96,7 @@ class DbClient:
         Returns:
             List of dictionaries containing landmark information
         """
-        if self.use_api and self.api_client:
-            return self.api_client.search_landmarks(search_term)
-        elif self.postgres_client:
-            return self.postgres_client.search_landmarks(search_term)
-        return []
+        return self.client.search_landmarks(search_term)
 
     def get_landmark_metadata(self, landmark_id: str) -> Dict[str, Any]:
         """Get metadata for a landmark suitable for storing with vector embeddings.
@@ -91,13 +107,24 @@ class DbClient:
         Returns:
             Dictionary containing landmark metadata
         """
-        if self.use_api and self.api_client:
-            return self.api_client.get_landmark_metadata(landmark_id)
-        elif self.postgres_client:
-            return self.postgres_client.get_landmark_metadata(landmark_id)
-        return {"landmark_id": landmark_id}
+        return self.client.get_landmark_metadata(landmark_id)
 
-    def get_landmark_buildings(self, landmark_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_landmark_pdf_url(self, landmark_id: str) -> Optional[str]:
+        """Get the PDF report URL for a landmark.
+
+        Args:
+            landmark_id: ID of the landmark
+
+        Returns:
+            URL string if available, None otherwise
+        """
+        if hasattr(self.client, "get_landmark_pdf_url"):
+            return self.client.get_landmark_pdf_url(landmark_id)
+        return None
+
+    def get_landmark_buildings(
+        self, landmark_id: str, limit: int = 50
+    ) -> List[Dict[str, Any]]:
         """Get buildings associated with a landmark.
 
         Args:
@@ -105,14 +132,15 @@ class DbClient:
             limit: Maximum number of buildings to return
 
         Returns:
-            List of dictionaries containing building information
+            List of buildings
         """
-        if self.use_api and self.api_client:
-            return self.api_client.get_landmark_buildings(landmark_id, limit)
-        # PostgreSQL client doesn't have this method
+        if hasattr(self.client, "get_landmark_buildings"):
+            return self.client.get_landmark_buildings(landmark_id, limit)
         return []
 
-    def get_landmark_photos(self, landmark_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_landmark_photos(
+        self, landmark_id: str, limit: int = 10
+    ) -> List[Dict[str, Any]]:
         """Get photo archive items for a landmark.
 
         Args:
@@ -120,11 +148,10 @@ class DbClient:
             limit: Maximum number of photos to return
 
         Returns:
-            List of dictionaries containing photo information
+            List of photos
         """
-        if self.use_api and self.api_client:
-            return self.api_client.get_landmark_photos(landmark_id, limit)
-        # PostgreSQL client doesn't have this method
+        if hasattr(self.client, "get_landmark_photos"):
+            return self.client.get_landmark_photos(landmark_id, limit)
         return []
 
     def get_landmark_pluto_data(self, landmark_id: str) -> List[Dict[str, Any]]:
@@ -134,56 +161,17 @@ class DbClient:
             landmark_id: ID of the landmark
 
         Returns:
-            List of dictionaries containing PLUTO data
+            List of PLUTO data records
         """
-        if self.use_api and self.api_client:
-            return self.api_client.get_landmark_pluto_data(landmark_id)
-        # PostgreSQL client doesn't have this method
+        if hasattr(self.client, "get_landmark_pluto_data"):
+            return self.client.get_landmark_pluto_data(landmark_id)
         return []
 
-    def get_neighborhoods(self, borough: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Get list of neighborhoods.
 
-        Args:
-            borough: Optional borough to filter neighborhoods
+def get_db_client() -> DbClient:
+    """Get a database client instance.
 
-        Returns:
-            List of neighborhoods
-        """
-        if self.use_api and self.api_client:
-            return self.api_client.get_neighborhoods(borough)
-        # PostgreSQL client doesn't have this method
-        return []
-
-    def get_boroughs(self) -> List[str]:
-        """Get list of boroughs.
-
-        Returns:
-            List of borough names
-        """
-        if self.use_api and self.api_client:
-            return self.api_client.get_boroughs()
-        # PostgreSQL client doesn't have this method
-        return []
-
-    def get_object_types(self) -> List[str]:
-        """Get list of landmark object types.
-
-        Returns:
-            List of object type names
-        """
-        if self.use_api and self.api_client:
-            return self.api_client.get_object_types()
-        # PostgreSQL client doesn't have this method
-        return []
-
-    def get_architecture_styles(self) -> List[str]:
-        """Get list of architecture styles.
-
-        Returns:
-            List of architecture style names
-        """
-        if self.use_api and self.api_client:
-            return self.api_client.get_architecture_styles()
-        # PostgreSQL client doesn't have this method
-        return []
+    Returns:
+        DbClient instance
+    """
+    return DbClient()

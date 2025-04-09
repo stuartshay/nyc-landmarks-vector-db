@@ -110,6 +110,11 @@ class CoreDataStoreAPI:
                 "type": response.get("objectType", ""),
                 "designation_date": response.get("dateDesignated", ""),
                 "description": "",  # API doesn't seem to provide a description field
+                "architect": response.get("architect", ""),
+                "style": response.get("style", ""),
+                "neighborhood": response.get("neighborhood", ""),
+                "pdfReportUrl": response.get("pdfReportUrl", ""),
+                "photoUrl": response.get("photoUrl", ""),
             }
 
             return landmark
@@ -117,6 +122,48 @@ class CoreDataStoreAPI:
         except Exception as e:
             logger.error(f"Error getting landmark by ID: {e}")
             return None
+
+    def get_landmarks_page(
+        self, page_size: int = 10, page: int = 1
+    ) -> List[Dict[str, Any]]:
+        """Get a page of landmarks directly using the API's pagination.
+
+        Args:
+            page_size: Number of landmarks per page
+            page: Page number (starting from 1)
+
+        Returns:
+            List of landmarks for the requested page
+        """
+        try:
+            # Make API request with pagination parameters
+            response = self._make_request("GET", f"/api/LpcReport/{page_size}/{page}")
+
+            results = []
+            if response and "results" in response:
+                # Convert the API response format to our internal format
+                for item in response["results"]:
+                    landmark = {
+                        "id": item.get("lpNumber", ""),
+                        "name": item.get("name", ""),
+                        "location": item.get("street", ""),
+                        "borough": item.get("borough", ""),
+                        "type": item.get("objectType", ""),
+                        "designation_date": item.get("dateDesignated", ""),
+                        "description": "",  # API doesn't seem to provide a description field
+                        "architect": item.get("architect", ""),
+                        "style": item.get("style", ""),
+                        "neighborhood": item.get("neighborhood", ""),
+                        "pdfReportUrl": item.get("pdfReportUrl", ""),
+                        "photoUrl": item.get("photoUrl", ""),
+                    }
+                    results.append(landmark)
+
+            return results
+
+        except Exception as e:
+            logger.error(f"Error getting landmarks page {page}: {e}")
+            return []
 
     def get_all_landmarks(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
         """Get all landmarks.
@@ -147,6 +194,11 @@ class CoreDataStoreAPI:
                         "type": item.get("objectType", ""),
                         "designation_date": item.get("dateDesignated", ""),
                         "description": "",  # API doesn't seem to provide a description field
+                        "architect": item.get("architect", ""),
+                        "style": item.get("style", ""),
+                        "neighborhood": item.get("neighborhood", ""),
+                        "pdfReportUrl": item.get("pdfReportUrl", ""),
+                        "photoUrl": item.get("photoUrl", ""),
                     }
                     results.append(landmark)
 
@@ -189,6 +241,11 @@ class CoreDataStoreAPI:
                         "type": item.get("objectType", ""),
                         "designation_date": item.get("dateDesignated", ""),
                         "description": "",  # API doesn't seem to provide a description field
+                        "architect": item.get("architect", ""),
+                        "style": item.get("style", ""),
+                        "neighborhood": item.get("neighborhood", ""),
+                        "pdfReportUrl": item.get("pdfReportUrl", ""),
+                        "photoUrl": item.get("photoUrl", ""),
                     }
                     results.append(landmark)
 
@@ -221,6 +278,9 @@ class CoreDataStoreAPI:
             "borough": landmark.get("borough", ""),
             "type": landmark.get("type", ""),
             "designation_date": str(landmark.get("designation_date", "")),
+            "architect": landmark.get("architect", ""),
+            "style": landmark.get("style", ""),
+            "neighborhood": landmark.get("neighborhood", ""),
         }
 
         return metadata

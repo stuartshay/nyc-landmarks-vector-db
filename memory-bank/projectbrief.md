@@ -11,7 +11,7 @@ This project aims to create a vector database of New York City landmarks by extr
 5. Create API endpoints for vector search and chat functionality
 6. Enable conversation memory for the chatbot
 7. Support filtering by landmark ID
-8. Integrate with existing Postgres database and REST API
+8. Integrate with CoreDataStore API exclusively as the data source
 
 ## Key Goals
 - Create a system that can answer detailed questions about NYC landmarks
