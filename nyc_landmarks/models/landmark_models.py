@@ -5,9 +5,10 @@ This module contains data models for various aspects of the NYC Landmarks
 system, particularly focused on landmark reports and their metadata.
 """
 
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field, HttpUrl, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class LpcReportModel(BaseModel):
@@ -18,6 +19,8 @@ class LpcReportModel(BaseModel):
     its unique identifier, name, and URL to the PDF report.
     """
 
+    model_config = ConfigDict(from_attributes=True)
+
     lpNumber: str = Field(
         ..., description="Landmark Preservation Commission identifier"
     )
@@ -27,12 +30,25 @@ class LpcReportModel(BaseModel):
         None, description="Borough where the landmark is located"
     )
     objectType: Optional[str] = Field(None, description="Type of landmark object")
+    street: Optional[str] = Field(None, description="Street address of the landmark")
+    dateDesignated: Optional[Union[str, datetime]] = Field(
+        None, description="Date when the landmark was designated"
+    )
+    architect: Optional[str] = Field(None, description="Architect of the landmark")
+    style: Optional[str] = Field(
+        None, description="Architectural style of the landmark"
+    )
+    neighborhood: Optional[str] = Field(
+        None, description="Neighborhood of the landmark"
+    )
+    photoUrl: Optional[str] = Field(None, description="URL to a photo of the landmark")
 
-    @validator("pdfReportUrl")
-    def validate_pdf_url(cls, v):
-        """Validate that the PDF URL is properly formatted if it exists."""
+    @field_validator("pdfReportUrl", "photoUrl")
+    @classmethod
+    def validate_url(cls, v):
+        """Validate that URLs are properly formatted if they exist."""
         if v is not None and not v.startswith(("http://", "https://")):
-            raise ValueError("PDF URL must be a valid HTTP or HTTPS URL")
+            raise ValueError("URL must be a valid HTTP or HTTPS URL")
         return v
 
 
@@ -42,6 +58,8 @@ class LpcReportResponse(BaseModel):
 
     This model includes pagination information and a list of LPC reports.
     """
+
+    model_config = ConfigDict(from_attributes=True)
 
     results: List[LpcReportModel] = Field(..., description="List of LPC reports")
     totalCount: int = Field(..., description="Total number of records available")
@@ -56,11 +74,14 @@ class PdfInfo(BaseModel):
     access a PDF document for a specific landmark.
     """
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: str = Field(..., description="Landmark identifier")
     name: str = Field(..., description="Name of the landmark")
     pdf_url: str = Field(..., description="URL to the PDF report")
 
-    @validator("pdf_url")
+    @field_validator("pdf_url")
+    @classmethod
     def validate_pdf_url(cls, v):
         """Validate that the PDF URL is properly formatted."""
         if not v.startswith(("http://", "https://")):
@@ -76,6 +97,8 @@ class ProcessingResult(BaseModel):
     such as the total number of reports processed and how many had PDF URLs.
     """
 
+    model_config = ConfigDict(from_attributes=True)
+
     total_reports: int = Field(..., description="Total number of reports fetched")
     reports_with_pdfs: int = Field(..., description="Number of reports with PDF URLs")
 
@@ -90,6 +113,8 @@ class ApiError(BaseModel):
 
     This model helps standardize error handling from the CoreDataStore API.
     """
+
+    model_config = ConfigDict(from_attributes=True)
 
     status_code: int = Field(..., description="HTTP status code")
     message: str = Field(..., description="Error message")

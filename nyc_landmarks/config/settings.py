@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from dotenv import load_dotenv
 from google.cloud import secretmanager
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Load environment variables from .env file if it exists
@@ -75,6 +75,13 @@ class Settings(BaseSettings):
         default=True
     )  # Set API as the default data source
 
+    # PostgreSQL settings
+    POSTGRES_USER: str = Field(default="")
+    POSTGRES_PASSWORD: str = Field(default="")
+    POSTGRES_HOST: str = Field(default="localhost")
+    POSTGRES_PORT: str = Field(default="5432")
+    POSTGRES_DB: str = Field(default="")
+
     # Application settings
     APP_HOST: str = Field(default="0.0.0.0")
     APP_PORT: int = Field(default=8000)
@@ -88,9 +95,16 @@ class Settings(BaseSettings):
         default=3600
     )  # Time to live for conversation history in seconds
 
-    @validator("PINECONE_DIMENSIONS", pre=True, always=True)
-    def match_embedding_dimensions(cls, v: int, values: Dict[str, Any]) -> int:
+    @property
+    def POSTGRES_CONNECTION_STRING(self) -> str:
+        """Assemble PostgreSQL connection string from individual settings."""
+        return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+
+    @field_validator("PINECONE_DIMENSIONS", mode="before")
+    @classmethod
+    def match_embedding_dimensions(cls, v: int, info) -> int:
         """Ensure Pinecone dimensions match OpenAI embedding dimensions."""
+        values = info.data
         embedding_dimensions = values.get("OPENAI_EMBEDDING_DIMENSIONS")
         if embedding_dimensions is not None:
             return embedding_dimensions

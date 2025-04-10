@@ -6,6 +6,7 @@ This is a local test script for the NYC Landmarks Vector Database project.
 """
 
 import argparse
+import datetime
 import json
 import os
 import sys
@@ -21,6 +22,15 @@ from nyc_landmarks.utils.logger import get_logger
 
 # Configure logger for this script
 logger = get_logger(name="fetch_landmark_reports")
+
+
+def ensure_directory_exists(directory_path: str) -> None:
+    """Ensure that the specified directory exists.
+
+    Args:
+        directory_path: Path to the directory to ensure exists.
+    """
+    Path(directory_path).mkdir(parents=True, exist_ok=True)
 
 
 class CoreDataStoreClient:
@@ -190,14 +200,25 @@ class LandmarkReportFetcher:
             downloaded_paths = self.download_sample_pdf(pdf_info, limit=sample_limit)
             logger.info(f"Downloaded {len(downloaded_paths)} sample PDFs")
 
+        # Create timestamp for unique filenames
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        # Ensure logs directory exists
+        logs_dir = Path(__file__).resolve().parent.parent / "logs"
+        ensure_directory_exists(logs_dir)
+
+        # Define file paths
+        landmark_reports_path = logs_dir / f"landmark_reports_{timestamp}.json"
+        pdf_urls_path = logs_dir / f"pdf_urls_{timestamp}.json"
+
         # Save the results to JSON for inspection
-        with open("landmark_reports.json", "w") as f:
+        with open(landmark_reports_path, "w") as f:
             json.dump(all_reports, f, indent=2)
 
-        with open("pdf_urls.json", "w") as f:
+        with open(pdf_urls_path, "w") as f:
             json.dump(pdf_info, f, indent=2)
 
-        logger.info(f"Results saved to landmark_reports.json and pdf_urls.json")
+        logger.info(f"Results saved to {landmark_reports_path} and {pdf_urls_path}")
 
         return {"total_reports": len(all_reports), "reports_with_pdfs": len(pdf_info)}
 

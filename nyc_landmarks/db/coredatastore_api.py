@@ -12,6 +12,7 @@ from urllib.parse import urljoin
 import requests
 
 from nyc_landmarks.config.settings import settings
+from nyc_landmarks.models.landmark_models import LpcReportModel, LpcReportResponse
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -164,6 +165,146 @@ class CoreDataStoreAPI:
         except Exception as e:
             logger.error(f"Error getting landmarks page {page}: {e}")
             return []
+
+    def get_lpc_reports(
+        self,
+        page: int = 1,
+        limit: int = 10,
+        borough: Optional[str] = None,
+        object_type: Optional[str] = None,
+        neighborhood: Optional[str] = None,
+        search_text: Optional[str] = None,
+        parent_style_list: Optional[List[str]] = None,
+        sort_column: Optional[str] = None,
+        sort_order: Optional[str] = None,
+    ) -> LpcReportResponse:
+        """Get paginated list of LPC reports with optional filtering using Pydantic models.
+
+        This method directly maps to the GetLpcReports MCP tool functionality and uses
+        Pydantic models for data validation.
+
+        Args:
+            page: Page number (starting from 1)
+            limit: Number of records per page
+            borough: Optional borough filter
+            object_type: Optional object type filter
+            neighborhood: Optional neighborhood filter
+            search_text: Optional text search
+            parent_style_list: Optional list of architectural styles
+            sort_column: Optional column to sort by
+            sort_order: Optional sort direction ("asc" or "desc")
+
+        Returns:
+            LpcReportResponse object containing results and pagination info
+
+        Raises:
+            Exception: If there is an error making the API request
+        """
+        try:
+            # Build the query parameters
+            params = {
+                "limit": limit,
+                "page": page,
+            }
+
+            # Add optional filters if provided
+            if borough:
+                params["Borough"] = borough
+            if object_type:
+                params["ObjectType"] = object_type
+            if neighborhood:
+                params["Neighborhood"] = neighborhood
+            if search_text:
+                params["SearchText"] = search_text
+            if parent_style_list:
+                params["ParentStyleList"] = parent_style_list
+            if sort_column:
+                params["SortColumn"] = sort_column
+            if sort_order:
+                params["SortOrder"] = sort_order
+
+            # Make the API request
+            endpoint = f"/api/LpcReport"
+            response = self._make_request("GET", endpoint, params=params)
+
+            # Validate the response with our Pydantic models
+            validated_response = LpcReportResponse(**response)
+            return validated_response
+
+        except Exception as e:
+            logger.error(f"Error getting LPC reports: {e}")
+            raise Exception(f"Error getting LPC reports: {e}")
+
+    def get_lpc_reports_with_mcp(
+        self,
+        page: int = 1,
+        limit: int = 10,
+        borough: Optional[str] = None,
+        object_type: Optional[str] = None,
+        neighborhood: Optional[str] = None,
+        search_text: Optional[str] = None,
+        parent_style_list: Optional[List[str]] = None,
+        sort_column: Optional[str] = None,
+        sort_order: Optional[str] = None,
+        fields_list: Optional[List[str]] = None,
+    ) -> LpcReportResponse:
+        """Get LPC reports using the MCP server GetLpcReports tool.
+
+        This method is intended for use in environments where the MCP
+        server is available. It provides a Python interface to the
+        MCP tool without having to directly call the use_mcp_tool function.
+
+        Args:
+            page: Page number (starting from 1)
+            limit: Number of records per page
+            borough: Optional borough filter
+            object_type: Optional object type filter
+            neighborhood: Optional neighborhood filter
+            search_text: Optional text search
+            parent_style_list: Optional list of architectural styles
+            sort_column: Optional column to sort by
+            sort_order: Optional sort direction ("asc" or "desc")
+            fields_list: Optional list of fields to return
+
+        Returns:
+            LpcReportResponse object containing results and pagination info
+
+        Raises:
+            NotImplementedError: This is a placeholder that should be implemented
+            by code that has access to the MCP service.
+        """
+        # This is a placeholder for the actual implementation
+        # In a real implementation, this would use the MCP tool directly
+        # For example:
+        """
+        from some_mcp_utility import use_mcp_tool
+
+        # Build arguments for the MCP tool
+        arguments = {
+            "limit": limit,
+            "page": page
+        }
+
+        # Add optional arguments
+        if borough:
+            arguments["Borough"] = borough
+        if object_type:
+            arguments["ObjectType"] = object_type
+        # Add other filters as needed
+
+        # Call the MCP tool
+        response = use_mcp_tool(
+            server_name="coredatastore-swagger-mcp",
+            tool_name="GetLpcReports",
+            arguments=arguments
+        )
+
+        # Validate with Pydantic
+        return LpcReportResponse(**response)
+        """
+        raise NotImplementedError(
+            "This method requires direct MCP server integration. Use get_lpc_reports() instead."
+        )
 
     def get_all_landmarks(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
         """Get all landmarks.
