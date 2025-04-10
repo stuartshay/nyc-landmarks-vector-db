@@ -7,23 +7,26 @@ A vector database system for NYC landmarks that extracts text from PDF reports, 
 This project aims to make information about New York City landmarks more accessible and searchable by:
 
 1. Extracting text from PDF reports stored in Azure Blob Storage
-2. Converting text into vector embeddings using OpenAI embedding models
-3. Storing embeddings in a Pinecone vector database with appropriate metadata
-4. Providing API endpoints for semantic search and chatbot functionality
-5. Enabling filtering by landmark ID and other metadata
+2. Processing and chunking the text for optimal embedding
+3. Converting text into vector embeddings using OpenAI embedding models
+4. Storing embeddings in a Pinecone vector database with comprehensive metadata
+5. Providing API endpoints for semantic search and chatbot functionality with conversation memory
+6. Enabling filtering by landmark ID and other metadata
+7. Integrating exclusively with the CoreDataStore API as the data source
+
+The system makes previously inaccessible information in PDF reports easily searchable through semantic understanding, allowing users to find relevant information about NYC landmarks using natural language queries.
 
 ## System Architecture
 
 ```mermaid
 flowchart TD
     subgraph "Data Sources"
-        A1[Postgres Database\nNYC Landmarks Data]
-        A2[CoreDataStore API\nNYC Landmarks Data]
+        A[CoreDataStore API\nNYC Landmarks Data]
         B[Azure Blob Storage\nLandmark PDFs]
     end
 
     subgraph "Database Layer"
-        DB[Database Client Abstraction]
+        DB[Database Client]
     end
 
     subgraph "Processing Pipeline"
@@ -42,8 +45,7 @@ flowchart TD
         I[Chat API]
     end
 
-    A1 --> DB
-    A2 --> DB
+    A --> DB
     DB --> C
     B --> C
     C --> D
@@ -55,33 +57,38 @@ flowchart TD
     DB --> H
     DB --> I
 
-    H --> J[Existing Frontend]
+    H --> J[Client Applications]
     I --> J
 ```
 
 ## Features
 
-- Extract text from PDF reports of NYC landmarks
-- Process and chunk text for optimal embedding
-- Generate embeddings using OpenAI's embedding models
-- Store embeddings in Pinecone vector database with landmark metadata
-- Provide vector search API for semantic queries
-- Enable chatbot functionality with conversation memory
-- Filter results by landmark ID and other metadata
-- Connect to both PostgreSQL database and CoreDataStore API with configurable switching
-- Integrate with existing frontend applications
+- **PDF Processing Pipeline**: Extract text from PDF reports of NYC landmarks using PyPDF2/PDFPlumber
+- **Intelligent Text Chunking**: Process text into optimized chunks (500-1000 tokens) with 10-20% overlap for context preservation
+- **High-Quality Embeddings**: Generate embeddings using OpenAI's text-embedding-3-small model (1536 dimensions)
+- **Rich Metadata Storage**: Store embeddings in Pinecone with comprehensive metadata including landmark ID, chunk position, source PDF details, and more
+- **Semantic Search API**: Provide vector search API for natural language queries with relevant results
+- **Conversational AI**: Enable chatbot functionality with conversation memory for contextual follow-up questions
+- **Flexible Filtering**: Filter results by landmark ID, borough, neighborhood, and other metadata
+- **CoreDataStore Integration**: Access comprehensive NYC landmarks data exclusively through the CoreDataStore API
+- **MCP Server Tools**: Leverage coredatastore-swagger-mcp server for direct API interactions with extended functionality
+- **Secure Credential Management**: Manage all API keys and credentials through Google Cloud Secret Store
 
 ## Tech Stack
 
-- **Python**: Primary programming language
-- **OpenAI API**: For generating text embeddings
-- **Pinecone**: Vector database for storing and searching embeddings
-- **PostgreSQL**: Optional database connection for NYC landmarks data
-- **CoreDataStore API**: Alternative REST API for accessing NYC landmarks data
-- **Azure Blob Storage**: Storage for landmark PDF reports
-- **Google Cloud Secret Store**: For credential management
-- **FastAPI**: For API endpoints
-- **GitHub Actions**: For CI/CD
+- **Python 3.11+**: Primary programming language
+- **OpenAI API**: For generating text embeddings using text-embedding-3-small/large models
+- **Pinecone**: Vector database for storing and searching embeddings with metadata
+- **CoreDataStore API**: Exclusive REST API for accessing NYC landmarks information
+- **coredatastore-swagger-mcp**: MCP server providing tools for CoreDataStore API interaction
+- **Azure Blob Storage**: Storage location for landmark PDF reports
+- **Google Cloud Secret Store**: For secure credential management across environments
+- **FastAPI**: For creating API endpoints with automatic documentation
+- **PyPDF2/PDFPlumber**: For extracting text from PDFs
+- **Pydantic**: For data validation and settings management
+- **Requests**: For making HTTP requests to CoreDataStore API
+- **Pytest**: For testing framework
+- **GitHub Actions**: For CI/CD pipeline
 
 ## Getting Started
 
@@ -92,7 +99,7 @@ flowchart TD
 - Access to Pinecone (API key)
 - Access to Google Cloud Secret Store
 - Access to Azure Blob Storage
-- Access to PostgreSQL database
+- Access to CoreDataStore API (API key)
 - Git
 
 ### Installation
@@ -102,7 +109,7 @@ flowchart TD
 git clone https://github.com/yourusername/nyc-landmarks-vector-db.git
 cd nyc-landmarks-vector-db
 
-# Create a virtual environment
+# Option 1: Using venv (if you have Python 3.11 installed)
 python3.11 -m venv venv
 
 # Activate the virtual environment
@@ -110,6 +117,13 @@ python3.11 -m venv venv
 source venv/bin/activate
 # On Windows:
 venv\Scripts\activate
+
+# Option 2: Using Conda (recommended if Python 3.11 is not installed)
+# Create a conda environment
+conda create -n nyc-landmarks python=3.11
+
+# Activate the conda environment
+conda activate nyc-landmarks
 
 # Install dependencies
 pip install -r requirements.txt
@@ -161,14 +175,20 @@ This project includes a fully configured development container that provides a c
    # Edit .env with your credentials
    ```
 
-7. Run the application:
+7. Set up the MCP server for CoreDataStore API interactions:
+   ```bash
+   # The coredatastore-swagger-mcp server should be configured
+   # as specified in techContext.md
+   ```
+
+8. Run the application:
    ```bash
    python -m nyc_landmarks.main
    ```
 
 #### Google Cloud CLI Setup in Dev Container
 
-The development container comes with the Google Cloud CLI pre-installed. To use it:
+The development container comes with the Google Cloud CLI pre-installed. To use it for accessing secrets:
 
 1. **Authenticate with Google Cloud:**
    ```bash
@@ -254,7 +274,13 @@ If you prefer to set up the development environment locally without containers:
    # Edit .env with your credentials
    ```
 
-6. **Run the application:**
+6. **Configure MCP server for CoreDataStore API:**
+   ```bash
+   # Set up the coredatastore-swagger-mcp server
+   # as detailed in techContext.md
+   ```
+
+7. **Run the application:**
    ```bash
    python -m nyc_landmarks.main
    ```
@@ -288,48 +314,94 @@ To take full advantage of these features, install the recommended extensions whe
 
 ```
 nyc-landmarks-vector-db/
-├── nyc_landmarks/               # Main package
-│   ├── config/                  # Configuration management
-│   ├── pdf/                     # PDF processing modules
-│   ├── embeddings/              # Embedding generation and management
-│   ├── vectordb/                # Vector database interactions
-│   ├── api/                     # API endpoints
-│   ├── chat/                    # Chat functionality
-│   ├── db/                      # Database interactions
-│   │   ├── db_client.py         # Database client abstraction
-│   │   ├── postgres.py          # PostgreSQL client
-│   │   └── coredatastore_api.py # CoreDataStore API client
-│   └── utils/                   # Utility functions
-├── tests/                       # Test suite
-├── docs/                        # Documentation
-├── scripts/                     # Utility scripts
-├── .github/                     # GitHub Actions workflows
-├── memory-bank/                 # Project documentation
-├── requirements.txt             # Dependencies
-├── setup.py                     # Package setup
-└── README.md                    # This file
+├── nyc_landmarks/                # Main package
+│   ├── api/                      # API endpoints for vector search and chat
+│   │   ├── __init__.py
+│   │   ├── chat.py               # Chat API with conversation memory
+│   │   └── query.py              # Vector search API endpoints
+│   ├── chat/                     # Chat functionality
+│   │   ├── __init__.py
+│   │   └── conversation.py       # Conversation memory implementation
+│   ├── config/                   # Configuration management
+│   │   ├── __init__.py
+│   │   └── settings.py           # Settings with Google Cloud Secret integration
+│   ├── db/                       # Database interactions
+│   │   ├── __init__.py
+│   │   ├── db_client.py          # Database client interface
+│   │   ├── postgres.py           # Low-level database operations
+│   │   └── coredatastore_api.py  # CoreDataStore API client implementation
+│   ├── embeddings/               # Embedding generation and management
+│   │   ├── __init__.py
+│   │   └── generator.py          # OpenAI embedding generator
+│   ├── pdf/                      # PDF processing modules
+│   │   ├── __init__.py
+│   │   ├── extractor.py          # PDF text extraction
+│   │   └── text_chunker.py       # Text chunking with overlap
+│   ├── utils/                    # Utility functions
+│   │   ├── __init__.py
+│   │   └── logger.py             # Logging configuration
+│   ├── vectordb/                 # Vector database interactions
+│   │   ├── __init__.py
+│   │   ├── pinecone_db.py        # Pinecone interactions
+│   │   └── enhanced_metadata.py  # Enhanced metadata handling
+│   ├── __init__.py
+│   ├── main.py                   # Application entry point
+│   └── py.typed                  # Marker file for type checking
+├── tests/                        # Test suite
+├── docs/                         # Documentation
+├── scripts/                      # Utility scripts
+│   ├── fetch_landmark_reports.py # Fetch reports from CoreDataStore API
+│   ├── process_landmark_pdfs.py  # Process PDFs into embeddings
+│   ├── process_landmarks.py      # Process landmark data
+│   └── demo.py                   # Demo script
+├── sample_pdfs/                  # Sample PDFs for testing
+├── .github/                      # GitHub Actions workflows
+├── memory-bank/                  # Project documentation
+├── requirements.txt              # Dependencies
+├── setup.py                      # Package setup
+└── README.md                     # This file
 ```
 
 ## Configuration
 
-The project supports two data sources for NYC landmarks information:
-1. **PostgreSQL database**: Direct database connection to the landmarks database
-2. **CoreDataStore API**: REST API client that provides the same data plus additional endpoints
+The project uses the CoreDataStore API as the exclusive data source for NYC landmarks information. The API provides comprehensive access to landmark data, buildings, photos, PLUTO data, and more. The system is designed with a secure configuration approach:
 
-To toggle between these data sources, set the `COREDATASTORE_USE_API` environment variable:
-- `COREDATASTORE_USE_API=true` - Use the CoreDataStore API
-- `COREDATASTORE_USE_API=false` - Use direct PostgreSQL connection
+### Production Environment
+- All credentials are stored in Google Cloud Secret Store
+- The application retrieves secrets at runtime
+- No credentials are stored in code or environment variables
+
+### Development Environment
+- Credentials can be stored in a local `.env` file
+- The application will fall back to environment variables if Google Cloud is not configured
+- Sample configurations are provided in `.env.example`
+
+### Key Configuration Parameters
+- `COREDATASTORE_API_KEY`: Your API key for accessing the CoreDataStore API
+- `OPENAI_API_KEY`: Your API key for OpenAI's embedding models
+- `PINECONE_API_KEY`: Your API key for the Pinecone vector database
+- `PINECONE_ENVIRONMENT`: The Pinecone environment to use
+- `PINECONE_INDEX_NAME`: The name of your Pinecone index
+- `AZURE_STORAGE_CONNECTION_STRING`: Connection string for Azure Blob Storage
+- `AZURE_STORAGE_CONTAINER_NAME`: Container name for landmark PDFs
+- `GOOGLE_CLOUD_PROJECT`: Google Cloud project ID for Secret Store
+- `TEXT_CHUNK_SIZE`: Size of text chunks for embedding (tokens)
+- `TEXT_CHUNK_OVERLAP`: Overlap between chunks (percentage)
+- `EMBEDDING_MODEL`: OpenAI embedding model to use
+- `EMBEDDING_DIMENSION`: Dimension of the embeddings
 
 ## Documentation
 
 Detailed documentation is available in the `memory-bank/` directory:
 
-- `projectbrief.md`: Project overview and goals
-- `productContext.md`: Product context and user experience
+- `projectbrief.md`: Project overview and requirements
+- `productContext.md`: Product context and user experience goals
 - `systemPatterns.md`: System architecture and design patterns
 - `techContext.md`: Technical context and constraints
 - `activeContext.md`: Current work focus and considerations
 - `progress.md`: Project progress and status
+
+Additional technical documentation for CI/CD setup is available in `docs/ci_cd_pipeline.md`.
 
 ## License
 
