@@ -1,6 +1,6 @@
 # NYC Landmarks Vector Database
 
-A vector database system for NYC landmarks that extracts text from PDF reports, converts it to vector embeddings, and enables semantic search and chatbot functionality.
+A vector database system for NYC landmarks that extracts metadata and  text from API and PDF reports, converts it to vector embeddings, and enables semantic search and chatbot functionality.
 
 ## Project Overview
 
