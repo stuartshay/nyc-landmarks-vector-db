@@ -107,18 +107,35 @@ flowchart TD
 - Alerts for critical failures.
 
 ### 11. Testing Strategy
-- Unit tests for individual components.
-- Integration tests for component interactions.
-- End-to-end tests for critical user flows.
-- Testing of vector search quality using sample queries.
+- Comprehensive testing approach covering multiple levels:
+  - **Unit tests** for individual components using pytest
+  - **Integration tests** for component interactions and API integrations
+  - **MCP tests** specifically for CoreDataStore API interactions
+  - **End-to-end tests** for critical user flows
+- Mock objects and fixtures for isolated component testing
+- Actual API integration tests for validation with real data
+- Test organization with explicit markers (unit, integration, mcp)
+- VS Code configuration for test discovery and execution
+- CI/CD pipeline to automate testing on pull requests
 
-### 12. CI/CD Implementation
+### 12. Data Validation and Modeling
+- Pydantic used throughout the application for data validation and modeling
+- Models defined for:
+  - API responses (LpcReportResponse, etc.)
+  - Core data entities (LpcReportModel, PdfInfo, etc.)
+  - Processing results (ProcessingResult, etc.)
+  - Error handling (ApiError, etc.)
+- Validation rules implemented within models (URL validation, etc.)
+- Improved type safety through Pydantic's type annotations
+- Better error messages through Pydantic's validation system
+
+### 13. CI/CD Implementation
 - GitHub Actions for continuous integration and deployment.
 - Automated testing on pull requests.
 - Deployment pipeline with appropriate staging environments.
 - Infrastructure as code for any cloud resources.
 
-### 13. Design Patterns
+### 14. Design Patterns
 - Repository pattern for database access via the CoreDataStore API.
 - Adapter pattern for the CoreDataStore API client to map API responses to our internal data structures.
 - Factory pattern for creating service instances.

@@ -7,6 +7,8 @@ We are in the initial setup phase of the NYC Landmarks Vector Database project. 
 2. Establishing the foundation for the PDF processing pipeline
 3. Creating the configuration management system
 4. Setting up connections to external services (OpenAI, Pinecone, Azure, CoreDataStore API)
+5. Implementing comprehensive testing for scripts and API integrations
+6. Integrating Pydantic for data validation throughout the system
 
 ## Recent Changes
 - Created initial project documentation in the memory bank
@@ -16,17 +18,40 @@ We are in the initial setup phase of the NYC Landmarks Vector Database project. 
 - Decided to use CoreDataStore API exclusively as the data source
 - Updated API modules to use the database client with CoreDataStore API
 - Added MCP server to provide tools for interacting with CoreDataStore API
+- Created Pydantic models for data validation of API responses and internal data structures
+- Implemented unit and integration tests for the landmark report fetcher
+- Set up test infrastructure for pytest in VS Code
+- Added integration tests for the CoreDataStore MCP server
+- Refactored scripts to use Pydantic for robust data validation
 
 ## Next Steps
-1. Set up the basic project structure with appropriate directories
-2. Create a configuration management module that works with Google Cloud Secret Store
-3. Implement PDF text extraction from Azure Blob Storage
-4. Develop text chunking and preprocessing functionality
-5. Set up connection to OpenAI API for embedding generation
-6. Create Pinecone index and implement vector storage
-7. Develop initial API endpoints for vector search
+1. Implement comprehensive error handling and logging in the API client
+2. Optimize MCP server tools for interacting with CoreDataStore API
+3. Optimize chunking strategy based on landmark document analysis
+4. Implement parallel processing for handling multiple PDFs
+5. Add resumable processing to handle interruptions
+6. Develop quality assurance tools for embedding evaluation
+7. Develop vector search functionality
+8. Create API endpoints for vector search
+9. Implement conversation memory system
+10. Build chat API with context awareness
 
 ## Active Decisions and Considerations
+
+### Testing Strategy
+- Using pytest as the primary testing framework
+- Implementing both unit and integration tests
+- Utilizing mock objects for unit tests to isolate components
+- Leveraging the CoreDataStore MCP server for integration testing
+- Adding explicit markers for different test categories (unit, integration, mcp)
+- Configuring VS Code for test discovery and execution
+
+### Pydantic Integration
+- Using Pydantic for data validation across the application
+- Created models for API responses and data structures
+- Leveraging Pydantic's validation features for robust error handling
+- Improving type safety through Pydantic's type annotations
+- Utilizing Pydantic for configuration management
 
 ### Configuration Management
 - Using Google Cloud Secret Store for credential management in production
@@ -62,8 +87,10 @@ We are in the initial setup phase of the NYC Landmarks Vector Database project. 
 4. Balancing performance, cost, and accuracy in the vector search system
 5. Optimizing CoreDataStore API usage for performance and reliability
 6. Ensuring proper error handling for all external API calls
+7. Managing dependencies and ensuring consistent environment setup
 
 ## Team Collaboration
 - Documentation being maintained in the memory bank
 - Code will be managed through GitHub with feature branches
 - CI/CD pipeline will be implemented using GitHub Actions
+- Testing infrastructure is set up for continuous testing

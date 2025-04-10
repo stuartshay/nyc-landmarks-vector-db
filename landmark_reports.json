@@ -1,0 +1,53 @@
+[
+  {
+    "name": "Pieter Claesen Wyckoff House",
+    "lpcId": "0001",
+    "lpNumber": "LP-00001",
+    "objectType": "Individual Landmark",
+    "architect": "Unknown",
+    "style": "Dutch Colonial",
+    "street": "5816 Clarendon Road",
+    "borough": "Brooklyn",
+    "dateDesignated": "1965-10-14T00:00:00",
+    "photoStatus": true,
+    "mapStatus": true,
+    "neighborhood": "Brownsville",
+    "zipCode": "11203",
+    "photoUrl": "https://cdn.informationcart.com/images/0001.jpg",
+    "pdfReportUrl": "https://cdn.informationcart.com/pdf/0001.pdf"
+  },
+  {
+    "name": "Commandant's House",
+    "lpcId": "0002",
+    "lpNumber": "LP-00002",
+    "objectType": "Individual Landmark",
+    "architect": "Unknown",
+    "style": "Federal",
+    "street": "Evans Street At Little Street",
+    "borough": "Brooklyn",
+    "dateDesignated": "1965-10-14T00:00:00",
+    "photoStatus": true,
+    "mapStatus": true,
+    "neighborhood": "Williamsburg",
+    "zipCode": "11201",
+    "photoUrl": "https://cdn.informationcart.com/images/0002.jpg",
+    "pdfReportUrl": "https://cdn.informationcart.com/pdf/0002.pdf"
+  },
+  {
+    "name": "U.S. Naval Hospital",
+    "lpcId": "0003",
+    "lpNumber": "LP-00003",
+    "objectType": "Individual Landmark",
+    "architect": "Martin E. Thompson",
+    "style": "Greek Revival",
+    "street": "Hospital Road",
+    "borough": "Brooklyn",
+    "dateDesignated": "1965-10-14T00:00:00",
+    "photoStatus": true,
+    "mapStatus": true,
+    "neighborhood": "Williamsburg",
+    "zipCode": "11211",
+    "photoUrl": "https://cdn.informationcart.com/images/0003.jpg",
+    "pdfReportUrl": "https://cdn.informationcart.com/pdf/0003.pdf"
+  }
+]
