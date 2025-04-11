@@ -11,7 +11,7 @@ import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
 # Import pinecone-client (using v2.2.2 API)
-from pinecone import Index, create_index, delete_index, init, list_indexes
+from pinecone import Index, create_index, delete_index, init, list_indexes  # type: ignore
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.vectordb.enhanced_metadata import get_metadata_collector
@@ -40,7 +40,7 @@ class PineconeDB:
         metadata_collector: Collector for enhanced metadata
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize the Pinecone database with credentials.
 
@@ -80,7 +80,7 @@ class PineconeDB:
         else:
             logger.warning("Pinecone API key or environment not provided")
 
-    def _connect_to_index(self):
+    def _connect_to_index(self) -> None:
         """
         Connect to the Pinecone index without recreating it.
 
@@ -127,7 +127,8 @@ class PineconeDB:
 
         try:
             stats = self.index.describe_index_stats()
-            return stats
+            # Explicit type conversion to ensure return type matches annotation
+            return dict(stats)
         except Exception as e:
             logger.error(f"Error getting index stats: {e}")
             return {"error": str(e)}
@@ -322,7 +323,8 @@ class PineconeDB:
             matches = results.matches
             logger.info(f"Query returned {len(matches)} matches")
 
-            return matches
+            # Convert pinecone match objects to dictionaries
+            return [dict(match) for match in matches]
         except Exception as e:
             logger.error(f"Error querying vectors: {e}")
             return []
