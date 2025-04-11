@@ -1,6 +1,6 @@
 [MASTER]
 # Specify the maximum line length
-max-line-length = 88
+max-line-length = 100
 
 # Use multiple processes to speed up Pylint
 jobs = 4
@@ -11,9 +11,6 @@ ignore = CVS, .git, .github, .pytest_cache, __pycache__, venv, dist, build, *.eg
 # Ignore specific modules
 ignore-patterns = .*\.pyi$
 
-# Consistency score for duplicate code detection
-duplicate-code-min-similarity-lines = 5
-
 [MESSAGES CONTROL]
 # Disable some warnings and errors
 disable = C0111,  # missing-docstring
@@ -23,10 +20,9 @@ disable = C0111,  # missing-docstring
          R0913,   # too-many-arguments
          W0511,   # fixme (for using TODO comments)
          W1203,   # logging-fstring-interpolation
-         C0330,   # bad-continuation (conflicts with black)
-         C0326,   # bad-whitespace (conflicts with black)
          E1101,   # no-member (often false positives with dynamic attributes)
          W0212,   # protected-access (we use internal APIs sometimes)
+         W0718,   # broad-exception-caught (allowing general exception handling)
 
 [BASIC]
 # Regular expression for good variable names
@@ -34,7 +30,7 @@ good-names = i, j, k, ex, Run, _, id, db, f, T, IP
 
 [FORMAT]
 # Maximum number of characters on a single line
-max-line-length = 88
+max-line-length = 100
 
 [DESIGN]
 # Maximum number of arguments for function / method
@@ -76,4 +72,4 @@ defining-attr-methods = __init__, __new__, setUp, initialize, __post_init__
 
 [EXCEPTIONS]
 # Exceptions that will emit a warning when being caught
-overgeneral-exceptions = Exception
+overgeneral-exceptions = builtins.Exception

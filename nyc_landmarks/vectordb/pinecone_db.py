@@ -8,7 +8,7 @@ including storing and retrieving embeddings.
 import logging
 import time
 import uuid
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 # Import pinecone-client (using v2.2.2 API)
 from pinecone import Index, create_index, delete_index, init, list_indexes
@@ -22,10 +22,35 @@ logging.basicConfig(level=settings.LOG_LEVEL.value)
 
 
 class PineconeDB:
-    """Pinecone vector database operations."""
+    """
+    Pinecone vector database operations.
+
+    This class provides methods to interact with Pinecone vector database,
+    including initializing connections, storing vectors, querying for similar vectors,
+    and managing indexes.
+
+    Attributes:
+        api_key (str): Pinecone API key from settings
+        environment (str): Pinecone environment (region) from settings
+        index_name (str): Name of the Pinecone index to use
+        namespace (str): Namespace within the index for vector storage
+        dimensions (int): Dimensionality of vectors to store
+        metric (str): Distance metric for vector similarity (e.g., "cosine")
+        index: Pinecone index instance for operations
+        metadata_collector: Collector for enhanced metadata
+    """
 
     def __init__(self):
-        """Initialize the Pinecone database with credentials."""
+        """
+        Initialize the Pinecone database with credentials.
+
+        Sets up the Pinecone client using API key and environment settings from
+        the application configuration. If credentials are available, it will
+        attempt to connect to the specified index.
+
+        Raises:
+            Various exceptions from the Pinecone library may be caught and logged.
+        """
         self.api_key = settings.PINECONE_API_KEY
         self.environment = settings.PINECONE_ENVIRONMENT
         self.index_name = settings.PINECONE_INDEX_NAME
@@ -39,10 +64,10 @@ class PineconeDB:
         if self.api_key:
             try:
                 # Use GCP environment for index access
-                environment = (
-                    "us-central1-gcp"  # Fixed environment for Pinecone with GCP
-                )
-                self.environment = environment  # Override the environment from settings
+                # Fixed environment for Pinecone with GCP
+                environment = "us-central1-gcp"
+                # Override the environment from settings
+                self.environment = environment
 
                 # Initialize Pinecone
                 init(api_key=self.api_key, environment=environment)
@@ -56,13 +81,23 @@ class PineconeDB:
             logger.warning("Pinecone API key or environment not provided")
 
     def _connect_to_index(self):
-        """Connect to the Pinecone index without recreating it."""
+        """
+        Connect to the Pinecone index without recreating it.
+
+        Attempts to establish a connection to the pre-existing Pinecone index specified
+        in the initialization parameters. Will try to connect even if the index appears
+        to not exist in case of temporary API inconsistencies.
+
+        Raises:
+            Exception: If connection to the index fails, the exception is logged and re-raised.
+        """
         try:
             # Check if index exists
             indexes = list_indexes()
             if self.index_name not in indexes:
                 logger.warning(
-                    f"Index '{self.index_name}' does not exist. This should be pre-created in the Pinecone dashboard."
+                    f"Index '{self.index_name}' does not exist. "
+                    f"This should be pre-created in the Pinecone dashboard."
                 )
                 logger.info(
                     "Attempting to connect anyway in case of list_indexes inconsistency..."
@@ -76,10 +111,15 @@ class PineconeDB:
             raise
 
     def get_index_stats(self) -> Dict[str, Any]:
-        """Get statistics about the index.
+        """
+        Get statistics about the index.
+
+        Retrieves information about the current state of the Pinecone index,
+        including vector count, namespaces, and dimension information.
 
         Returns:
-            Dictionary containing index statistics
+            Dict[str, Any]: Dictionary containing index statistics or an error message
+                            if the operation fails
         """
         if not self.index:
             logger.error("Pinecone index not initialized")
@@ -95,15 +135,18 @@ class PineconeDB:
     def store_vector(
         self, vector_id: str, vector: List[float], metadata: Dict[str, Any]
     ) -> bool:
-        """Store a single vector in the index.
+        """
+        Store a single vector in the index.
+
+        Adds or updates a single vector with associated metadata in the Pinecone index.
 
         Args:
-            vector_id: ID for the vector
-            vector: Embedding vector as a list of floats
-            metadata: Metadata to store with the vector
+            vector_id (str): Unique identifier for the vector
+            vector (List[float]): Embedding vector as a list of floats
+            metadata (Dict[str, Any]): Metadata to store with the vector
 
         Returns:
-            True if successful, False otherwise
+            bool: True if successful, False otherwise
         """
         if not self.index:
             logger.error("Pinecone index not initialized")
@@ -124,13 +167,18 @@ class PineconeDB:
     def store_vectors_batch(
         self, vectors: List[Tuple[str, List[float], Dict[str, Any]]]
     ) -> bool:
-        """Store a batch of vectors in the index.
+        """
+        Store a batch of vectors in the index.
+
+        Efficiently uploads multiple vectors with their metadata in a single operation
+        to minimize API calls and improve performance.
 
         Args:
-            vectors: List of tuples (id, vector, metadata)
+            vectors (List[Tuple[str, List[float], Dict[str, Any]]]): List of tuples
+                containing (vector_id, vector_values, metadata) for each vector to store
 
         Returns:
-            True if successful, False otherwise
+            bool: True if successful, False otherwise
         """
         if not self.index:
             logger.error("Pinecone index not initialized")
@@ -161,15 +209,22 @@ class PineconeDB:
         id_prefix: str = "",
         landmark_id: Optional[str] = None,
     ) -> List[str]:
-        """Store text chunks with embeddings in the index.
+        """
+        Store text chunks with embeddings in the index.
+
+        Processes a list of text chunks with their embeddings and metadata,
+        optionally enhances the metadata with landmark-specific information,
+        and stores them in the Pinecone index.
 
         Args:
-            chunks: List of chunk dictionaries with text, metadata, and embedding
-            id_prefix: Prefix for vector IDs (optional)
-            landmark_id: Landmark ID to fetch enhanced metadata (optional)
+            chunks (List[Dict[str, Any]]): List of chunk dictionaries, each containing
+                'text', 'metadata', and 'embedding' keys
+            id_prefix (str, optional): Prefix for generated vector IDs. Defaults to "".
+            landmark_id (Optional[str], optional): Landmark ID to fetch enhanced metadata.
+                Defaults to None.
 
         Returns:
-            List of stored vector IDs
+            List[str]: List of stored vector IDs, empty if operation failed
         """
         if not chunks:
             logger.warning("Attempted to store empty chunks list")
@@ -202,15 +257,15 @@ class PineconeDB:
 
             # Get the metadata and add the text for retrieval
             metadata = chunk["metadata"].copy()
-            metadata["text"] = chunk[
-                "text"
-            ]  # Include the text in metadata for retrieval
+            # Include the text in metadata for retrieval
+            metadata["text"] = chunk["text"]
 
             # Merge with enhanced metadata if available
             if enhanced_metadata:
                 # Keep only metadata fields that won't conflict with chunk-specific metadata
                 # and don't exceed Pinecone's metadata size limits
                 for key, value in enhanced_metadata.items():
+                    # Skip keys that already exist or text fields
                     if key not in metadata and key != "text":
                         metadata[key] = value
 
@@ -226,8 +281,7 @@ class PineconeDB:
 
         if success:
             return vector_ids
-        else:
-            return []
+        return []
 
     def query_vectors(
         self,
@@ -235,15 +289,20 @@ class PineconeDB:
         top_k: int = 5,
         filter_dict: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
-        """Query the index for similar vectors.
+        """
+        Query the index for similar vectors.
+
+        Searches the Pinecone index for vectors similar to the provided query vector,
+        optionally filtering results based on metadata values.
 
         Args:
-            query_vector: Query embedding vector
-            top_k: Number of results to return
-            filter_dict: Filter to apply to the query
+            query_vector (List[float]): Query embedding vector to find similar vectors for
+            top_k (int, optional): Number of results to return. Defaults to 5.
+            filter_dict (Optional[Dict[str, Any]], optional): Metadata filter to apply to the query.
+                Defaults to None.
 
         Returns:
-            List of matched vectors with metadata
+            List[Dict[str, Any]]: List of matched vectors with their metadata and similarity scores
         """
         if not self.index:
             logger.error("Pinecone index not initialized")
@@ -269,13 +328,16 @@ class PineconeDB:
             return []
 
     def delete_vectors(self, vector_ids: List[str]) -> bool:
-        """Delete vectors from the index.
+        """
+        Delete vectors from the index.
+
+        Removes vectors with the specified IDs from the Pinecone index.
 
         Args:
-            vector_ids: List of vector IDs to delete
+            vector_ids (List[str]): List of vector IDs to delete
 
         Returns:
-            True if successful, False otherwise
+            bool: True if successful, False otherwise
         """
         if not self.index:
             logger.error("Pinecone index not initialized")
@@ -295,13 +357,17 @@ class PineconeDB:
             return False
 
     def delete_by_metadata(self, filter_dict: Dict[str, Any]) -> bool:
-        """Delete vectors matching metadata filter.
+        """
+        Delete vectors matching metadata filter.
+
+        Removes vectors that match the specified metadata filter criteria from the Pinecone index.
+        This is useful for batch deletion of vectors based on their metadata attributes.
 
         Args:
-            filter_dict: Filter to apply for deletion
+            filter_dict (Dict[str, Any]): Metadata filter criteria to match vectors for deletion
 
         Returns:
-            True if successful, False otherwise
+            bool: True if successful, False otherwise
         """
         if not self.index:
             logger.error("Pinecone index not initialized")
@@ -317,14 +383,17 @@ class PineconeDB:
             return False
 
     def delete_index(self) -> bool:
-        """Delete the entire Pinecone index.
+        """
+        Delete the entire Pinecone index.
+
+        Removes the entire Pinecone index, which deletes all vectors and
+        associated metadata. Use with caution as this operation cannot be undone.
 
         Returns:
-            bool: True if successful, False otherwise
+            bool: True if successful or if index didn't exist, False on error
         """
         try:
-            from pinecone import delete_index
-
+            # Use the delete_index already imported at module level
             indexes = list_indexes()
             if self.index_name in indexes:
                 delete_index(self.index_name)
@@ -333,17 +402,25 @@ class PineconeDB:
                 # Reset the index reference
                 self.index = None
                 return True
-            else:
-                logger.warning(
-                    f"Index {self.index_name} does not exist, nothing to delete"
-                )
-                return True
+
+            logger.warning(f"Index {self.index_name} does not exist, nothing to delete")
+            return True
         except Exception as e:
             logger.error(f"Error deleting index: {e}")
             return False
 
     def recreate_index(self) -> bool:
-        """Delete and recreate the Pinecone index.
+        """
+        Delete and recreate the Pinecone index.
+
+        Completely rebuilds the Pinecone index by first deleting the existing one
+        and then creating a new one with the configured dimensions and metric.
+        This operation is destructive and will result in the loss of all vectors
+        and metadata stored in the index.
+
+        Note:
+            This operation may be restricted by Pinecone service tier limitations.
+            The method includes a waiting period to allow the new index to initialize.
 
         Returns:
             bool: True if successful, False otherwise
@@ -355,14 +432,14 @@ class PineconeDB:
 
         # Create new index
         try:
-            from pinecone import create_index
-
+            # Use the create_index already imported at module level
             # Create index with new configuration - need to use v2.2.2 API format
             create_index(
                 name=self.index_name, dimension=self.dimensions, metric=self.metric
             )
             logger.warning(
-                "Note: GCP starter tier may not allow creating new indexes. If this fails, try using AWS region."
+                "Note: GCP starter tier may not allow creating new indexes. "
+                "If this fails, try using AWS region."
             )
 
             # Wait for index to be ready
