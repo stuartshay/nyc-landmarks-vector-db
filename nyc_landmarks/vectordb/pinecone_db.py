@@ -10,7 +10,8 @@ import time
 import uuid
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from pinecone import Pinecone, ServerlessSpec
+# Import pinecone-client (using v2.2.2 API)
+from pinecone import Index, create_index, delete_index, init, list_indexes
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.vectordb.enhanced_metadata import get_metadata_collector
@@ -31,18 +32,21 @@ class PineconeDB:
         self.namespace = settings.PINECONE_NAMESPACE
         self.dimensions = settings.PINECONE_DIMENSIONS
         self.metric = settings.PINECONE_METRIC
-        self.pinecone_client = None
         self.index = None
         self.metadata_collector = get_metadata_collector()
 
         # Initialize Pinecone client if API key is provided
-        if self.api_key and self.environment:
+        if self.api_key:
             try:
-                # Initialize Pinecone client with new API
-                self.pinecone_client = Pinecone(api_key=self.api_key)
-                logger.info(
-                    f"Initialized Pinecone client in environment: {self.environment}"
+                # Use GCP environment for index access
+                environment = (
+                    "us-central1-gcp"  # Fixed environment for Pinecone with GCP
                 )
+                self.environment = environment  # Override the environment from settings
+
+                # Initialize Pinecone
+                init(api_key=self.api_key, environment=environment)
+                logger.info(f"Initialized Pinecone in environment: {environment}")
 
                 # Connect to index
                 self._connect_to_index()
@@ -52,27 +56,20 @@ class PineconeDB:
             logger.warning("Pinecone API key or environment not provided")
 
     def _connect_to_index(self):
-        """Connect to the Pinecone index, creating it if it doesn't exist."""
+        """Connect to the Pinecone index without recreating it."""
         try:
             # Check if index exists
-            index_list = self.pinecone_client.list_indexes()
-            if self.index_name not in index_list.names():
-                logger.info(f"Index '{self.index_name}' does not exist, creating...")
-
-                # Create index with ServerlessSpec
-                self.pinecone_client.create_index(
-                    name=self.index_name,
-                    dimension=self.dimensions,
-                    metric=self.metric,
-                    spec=ServerlessSpec(cloud="aws", region="us-west-2"),
+            indexes = list_indexes()
+            if self.index_name not in indexes:
+                logger.warning(
+                    f"Index '{self.index_name}' does not exist. This should be pre-created in the Pinecone dashboard."
+                )
+                logger.info(
+                    "Attempting to connect anyway in case of list_indexes inconsistency..."
                 )
 
-                # Wait for index to be ready
-                logger.info("Waiting for index to initialize...")
-                time.sleep(30)
-
-            # Connect to index
-            self.index = self.pinecone_client.Index(self.index_name)
+            # Connect to existing index
+            self.index = Index(self.index_name)
             logger.info(f"Connected to Pinecone index: {self.index_name}")
         except Exception as e:
             logger.error(f"Error connecting to Pinecone index: {e}")
@@ -159,7 +156,10 @@ class PineconeDB:
             return False
 
     def store_chunks(
-        self, chunks: List[Dict[str, Any]], id_prefix: str = "", landmark_id: Optional[str] = None
+        self,
+        chunks: List[Dict[str, Any]],
+        id_prefix: str = "",
+        landmark_id: Optional[str] = None,
     ) -> List[str]:
         """Store text chunks with embeddings in the index.
 
@@ -178,7 +178,9 @@ class PineconeDB:
         # Get enhanced metadata if landmark_id is provided
         enhanced_metadata = {}
         if landmark_id:
-            enhanced_metadata = self.metadata_collector.collect_landmark_metadata(landmark_id)
+            enhanced_metadata = self.metadata_collector.collect_landmark_metadata(
+                landmark_id
+            )
             logger.info(f"Retrieved enhanced metadata for landmark: {landmark_id}")
 
         # Prepare vectors for batch storage
@@ -200,7 +202,9 @@ class PineconeDB:
 
             # Get the metadata and add the text for retrieval
             metadata = chunk["metadata"].copy()
-            metadata["text"] = chunk["text"]  # Include the text in metadata for retrieval
+            metadata["text"] = chunk[
+                "text"
+            ]  # Include the text in metadata for retrieval
 
             # Merge with enhanced metadata if available
             if enhanced_metadata:
@@ -310,4 +314,65 @@ class PineconeDB:
             return True
         except Exception as e:
             logger.error(f"Error deleting vectors by metadata: {e}")
+            return False
+
+    def delete_index(self) -> bool:
+        """Delete the entire Pinecone index.
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            from pinecone import delete_index
+
+            indexes = list_indexes()
+            if self.index_name in indexes:
+                delete_index(self.index_name)
+                logger.info(f"Successfully deleted index: {self.index_name}")
+
+                # Reset the index reference
+                self.index = None
+                return True
+            else:
+                logger.warning(
+                    f"Index {self.index_name} does not exist, nothing to delete"
+                )
+                return True
+        except Exception as e:
+            logger.error(f"Error deleting index: {e}")
+            return False
+
+    def recreate_index(self) -> bool:
+        """Delete and recreate the Pinecone index.
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        # Delete existing index if it exists
+        deleted = self.delete_index()
+        if not deleted:
+            return False
+
+        # Create new index
+        try:
+            from pinecone import create_index
+
+            # Create index with new configuration - need to use v2.2.2 API format
+            create_index(
+                name=self.index_name, dimension=self.dimensions, metric=self.metric
+            )
+            logger.warning(
+                "Note: GCP starter tier may not allow creating new indexes. If this fails, try using AWS region."
+            )
+
+            # Wait for index to be ready
+            logger.info("Waiting for index to initialize...")
+            time.sleep(30)
+
+            # Connect to the new index
+            self.index = Index(self.index_name)
+            logger.info(f"Successfully recreated index: {self.index_name}")
+            return True
+        except Exception as e:
+            logger.error(f"Error recreating index: {e}")
             return False
