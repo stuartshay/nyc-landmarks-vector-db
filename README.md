@@ -1,5 +1,7 @@
 # NYC Landmarks Vector Database
 
+[![Process NYC Landmarks Data](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/process_landmarks.yml/badge.svg)](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/process_landmarks.yml)
+
 A vector database system for NYC landmarks that extracts metadata and  text from API and PDF reports, converts it to vector embeddings, and enables semantic search and chatbot functionality.
 
 ## Project Overview
