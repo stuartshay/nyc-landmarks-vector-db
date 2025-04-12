@@ -32,8 +32,34 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          sudo apt-get update
+          sudo apt-get install -y build-essential libpq-dev python3-dev poppler-utils libssl-dev tesseract-ocr libtesseract-dev
+          python -m pip install --upgrade pip setuptools wheel
+
+          # Debug information
+          echo "Python version:"
+          python --version
+          echo "Pip version:"
+          pip --version
+
+          # Install packages in smaller groups with verbose output
+          echo "Installing core dependencies..."
+          pip install --no-cache-dir -v numpy tqdm requests
+
+          echo "Installing PDF processing libraries..."
+          pip install --no-cache-dir -v pdfminer.six pdfplumber PyPDF2 pypdfium2
+
+          echo "Installing database and vector libraries..."
+          pip install --no-cache-dir -v psycopg2-binary SQLAlchemy pinecone-client
+
+          echo "Installing AI libraries..."
+          pip install --no-cache-dir -v openai tiktoken
+
+          echo "Installing remaining requirements..."
+          pip install --no-cache-dir -r requirements.txt || {
+            echo "::error::Requirements installation failed. Detailed error above."
+            exit 1
+          }
 
       - name: Run Landmark Processing Script
         env:
