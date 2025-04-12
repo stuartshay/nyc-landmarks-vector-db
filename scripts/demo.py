@@ -24,7 +24,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from nyc_landmarks.chat.conversation import Conversation
 from nyc_landmarks.config.settings import settings
-from nyc_landmarks.db.postgres import PostgresDB
+from nyc_landmarks.db.db_client import DbClient
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.pdf.extractor import PDFExtractor
 from nyc_landmarks.pdf.text_chunker import TextChunker
@@ -77,10 +77,20 @@ def demo_text_chunking(text: str, landmark_id: str) -> List[Dict[str, Any]]:
     print("\n=== TEXT CHUNKING DEMO ===\n")
 
     text_chunker = TextChunker()
-    postgres_db = PostgresDB()
+    db_client = DbClient()
 
     # Get landmark metadata
-    landmark_metadata = postgres_db.get_landmark_metadata(landmark_id)
+    landmark = db_client.get_landmark_by_id(landmark_id)
+    landmark_metadata = {
+        "landmark_id": landmark_id,
+        "name": landmark.get("name", "") if landmark else "",
+        "location": landmark.get("location", "") if landmark else "",
+        "borough": landmark.get("borough", "") if landmark else "",
+        "type": landmark.get("type", "") if landmark else "",
+        "designation_date": (
+            str(landmark.get("designation_date", "")) if landmark else ""
+        ),
+    }
 
     # Chunk text
     chunks = text_chunker.process_landmark_text(
@@ -184,7 +194,7 @@ def demo_vector_search(
 
     embedding_generator = EmbeddingGenerator()
     vector_db = PineconeDB()
-    postgres_db = PostgresDB()
+    db_client = DbClient()
 
     print(f"Searching for: {query}")
 

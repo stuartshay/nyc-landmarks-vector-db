@@ -2,7 +2,7 @@
 Database client interface for the NYC Landmarks Vector Database.
 
 This module provides a unified interface for database operations,
-abstracting away the differences between PostgreSQL and CoreDataStore API.
+using the CoreDataStore API to retrieve landmark information.
 """
 
 import logging
@@ -11,7 +11,6 @@ from typing import Any, Dict, List, Optional, Union, cast
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
-from nyc_landmarks.db.postgres import PostgresDB
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -19,19 +18,12 @@ logging.basicConfig(level=settings.LOG_LEVEL.value)
 
 
 class DbClient:
-    """Database client interface that abstracts away the underlying implementation."""
+    """Database client interface for CoreDataStore API."""
 
     def __init__(self):
-        """Initialize the client based on configuration."""
-        # Determine which implementation to use
-        use_api = settings.COREDATASTORE_USE_API
-
-        if use_api:
-            logger.info("Using CoreDataStore API client")
-            self.client = CoreDataStoreAPI()
-        else:
-            logger.info("Using PostgreSQL client")
-            self.client = PostgresDB()
+        """Initialize the CoreDataStore API client."""
+        logger.info("Using CoreDataStore API client")
+        self.client = CoreDataStoreAPI()
 
     def get_landmark_by_id(self, landmark_id: str) -> Optional[Dict[str, Any]]:
         """Get landmark information by ID.

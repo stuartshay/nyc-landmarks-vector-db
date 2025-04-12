@@ -95,10 +95,7 @@ class Settings(BaseSettings):
         default=3600
     )  # Time to live for conversation history in seconds
 
-    @property
-    def POSTGRES_CONNECTION_STRING(self) -> str:
-        """Assemble PostgreSQL connection string from individual settings."""
-        return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+    # PostgreSQL connection string property removed as we're using CoreDataStore API exclusively
 
     @field_validator("PINECONE_DIMENSIONS", mode="before")
     @classmethod
@@ -173,12 +170,8 @@ def load_settings_from_secrets(settings: Settings) -> Settings:
                 "AZURE_STORAGE_CONNECTION_STRING": "connection_string",
                 "AZURE_STORAGE_CONTAINER_NAME": "container_name",
             },
-            "postgres": {
-                "POSTGRES_CONNECTION_STRING": "connection_string",
-            },
             "coredatastore": {
                 "COREDATASTORE_API_KEY": "api_key",
-                "COREDATASTORE_USE_API": "use_api",
             },
         }
 

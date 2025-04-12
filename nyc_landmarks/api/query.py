@@ -115,7 +115,7 @@ async def search_text(
         query: Text query model
         embedding_generator: EmbeddingGenerator instance
         vector_db: PineconeDB instance
-        postgres_db: PostgresDB instance
+        db_client: DbClient instance
 
     Returns:
         SearchResponse with results
@@ -180,7 +180,7 @@ async def get_landmarks(
 
     Args:
         limit: Maximum number of landmarks to return
-        postgres_db: PostgresDB instance
+        db_client: DbClient instance
 
     Returns:
         LandmarkListResponse with list of landmarks
@@ -222,7 +222,7 @@ async def get_landmark(
 
     Args:
         landmark_id: ID of the landmark
-        postgres_db: PostgresDB instance
+        db_client: DbClient instance
 
     Returns:
         LandmarkInfo with landmark information

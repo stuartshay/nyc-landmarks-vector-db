@@ -19,10 +19,8 @@ import json
 import os
 import sys
 import time
-import uuid
-from io import BytesIO
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 from tqdm import tqdm
@@ -617,7 +615,7 @@ class LandmarkPipeline:
         Returns:
             Dict: Aggregated statistics
         """
-        stats = {
+        stats: Dict[str, Any] = {
             "landmarks_fetched": len(results),
             "landmarks_processed": 0,
             "pdfs_downloaded": 0,
@@ -747,7 +745,7 @@ class LandmarkPipeline:
         return self.stats
 
 
-def main():
+def main() -> None:
     """Main entry point with argument parsing."""
     parser = argparse.ArgumentParser(description="NYC Landmarks Pipeline")
     parser.add_argument(
