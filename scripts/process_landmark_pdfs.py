@@ -11,11 +11,12 @@ import logging
 import os
 import sys
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 # Add the project root to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Import modules after modifying the path
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
@@ -58,7 +59,7 @@ def process_landmark(
     Returns:
         Dictionary with processing results
     """
-    result = {
+    result: Dict[str, Any] = {
         "landmark_id": landmark_id,
         "success": False,
         "chunks_count": 0,
@@ -151,7 +152,7 @@ def process_all_landmarks(
     vector_db = PineconeDB()
     api_client = CoreDataStoreAPI()
 
-    results = {
+    results: Dict[str, Any] = {
         "total_landmarks": 0,
         "successful_landmarks": 0,
         "failed_landmarks": 0,
@@ -239,7 +240,7 @@ def process_specific_landmark(
     )
 
 
-def main():
+def main() -> Dict[str, Any]:
     """Main entry point for the script."""
     parser = argparse.ArgumentParser(
         description="Process landmark PDFs and store embeddings in Pinecone"
