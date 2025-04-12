@@ -12,7 +12,7 @@ from urllib.parse import urljoin
 import requests
 
 from nyc_landmarks.config.settings import settings
-from nyc_landmarks.models.landmark_models import LpcReportModel, LpcReportResponse
+from nyc_landmarks.models.landmark_models import LpcReportResponse
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class CoreDataStoreAPI:
         if self.api_key:
             self.headers["Authorization"] = f"Bearer {self.api_key}"
 
-        logger.info(f"Initialized CoreDataStore API client")
+        logger.info("Initialized CoreDataStore API client")
 
     def _make_request(
         self,
@@ -50,7 +50,7 @@ class CoreDataStoreAPI:
             json_data: JSON data for POST/PUT requests (optional)
 
         Returns:
-            Response data as dictionary
+            Response data as dictionary or list
 
         Raises:
             Exception: If the request fails
@@ -72,7 +72,12 @@ class CoreDataStoreAPI:
 
             # Return JSON response if available
             if response.content:
-                return response.json()
+                json_response = response.json()
+                # Ensure we return the correct type
+                if isinstance(json_response, (dict, list)):
+                    return json_response
+                logger.warning(f"Unexpected response type: {type(json_response)}")
+                return {}
             return {}
 
         except requests.exceptions.RequestException as e:
@@ -100,6 +105,11 @@ class CoreDataStoreAPI:
 
             if not response:
                 logger.warning(f"Landmark not found with ID: {landmark_id}")
+                return None
+
+            # Check if response is a dictionary before accessing attributes
+            if not isinstance(response, dict):
+                logger.error(f"Expected dictionary response but got {type(response)}")
                 return None
 
             # Convert the response to a format compatible with what the PostgresDB provided
@@ -141,9 +151,11 @@ class CoreDataStoreAPI:
             response = self._make_request("GET", f"/api/LpcReport/{page_size}/{page}")
 
             results = []
-            if response and "results" in response:
+            if isinstance(response, dict) and "results" in response:
                 # Convert the API response format to our internal format
                 for item in response["results"]:
+                    if not isinstance(item, dict):
+                        continue
                     landmark = {
                         "id": item.get("lpNumber", ""),
                         "name": item.get("name", ""),
@@ -202,7 +214,7 @@ class CoreDataStoreAPI:
         """
         try:
             # Build the query parameters
-            params = {
+            params: Dict[str, Any] = {
                 "limit": limit,
                 "page": page,
             }
@@ -226,6 +238,12 @@ class CoreDataStoreAPI:
             # Make the API request
             endpoint = f"/api/LpcReport"
             response = self._make_request("GET", endpoint, params=params)
+
+            # Ensure response is a dictionary
+            if not isinstance(response, dict):
+                raise TypeError(
+                    f"Expected dictionary response but got {type(response)}"
+                )
 
             # Validate the response with our Pydantic models
             validated_response = LpcReportResponse(**response)
@@ -273,35 +291,8 @@ class CoreDataStoreAPI:
             NotImplementedError: This is a placeholder that should be implemented
             by code that has access to the MCP service.
         """
-        # This is a placeholder for the actual implementation
-        # In a real implementation, this would use the MCP tool directly
-        # For example:
-        """
-        from some_mcp_utility import use_mcp_tool
-
-        # Build arguments for the MCP tool
-        arguments = {
-            "limit": limit,
-            "page": page
-        }
-
-        # Add optional arguments
-        if borough:
-            arguments["Borough"] = borough
-        if object_type:
-            arguments["ObjectType"] = object_type
-        # Add other filters as needed
-
-        # Call the MCP tool
-        response = use_mcp_tool(
-            server_name="coredatastore-swagger-mcp",
-            tool_name="GetLpcReports",
-            arguments=arguments
-        )
-
-        # Validate with Pydantic
-        return LpcReportResponse(**response)
-        """
+        # This method is a placeholder for future implementation
+        # The actual implementation would involve using an MCP tool to fetch data
         raise NotImplementedError(
             "This method requires direct MCP server integration. Use get_lpc_reports() instead."
         )
@@ -324,9 +315,11 @@ class CoreDataStoreAPI:
             response = self._make_request("GET", f"/api/LpcReport/{page_limit}/{page}")
 
             results = []
-            if response and "results" in response:
+            if isinstance(response, dict) and "results" in response:
                 # Convert the results to the format expected by the application
                 for item in response["results"]:
+                    if not isinstance(item, dict):
+                        continue
                     landmark = {
                         "id": item.get("lpNumber", ""),
                         "name": item.get("name", ""),
@@ -371,9 +364,11 @@ class CoreDataStoreAPI:
             )
 
             results = []
-            if response and "results" in response:
+            if isinstance(response, dict) and "results" in response:
                 # Convert the results to the format expected by the application
                 for item in response["results"]:
+                    if not isinstance(item, dict):
+                        continue
                     landmark = {
                         "id": item.get("lpNumber", ""),
                         "name": item.get("name", ""),
@@ -456,6 +451,8 @@ class CoreDataStoreAPI:
             buildings = []
             if response and isinstance(response, list):
                 for building in response:
+                    if not isinstance(building, dict):
+                        continue
                     building_info = {
                         "name": building.get("name", ""),
                         "address": building.get("designatedAddress", ""),
@@ -501,8 +498,10 @@ class CoreDataStoreAPI:
             )
 
             photos = []
-            if response and "results" in response:
+            if isinstance(response, dict) and "results" in response:
                 for photo in response["results"]:
+                    if not isinstance(photo, dict):
+                        continue
                     photo_info = {
                         "id": photo.get("id", None),
                         "title": photo.get("title", ""),
@@ -640,6 +639,11 @@ class CoreDataStoreAPI:
                 logger.warning(f"Landmark not found with ID: {landmark_id}")
                 return None
 
+            # Check if response is a dictionary before accessing attributes
+            if not isinstance(response, dict):
+                logger.error(f"Expected dictionary response but got {type(response)}")
+                return None
+
             # Extract the PDF report URL
             pdf_url = response.get("pdfReportUrl")
             if not pdf_url:
@@ -648,7 +652,8 @@ class CoreDataStoreAPI:
                 )
                 return None
 
-            return pdf_url
+            # Ensure we return a string, not Any
+            return str(pdf_url) if pdf_url is not None else None
 
         except Exception as e:
             logger.error(f"Error getting PDF report URL for landmark: {e}")
