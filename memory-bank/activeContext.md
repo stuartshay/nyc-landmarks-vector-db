@@ -23,6 +23,7 @@ We are in the initial setup phase of the NYC Landmarks Vector Database project. 
 - Set up test infrastructure for pytest in VS Code
 - Added integration tests for the CoreDataStore MCP server
 - Refactored scripts to use Pydantic for robust data validation
+- Updated the `.github/workflows/process_landmarks.yml` GitHub Action for manual triggering, robust batch processing using a matrix strategy, configurable parallelism, and improved dependency installation.
 
 ## Next Steps
 1. Implement comprehensive error handling and logging in the API client

@@ -84,21 +84,24 @@ class LandmarkPipeline:
         }
 
     def get_landmarks(
-        self, page_size: int = 10, pages: int = 1
+        self, start_page: int, end_page: int, page_size: int = 100
     ) -> List[Dict[str, Any]]:
         """Get landmark reports from the API.
 
         Args:
+            start_page: The starting page number to fetch
+            end_page: The ending page number to fetch
             page_size: Number of landmarks per page
-            pages: Number of pages to fetch
 
         Returns:
             List of landmark dictionaries
         """
         all_landmarks = []
+        total_pages_to_fetch = end_page - start_page + 1
 
-        for page in range(1, pages + 1):
-            logger.info(f"Fetching page {page} of {pages}")
+        for page in range(start_page, end_page + 1):
+            current_page_index = page - start_page + 1
+            logger.info(f"Fetching page {page} ({current_page_index}/{total_pages_to_fetch}) with size {page_size}")
             try:
                 # Use the database client to get landmarks
                 landmarks = self.db_client.get_landmarks_page(page_size, page)
@@ -518,8 +521,9 @@ class LandmarkPipeline:
 
     def run_parallel(
         self,
-        page_size: int = 10,
-        pages: int = 1,
+        start_page: int,
+        end_page: int,
+        page_size: int = 100,
         download_limit: Optional[int] = None,
         workers: int = 4,
         recreate_index: bool = False,
@@ -528,8 +532,9 @@ class LandmarkPipeline:
         """Run the pipeline with parallel processing.
 
         Args:
+            start_page: The starting page number to fetch
+            end_page: The ending page number to fetch
             page_size: Number of landmarks per page
-            pages: Number of pages to fetch
             download_limit: Maximum number of PDFs to download
             workers: Number of parallel worker processes
             recreate_index: Whether to recreate the vector index
@@ -551,10 +556,14 @@ class LandmarkPipeline:
                 return {"error": "Failed to drop index"}
 
         # Step 1: Fetch landmarks
-        logger.info("Fetching landmarks...")
-        landmarks = self.get_landmarks(page_size, pages)
+        logger.info(f"Fetching landmarks from page {start_page} to {end_page}...")
+        landmarks = self.get_landmarks(start_page, end_page, page_size)
 
+        # Note: download_limit might need reconsideration in batch mode.
+        # Applying it here might unevenly distribute work if applied after fetching.
+        # For now, we keep it, but it might be better applied per-batch or removed.
         if download_limit and download_limit > 0:
+            logger.warning(f"Applying download limit of {download_limit} across fetched landmarks.")
             landmarks = landmarks[:download_limit]
 
         if not landmarks:
@@ -656,17 +665,19 @@ class LandmarkPipeline:
 
     def run(
         self,
-        page_size: int = 10,
-        pages: int = 1,
+        start_page: int,
+        end_page: int,
+        page_size: int = 100,
         download_limit: Optional[int] = None,
         recreate_index: bool = False,
         drop_index: bool = False,
     ) -> Dict[str, Any]:
-        """Run the pipeline.
+        """Run the pipeline sequentially for a given page range.
 
         Args:
+            start_page: The starting page number to fetch
+            end_page: The ending page number to fetch
             page_size: Number of landmarks per page
-            pages: Number of pages to fetch
             download_limit: Maximum number of PDFs to download
             recreate_index: Whether to recreate the vector index
             drop_index: Whether to drop the vector index without recreating it
@@ -687,11 +698,15 @@ class LandmarkPipeline:
                 return {"error": "Failed to drop index"}
 
         # Step 1: Fetch landmarks
-        logger.info("STEP 1: Fetching landmarks")
-        landmarks = self.get_landmarks(page_size, pages)
+        logger.info(f"STEP 1: Fetching landmarks from page {start_page} to {end_page}")
+        landmarks = self.get_landmarks(start_page, end_page, page_size)
 
         # Step 2: Download PDFs
         logger.info("STEP 2: Downloading PDFs")
+        # Apply limit here if needed for sequential mode
+        if download_limit and download_limit > 0:
+            logger.warning(f"Applying download limit of {download_limit} in sequential mode.")
+            landmarks = landmarks[:download_limit]
         pdf_items = self.download_pdfs(landmarks, download_limit)
 
         # Step 3: Extract text
@@ -749,12 +764,18 @@ def main() -> None:
     """Main entry point with argument parsing."""
     parser = argparse.ArgumentParser(description="NYC Landmarks Pipeline")
     parser.add_argument(
-        "--page-size", type=int, default=10, help="Number of landmarks per page"
+        "--page-size", type=int, default=100, help="Number of landmarks per API page fetch (default: 100)"
     )
-    parser.add_argument("--pages", type=int, default=1, help="Number of pages to fetch")
-    parser.add_argument("--download", action="store_true", help="Download PDFs")
-    parser.add_argument("--limit", type=int, help="Limit number of PDFs to download")
-    parser.add_argument("--api-key", type=str, help="CoreDataStore API key (optional)")
+    parser.add_argument(
+        "--start-page", type=int, required=True, help="Starting page number to fetch (required)"
+    )
+    parser.add_argument(
+        "--end-page", type=int, required=True, help="Ending page number to fetch (required)"
+    )
+    # --pages argument removed
+    parser.add_argument("--download", action="store_true", help="Download PDFs (Note: --limit might behave unexpectedly in parallel mode)")
+    parser.add_argument("--limit", type=int, help="Limit number of PDFs to download (Use with caution in parallel mode)")
+    parser.add_argument("--api-key", type=str, help="CoreDataStore API key (optional, uses env var if not set)")
 
     # Vector database management options
     parser.add_argument(
@@ -793,20 +814,26 @@ def main() -> None:
     try:
         # Run in appropriate mode
         if args.parallel:
-            logger.info("Using parallel processing mode")
+            if args.start_page > args.end_page:
+                raise ValueError("Start page cannot be greater than end page.")
+            logger.info(f"Using parallel processing mode for pages {args.start_page}-{args.end_page}")
             stats = pipeline.run_parallel(
+                start_page=args.start_page,
+                end_page=args.end_page,
                 page_size=args.page_size,
-                pages=args.pages,
                 download_limit=download_limit,
                 workers=args.workers,
                 recreate_index=args.recreate_index,
                 drop_index=args.drop_index,
             )
         else:
-            logger.info("Using sequential processing mode")
+            if args.start_page > args.end_page:
+                raise ValueError("Start page cannot be greater than end page.")
+            logger.info(f"Using sequential processing mode for pages {args.start_page}-{args.end_page}")
             stats = pipeline.run(
+                start_page=args.start_page,
+                end_page=args.end_page,
                 page_size=args.page_size,
-                pages=args.pages,
                 download_limit=download_limit,
                 recreate_index=args.recreate_index,
                 drop_index=args.drop_index,

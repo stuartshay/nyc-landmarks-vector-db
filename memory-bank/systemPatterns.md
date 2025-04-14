@@ -130,10 +130,35 @@ flowchart TD
 - Better error messages through Pydantic's validation system
 
 ### 13. CI/CD Implementation
-- GitHub Actions for continuous integration and deployment.
-- Automated testing on pull requests.
-- Deployment pipeline with appropriate staging environments.
-- Infrastructure as code for any cloud resources.
+
+- **GitHub Actions** is used for continuous integration and deployment.
+- **Testing Workflow:** Automated testing runs on pull requests to ensure code quality before merging. (Details TBD)
+- **Landmark Processing Workflow (`.github/workflows/process_landmarks.yml`):**
+    - **Trigger:** Manually triggered via `workflow_dispatch` with configurable inputs (`api_page_size`, `job_batch_size`, `parallel_workers`, `recreate_index`, `total_records`).
+    - **Structure:** A two-job pipeline:
+        1.  `generate_batches`: Runs `scripts/generate_matrix.py` to calculate processing batches based on inputs and outputs a JSON matrix.
+        2.  `process`: Uses the generated matrix with a `fail-fast: false` strategy to run multiple parallel jobs. Each job processes a specific batch of landmark data pages (`start_page` to `end_page`).
+    - **Execution:** Each `process` job checks out the code, sets up Python, installs system dependencies (`poppler-utils`, `tesseract-ocr`, etc.) and Python requirements, then executes `scripts/process_landmarks.py`.
+    - **Parallelism:** Supports parallelism *within* each `process` job via the `parallel_workers` input, in addition to the parallelism *across* jobs provided by the matrix strategy.
+    - **Credentials:** API keys (Pinecone, CoreDataStore, OpenAI) are securely passed as environment variables using GitHub secrets.
+    - **Configuration:** Allows dynamic configuration of batch sizes and parallelism for scalability and efficiency.
+    - **Timeout:** Jobs have an increased timeout (120 minutes) to accommodate potentially long processing times.
+
+```mermaid
+flowchart TD
+    A[Manual Trigger (workflow_dispatch)\nInputs: page_size, batch_size, workers, recreate_index, total_records] --> B(generate_batches Job);
+    B --> C{Run generate_matrix.py};
+    C --> D[Output: Processing Matrix (JSON)];
+    D --> E(process Job - Matrix Strategy);
+    subgraph E [process Job (Runs for each matrix entry)]
+        F[Setup Python & Install Dependencies (System & Python)] --> G{Run process_landmarks.py};
+        G --> H[Args: start/end_page, page_size, workers, recreate_index?];
+        I[Secrets: API Keys via Env Vars] --> G;
+    end
+```
+
+- **Deployment Pipeline:** Details for deploying the API or other components are TBD.
+- **Infrastructure as Code:** Any cloud resources required will ideally be managed using IaC tools (e.g., Terraform).
 
 ### 14. Design Patterns
 - Repository pattern for database access via the CoreDataStore API.

@@ -26,11 +26,14 @@
 
 ### Development Tools
 1. **GitHub**: Version control and repository hosting
-2. **GitHub Actions**: CI/CD platform
+2. **GitHub Actions**: CI/CD platform. Includes:
+    - `.github/workflows/process_landmarks.yml`: A manually triggered workflow for scalable, batch-based processing of landmark data using a matrix strategy. Requires system dependencies like `poppler-utils` and `tesseract-ocr` in its execution environment.
+    - (Future workflows for automated testing on PRs, deployment, etc.)
 3. **Poetry/Pipenv**: Dependency management
 4. **Black/Flake8/isort**: Code formatting and linting
 5. **Pytest**: Testing framework
 6. **Docker**: Containerization (if needed)
+7. **System Dependencies (for CI/Processing):** `build-essential`, `libpq-dev`, `python3-dev`, `poppler-utils`, `libssl-dev`, `tesseract-ocr`, `libtesseract-dev` are required in the GitHub Actions environment for the processing workflow.
 
 ## Development Setup
 
