@@ -3,6 +3,7 @@ import json
 import math
 import sys
 
+
 def generate_matrix(total_records: int, api_page_size: int, job_batch_size: int) -> str:
     """
     Generates a GitHub Actions matrix configuration JSON for batch processing.
@@ -23,7 +24,7 @@ def generate_matrix(total_records: int, api_page_size: int, job_batch_size: int)
         raise ValueError("Total records cannot be negative.")
 
     if total_records == 0:
-        return json.dumps({"include": []}) # No jobs needed if no records
+        return json.dumps({"include": []})  # No jobs needed if no records
 
     total_pages = math.ceil(total_records / api_page_size)
 
@@ -37,17 +38,34 @@ def generate_matrix(total_records: int, api_page_size: int, job_batch_size: int)
     # {"include": [ { "start_page": 1, "end_page": 5 }, ... ]}
     return json.dumps({"include": matrix_includes})
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate GitHub Actions matrix for batch processing.")
-    parser.add_argument("--total-records", type=int, required=True, help="Total number of records to process.")
-    parser.add_argument("--api-page-size", type=int, required=True, help="Number of records per API page.")
-    parser.add_argument("--job-batch-size", type=int, required=True, help="Number of API pages per job.")
+    parser = argparse.ArgumentParser(
+        description="Generate GitHub Actions matrix for batch processing."
+    )
+    parser.add_argument(
+        "--total-records",
+        type=int,
+        required=True,
+        help="Total number of records to process.",
+    )
+    parser.add_argument(
+        "--api-page-size",
+        type=int,
+        required=True,
+        help="Number of records per API page.",
+    )
+    parser.add_argument(
+        "--job-batch-size", type=int, required=True, help="Number of API pages per job."
+    )
 
     args = parser.parse_args()
 
     try:
-        matrix_json = generate_matrix(args.total_records, args.api_page_size, args.job_batch_size)
-        print(matrix_json) # Output the JSON to stdout
+        matrix_json = generate_matrix(
+            args.total_records, args.api_page_size, args.job_batch_size
+        )
+        print(matrix_json)  # Output the JSON to stdout
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

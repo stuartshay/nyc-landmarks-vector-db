@@ -101,7 +101,9 @@ class LandmarkPipeline:
 
         for page in range(start_page, end_page + 1):
             current_page_index = page - start_page + 1
-            logger.info(f"Fetching page {page} ({current_page_index}/{total_pages_to_fetch}) with size {page_size}")
+            logger.info(
+                f"Fetching page {page} ({current_page_index}/{total_pages_to_fetch}) with size {page_size}"
+            )
             try:
                 # Use the database client to get landmarks
                 landmarks = self.db_client.get_landmarks_page(page_size, page)
@@ -563,7 +565,9 @@ class LandmarkPipeline:
         # Applying it here might unevenly distribute work if applied after fetching.
         # For now, we keep it, but it might be better applied per-batch or removed.
         if download_limit and download_limit > 0:
-            logger.warning(f"Applying download limit of {download_limit} across fetched landmarks.")
+            logger.warning(
+                f"Applying download limit of {download_limit} across fetched landmarks."
+            )
             landmarks = landmarks[:download_limit]
 
         if not landmarks:
@@ -705,7 +709,9 @@ class LandmarkPipeline:
         logger.info("STEP 2: Downloading PDFs")
         # Apply limit here if needed for sequential mode
         if download_limit and download_limit > 0:
-            logger.warning(f"Applying download limit of {download_limit} in sequential mode.")
+            logger.warning(
+                f"Applying download limit of {download_limit} in sequential mode."
+            )
             landmarks = landmarks[:download_limit]
         pdf_items = self.download_pdfs(landmarks, download_limit)
 
@@ -764,18 +770,39 @@ def main() -> None:
     """Main entry point with argument parsing."""
     parser = argparse.ArgumentParser(description="NYC Landmarks Pipeline")
     parser.add_argument(
-        "--page-size", type=int, default=100, help="Number of landmarks per API page fetch (default: 100)"
+        "--page-size",
+        type=int,
+        default=100,
+        help="Number of landmarks per API page fetch (default: 100)",
     )
     parser.add_argument(
-        "--start-page", type=int, required=True, help="Starting page number to fetch (required)"
+        "--start-page",
+        type=int,
+        required=True,
+        help="Starting page number to fetch (required)",
     )
     parser.add_argument(
-        "--end-page", type=int, required=True, help="Ending page number to fetch (required)"
+        "--end-page",
+        type=int,
+        required=True,
+        help="Ending page number to fetch (required)",
     )
     # --pages argument removed
-    parser.add_argument("--download", action="store_true", help="Download PDFs (Note: --limit might behave unexpectedly in parallel mode)")
-    parser.add_argument("--limit", type=int, help="Limit number of PDFs to download (Use with caution in parallel mode)")
-    parser.add_argument("--api-key", type=str, help="CoreDataStore API key (optional, uses env var if not set)")
+    parser.add_argument(
+        "--download",
+        action="store_true",
+        help="Download PDFs (Note: --limit might behave unexpectedly in parallel mode)",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        help="Limit number of PDFs to download (Use with caution in parallel mode)",
+    )
+    parser.add_argument(
+        "--api-key",
+        type=str,
+        help="CoreDataStore API key (optional, uses env var if not set)",
+    )
 
     # Vector database management options
     parser.add_argument(
@@ -816,7 +843,9 @@ def main() -> None:
         if args.parallel:
             if args.start_page > args.end_page:
                 raise ValueError("Start page cannot be greater than end page.")
-            logger.info(f"Using parallel processing mode for pages {args.start_page}-{args.end_page}")
+            logger.info(
+                f"Using parallel processing mode for pages {args.start_page}-{args.end_page}"
+            )
             stats = pipeline.run_parallel(
                 start_page=args.start_page,
                 end_page=args.end_page,
@@ -829,7 +858,9 @@ def main() -> None:
         else:
             if args.start_page > args.end_page:
                 raise ValueError("Start page cannot be greater than end page.")
-            logger.info(f"Using sequential processing mode for pages {args.start_page}-{args.end_page}")
+            logger.info(
+                f"Using sequential processing mode for pages {args.start_page}-{args.end_page}"
+            )
             stats = pipeline.run(
                 start_page=args.start_page,
                 end_page=args.end_page,
