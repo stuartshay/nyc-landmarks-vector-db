@@ -8,6 +8,12 @@ on:
       - 'requirements.txt'
       - 'setup.py'
       - '.github/workflows/**'
+  push:
+    branches: [master]
+    paths:
+      - 'requirements.txt'
+      - 'setup.py'
+      - '.github/workflows/**'
 
 jobs:
   dependency-review:
