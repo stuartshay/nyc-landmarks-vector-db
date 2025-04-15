@@ -27,6 +27,7 @@ The project is in the initial setup and infrastructure development phase. We hav
 - ✅ Pydantic-based data validation in scripts
 - ✅ Scalable batch processing workflow for landmarks via GitHub Actions (`process_landmarks.yml`).
 - ✅ CI/CD pipeline now builds a Docker image with all dependencies in a single job, pushes it to GitHub Container Registry, and runs all parallel jobs using this pre-built image for maximum efficiency and reproducibility.
+- ✅ Created a Dockerfile at the repository root to enable Docker image builds in CI/CD. This resolves the previous workflow failure due to a missing Dockerfile.
 
 ## What's Left to Build
 
@@ -77,6 +78,7 @@ The project is in the initial setup and infrastructure development phase. We hav
 - Pylance errors in the Pydantic models due to import issues (can be resolved with proper environment setup)
 - Integration tests depend on CoreDataStore API being available
 - MCP server tests need to be run in an environment with the server connected
+- [RESOLVED] Previous CI/CD workflow failed due to missing Dockerfile. This has now been fixed.
 
 ## Performance Metrics
 - Initial PDF processing rate: ~15 documents per minute
