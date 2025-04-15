@@ -38,7 +38,7 @@ jobs:
           pip install bandit safety
 
       - name: Run security scan with Bandit
-        run: bandit -r nyc_landmarks/ -f json -o bandit-results.json || true
+        run: bandit -r nyc_landmarks/ -f sarif -o bandit-results.sarif || true
 
       - name: Check for vulnerable dependencies
         run: safety check -r requirements.txt || true
@@ -46,4 +46,4 @@ jobs:
       - name: Upload security scan results
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: bandit-results.json
+          sarif_file: bandit-results.sarif
