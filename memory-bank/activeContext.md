@@ -24,6 +24,8 @@ We are in the initial setup phase of the NYC Landmarks Vector Database project. 
 - Added integration tests for the CoreDataStore MCP server
 - Refactored scripts to use Pydantic for robust data validation
 - Updated the `.github/workflows/process_landmarks.yml` GitHub Action for manual triggering, robust batch processing using a matrix strategy, configurable parallelism, and improved dependency installation.
+- **Added pip caching to the GitHub Actions workflow to speed up dependency installation and reduce redundant downloads in parallel jobs.**
+- **Refactored the CI/CD workflow to build a Docker image with all dependencies in a single job, push it to GitHub Container Registry, and run all parallel processing jobs using this pre-built image. This ensures all jobs share the same environment and eliminates redundant setup steps.**
 
 ## Next Steps
 1. Implement comprehensive error handling and logging in the API client

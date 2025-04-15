@@ -25,6 +25,28 @@ on:
         default: '1765' # Update if the total changes significantly
 
 jobs:
+  build_image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        run: |
+          IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/nyc-landmarks-vector-db:latest
+          docker build -t $IMAGE_NAME .
+          docker push $IMAGE_NAME
+
   generate_batches:
     runs-on: ubuntu-latest
     outputs:
@@ -55,72 +77,32 @@ jobs:
           echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
 
   process:
-    needs: generate_batches
+    needs: [build_image, generate_batches]
     runs-on: ubuntu-latest
-    timeout-minutes: 120 # Increased timeout for potentially longer batch jobs
+    timeout-minutes: 120
     strategy:
-      fail-fast: false # Allow other jobs to continue if one fails
+      fail-fast: false
       matrix: ${{ fromJson(needs.generate_batches.outputs.matrix) }}
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/nyc-landmarks-vector-db:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11' # Match project version
-
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential libpq-dev python3-dev poppler-utils libssl-dev tesseract-ocr libtesseract-dev
-          python -m pip install --upgrade pip setuptools wheel
-
-          # Debug information
-          echo "Python version:"
-          python --version
-          echo "Pip version:"
-          pip --version
-
-          # Install packages in smaller groups with verbose output
-          echo "Installing core dependencies..."
-          pip install --no-cache-dir -v numpy tqdm requests
-
-          echo "Installing PDF processing libraries..."
-          pip install --no-cache-dir -v pdfminer.six pdfplumber PyPDF2 pypdfium2
-
-          echo "Installing database and vector libraries..."
-          pip install --no-cache-dir -v psycopg2-binary SQLAlchemy pinecone-client
-
-          echo "Installing AI libraries..."
-          pip install --no-cache-dir -v openai tiktoken
-
-          echo "Installing remaining requirements..."
-          pip install --no-cache-dir -r requirements.txt || {
-            echo "::error::Requirements installation failed. Detailed error above."
-            exit 1
-          }
-
       - name: Run Landmark Processing Script for Batch (Pages ${{ matrix.start_page }}-${{ matrix.end_page }})
         env:
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-          COREDATASTORE_API_KEY: ${{ secrets.COREDATASTORE_API_KEY }} # Provided as env var
+          COREDATASTORE_API_KEY: ${{ secrets.COREDATASTORE_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           PINECONE_ENVIRONMENT: ${{ secrets.PINECONE_ENVIRONMENT }}
         run: |
           echo "Starting landmark processing for pages ${{ matrix.start_page }} to ${{ matrix.end_page }}..."
           ARGS="--start-page ${{ matrix.start_page }} --end-page ${{ matrix.end_page }} --page-size ${{ github.event.inputs.api_page_size }}"
 
-          # Determine if parallel processing should be used within this job
           WORKERS=${{ github.event.inputs.parallel_workers }}
           if [[ "$WORKERS" -gt 0 ]]; then
             ARGS="$ARGS --parallel --workers $WORKERS"
@@ -129,12 +111,7 @@ jobs:
             echo "Using sequential mode for this batch."
           fi
 
-          # Handle index recreation - Note: This will run for the FIRST job only if needed.
-          # Consider if index recreation should be a separate, initial job.
-          # For simplicity now, it runs within the first triggered job if set.
-          # A more robust approach might be a dedicated setup job.
           if [[ "${{ github.event.inputs.recreate_index }}" == "true" ]]; then
-             # Only add --recreate-index for the very first batch (start_page == 1)
              if [[ "${{ matrix.start_page }}" == "1" ]]; then
                echo "Adding --recreate-index for the first batch."
                ARGS="$ARGS --recreate-index"
@@ -143,6 +120,5 @@ jobs:
              fi
           fi
 
-          # The script uses COREDATASTORE_API_KEY from env var if --api-key is not provided.
           python scripts/process_landmarks.py $ARGS
           echo "Landmark processing finished for pages ${{ matrix.start_page }}-${{ matrix.end_page }}."

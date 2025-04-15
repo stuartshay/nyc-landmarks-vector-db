@@ -26,6 +26,7 @@ The project is in the initial setup and infrastructure development phase. We hav
 - ✅ Test discovery and execution in VS Code
 - ✅ Pydantic-based data validation in scripts
 - ✅ Scalable batch processing workflow for landmarks via GitHub Actions (`process_landmarks.yml`).
+- ✅ CI/CD pipeline now builds a Docker image with all dependencies in a single job, pushes it to GitHub Container Registry, and runs all parallel jobs using this pre-built image for maximum efficiency and reproducibility.
 
 ## What's Left to Build
 
