@@ -1,0 +1,10 @@
+# Cline's Project Intelligence (.clinerules) for nyc-landmarks-vector-db
+
+This file captures key patterns, preferences, and project intelligence learned during development.
+
+## Core Workflow Rules
+
+*   **Memory Bank Update Before Completion:** Always update relevant Memory Bank files (especially `activeContext.md` and `progress.md`) to reflect the completed work *before* using the `attempt_completion` tool. This ensures the Memory Bank is always synchronized with the project state before I conclude a task.
+
+## Other Patterns/Notes
+(Add other learned patterns here as discovered)

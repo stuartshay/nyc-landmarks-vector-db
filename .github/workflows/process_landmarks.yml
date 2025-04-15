@@ -3,24 +3,54 @@ name: Process NYC Landmarks Data
 on:
   workflow_dispatch: # Allows manual triggering
     inputs:
-      pages_to_process:
-        description: 'Number of pages to fetch from API'
+      api_page_size:
+        description: 'Records per API page fetch'
         required: true
-        default: '1'
+        default: '100'
+      job_batch_size:
+        description: 'Number of API pages per parallel job'
+        required: true
+        default: '5'
       parallel_workers:
-        description: 'Number of parallel workers (0 for sequential)'
+        description: 'Number of parallel workers per job (0 for sequential)'
         required: true
         default: '2'
       recreate_index:
         description: 'Recreate Pinecone index before processing? (true/false)'
         required: false
         default: 'false'
+      total_records:
+        description: 'Total number of landmark records to process (used for batching)'
+        required: true
+        default: '1765' # Update if the total changes significantly
 
 jobs:
-  process:
+  build_image:
     runs-on: ubuntu-latest
-    timeout-minutes: 60 # Adjust timeout as needed
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        run: |
+          IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/nyc-landmarks-vector-db:latest
+          docker build -t $IMAGE_NAME .
+          docker push $IMAGE_NAME
+
+  generate_batches:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set_matrix.outputs.matrix }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -28,57 +58,67 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11' # Match project version
+          python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Generate processing matrix
+        id: set_matrix
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential libpq-dev python3-dev poppler-utils libssl-dev tesseract-ocr libtesseract-dev
-          python -m pip install --upgrade pip setuptools wheel
-
-          # Debug information
-          echo "Python version:"
-          python --version
-          echo "Pip version:"
-          pip --version
-
-          # Install packages in smaller groups with verbose output
-          echo "Installing core dependencies..."
-          pip install --no-cache-dir -v numpy tqdm requests
-
-          echo "Installing PDF processing libraries..."
-          pip install --no-cache-dir -v pdfminer.six pdfplumber PyPDF2 pypdfium2
-
-          echo "Installing database and vector libraries..."
-          pip install --no-cache-dir -v psycopg2-binary SQLAlchemy pinecone-client
-
-          echo "Installing AI libraries..."
-          pip install --no-cache-dir -v openai tiktoken
-
-          echo "Installing remaining requirements..."
-          pip install --no-cache-dir -r requirements.txt || {
-            echo "::error::Requirements installation failed. Detailed error above."
+          echo "Generating matrix..."
+          MATRIX_JSON=$(python scripts/generate_matrix.py \
+            --total-records ${{ github.event.inputs.total_records }} \
+            --api-page-size ${{ github.event.inputs.api_page_size }} \
+            --job-batch-size ${{ github.event.inputs.job_batch_size }})
+          echo "Matrix JSON: $MATRIX_JSON"
+          # Check if JSON is valid (basic check)
+          if ! echo "$MATRIX_JSON" | python -c "import json, sys; json.load(sys.stdin)"; then
+            echo "::error::Generated matrix JSON is invalid: $MATRIX_JSON"
             exit 1
-          }
+          fi
+          echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
 
-      - name: Run Landmark Processing Script
+  process:
+    needs: [build_image, generate_batches]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.generate_batches.outputs.matrix) }}
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/nyc-landmarks-vector-db:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Landmark Processing Script for Batch (Pages ${{ matrix.start_page }}-${{ matrix.end_page }})
         env:
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-          COREDATASTORE_API_KEY: ${{ secrets.COREDATASTORE_API_KEY }} # Provided as env var
+          COREDATASTORE_API_KEY: ${{ secrets.COREDATASTORE_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           PINECONE_ENVIRONMENT: ${{ secrets.PINECONE_ENVIRONMENT }}
         run: |
-          echo "Starting landmark processing..."
-          ARGS="--pages ${{ github.event.inputs.pages_to_process }}"
-          if [[ "${{ github.event.inputs.parallel_workers }}" -gt 0 ]]; then
-            ARGS="$ARGS --parallel --workers ${{ github.event.inputs.parallel_workers }}"
-          fi
-          if [[ "${{ github.event.inputs.recreate_index }}" == "true" ]]; then
-            ARGS="$ARGS --recreate-index"
+          echo "Starting landmark processing for pages ${{ matrix.start_page }} to ${{ matrix.end_page }}..."
+          ARGS="--start-page ${{ matrix.start_page }} --end-page ${{ matrix.end_page }} --page-size ${{ github.event.inputs.api_page_size }}"
+
+          WORKERS=${{ github.event.inputs.parallel_workers }}
+          if [[ "$WORKERS" -gt 0 ]]; then
+            ARGS="$ARGS --parallel --workers $WORKERS"
+            echo "Using parallel mode with $WORKERS workers for this batch."
+          else
+            echo "Using sequential mode for this batch."
           fi
 
-          # Note: The script's --api-key argument is NOT being used here.
-          # COREDATASTORE_API_KEY is only provided as an environment variable.
-          # If the script specifically needs the --api-key argument, we need to adjust this step.
+          if [[ "${{ github.event.inputs.recreate_index }}" == "true" ]]; then
+             if [[ "${{ matrix.start_page }}" == "1" ]]; then
+               echo "Adding --recreate-index for the first batch."
+               ARGS="$ARGS --recreate-index"
+             else
+               echo "Skipping --recreate-index for subsequent batches."
+             fi
+          fi
+
           python scripts/process_landmarks.py $ARGS
-          echo "Landmark processing finished."
+          echo "Landmark processing finished for pages ${{ matrix.start_page }}-${{ matrix.end_page }}."

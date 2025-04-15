@@ -23,18 +23,23 @@ We are in the initial setup phase of the NYC Landmarks Vector Database project. 
 - Set up test infrastructure for pytest in VS Code
 - Added integration tests for the CoreDataStore MCP server
 - Refactored scripts to use Pydantic for robust data validation
+- Updated the `.github/workflows/process_landmarks.yml` GitHub Action for manual triggering, robust batch processing using a matrix strategy, configurable parallelism, and improved dependency installation.
+- **Added pip caching to the GitHub Actions workflow to speed up dependency installation and reduce redundant downloads in parallel jobs.**
+- **Refactored the CI/CD workflow to build a Docker image with all dependencies in a single job, push it to GitHub Container Registry, and run all parallel processing jobs using this pre-built image. This ensures all jobs share the same environment and eliminates redundant setup steps.**
+- **Created a Dockerfile at the repository root to enable the CI/CD workflow to build and push the Docker image. This resolves the previous job failure due to a missing Dockerfile.**
 
 ## Next Steps
-1. Implement comprehensive error handling and logging in the API client
-2. Optimize MCP server tools for interacting with CoreDataStore API
-3. Optimize chunking strategy based on landmark document analysis
-4. Implement parallel processing for handling multiple PDFs
-5. Add resumable processing to handle interruptions
-6. Develop quality assurance tools for embedding evaluation
-7. Develop vector search functionality
-8. Create API endpoints for vector search
-9. Implement conversation memory system
-10. Build chat API with context awareness
+1. Re-run the GitHub Actions workflow to verify that the Docker image is now built and pushed successfully.
+2. Implement comprehensive error handling and logging in the API client
+3. Optimize MCP server tools for interacting with CoreDataStore API
+4. Optimize chunking strategy based on landmark document analysis
+5. Implement parallel processing for handling multiple PDFs
+6. Add resumable processing to handle interruptions
+7. Develop quality assurance tools for embedding evaluation
+8. Develop vector search functionality
+9. Create API endpoints for vector search
+10. Implement conversation memory system
+11. Build chat API with context awareness
 
 ## Active Decisions and Considerations
 
