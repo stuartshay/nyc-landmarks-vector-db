@@ -7,4 +7,5 @@ This file captures key patterns, preferences, and project intelligence learned d
 *   **Memory Bank Update Before Completion:** Always update relevant Memory Bank files (especially `activeContext.md` and `progress.md`) to reflect the completed work *before* using the `attempt_completion` tool. This ensures the Memory Bank is always synchronized with the project state before I conclude a task.
 
 ## Other Patterns/Notes
+*   **Notebook Debugging:** Use `jupyter nbconvert --to notebook --execute <notebook_path> --output <output_path>` to run notebooks from the terminal for collaborative debugging and output analysis. Review the generated output file.
 (Add other learned patterns here as discovered)

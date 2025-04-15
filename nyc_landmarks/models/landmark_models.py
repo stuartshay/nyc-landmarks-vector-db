@@ -45,7 +45,7 @@ class LpcReportModel(BaseModel):
 
     @field_validator("pdfReportUrl", "photoUrl")
     @classmethod
-    def validate_url(cls, v):
+    def validate_url(cls, v: Optional[str]) -> Optional[str]:
         """Validate that URLs are properly formatted if they exist."""
         if v is not None and not v.startswith(("http://", "https://")):
             raise ValueError("URL must be a valid HTTP or HTTPS URL")
@@ -82,7 +82,7 @@ class PdfInfo(BaseModel):
 
     @field_validator("pdf_url")
     @classmethod
-    def validate_pdf_url(cls, v):
+    def validate_pdf_url(cls, v: str) -> str:
         """Validate that the PDF URL is properly formatted."""
         if not v.startswith(("http://", "https://")):
             raise ValueError("PDF URL must be a valid HTTP or HTTPS URL")

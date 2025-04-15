@@ -78,6 +78,7 @@ We are in the initial setup phase of the NYC Landmarks Vector Database project. 
 - Need to define API endpoints for vector search and chat functionality
 - Consider authentication and rate limiting for the API
 - Determine how to handle conversation context in the chat API
+- **Notebook Debugging:** Using `nbconvert` to execute `notebooks/pinecone_db_stats.ipynb` from the terminal for collaborative debugging and output analysis.
 
 ### Integration Points
 - Implemented comprehensive CoreDataStore API client for accessing NYC landmarks data

@@ -56,6 +56,7 @@
 5. Make changes and commit to feature branches
 6. Submit pull requests for review
 7. CI/CD pipeline runs tests and deploys changes
+8. **Notebook Debugging (Terminal):** Use `jupyter nbconvert --to notebook --execute <notebook_path> --output <output_path>` to run notebooks from the terminal. This captures output and errors, facilitating debugging without a full Jupyter environment. Review the generated output file for analysis.
 
 ## Technical Constraints
 
