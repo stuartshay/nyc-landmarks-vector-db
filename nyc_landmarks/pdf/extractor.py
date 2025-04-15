@@ -23,7 +23,7 @@ logging.basicConfig(level=settings.LOG_LEVEL.value)
 class PDFExtractor:
     """PDF text extraction from CoreDataStore API URLs."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the PDF extractor."""
         self.api_client = CoreDataStoreAPI()
         logger.info("Initialized PDF extractor with CoreDataStore API client")

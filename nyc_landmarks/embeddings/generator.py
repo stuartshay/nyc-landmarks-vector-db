@@ -22,7 +22,7 @@ logging.basicConfig(level=settings.LOG_LEVEL.value)
 class EmbeddingGenerator:
     """Text embedding generation using OpenAI API."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the embedding generator with OpenAI API credentials."""
         self.api_key = settings.OPENAI_API_KEY
         self.model = settings.OPENAI_EMBEDDING_MODEL

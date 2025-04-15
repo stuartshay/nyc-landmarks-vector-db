@@ -28,6 +28,7 @@ The project is in the initial setup and infrastructure development phase. We hav
 - ✅ Scalable batch processing workflow for landmarks via GitHub Actions (`process_landmarks.yml`).
 - ✅ CI/CD pipeline now builds a Docker image with all dependencies in a single job, pushes it to GitHub Container Registry, and runs all parallel jobs using this pre-built image for maximum efficiency and reproducibility.
 - ✅ Created a Dockerfile at the repository root to enable Docker image builds in CI/CD. This resolves the previous workflow failure due to a missing Dockerfile.
+- ✅ Comprehensive Jupyter notebook for analyzing Pinecone vector database statistics.
 
 ## What's Left to Build
 

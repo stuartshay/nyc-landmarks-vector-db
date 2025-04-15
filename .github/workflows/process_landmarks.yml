@@ -23,6 +23,14 @@ on:
         description: 'Total number of landmark records to process (used for batching)'
         required: true
         default: '1765' # Update if the total changes significantly
+      start_page_override:
+        description: 'Override start page number (leave empty to process from beginning)'
+        required: false
+        default: ''
+      end_page_override:
+        description: 'Override end page number (leave empty to process to end)'
+        required: false
+        default: ''
 
 jobs:
   build_image:
@@ -64,11 +72,29 @@ jobs:
         id: set_matrix
         run: |
           echo "Generating matrix..."
-          MATRIX_JSON=$(python scripts/generate_matrix.py \
+
+          # Build command with optional page override parameters
+          CMD="python scripts/generate_matrix.py \
             --total-records ${{ github.event.inputs.total_records }} \
             --api-page-size ${{ github.event.inputs.api_page_size }} \
-            --job-batch-size ${{ github.event.inputs.job_batch_size }})
+            --job-batch-size ${{ github.event.inputs.job_batch_size }}"
+
+          # Add start page override if provided
+          if [[ -n "${{ github.event.inputs.start_page_override }}" ]]; then
+            CMD="$CMD --start-page-override ${{ github.event.inputs.start_page_override }}"
+            echo "Using start page override: ${{ github.event.inputs.start_page_override }}"
+          fi
+
+          # Add end page override if provided
+          if [[ -n "${{ github.event.inputs.end_page_override }}" ]]; then
+            CMD="$CMD --end-page-override ${{ github.event.inputs.end_page_override }}"
+            echo "Using end page override: ${{ github.event.inputs.end_page_override }}"
+          fi
+
+          # Execute the command
+          MATRIX_JSON=$(eval $CMD)
           echo "Matrix JSON: $MATRIX_JSON"
+
           # Check if JSON is valid (basic check)
           if ! echo "$MATRIX_JSON" | python -c "import json, sys; json.load(sys.stdin)"; then
             echo "::error::Generated matrix JSON is invalid: $MATRIX_JSON"

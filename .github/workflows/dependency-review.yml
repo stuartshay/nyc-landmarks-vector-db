@@ -8,6 +8,12 @@ on:
       - 'requirements.txt'
       - 'setup.py'
       - '.github/workflows/**'
+  push:
+    branches: [master]
+    paths:
+      - 'requirements.txt'
+      - 'setup.py'
+      - '.github/workflows/**'
 
 jobs:
   dependency-review:
@@ -24,6 +30,8 @@ jobs:
 
   security-scan:
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

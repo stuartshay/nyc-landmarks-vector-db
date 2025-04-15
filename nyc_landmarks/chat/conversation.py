@@ -33,7 +33,7 @@ class Conversation:
 
     def add_message(
         self, role: str, content: str, metadata: Optional[Dict[str, Any]] = None
-    ):
+    ) -> None:
         """Add a message to the conversation.
 
         Args:

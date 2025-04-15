@@ -16,7 +16,7 @@ from pinecone import Index, create_index, delete_index, init, list_indexes  # ty
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.vectordb.enhanced_metadata import get_metadata_collector
 
-# Configure logging
+# Configure logging the
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=settings.LOG_LEVEL.value)
 
@@ -123,15 +123,83 @@ class PineconeDB:
         """
         if not self.index:
             logger.error("Pinecone index not initialized")
+            logger.error("Pinecone index not initialized")
+            logger.error("Pinecone index not initialized")
             return {"error": "Index not initialized"}
 
         try:
-            stats = self.index.describe_index_stats()
-            # Explicit type conversion to ensure return type matches annotation
-            return dict(stats)
+            # Call describe_index_stats on the index object instance
+            stats_response = self.index.describe_index_stats()
+
+            # Check if the response is None *before* trying to convert it
+            if stats_response is None:
+                logger.error(
+                    f"Received None response from self.index.describe_index_stats for index '{self.index_name}'"
+                )
+                return {"error": "Received no stats from Pinecone (None response)"}
+
+            # Proceed if the response is not None
+            logger.debug(
+                f"describe_index_stats response type: {type(stats_response)}, value: {stats_response}"
+            )
+            # Manually build dictionary from attributes instead of direct dict() conversion
+            try:
+                stats_dict = {
+                    "dimension": getattr(stats_response, "dimension", None),
+                    "index_fullness": getattr(stats_response, "index_fullness", None),
+                    "namespaces": getattr(
+                        stats_response, "namespaces", {}
+                    ),  # Default to empty dict
+                    "total_vector_count": getattr(
+                        stats_response, "total_vector_count", 0
+                    ),  # Default to 0
+                }
+                # Process namespaces safely
+                namespaces_obj = getattr(stats_response, "namespaces", None)
+                if isinstance(namespaces_obj, dict):
+                    # If it's already a dict, use it directly
+                    stats_dict["namespaces"] = namespaces_obj
+                elif hasattr(namespaces_obj, "items"):
+                    # If it's dict-like (has items method), convert it
+                    try:
+                        stats_dict["namespaces"] = {
+                            k: dict(v)
+                            for k, v in namespaces_obj.items()
+                            if isinstance(v, dict)
+                        }
+                    except Exception as ns_conv_e:
+                        logger.warning(
+                            f"Could not fully convert namespaces object to dict: {ns_conv_e}"
+                        )
+                        stats_dict["namespaces"] = {}  # Fallback to empty dict
+                else:
+                    stats_dict["namespaces"] = (
+                        {}
+                    )  # Default if namespaces is None or not dict-like
+
+                logger.debug(
+                    f"Successfully retrieved and built index stats dict: {stats_dict}"
+                )
+                return stats_dict
+            except Exception as build_e:
+                logger.exception(
+                    f"Error building dictionary from stats_response: {build_e}",
+                    exc_info=True,
+                )
+                return {"error": f"Error processing stats response: {str(build_e)}"}
+
         except Exception as e:
-            logger.error(f"Error getting index stats: {e}")
-            return {"error": str(e)}
+            error_message = "Unknown error"
+            try:
+                # Try to get a string representation safely
+                error_message = str(e)
+            except Exception as str_e:
+                logger.error(f"Could not convert exception to string: {str_e}")
+
+            logger.exception(
+                f"Unexpected error getting index stats: {error_message}", exc_info=True
+            )  # Log full traceback
+            return {"error": f"Unexpected error getting stats: {error_message}"}
 
     def store_vector(
         self, vector_id: str, vector: List[float], metadata: Dict[str, Any]
