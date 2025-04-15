@@ -46,7 +46,7 @@ jobs:
           mkdir -p data/pdfs
 
           # Run the pipeline
-          python scripts/process_landmarks.py --pages $PAGES --download --limit $DOWNLOAD_LIMIT
+          python scripts/process_landmarks.py --start-page 1 --end-page $PAGES --page-size 10 --recreate-index
 
       - name: Upload pipeline logs
         uses: actions/upload-artifact@v3
