@@ -6,8 +6,7 @@ using the CoreDataStore API to retrieve landmark information.
 """
 
 import logging
-import os
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import Any, Dict, List, Optional
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
@@ -20,7 +19,7 @@ logging.basicConfig(level=settings.LOG_LEVEL.value)
 class DbClient:
     """Database client interface for CoreDataStore API."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the CoreDataStore API client."""
         logger.info("Using CoreDataStore API client")
         self.client = CoreDataStoreAPI()

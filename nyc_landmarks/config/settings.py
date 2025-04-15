@@ -7,13 +7,12 @@ and fallback to environment variables for local development.
 """
 
 import json
-import os
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Optional
 
 from dotenv import load_dotenv
 from google.cloud import secretmanager
-from pydantic import Field, field_validator
+from pydantic import Field, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Load environment variables from .env file if it exists
@@ -75,13 +74,6 @@ class Settings(BaseSettings):
         default=True
     )  # Set API as the default data source
 
-    # PostgreSQL settings
-    POSTGRES_USER: str = Field(default="")
-    POSTGRES_PASSWORD: str = Field(default="")
-    POSTGRES_HOST: str = Field(default="localhost")
-    POSTGRES_PORT: str = Field(default="5432")
-    POSTGRES_DB: str = Field(default="")
-
     # Application settings
     APP_HOST: str = Field(default="0.0.0.0")
     APP_PORT: int = Field(default=8000)
@@ -95,16 +87,14 @@ class Settings(BaseSettings):
         default=3600
     )  # Time to live for conversation history in seconds
 
-    # PostgreSQL connection string property removed as we're using CoreDataStore API exclusively
-
     @field_validator("PINECONE_DIMENSIONS", mode="before")
     @classmethod
-    def match_embedding_dimensions(cls, v: int, info) -> int:
+    def match_embedding_dimensions(cls, v: int, info: ValidationInfo) -> int:
         """Ensure Pinecone dimensions match OpenAI embedding dimensions."""
         values = info.data
         embedding_dimensions = values.get("OPENAI_EMBEDDING_DIMENSIONS")
         if embedding_dimensions is not None:
-            return embedding_dimensions
+            return int(embedding_dimensions)  # Ensure an integer is returned
         return v
 
     model_config = SettingsConfigDict(

@@ -19,7 +19,7 @@ logging.basicConfig(level=settings.LOG_LEVEL.value)
 class EnhancedMetadataCollector:
     """Collects and formats enhanced metadata from CoreDataStore API."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the metadata collector with database client."""
         self.db_client = get_db_client()
         # Check if we're using the CoreDataStore API
@@ -39,7 +39,9 @@ class EnhancedMetadataCollector:
 
         # If not using CoreDataStore API, return basic metadata
         if not self.using_api:
-            logger.info(f"Using basic metadata for landmark {landmark_id} (PostgreSQL mode)")
+            logger.info(
+                f"Using basic metadata for landmark {landmark_id} (PostgreSQL mode)"
+            )
             return metadata
 
         try:
@@ -50,24 +52,28 @@ class EnhancedMetadataCollector:
             buildings = self.db_client.get_landmark_buildings(landmark_id, limit=1)
             if buildings:
                 building = buildings[0]
-                metadata.update({
-                    "bbl": building.get("bbl", ""),
-                    "bin": building.get("bin", ""),
-                    "block": building.get("block", ""),
-                    "lot": building.get("lot", ""),
-                    "latitude": building.get("latitude", ""),
-                    "longitude": building.get("longitude", ""),
-                })
+                metadata.update(
+                    {
+                        "bbl": building.get("bbl", ""),
+                        "bin": building.get("bin", ""),
+                        "block": building.get("block", ""),
+                        "lot": building.get("lot", ""),
+                        "latitude": building.get("latitude", ""),
+                        "longitude": building.get("longitude", ""),
+                    }
+                )
 
             # 2. Add photo information (reference to first photo)
             photos = self.db_client.get_landmark_photos(landmark_id, limit=1)
             if photos:
                 photo = photos[0]
-                metadata.update({
-                    "has_photos": True,
-                    "photo_collection": photo.get("collection", ""),
-                    "photo_date_period": photo.get("date_period", ""),
-                })
+                metadata.update(
+                    {
+                        "has_photos": True,
+                        "photo_collection": photo.get("collection", ""),
+                        "photo_date_period": photo.get("date_period", ""),
+                    }
+                )
             else:
                 metadata["has_photos"] = False
 
@@ -76,13 +82,15 @@ class EnhancedMetadataCollector:
             if pluto_data:
                 # Extract key PLUTO fields from the first record
                 pluto = pluto_data[0]
-                metadata.update({
-                    "has_pluto_data": True,
-                    "year_built": pluto.get("yearBuilt", ""),
-                    "land_use": pluto.get("landUse", ""),
-                    "historic_district": pluto.get("historicDistrict", ""),
-                    "zoning_district": pluto.get("zoneDist1", ""),
-                })
+                metadata.update(
+                    {
+                        "has_pluto_data": True,
+                        "year_built": pluto.get("yearBuilt", ""),
+                        "land_use": pluto.get("landUse", ""),
+                        "historic_district": pluto.get("historicDistrict", ""),
+                        "zoning_district": pluto.get("zoneDist1", ""),
+                    }
+                )
             else:
                 metadata["has_pluto_data"] = False
 
@@ -94,7 +102,9 @@ class EnhancedMetadataCollector:
             # Fall back to basic metadata
             return metadata
 
-    def collect_batch_metadata(self, landmark_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+    def collect_batch_metadata(
+        self, landmark_ids: List[str]
+    ) -> Dict[str, Dict[str, Any]]:
         """Collect enhanced metadata for multiple landmarks.
 
         Args:

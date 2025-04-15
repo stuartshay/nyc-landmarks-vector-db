@@ -100,7 +100,7 @@ async def chat_message(
         request: Chat request model
         embedding_generator: EmbeddingGenerator instance
         vector_db: PineconeDB instance
-        postgres_db: PostgresDB instance
+        db_client: Database client instance
 
     Returns:
         ChatResponse with assistant's response and conversation history

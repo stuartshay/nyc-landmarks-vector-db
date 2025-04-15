@@ -268,7 +268,7 @@ async def search_landmarks_text(
     Args:
         q: Search query
         limit: Maximum number of landmarks to return
-        postgres_db: PostgresDB instance
+        db_client: Database client instance
 
     Returns:
         LandmarkListResponse with matching landmarks
