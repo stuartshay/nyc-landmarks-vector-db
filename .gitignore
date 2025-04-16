@@ -157,6 +157,7 @@ out/
 data/
 logs/
 temp/
+test_output/
 
 # Database
 *.db
