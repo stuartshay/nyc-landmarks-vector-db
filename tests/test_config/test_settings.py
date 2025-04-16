@@ -5,8 +5,6 @@ Tests for the configuration settings module.
 import os
 from unittest.mock import patch
 
-import pytest
-
 from nyc_landmarks.config.settings import Environment, LogLevel, Settings
 
 

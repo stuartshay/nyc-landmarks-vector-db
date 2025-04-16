@@ -4,8 +4,13 @@ import math
 import sys
 
 
-def generate_matrix(total_records: int, api_page_size: int, job_batch_size: int,
-                start_page_override: int = None, end_page_override: int = None) -> str:
+def generate_matrix(
+    total_records: int,
+    api_page_size: int,
+    job_batch_size: int,
+    start_page_override: int = None,
+    end_page_override: int = None,
+) -> str:
     """
     Generates a GitHub Actions matrix configuration JSON for batch processing.
 
@@ -33,19 +38,28 @@ def generate_matrix(total_records: int, api_page_size: int, job_batch_size: int,
 
     # Apply page range overrides if provided
     effective_start_page = start_page_override if start_page_override is not None else 1
-    effective_end_page = end_page_override if end_page_override is not None else total_pages
+    effective_end_page = (
+        end_page_override if end_page_override is not None else total_pages
+    )
 
     # Validate page range
     if effective_start_page < 1:
         raise ValueError(f"Start page ({effective_start_page}) cannot be less than 1")
     if effective_end_page > total_pages:
-        print(f"Warning: End page ({effective_end_page}) exceeds total pages ({total_pages}), using {total_pages} instead",
-              file=sys.stderr)
+        print(
+            f"Warning: End page ({effective_end_page}) exceeds total pages ({total_pages}), using {total_pages} instead",
+            file=sys.stderr,
+        )
         effective_end_page = total_pages
     if effective_start_page > effective_end_page:
-        raise ValueError(f"Start page ({effective_start_page}) cannot be greater than end page ({effective_end_page})")
+        raise ValueError(
+            f"Start page ({effective_start_page}) cannot be greater than end page ({effective_end_page})"
+        )
 
-    print(f"Generating matrix for pages {effective_start_page} to {effective_end_page}", file=sys.stderr)
+    print(
+        f"Generating matrix for pages {effective_start_page} to {effective_end_page}",
+        file=sys.stderr,
+    )
 
     matrix_includes = []
     for i in range(effective_start_page - 1, effective_end_page, job_batch_size):
@@ -81,13 +95,13 @@ if __name__ == "__main__":
         "--start-page-override",
         type=int,
         required=False,
-        help="Override for starting page number."
+        help="Override for starting page number.",
     )
     parser.add_argument(
         "--end-page-override",
         type=int,
         required=False,
-        help="Override for ending page number."
+        help="Override for ending page number.",
     )
 
     args = parser.parse_args()
@@ -98,7 +112,7 @@ if __name__ == "__main__":
             args.api_page_size,
             args.job_batch_size,
             args.start_page_override,
-            args.end_page_override
+            args.end_page_override,
         )
         print(matrix_json)  # Output the JSON to stdout
     except ValueError as e:

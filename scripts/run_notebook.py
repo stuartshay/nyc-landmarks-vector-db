@@ -3,8 +3,10 @@
 Script to run a Jupyter notebook and capture any errors
 """
 import sys
+
 import nbformat
-from nbconvert.preprocessors import ExecutePreprocessor, CellExecutionError
+from nbconvert.preprocessors import CellExecutionError, ExecutePreprocessor
+
 
 def run_notebook(notebook_path):
     """Run a notebook and print the first error encountered"""
@@ -18,7 +20,7 @@ def run_notebook(notebook_path):
 
         # Try to execute the notebook
         try:
-            ep.preprocess(nb, {'metadata': {'path': '.'}})
+            ep.preprocess(nb, {"metadata": {"path": "."}})
             print("Notebook executed successfully without errors!")
             return True
         except CellExecutionError as e:
@@ -36,6 +38,7 @@ def run_notebook(notebook_path):
     except Exception as e:
         print(f"Error loading or processing the notebook: {e}")
         return False
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:

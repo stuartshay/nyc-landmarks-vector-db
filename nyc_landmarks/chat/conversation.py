@@ -8,7 +8,7 @@ for the chatbot functionality.
 import logging
 import time
 import uuid
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional
 
 from nyc_landmarks.config.settings import settings
 

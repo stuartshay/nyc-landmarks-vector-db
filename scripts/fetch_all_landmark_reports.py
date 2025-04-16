@@ -144,9 +144,7 @@ def fetch_with_mcp_client(
         class McpClient:
             def use_mcp_tool(self, server_name, tool_name, arguments):
                 return use_mcp_tool(
-                    server_name=server_name,
-                    tool_name=tool_name,
-                    arguments=arguments
+                    server_name=server_name, tool_name=tool_name, arguments=arguments
                 )
 
         # Start timing
@@ -169,7 +167,9 @@ def fetch_with_mcp_client(
         ensure_directory_exists(output_dir)
 
         # Define file path
-        all_reports_path = Path(output_dir) / f"all_landmark_reports_mcp_{timestamp}.json"
+        all_reports_path = (
+            Path(output_dir) / f"all_landmark_reports_mcp_{timestamp}.json"
+        )
 
         # Save the results to JSON
         with open(all_reports_path, "w") as f:
@@ -181,11 +181,13 @@ def fetch_with_mcp_client(
         pdf_info = []
         for report in all_reports:
             if "pdfReportUrl" in report and report["pdfReportUrl"]:
-                pdf_info.append({
-                    "id": report.get("lpNumber", ""),
-                    "name": report.get("name", ""),
-                    "pdf_url": report["pdfReportUrl"],
-                })
+                pdf_info.append(
+                    {
+                        "id": report.get("lpNumber", ""),
+                        "name": report.get("name", ""),
+                        "pdf_url": report["pdfReportUrl"],
+                    }
+                )
 
         # Save PDF URLs to JSON
         pdf_urls_path = Path(output_dir) / f"all_pdf_urls_mcp_{timestamp}.json"
@@ -217,9 +219,7 @@ def main():
     parser.add_argument(
         "--max-pages", type=int, help="Maximum number of pages to fetch (for testing)"
     )
-    parser.add_argument(
-        "--api-key", type=str, help="CoreDataStore API key (optional)"
-    )
+    parser.add_argument("--api-key", type=str, help="CoreDataStore API key (optional)")
     parser.add_argument(
         "--output-dir", type=str, default="logs", help="Directory to store output files"
     )

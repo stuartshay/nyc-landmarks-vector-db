@@ -11,9 +11,7 @@ try:
     from pinecone import Pinecone
 
     print("Initializing Pinecone connection...")
-    pc = Pinecone(
-        api_key=os.environ["PINECONE_API_KEY"]
-    )
+    pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
     print("Listing Pinecone indexes to verify connectivity...")
     indexes = pc.list_indexes()
     print(f"Successfully connected to Pinecone. Available indexes: {indexes.names()}")

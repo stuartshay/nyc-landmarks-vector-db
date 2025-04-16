@@ -7,9 +7,7 @@ direct client and MCP server approaches.
 """
 
 import sys
-import unittest
 from pathlib import Path
-from typing import Dict, List, Set
 
 import pytest
 

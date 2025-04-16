@@ -5,7 +5,6 @@ These tests validate the core functionality of the script, including
 the API client, report fetching, and PDF URL extraction.
 """
 
-import json
 import os
 
 # Add parent directory to path so we can import the script
@@ -14,18 +13,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 from requests.exceptions import RequestException
 
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
-from nyc_landmarks.models.landmark_models import (
-    ApiError,
-    LpcReportModel,
-    LpcReportResponse,
-    PdfInfo,
-    ProcessingResult,
-)
 from scripts.fetch_landmark_reports import CoreDataStoreClient, LandmarkReportFetcher
 
 

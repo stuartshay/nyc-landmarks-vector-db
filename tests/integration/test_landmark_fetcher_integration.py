@@ -13,11 +13,7 @@ from pathlib import Path
 # Add the project root to the path so we can import modules
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
-from nyc_landmarks.models.landmark_models import (
-    LpcReportModel,
-    LpcReportResponse,
-    PdfInfo,
-)
+from nyc_landmarks.models.landmark_models import LpcReportModel, PdfInfo
 from scripts.fetch_landmark_reports import LandmarkReportFetcher
 
 

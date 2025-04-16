@@ -23,8 +23,8 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from nyc_landmarks.config.settings import settings
-from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
+from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -87,13 +87,11 @@ def validate_pinecone():
                 "total_chunks": 1,
                 "source_type": "validation",
                 "processing_date": time.strftime("%Y-%m-%d"),
-            }
+            },
         }
 
         vector_ids = pinecone_db.store_chunks(
-            chunks=[test_chunk],
-            id_prefix=test_id,
-            landmark_id="VALIDATION-TEST"
+            chunks=[test_chunk], id_prefix=test_id, landmark_id="VALIDATION-TEST"
         )
 
         if not vector_ids:
@@ -114,7 +112,7 @@ def validate_pinecone():
         matches = pinecone_db.query_vectors(
             query_vector=test_embedding,
             top_k=5,
-            filter_dict={"landmark_id": "VALIDATION-TEST"}
+            filter_dict={"landmark_id": "VALIDATION-TEST"},
         )
 
         if not matches:
@@ -158,5 +156,7 @@ if __name__ == "__main__":
     else:
         logger.info("Validation PASSED")
         print("\nTo run the landmark processing script locally:")
-        print("python scripts/process_landmarks.py --start-page 1 --end-page 2 --page-size 10 --recreate-index")
+        print(
+            "python scripts/process_landmarks.py --start-page 1 --end-page 2 --page-size 10 --recreate-index"
+        )
         sys.exit(0)

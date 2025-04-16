@@ -9,9 +9,8 @@ This module provides tests to verify:
 
 import logging
 import time
+
 import pytest
-import os
-from typing import List, Dict, Any
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB

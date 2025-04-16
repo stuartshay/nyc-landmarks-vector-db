@@ -9,7 +9,6 @@ These tests verify that the entire pipeline works correctly:
 """
 
 import logging
-import os
 import shutil
 import tempfile
 import time
