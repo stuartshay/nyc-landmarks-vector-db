@@ -155,13 +155,19 @@ class PineconeDB:
                             try:
                                 # Try to convert to dict if it has dict-like behavior
                                 if hasattr(ns_data, "items"):
-                                    namespaces_dict[ns_name] = {k: v for k, v in ns_data.items()}
+                                    namespaces_dict[ns_name] = {
+                                        k: v for k, v in ns_data.items()
+                                    }
                                 else:
                                     # If it's already a dict or similar
                                     namespaces_dict[ns_name] = ns_data
                             except Exception as ns_e:
-                                logger.warning(f"Could not process namespace data for {ns_name}: {ns_e}")
-                                namespaces_dict[ns_name] = {"error": "Could not process data"}
+                                logger.warning(
+                                    f"Could not process namespace data for {ns_name}: {ns_e}"
+                                )
+                                namespaces_dict[ns_name] = {
+                                    "error": "Could not process data"
+                                }
                     stats_dict["namespaces"] = namespaces_dict
                 else:
                     stats_dict["namespaces"] = {}
@@ -524,9 +530,7 @@ class PineconeDB:
         try:
             # Create index with new API
             self.pc.create_index(
-                name=self.index_name,
-                dimension=self.dimensions,
-                metric=self.metric
+                name=self.index_name, dimension=self.dimensions, metric=self.metric
             )
             logger.warning(
                 "Note: GCP starter tier may not allow creating new indexes. "

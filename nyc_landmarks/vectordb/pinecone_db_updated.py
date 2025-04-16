@@ -497,9 +497,7 @@ class PineconeDB:
         try:
             # Create index with new API
             self.pc.create_index(
-                name=self.index_name,
-                dimension=self.dimensions,
-                metric=self.metric
+                name=self.index_name, dimension=self.dimensions, metric=self.metric
             )
             logger.warning(
                 "Note: GCP starter tier may not allow creating new indexes. "
