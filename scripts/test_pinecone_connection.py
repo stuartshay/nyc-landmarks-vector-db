@@ -1,7 +1,18 @@
 #!/usr/bin/env python3
 """
 Simple script to test Pinecone DB connectivity.
-Used as a pre-check in GitHub Actions workflow.
+
+Purpose:
+    - Used as a pre-check in GitHub Actions workflow or other CI/CD pipelines.
+    - Provides a fast, direct check of Pinecone API connectivity using only the official SDK.
+    - Returns exit code 0 on success, 1 on failure, for easy integration with automation tools.
+    - Does not depend on project-specific code or configuration, making it robust for infrastructure checks.
+
+Usage:
+    python scripts/test_pinecone_connection.py
+
+Environment:
+    Requires the PINECONE_API_KEY environment variable to be set.
 """
 
 import os
