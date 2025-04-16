@@ -76,16 +76,11 @@ class PineconeDB:
     def _connect_to_index(self) -> None:
         """
         Connect to the Pinecone index without recreating it.
-
-        Attempts to establish a connection to the pre-existing Pinecone index specified
-        in the initialization parameters. Will try to connect even if the index appears
-        to not exist in case of temporary API inconsistencies.
-
-        Raises:
-            Exception: If connection to the index fails, the exception is logged and re-raised.
         """
+        if self.pc is None:
+            logger.error("Pinecone client is not initialized.")
+            raise RuntimeError("Pinecone client is not initialized.")
         try:
-            # Check if index exists
             indexes = self.pc.list_indexes()
             if self.index_name not in indexes.names():
                 logger.warning(
@@ -95,8 +90,6 @@ class PineconeDB:
                 logger.info(
                     "Attempting to connect anyway in case of list_indexes inconsistency..."
                 )
-
-            # Connect to existing index
             self.index = self.pc.Index(self.index_name)
             logger.info(f"Connected to Pinecone index: {self.index_name}")
         except Exception as e:
@@ -106,18 +99,10 @@ class PineconeDB:
     def get_index_stats(self) -> Dict[str, Any]:
         """
         Get statistics about the index.
-
-        Retrieves information about the current state of the Pinecone index,
-        including vector count, namespaces, and dimension information.
-
-        Returns:
-            Dict[str, Any]: Dictionary containing index statistics or an error message
-                            if the operation fails
         """
-        if not self.index:
+        if self.index is None:
             logger.error("Pinecone index not initialized")
             return {"error": "Index not initialized"}
-
         try:
             # Call describe_index_stats on the index object instance
             stats_response = self.index.describe_index_stats()
