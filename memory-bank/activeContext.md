@@ -97,9 +97,27 @@ We are in the initial setup phase of the NYC Landmarks Vector Database project. 
 - Determine how to handle conversation context in the chat API
 
 ### Notebook Management
-- **Notebook Debugging:** Using `nbconvert` to execute Jupyter notebooks from the terminal for collaborative debugging and output analysis
+- **Notebook Execution Workflow:**
+  - Consolidated script `run_all_notebooks.py` serves as the primary tool for notebook execution
+  - Supports running all notebooks or a single notebook with configurable options:
+    ```
+    # Run all notebooks in the default directory
+    python scripts/run_all_notebooks.py
+
+    # Run a specific notebook
+    python scripts/run_all_notebooks.py --notebook notebooks/landmark_query_testing.ipynb
+
+    # Customize output directory
+    python scripts/run_all_notebooks.py --output-dir custom_output/notebooks
+
+    # Set cell execution timeout
+    python scripts/run_all_notebooks.py --timeout 1200
+    ```
+  - All executed notebooks are saved with outputs to `test_output/notebooks` with `_executed` suffix
+  - Execution results provide summary report of successful/failed notebooks
+
 - **Notebook Standardization:** Maintaining only the latest and most functional versions of notebooks to avoid duplication and confusion
-- **Notebook Execution:** All notebooks are executed using `jupyter nbconvert` to generate output files for review and verification
+- **Notebook Execution:** All notebooks are executed using the project's script to verify functionality
 - **Executed Notebook Storage:** Store executed notebooks in the `test_output/notebooks` directory (excluded from source control) to:
   - Keep the repository clean and minimize unnecessary git diffs
   - Maintain a clear separation between source notebooks and their execution results
