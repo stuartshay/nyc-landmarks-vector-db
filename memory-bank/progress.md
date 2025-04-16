@@ -15,6 +15,16 @@ The project is in the initial setup and infrastructure development phase. We hav
 - ✅ Added integration tests that utilize the CoreDataStore MCP server
 - ✅ Set up VS Code test configuration for pytest
 - ✅ Refactored scripts to use Pydantic models for validation
+- ✅ Created a basic vector search testing notebook to form the foundation of the Query API Enhancement
+- ✅ Established notebook standardization by removing duplicates and fixing compatibility issues
+- ✅ Implemented notebook testing via terminal execution with `jupyter nbconvert`
+- ✅ Created dedicated `test_output/notebooks` directory for executed notebooks (excluded from git)
+- ✅ Implemented `run_all_notebooks.py` script for easy testing of all or individual notebooks
+- ✅ Verified that all current notebooks execute successfully with proper output
+- ✅ Added nbstripout pre-commit hook to automatically clear notebook outputs before committing
+- ✅ Added nbQA pre-commit hooks to enforce consistent style and quality in notebook code cells
+- ✅ Established comprehensive notebook standards for structure, documentation, and code quality
+- ✅ Updated project dependencies to include notebook linting and output management tools
 
 ## What Works
 - ✅ Comprehensive CoreDataStore API client implementation
@@ -28,7 +38,12 @@ The project is in the initial setup and infrastructure development phase. We hav
 - ✅ Scalable batch processing workflow for landmarks via GitHub Actions (`process_landmarks.yml`).
 - ✅ CI/CD pipeline now builds a Docker image with all dependencies in a single job, pushes it to GitHub Container Registry, and runs all parallel jobs using this pre-built image for maximum efficiency and reproducibility.
 - ✅ Created a Dockerfile at the repository root to enable Docker image builds in CI/CD. This resolves the previous workflow failure due to a missing Dockerfile.
-- ✅ Comprehensive Jupyter notebook for analyzing Pinecone vector database statistics.
+- ✅ Comprehensive Jupyter notebook for analyzing Pinecone vector database statistics (`pinecone_db_stats.ipynb`)
+- ✅ Basic vector search testing with `landmark_query_testing.ipynb` notebook, including query execution, filtering, and performance metrics
+- ✅ Standardized notebook management to maintain only the latest versions with successful execution outputs
+- ✅ Implemented notebook execution validation using `jupyter nbconvert --to notebook --execute` to verify functionality
+- ✅ Organized notebook outputs in a dedicated `test_output/notebooks` directory to keep repository clean
+- ✅ Established a formal workflow for notebook execution with automated output saving
 
 ## What's Left to Build
 
@@ -60,7 +75,8 @@ The project is in the initial setup and infrastructure development phase. We hav
 - [ ] Develop quality assurance tools for embedding evaluation
 
 ### Phase 3: Query & Chat API Development
-- [ ] Develop vector search functionality
+- [x] Develop basic vector search functionality with testing notebook
+- [ ] Enhance vector search with advanced filtering and relevance metrics
 - [ ] Create API endpoints for vector search
 - [ ] Implement conversation memory system
 - [ ] Build chat API with context awareness
@@ -93,5 +109,6 @@ The project is in the initial setup and infrastructure development phase. We hav
 1. **Testing Improvements**: Add end-to-end tests and set up CI/CD pipeline
 2. **Error Handling**: Implement comprehensive error handling and logging
 3. **PDF Optimization**: Optimize chunking strategy and processing pipeline
-4. **Vector Search**: Develop vector search functionality with filtering
-5. **Chat API**: Implement conversation memory and context-aware chat API
+4. **Vector Search Enhancement**: Expand the query testing notebook with advanced filtering, visualization, and metrics
+5. **Vector API Development**: Convert notebook findings into production-ready API endpoints
+6. **Chat API**: Implement conversation memory and context-aware chat API

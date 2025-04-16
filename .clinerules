@@ -6,6 +6,13 @@ This file captures key patterns, preferences, and project intelligence learned d
 
 *   **Memory Bank Update Before Completion:** Always update relevant Memory Bank files (especially `activeContext.md` and `progress.md`) to reflect the completed work *before* using the `attempt_completion` tool. This ensures the Memory Bank is always synchronized with the project state before I conclude a task.
 
+*   **Notebook Terminal Testing:** All Jupyter notebooks must be tested using `jupyter nbconvert --to notebook --execute <notebook_path> --output <output_path>` to run notebooks from the terminal for collaborative debugging and output analysis. This ensures notebooks run correctly in headless environments (CI/CD pipelines), generate output files that can be committed for review, and identifies errors early in the development process.
+
+*   **Notebook Output Clearing:** All Jupyter notebook cell outputs MUST be cleared before committing using the nbstripout pre-commit hook. This keeps the repository clean and focuses version control on actual code changes rather than outputs.
+
+*   **Notebook Linting and Standards:** All Jupyter notebooks must follow the project notebook standards defined in `memory-bank/notebook_standards.md`, including proper documentation, code organization, and formatting. Pre-commit hooks (nbqa-black, nbqa-isort, nbqa-flake8) enforce these standards automatically.
+
 ## Other Patterns/Notes
-*   **Notebook Debugging:** Use `jupyter nbconvert --to notebook --execute <notebook_path> --output <output_path>` to run notebooks from the terminal for collaborative debugging and output analysis. Review the generated output file.
-(Add other learned patterns here as discovered)
+*   **Vector Search Implementation:** The `landmark_query_testing.ipynb` notebook establishes the foundation for the Query API Enhancement, testing basic vector search capabilities, filtering options, and performance metrics before implementation in the production API.
+
+*   **Notebook Content Organization:** All notebooks should follow a consistent structure with clear sections: introduction, imports, setup, analysis, and conclusion. Each section should be properly documented with markdown cells explaining the purpose and approach.
