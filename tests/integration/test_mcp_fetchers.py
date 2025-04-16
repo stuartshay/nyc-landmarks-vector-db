@@ -13,7 +13,10 @@ import pytest
 # Add project root to path
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
-from nyc_landmarks.db.fetchers import fetch_all_landmarks_for_report, fetch_all_lpc_reports
+from nyc_landmarks.db.fetchers import (
+    fetch_all_landmarks_for_report,
+    fetch_all_lpc_reports,
+)
 
 
 class MockMcpClient:
@@ -284,8 +287,8 @@ def test_mcp_pagination_direct():
         assert len(page2_response["results"]) > 0, "No items in page 2"
 
         # Verify pages don't overlap
-        page1_ids = set(item["lpNumber"] for item in response["results"])
-        page2_ids = set(item["lpNumber"] for item in page2_response["results"])
+        page1_ids = {item["lpNumber"] for item in response["results"]}
+        page2_ids = {item["lpNumber"] for item in page2_response["results"]}
         assert page1_ids.isdisjoint(page2_ids), "Overlapping items between pages"
 
         # Test with a different page size
