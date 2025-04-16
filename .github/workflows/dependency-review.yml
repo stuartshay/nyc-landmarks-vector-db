@@ -50,7 +50,7 @@ jobs:
         run: bandit -r nyc_landmarks/ -f sarif -o bandit-results.sarif || true
 
       - name: Check for vulnerable dependencies
-        run: safety check -r requirements.txt || true
+        run: pip install safety && python -m safety scan -r requirements.txt || true
 
       - name: Upload security scan results
         uses: github/codeql-action/upload-sarif@v3
