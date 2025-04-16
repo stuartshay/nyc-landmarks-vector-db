@@ -18,15 +18,21 @@ on:
 jobs:
   dependency-review:
     runs-on: ubuntu-latest
+    # This job will only run on pull request events
+    if: github.event_name == 'pull_request'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Dependency Review
         uses: actions/dependency-review-action@v4
         with:
           deny-licenses: 'GPL-3.0, AGPL-3.0'
           fail-on-severity: 'high'
+          # For pull requests, these are set automatically
+          # For other events, we'd need to specify these manually
 
   security-scan:
     runs-on: ubuntu-latest
