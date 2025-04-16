@@ -7,7 +7,7 @@ from landmark PDFs to prepare for embedding generation.
 
 import logging
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import tiktoken
 

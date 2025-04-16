@@ -10,8 +10,8 @@ import time
 import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
-# Import pinecone-client (using v2.2.2 API)
-from pinecone import Index, create_index, delete_index, init, list_indexes  # type: ignore
+# Import pinecone-client (using updated API)
+from pinecone import Pinecone  # type: ignore
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.vectordb.enhanced_metadata import get_metadata_collector
@@ -31,11 +31,11 @@ class PineconeDB:
 
     Attributes:
         api_key (str): Pinecone API key from settings
-        environment (str): Pinecone environment (region) from settings
         index_name (str): Name of the Pinecone index to use
         namespace (str): Namespace within the index for vector storage
         dimensions (int): Dimensionality of vectors to store
         metric (str): Distance metric for vector similarity (e.g., "cosine")
+        pc: Pinecone client instance
         index: Pinecone index instance for operations
         metadata_collector: Collector for enhanced metadata
     """
@@ -44,57 +44,45 @@ class PineconeDB:
         """
         Initialize the Pinecone database with credentials.
 
-        Sets up the Pinecone client using API key and environment settings from
-        the application configuration. If credentials are available, it will
-        attempt to connect to the specified index.
+        Sets up the Pinecone client using API key from the application configuration.
+        If credentials are available, it will attempt to connect to the specified index.
 
         Raises:
             Various exceptions from the Pinecone library may be caught and logged.
         """
         self.api_key = settings.PINECONE_API_KEY
-        self.environment = settings.PINECONE_ENVIRONMENT
         self.index_name = settings.PINECONE_INDEX_NAME
         self.namespace = settings.PINECONE_NAMESPACE
         self.dimensions = settings.PINECONE_DIMENSIONS
         self.metric = settings.PINECONE_METRIC
+        self.pc = None
         self.index = None
         self.metadata_collector = get_metadata_collector()
 
         # Initialize Pinecone client if API key is provided
         if self.api_key:
             try:
-                # Use GCP environment for index access
-                # Fixed environment for Pinecone with GCP
-                environment = "us-central1-gcp"
-                # Override the environment from settings
-                self.environment = environment
-
-                # Initialize Pinecone
-                init(api_key=self.api_key, environment=environment)
-                logger.info(f"Initialized Pinecone in environment: {environment}")
+                # Initialize Pinecone with new API
+                self.pc = Pinecone(api_key=self.api_key)
+                logger.info("Initialized Pinecone client")
 
                 # Connect to index
                 self._connect_to_index()
             except Exception as e:
                 logger.error(f"Error initializing Pinecone: {e}")
         else:
-            logger.warning("Pinecone API key or environment not provided")
+            logger.warning("Pinecone API key not provided")
 
     def _connect_to_index(self) -> None:
         """
         Connect to the Pinecone index without recreating it.
-
-        Attempts to establish a connection to the pre-existing Pinecone index specified
-        in the initialization parameters. Will try to connect even if the index appears
-        to not exist in case of temporary API inconsistencies.
-
-        Raises:
-            Exception: If connection to the index fails, the exception is logged and re-raised.
         """
+        if self.pc is None:
+            logger.error("Pinecone client is not initialized.")
+            raise RuntimeError("Pinecone client is not initialized.")
         try:
-            # Check if index exists
-            indexes = list_indexes()
-            if self.index_name not in indexes:
+            indexes = self.pc.list_indexes()
+            if self.index_name not in indexes.names():
                 logger.warning(
                     f"Index '{self.index_name}' does not exist. "
                     f"This should be pre-created in the Pinecone dashboard."
@@ -102,9 +90,7 @@ class PineconeDB:
                 logger.info(
                     "Attempting to connect anyway in case of list_indexes inconsistency..."
                 )
-
-            # Connect to existing index
-            self.index = Index(self.index_name)
+            self.index = self.pc.Index(self.index_name)
             logger.info(f"Connected to Pinecone index: {self.index_name}")
         except Exception as e:
             logger.error(f"Error connecting to Pinecone index: {e}")
@@ -113,20 +99,10 @@ class PineconeDB:
     def get_index_stats(self) -> Dict[str, Any]:
         """
         Get statistics about the index.
-
-        Retrieves information about the current state of the Pinecone index,
-        including vector count, namespaces, and dimension information.
-
-        Returns:
-            Dict[str, Any]: Dictionary containing index statistics or an error message
-                            if the operation fails
         """
-        if not self.index:
-            logger.error("Pinecone index not initialized")
-            logger.error("Pinecone index not initialized")
+        if self.index is None:
             logger.error("Pinecone index not initialized")
             return {"error": "Index not initialized"}
-
         try:
             # Call describe_index_stats on the index object instance
             stats_response = self.index.describe_index_stats()
@@ -142,40 +118,50 @@ class PineconeDB:
             logger.debug(
                 f"describe_index_stats response type: {type(stats_response)}, value: {stats_response}"
             )
-            # Manually build dictionary from attributes instead of direct dict() conversion
+
+            # Build dictionary from the response
             try:
-                stats_dict = {
-                    "dimension": getattr(stats_response, "dimension", None),
-                    "index_fullness": getattr(stats_response, "index_fullness", None),
-                    "namespaces": getattr(
-                        stats_response, "namespaces", {}
-                    ),  # Default to empty dict
-                    "total_vector_count": getattr(
-                        stats_response, "total_vector_count", 0
-                    ),  # Default to 0
-                }
-                # Process namespaces safely
-                namespaces_obj = getattr(stats_response, "namespaces", None)
-                if isinstance(namespaces_obj, dict):
-                    # If it's already a dict, use it directly
-                    stats_dict["namespaces"] = namespaces_obj
-                elif hasattr(namespaces_obj, "items"):
-                    # If it's dict-like (has items method), convert it
-                    try:
-                        stats_dict["namespaces"] = {
-                            k: dict(v)
-                            for k, v in namespaces_obj.items()
-                            if isinstance(v, dict)
-                        }
-                    except Exception as ns_conv_e:
-                        logger.warning(
-                            f"Could not fully convert namespaces object to dict: {ns_conv_e}"
-                        )
-                        stats_dict["namespaces"] = {}  # Fallback to empty dict
+                stats_dict = {}
+
+                # Extract dimension if available
+                if hasattr(stats_response, "dimension"):
+                    stats_dict["dimension"] = stats_response.dimension
+
+                # Extract index_fullness if available
+                if hasattr(stats_response, "index_fullness"):
+                    stats_dict["index_fullness"] = stats_response.index_fullness
+
+                # Extract namespaces if available
+                if hasattr(stats_response, "namespaces"):
+                    namespaces_dict = {}
+                    for ns_name, ns_data in stats_response.namespaces.items():
+                        # Handle the case when ns_data might be None or not dict-compatible
+                        if ns_data is not None:
+                            try:
+                                # Try to convert to dict if it has dict-like behavior
+                                if hasattr(ns_data, "items"):
+                                    namespaces_dict[ns_name] = {
+                                        k: v for k, v in ns_data.items()
+                                    }
+                                else:
+                                    # If it's already a dict or similar
+                                    namespaces_dict[ns_name] = ns_data
+                            except Exception as ns_e:
+                                logger.warning(
+                                    f"Could not process namespace data for {ns_name}: {ns_e}"
+                                )
+                                namespaces_dict[ns_name] = {
+                                    "error": "Could not process data"
+                                }
+                    stats_dict["namespaces"] = namespaces_dict
                 else:
-                    stats_dict["namespaces"] = (
-                        {}
-                    )  # Default if namespaces is None or not dict-like
+                    stats_dict["namespaces"] = {}
+
+                # Extract total_vector_count if available
+                if hasattr(stats_response, "total_vector_count"):
+                    stats_dict["total_vector_count"] = stats_response.total_vector_count
+                else:
+                    stats_dict["total_vector_count"] = 0
 
                 logger.debug(
                     f"Successfully retrieved and built index stats dict: {stats_dict}"
@@ -391,8 +377,24 @@ class PineconeDB:
             matches = results.matches
             logger.info(f"Query returned {len(matches)} matches")
 
-            # Convert pinecone match objects to dictionaries
-            return [dict(match) for match in matches]
+            # Convert pinecone match objects to dictionaries safely
+            result_list = []
+            for match in matches:
+                # Create a dictionary containing the match properties
+                match_dict = {
+                    "id": match.id if hasattr(match, "id") else None,
+                    "score": match.score if hasattr(match, "score") else None,
+                }
+
+                # Add metadata if available
+                if hasattr(match, "metadata") and match.metadata:
+                    match_dict["metadata"] = match.metadata
+                else:
+                    match_dict["metadata"] = {}
+
+                result_list.append(match_dict)
+
+            return result_list
         except Exception as e:
             logger.error(f"Error querying vectors: {e}")
             return []
@@ -462,11 +464,16 @@ class PineconeDB:
         Returns:
             bool: True if successful or if index didn't exist, False on error
         """
+        if not self.pc:
+            logger.error("Pinecone client not initialized")
+            return False
+
         try:
-            # Use the delete_index already imported at module level
-            indexes = list_indexes()
-            if self.index_name in indexes:
-                delete_index(self.index_name)
+            # Check if index exists using new API
+            indexes = self.pc.list_indexes()
+            if self.index_name in indexes.names():
+                # Delete the index using new API
+                self.pc.delete_index(self.index_name)
                 logger.info(f"Successfully deleted index: {self.index_name}")
 
                 # Reset the index reference
@@ -495,6 +502,10 @@ class PineconeDB:
         Returns:
             bool: True if successful, False otherwise
         """
+        if not self.pc:
+            logger.error("Pinecone client not initialized")
+            return False
+
         # Delete existing index if it exists
         deleted = self.delete_index()
         if not deleted:
@@ -502,9 +513,8 @@ class PineconeDB:
 
         # Create new index
         try:
-            # Use the create_index already imported at module level
-            # Create index with new configuration - need to use v2.2.2 API format
-            create_index(
+            # Create index with new API
+            self.pc.create_index(
                 name=self.index_name, dimension=self.dimensions, metric=self.metric
             )
             logger.warning(
@@ -517,7 +527,7 @@ class PineconeDB:
             time.sleep(30)
 
             # Connect to the new index
-            self.index = Index(self.index_name)
+            self.index = self.pc.Index(self.index_name)
             logger.info(f"Successfully recreated index: {self.index_name}")
             return True
         except Exception as e:

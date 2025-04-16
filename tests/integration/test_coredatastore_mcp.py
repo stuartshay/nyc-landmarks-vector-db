@@ -5,19 +5,18 @@ These tests demonstrate how to use the MCP server tools to interact with
 the CoreDataStore API for testing purposes.
 """
 
-import json
 import os
 import sys
 import unittest
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 import pytest
 
 # Add the project root to the path so we can import modules
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
-from nyc_landmarks.models.landmark_models import LpcReportModel, LpcReportResponse, PdfInfo
+from nyc_landmarks.models.landmark_models import LpcReportModel, LpcReportResponse
 
 
 @pytest.mark.mcp

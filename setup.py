@@ -31,6 +31,15 @@ class PostDevelopCommand(develop, PreCommitCommand):
     def run(self):
         develop.run(self)
         self.run_pre_commit_install()
+        # Create test_output directory
+        test_output_dir = os.path.join(os.getcwd(), "test_output")
+        notebooks_output_dir = os.path.join(test_output_dir, "notebooks")
+        if not os.path.exists(test_output_dir):
+            os.makedirs(test_output_dir)
+            print(f"Created directory: {test_output_dir}")
+        if not os.path.exists(notebooks_output_dir):
+            os.makedirs(notebooks_output_dir)
+            print(f"Created directory: {notebooks_output_dir}")
 
 
 class PostInstallCommand(install, PreCommitCommand):
@@ -41,6 +50,16 @@ class PostInstallCommand(install, PreCommitCommand):
         # Only install pre-commit hooks in development environments
         if os.environ.get("INSTALL_PRE_COMMIT", "false").lower() == "true":
             self.run_pre_commit_install()
+
+        # Create test_output directory
+        test_output_dir = os.path.join(os.getcwd(), "test_output")
+        notebooks_output_dir = os.path.join(test_output_dir, "notebooks")
+        if not os.path.exists(test_output_dir):
+            os.makedirs(test_output_dir)
+            print(f"Created directory: {test_output_dir}")
+        if not os.path.exists(notebooks_output_dir):
+            os.makedirs(notebooks_output_dir)
+            print(f"Created directory: {notebooks_output_dir}")
 
 
 setup(

@@ -3,7 +3,6 @@
 Create Pinecone Index for NYC Landmarks
 
 This script creates a Pinecone index with the correct settings for the NYC Landmarks Vector DB.
-It works around the GCP-starter tier limitation by explicitly using the AWS region.
 """
 
 import os

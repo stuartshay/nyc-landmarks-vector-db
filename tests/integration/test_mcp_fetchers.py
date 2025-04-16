@@ -7,14 +7,13 @@ multiple pages using the coredatastore-swagger-mcp server.
 
 import sys
 from pathlib import Path
-from typing import Dict, List, Set
 
 import pytest
 
 # Add project root to path
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
-from nyc_landmarks.db.fetchers import fetch_all_lpc_reports, fetch_all_landmarks_for_report
+from nyc_landmarks.db.fetchers import fetch_all_landmarks_for_report, fetch_all_lpc_reports
 
 
 class MockMcpClient:
@@ -47,12 +46,14 @@ class MockMcpClient:
         # Generate mock results for this page
         results = []
         for i in range(start_idx, end_idx):
-            results.append({
-                "lpNumber": f"LP-{i+1:05d}",
-                "name": f"Test Landmark {i+1}",
-                "borough": "Mock Borough",
-                "pdfReportUrl": f"https://example.com/pdf/LP-{i+1:05d}.pdf"
-            })
+            results.append(
+                {
+                    "lpNumber": f"LP-{i+1:05d}",
+                    "name": f"Test Landmark {i+1}",
+                    "borough": "Mock Borough",
+                    "pdfReportUrl": f"https://example.com/pdf/LP-{i+1:05d}.pdf",
+                }
+            )
 
         return {
             "total": total_count,
@@ -60,7 +61,7 @@ class MockMcpClient:
             "limit": limit,
             "from": start_idx + 1,
             "to": end_idx,
-            "results": results
+            "results": results,
         }
 
     def _mock_get_landmarks(self, args):
@@ -70,10 +71,7 @@ class MockMcpClient:
         lpc_number = args.get("LpcNumber", "")
 
         if not lpc_number:
-            return {
-                "total": 0,
-                "results": []
-            }
+            return {"total": 0, "results": []}
 
         # Simulate a dataset with varying number of buildings based on landmark ID
         # Extract the numeric part of the lpc_number
@@ -91,12 +89,14 @@ class MockMcpClient:
         # Generate mock results for this page
         results = []
         for i in range(start_idx, end_idx):
-            results.append({
-                "id": f"B{i+1:05d}",
-                "lpNumber": lpc_number,
-                "address": f"{i+1} Test Street",
-                "borough": "Mock Borough"
-            })
+            results.append(
+                {
+                    "id": f"B{i+1:05d}",
+                    "lpNumber": lpc_number,
+                    "address": f"{i+1} Test Street",
+                    "borough": "Mock Borough",
+                }
+            )
 
         return {
             "total": total_count,
@@ -104,7 +104,7 @@ class MockMcpClient:
             "limit": limit,
             "from": start_idx + 1 if results else 0,
             "to": end_idx if results else 0,
-            "results": results
+            "results": results,
         }
 
 
@@ -126,7 +126,9 @@ class TestMcpFetchers:
         # Verify we got unique reports
         lp_numbers = [report["lpNumber"] for report in all_reports]
         unique_lp_numbers = set(lp_numbers)
-        assert len(lp_numbers) == len(unique_lp_numbers), "Duplicate reports were returned"
+        assert len(lp_numbers) == len(
+            unique_lp_numbers
+        ), "Duplicate reports were returned"
 
         # Verify reports are in the expected format
         for report in all_reports:
@@ -140,10 +142,14 @@ class TestMcpFetchers:
         mock_client = MockMcpClient()
 
         # Fetch with a maximum of 1 page
-        reports_page1, total_count = fetch_all_lpc_reports(mock_client, page_size=50, max_pages=1)
+        reports_page1, total_count = fetch_all_lpc_reports(
+            mock_client, page_size=50, max_pages=1
+        )
 
         # Verify we got only the first page
-        assert len(reports_page1) == 50, f"Expected 50 reports, got {len(reports_page1)}"
+        assert (
+            len(reports_page1) == 50
+        ), f"Expected 50 reports, got {len(reports_page1)}"
         assert total_count == 125, f"Expected total count of 125, got {total_count}"
 
     @pytest.mark.integration
@@ -153,10 +159,14 @@ class TestMcpFetchers:
 
         # Fetch with borough filter
         filters = {"Borough": "Manhattan"}
-        filtered_reports, total_count = fetch_all_lpc_reports(mock_client, filters=filters)
+        filtered_reports, total_count = fetch_all_lpc_reports(
+            mock_client, filters=filters
+        )
 
         # Our mock doesn't actually filter, but we can verify the filter was passed
-        assert len(filtered_reports) == 125, f"Expected 125 reports, got {len(filtered_reports)}"
+        assert (
+            len(filtered_reports) == 125
+        ), f"Expected 125 reports, got {len(filtered_reports)}"
 
     @pytest.mark.integration
     def test_fetch_all_landmarks_for_report(self):
@@ -164,7 +174,9 @@ class TestMcpFetchers:
         mock_client = MockMcpClient()
 
         # Test with a landmark that has buildings (LP-00010 has 11 buildings in our mock implementation)
-        lpc_number = "LP-00010"  # Will have (number % 20) + 1 = 11 buildings in our mock
+        lpc_number = (
+            "LP-00010"  # Will have (number % 20) + 1 = 11 buildings in our mock
+        )
         buildings, total_count = fetch_all_landmarks_for_report(mock_client, lpc_number)
 
         # Verify we got the expected number of buildings
@@ -173,10 +185,14 @@ class TestMcpFetchers:
 
         # Verify all buildings have the correct landmark number
         for building in buildings:
-            assert building["lpNumber"] == lpc_number, f"Building has incorrect lpNumber: {building['lpNumber']}"
+            assert (
+                building["lpNumber"] == lpc_number
+            ), f"Building has incorrect lpNumber: {building['lpNumber']}"
 
         # Test with a different landmark
-        lpc_number = "LP-00020"  # Will have (20 % 20) + 1 = 1 building based on our mock
+        lpc_number = (
+            "LP-00020"  # Will have (20 % 20) + 1 = 1 building based on our mock
+        )
         buildings, total_count = fetch_all_landmarks_for_report(mock_client, lpc_number)
 
         # Verify we got the expected number of buildings
@@ -184,7 +200,9 @@ class TestMcpFetchers:
         assert total_count == 1, f"Expected total count of 1, got {total_count}"
 
         # Test with a landmark that has 20 buildings (max in our mock)
-        lpc_number = "LP-00019"  # Will have (19 % 20) + 1 = 20 buildings based on our mock
+        lpc_number = (
+            "LP-00019"  # Will have (19 % 20) + 1 = 20 buildings based on our mock
+        )
         buildings, total_count = fetch_all_landmarks_for_report(mock_client, lpc_number)
 
         # Verify we got the expected number of buildings
@@ -197,18 +215,21 @@ class TestMcpFetchers:
         # Skip this test if MCP client is not available
         try:
             from claude_dev import use_mcp_tool
+
             # Create a simple wrapper class to match our expected interface
             class RealMcpClient:
                 def use_mcp_tool(self, server_name, tool_name, arguments):
                     return use_mcp_tool(
                         server_name=server_name,
                         tool_name=tool_name,
-                        arguments=arguments
+                        arguments=arguments,
                     )
 
             # Fetch a limited set of reports (just 2 pages) to avoid long test times
             client = RealMcpClient()
-            reports, total_count = fetch_all_lpc_reports(client, page_size=10, max_pages=2)
+            reports, total_count = fetch_all_lpc_reports(
+                client, page_size=10, max_pages=2
+            )
 
             # Verify we got results
             assert reports, "No reports returned from real MCP client"
@@ -224,7 +245,9 @@ class TestMcpFetchers:
 
                 # Just verify we got a response, not checking counts since it depends on the data
                 assert isinstance(buildings, list), "Buildings should be a list"
-                assert isinstance(building_count, int), "Building count should be an integer"
+                assert isinstance(
+                    building_count, int
+                ), "Building count should be an integer"
 
         except (ImportError, Exception) as e:
             pytest.skip(f"Real MCP client test skipped: {str(e)}")
@@ -240,10 +263,7 @@ def test_mcp_pagination_direct():
         response = use_mcp_tool(
             server_name="coredatastore-swagger-mcp",
             tool_name="GetLpcReports",
-            arguments={
-                "limit": 10,
-                "page": 1
-            }
+            arguments={"limit": 10, "page": 1},
         )
 
         assert response, "No response from MCP server"
@@ -256,10 +276,7 @@ def test_mcp_pagination_direct():
         page2_response = use_mcp_tool(
             server_name="coredatastore-swagger-mcp",
             tool_name="GetLpcReports",
-            arguments={
-                "limit": 10,
-                "page": 2
-            }
+            arguments={"limit": 10, "page": 2},
         )
 
         assert page2_response, "No response for page 2"
@@ -267,18 +284,15 @@ def test_mcp_pagination_direct():
         assert len(page2_response["results"]) > 0, "No items in page 2"
 
         # Verify pages don't overlap
-        page1_ids = set(item["lpNumber"] for item in response["results"])
-        page2_ids = set(item["lpNumber"] for item in page2_response["results"])
+        page1_ids = {item["lpNumber"] for item in response["results"]}
+        page2_ids = {item["lpNumber"] for item in page2_response["results"]}
         assert page1_ids.isdisjoint(page2_ids), "Overlapping items between pages"
 
         # Test with a different page size
         large_page_response = use_mcp_tool(
             server_name="coredatastore-swagger-mcp",
             tool_name="GetLpcReports",
-            arguments={
-                "limit": 50,
-                "page": 1
-            }
+            arguments={"limit": 50, "page": 1},
         )
 
         assert large_page_response, "No response for larger page size"

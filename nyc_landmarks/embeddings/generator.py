@@ -6,9 +6,8 @@ This module handles the generation of text embeddings using OpenAI's API.
 
 import logging
 import time
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List
 
-import numpy as np
 import openai
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
 

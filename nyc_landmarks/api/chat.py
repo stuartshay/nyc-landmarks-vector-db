@@ -6,13 +6,13 @@ conversation memory and vector search integration.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional
 
 import openai
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from nyc_landmarks.chat.conversation import Conversation, conversation_store
+from nyc_landmarks.chat.conversation import conversation_store
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.db_client import DbClient
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator

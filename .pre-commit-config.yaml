@@ -18,11 +18,13 @@ repos:
     rev: 25.1.0
     hooks:
       - id: black
+        args: ["--line-length", "88"]
 
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2
     hooks:
       - id: isort
+        args: ["--profile", "black", "--filter-files"]
 
   - repo: https://github.com/pycqa/flake8
     rev: 7.0.0
@@ -48,3 +50,25 @@ repos:
       - id: bandit
         exclude: ^tests/
         args: ["-c", "pyproject.toml"]
+
+  # Jupyter notebook output clearing
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.6.1
+    hooks:
+      - id: nbstripout
+        files: ".ipynb$"
+
+  # Jupyter notebook linting
+  - repo: https://github.com/nbQA-dev/nbQA
+    rev: 1.7.1
+    hooks:
+      - id: nbqa-black
+        args: ["--line-length=88"]
+      - id: nbqa-isort
+        args: ["--profile=black", "--filter-files"]
+      - id: nbqa-flake8
+        args: ["--extend-ignore=E203,E501,F401,F541,W293,C901,F821", "--max-line-length=100"]
+        additional_dependencies:
+          - flake8-docstrings
+          - flake8-quotes
+          - flake8-comprehensions

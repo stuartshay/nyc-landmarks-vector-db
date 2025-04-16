@@ -7,7 +7,7 @@ extracting text content from those PDFs.
 
 import io
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import pypdf
 import requests

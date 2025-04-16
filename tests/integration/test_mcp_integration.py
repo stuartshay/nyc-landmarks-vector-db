@@ -5,7 +5,6 @@ These tests validate the integration with the CoreDataStore API
 through the MCP server tools.
 """
 
-import json
 import os
 import sys
 import unittest

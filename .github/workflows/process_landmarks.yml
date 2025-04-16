@@ -119,6 +119,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Test Pinecone DB Connectivity
+        env:
+          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+          PINECONE_ENVIRONMENT: ${{ secrets.PINECONE_ENVIRONMENT }}
+        run: |
+          echo "Testing connection to Pinecone DB..."
+          python scripts/test_pinecone_connection.py
+          if [ $? -ne 0 ]; then
+            echo "Failed to connect to Pinecone DB. Exiting workflow."
+            exit 1
+          fi
+          echo "Pinecone DB connection test completed successfully."
+
       - name: Run Landmark Processing Script for Batch (Pages ${{ matrix.start_page }}-${{ matrix.end_page }})
         env:
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}

@@ -6,7 +6,7 @@ properly passes data to the models.
 """
 
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
 from nyc_landmarks.models.landmark_models import LpcReportModel, LpcReportResponse
