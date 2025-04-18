@@ -79,6 +79,7 @@ The project is in the initial setup and infrastructure development phase. We hav
 
 ### Phase 3: Query & Chat API Development
 - [x] Develop basic vector search functionality with testing notebook
+- [ ] Research Pinecone Assistant MCP server integration as potential enhancement to vector search capabilities
 - [ ] Enhance vector search with advanced filtering and relevance metrics
 - [ ] Create API endpoints for vector search
 - [ ] Implement conversation memory system

@@ -48,6 +48,19 @@ We are in the initial setup phase of the NYC Landmarks Vector Database project. 
 
 ## Active Decisions and Considerations
 
+### Potential Technology Integrations
+
+#### Pinecone Assistant MCP Server
+- Identified as a potential enhancement to our current Pinecone implementation
+- Provides an MCP server implementation for retrieving information from Pinecone Assistant
+- Features include configurable results retrieval and Docker-based deployment
+- Requires additional setup: Pinecone API key and Pinecone Assistant API host
+- Research needed to understand:
+  - Differences between core Pinecone and Pinecone Assistant
+  - Migration path for current vector data
+  - Feature compatibility with our current metadata filtering needs
+  - Integration effort vs. benefits assessment
+
 ### Testing Strategy
 - Using pytest as the primary testing framework
 - Implementing both unit and integration tests
