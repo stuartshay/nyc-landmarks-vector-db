@@ -1,16 +1,18 @@
+#!/usr/bin/env python3
 """
-NYC Landmarks Pipeline Script
+NYC Landmarks Pipeline Script (Fixed IDs Version)
 
-This script implements a processing pipeline for NYC landmarks data:
-1. Fetches landmark data from the CoreDataStore API
-2. Extracts PDF URLs and downloads PDF reports
-3. Processes PDFs to extract text
-4. Chunks text into manageable segments
-5. Generates embeddings from text chunks
-6. Stores embeddings in Pinecone vector database with enhanced metadata
+This modified script implements the same pipeline as process_landmarks.py
+but uses deterministic IDs for vectors to prevent duplication and ensure
+consistent metadata.
+
+Key modifications:
+1. Uses deterministic IDs based on landmark_id and chunk_index
+2. Deletes existing vectors for a landmark before adding new ones
+3. Maintains complete metadata consistency across chunks
 
 Usage:
-  python scripts/process_landmarks.py --pages 2 --download
+  python scripts/process_landmarks_fixed_ids.py --start-page 1 --end-page 2 --download
 """
 
 import argparse
@@ -19,9 +21,11 @@ import json
 import os
 import sys
 import time
+import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import numpy as np
 import requests
 from tqdm import tqdm
 
@@ -37,7 +41,120 @@ from nyc_landmarks.vectordb.enhanced_metadata import get_metadata_collector
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
 # Configure logger for this script
-logger = get_logger(name="process_landmarks")
+logger = get_logger(name="process_landmarks_fixed")
+
+
+class PineconeReplaceDB(PineconeDB):
+    """Extended PineconeDB class that replaces records with consistent IDs."""
+
+    def store_chunks_with_fixed_ids(self, chunks, landmark_id, delete_existing=True):
+        """
+        Store text chunks with embeddings in the index using deterministic IDs.
+
+        This modified version creates fixed IDs based on landmark_id and chunk_index,
+        allowing the same chunks to be processed multiple times without duplication.
+
+        Args:
+            chunks: List of chunk dictionaries with 'text', 'metadata', and 'embedding'
+            landmark_id: The landmark ID
+            delete_existing: Whether to delete existing vectors for this landmark
+
+        Returns:
+            List of vector IDs
+        """
+        if not chunks:
+            logger.warning("Attempted to store empty chunks list")
+            return []
+
+        # First delete all existing vectors for this landmark if requested
+        if delete_existing:
+            try:
+                # We need to find all existing vectors first
+                random_vector = np.random.rand(settings.PINECONE_DIMENSIONS).tolist()
+                filter_dict = {"landmark_id": landmark_id}
+                results = self.query_vectors(
+                    query_vector=random_vector,
+                    top_k=100,  # Set high to get potentially all chunks
+                    filter_dict=filter_dict,
+                )
+
+                if results:
+                    # Extract IDs of vectors to delete
+                    vector_ids_to_delete = [r.get("id") for r in results]
+                    logger.info(
+                        f"Deleting {len(vector_ids_to_delete)} existing vectors for {landmark_id}"
+                    )
+
+                    # Delete vectors in batches if needed
+                    if vector_ids_to_delete:
+                        self.index.delete(
+                            ids=vector_ids_to_delete, namespace=self.namespace
+                        )
+                        logger.info(
+                            f"Deleted {len(vector_ids_to_delete)} vectors for {landmark_id}"
+                        )
+
+                        # Give Pinecone a moment to process the deletion
+                        time.sleep(1)
+            except Exception as e:
+                logger.error(f"Error deleting existing vectors: {e}")
+
+        # Get enhanced metadata
+        enhanced_metadata = self.metadata_collector.collect_landmark_metadata(
+            landmark_id
+        )
+        logger.info(f"Retrieved enhanced metadata for landmark: {landmark_id}")
+
+        # Prepare vectors for batch storage
+        vectors = []
+        vector_ids = []
+
+        for chunk in chunks:
+            # Check if chunk has required fields
+            if "embedding" not in chunk or "metadata" not in chunk:
+                logger.warning(f"Chunk missing required fields: {chunk.keys()}")
+                continue
+
+            # Generate a deterministic vector ID based on landmark_id and chunk_index
+            chunk_index = chunk.get("chunk_index", 0)
+            # Format: LP-00009-chunk-0, LP-00009-chunk-1, etc.
+            vector_id = f"{landmark_id}-chunk-{chunk_index}"
+            vector_ids.append(vector_id)
+
+            # Get the embedding
+            embedding = chunk["embedding"]
+
+            # Get the metadata and add the text for retrieval
+            metadata = chunk["metadata"].copy()
+            # Include the text in metadata for retrieval
+            metadata["text"] = chunk["text"]
+
+            # Add today's processing date
+            metadata["processing_date"] = time.strftime("%Y-%m-%d")
+
+            # Merge with enhanced metadata
+            if enhanced_metadata:
+                for key, value in enhanced_metadata.items():
+                    # Skip keys that already exist or text fields
+                    if key not in metadata and key != "text":
+                        metadata[key] = value
+
+            # Add chunk position information if available
+            if "chunk_index" in chunk:
+                metadata["chunk_index"] = chunk["chunk_index"]
+
+            if "total_chunks" in chunk:
+                metadata["total_chunks"] = chunk["total_chunks"]
+
+            # Add to vectors list
+            vectors.append((vector_id, embedding, metadata))
+
+        # Store the vectors
+        success = self.store_vectors_batch(vectors)
+
+        if success:
+            return vector_ids
+        return []
 
 
 class LandmarkPipeline:
@@ -58,7 +175,8 @@ class LandmarkPipeline:
             chunk_size=settings.CHUNK_SIZE, chunk_overlap=settings.CHUNK_OVERLAP
         )
         self.embedding_generator = EmbeddingGenerator()
-        self.pinecone_db = PineconeDB()
+        # Use our modified PineconeDB class instead of the standard one
+        self.pinecone_db = PineconeReplaceDB()
         self.metadata_collector = get_metadata_collector()
 
         # Set up directories
@@ -447,14 +565,14 @@ class LandmarkPipeline:
 
             result["stats"]["embeddings_generated"] = len(embeddings)
 
-            # Step 5: Store vectors with fixed IDs to prevent duplication
-            logger.info(f"Storing vectors for landmark {landmark_id} using fixed IDs")
-            vector_ids = self.pinecone_db.store_chunks(
+            # Step 5: Store vectors with fixed IDs
+            logger.info(f"Storing vectors for landmark {landmark_id} with fixed IDs")
+
+            # Use our modified method instead of the original store_chunks
+            vector_ids = self.pinecone_db.store_chunks_with_fixed_ids(
                 chunks=chunks_with_embeddings,
-                id_prefix="",  # No need for id_prefix with fixed IDs
                 landmark_id=landmark_id,
-                use_fixed_ids=True,  # Explicitly use fixed IDs to prevent duplication
-                delete_existing=True,  # Delete any existing vectors for this landmark
+                delete_existing=True,  # Clean up existing vectors first
             )
 
             result["stats"]["vectors_stored"] = len(vector_ids)
@@ -490,13 +608,11 @@ class LandmarkPipeline:
             items_with_embeddings, desc="Storing vectors"
         ):
             try:
-                # Store chunks with fixed IDs to prevent duplication
-                vector_ids = self.pinecone_db.store_chunks(
+                # Use our modified method with fixed IDs instead of the original store_chunks
+                vector_ids = self.pinecone_db.store_chunks_with_fixed_ids(
                     chunks=chunks_with_embeddings,
-                    id_prefix="",  # No need for id_prefix with fixed IDs
                     landmark_id=landmark_id,
-                    use_fixed_ids=True,  # Explicitly use fixed IDs to prevent duplication
-                    delete_existing=True,  # Delete any existing vectors for this landmark
+                    delete_existing=True,  # Clean up existing vectors first
                 )
 
                 if vector_ids:
@@ -563,7 +679,7 @@ class LandmarkPipeline:
 
         # Note: download_limit might need reconsideration in batch mode.
         # Applying it here might unevenly distribute work if applied after fetching.
-        # For now, we keep it, but it might be better applied per-batch or removed.
+        # For now we keep it but it might be better applied per-batch or removed.
         if download_limit and download_limit > 0:
             logger.warning(
                 f"Applying download limit of {download_limit} across fetched landmarks."
@@ -768,7 +884,9 @@ class LandmarkPipeline:
 
 def main() -> None:
     """Main entry point with argument parsing."""
-    parser = argparse.ArgumentParser(description="NYC Landmarks Pipeline")
+    parser = argparse.ArgumentParser(
+        description="NYC Landmarks Pipeline (Fixed IDs Version)"
+    )
     parser.add_argument(
         "--page-size",
         type=int,
@@ -787,7 +905,6 @@ def main() -> None:
         required=True,
         help="Ending page number to fetch (required)",
     )
-    # --pages argument removed
     parser.add_argument(
         "--download",
         action="store_true",

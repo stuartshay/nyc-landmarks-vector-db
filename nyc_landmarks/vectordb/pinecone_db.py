@@ -10,6 +10,8 @@ import time
 import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
+import numpy as np
+
 # Import pinecone-client (using updated API)
 from pinecone import Pinecone  # type: ignore
 
@@ -263,6 +265,8 @@ class PineconeDB:
         chunks: List[Dict[str, Any]],
         id_prefix: str = "",
         landmark_id: Optional[str] = None,
+        use_fixed_ids: bool = True,
+        delete_existing: bool = True,
     ) -> List[str]:
         """
         Store text chunks with embeddings in the index.
@@ -277,13 +281,35 @@ class PineconeDB:
             id_prefix (str, optional): Prefix for generated vector IDs. Defaults to "".
             landmark_id (Optional[str], optional): Landmark ID to fetch enhanced metadata.
                 Defaults to None.
+            use_fixed_ids (bool, optional): Whether to use deterministic IDs (True) or random UUIDs (False).
+                Defaults to True.
+            delete_existing (bool, optional): Whether to delete existing vectors for the landmark.
+                Defaults to True.
 
         Returns:
             List[str]: List of stored vector IDs, empty if operation failed
         """
+        # If using fixed IDs and landmark_id is provided, use store_chunks_with_fixed_ids
+        if use_fixed_ids and landmark_id:
+            return self.store_chunks_with_fixed_ids(
+                chunks=chunks, landmark_id=landmark_id, delete_existing=delete_existing
+            )
+
+        # Otherwise, use the original implementation with random UUIDs
         if not chunks:
             logger.warning("Attempted to store empty chunks list")
             return []
+
+        # Delete existing vectors if requested and landmark_id is provided
+        if delete_existing and landmark_id:
+            try:
+                deleted = self.delete_vectors_by_landmark_id(landmark_id)
+                if not deleted:
+                    logger.warning(
+                        f"Failed to delete existing vectors for {landmark_id}"
+                    )
+            except Exception as e:
+                logger.error(f"Error deleting existing vectors: {e}")
 
         # Get enhanced metadata if landmark_id is provided
         enhanced_metadata = {}
@@ -315,6 +341,9 @@ class PineconeDB:
             # Include the text in metadata for retrieval
             metadata["text"] = chunk["text"]
 
+            # Add today's processing date
+            metadata["processing_date"] = time.strftime("%Y-%m-%d")
+
             # Merge with enhanced metadata if available
             if enhanced_metadata:
                 # Keep only metadata fields that won't conflict with chunk-specific metadata
@@ -327,6 +356,9 @@ class PineconeDB:
             # Add chunk position information if available
             if "chunk_index" in chunk:
                 metadata["chunk_index"] = chunk["chunk_index"]
+
+            if "total_chunks" in chunk:
+                metadata["total_chunks"] = chunk["total_chunks"]
 
             # Add to vectors list
             vectors.append((vector_id, embedding, metadata))
@@ -485,6 +517,143 @@ class PineconeDB:
         except Exception as e:
             logger.error(f"Error deleting index: {e}")
             return False
+
+    def delete_vectors_by_landmark_id(self, landmark_id: str) -> bool:
+        """
+        Delete all vectors for a specific landmark.
+
+        This method finds all vectors with a matching landmark_id in metadata
+        and deletes them from the index.
+
+        Args:
+            landmark_id (str): The landmark ID to match in metadata
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if not self.index:
+            logger.error("Pinecone index not initialized")
+            return False
+
+        try:
+            # First find all vectors with this landmark_id
+            random_vector = np.random.rand(self.dimensions).tolist()
+            filter_dict = {"landmark_id": landmark_id}
+            results = self.query_vectors(
+                query_vector=random_vector,
+                top_k=100,  # Set high to get potentially all chunks
+                filter_dict=filter_dict,
+            )
+
+            if not results:
+                logger.info(f"No vectors found for landmark_id: {landmark_id}")
+                return True
+
+            # Extract IDs and delete
+            vector_ids = [r.get("id") for r in results]
+            success = self.delete_vectors(vector_ids)
+
+            if success:
+                logger.info(
+                    f"Deleted {len(vector_ids)} vectors for landmark_id: {landmark_id}"
+                )
+
+            return success
+        except Exception as e:
+            logger.error(f"Error deleting vectors for landmark_id {landmark_id}: {e}")
+            return False
+
+    def store_chunks_with_fixed_ids(
+        self,
+        chunks: List[Dict[str, Any]],
+        landmark_id: str,
+        delete_existing: bool = True,
+    ) -> List[str]:
+        """
+        Store text chunks with embeddings in the index using deterministic IDs.
+
+        This modified version creates fixed IDs based on landmark_id and chunk_index,
+        allowing the same chunks to be processed multiple times without duplication.
+
+        Args:
+            chunks (List[Dict[str, Any]]): List of chunk dictionaries with 'text', 'metadata', and 'embedding'
+            landmark_id (str): The landmark ID
+            delete_existing (bool): Whether to delete existing vectors for this landmark
+
+        Returns:
+            List[str]: List of vector IDs
+        """
+        if not chunks:
+            logger.warning("Attempted to store empty chunks list")
+            return []
+
+        # First delete all existing vectors for this landmark if requested
+        if delete_existing:
+            try:
+                deleted = self.delete_vectors_by_landmark_id(landmark_id)
+                if not deleted:
+                    logger.warning(
+                        f"Failed to delete existing vectors for {landmark_id}"
+                    )
+            except Exception as e:
+                logger.error(f"Error deleting existing vectors: {e}")
+
+        # Get enhanced metadata
+        enhanced_metadata = self.metadata_collector.collect_landmark_metadata(
+            landmark_id
+        )
+        logger.info(f"Retrieved enhanced metadata for landmark: {landmark_id}")
+
+        # Prepare vectors for batch storage
+        vectors = []
+        vector_ids = []
+
+        for chunk in chunks:
+            # Check if chunk has required fields
+            if "embedding" not in chunk or "metadata" not in chunk:
+                logger.warning(f"Chunk missing required fields: {chunk.keys()}")
+                continue
+
+            # Generate a deterministic vector ID based on landmark_id and chunk_index
+            chunk_index = chunk.get("chunk_index", 0)
+            # Format: LP-00009-chunk-0, LP-00009-chunk-1, etc.
+            vector_id = f"{landmark_id}-chunk-{chunk_index}"
+            vector_ids.append(vector_id)
+
+            # Get the embedding
+            embedding = chunk["embedding"]
+
+            # Get the metadata and add the text for retrieval
+            metadata = chunk["metadata"].copy()
+            # Include the text in metadata for retrieval
+            metadata["text"] = chunk["text"]
+
+            # Add today's processing date
+            metadata["processing_date"] = time.strftime("%Y-%m-%d")
+
+            # Merge with enhanced metadata
+            if enhanced_metadata:
+                for key, value in enhanced_metadata.items():
+                    # Skip keys that already exist or text fields
+                    if key not in metadata and key != "text":
+                        metadata[key] = value
+
+            # Add chunk position information if available
+            if "chunk_index" in chunk:
+                metadata["chunk_index"] = chunk["chunk_index"]
+
+            if "total_chunks" in chunk:
+                metadata["total_chunks"] = chunk["total_chunks"]
+
+            # Add to vectors list
+            vectors.append((vector_id, embedding, metadata))
+
+        # Store the vectors
+        success = self.store_vectors_batch(vectors)
+
+        if success:
+            return vector_ids
+        return []
 
     def recreate_index(self) -> bool:
         """
