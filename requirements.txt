@@ -90,7 +90,9 @@ typing_extensions==4.13.2
 urllib3==2.4.0
 uvicorn==0.34.0
 pypdf==5.4.0
-types-requests
+types-requests==2.32.3
 nbstripout==0.6.1
 nbqa==1.7.1
 jupytext==1.16.1
+ruff==0.0.305
+pytest-cov==4.1.0

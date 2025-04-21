@@ -447,13 +447,14 @@ class LandmarkPipeline:
 
             result["stats"]["embeddings_generated"] = len(embeddings)
 
-            # Step 5: Store vectors
-            logger.info(f"Storing vectors for landmark {landmark_id}")
-            id_prefix = f"{landmark_id}-"
+            # Step 5: Store vectors with fixed IDs to prevent duplication
+            logger.info(f"Storing vectors for landmark {landmark_id} using fixed IDs")
             vector_ids = self.pinecone_db.store_chunks(
                 chunks=chunks_with_embeddings,
-                id_prefix=id_prefix,
+                id_prefix="",  # No need for id_prefix with fixed IDs
                 landmark_id=landmark_id,
+                use_fixed_ids=True,  # Explicitly use fixed IDs to prevent duplication
+                delete_existing=True,  # Delete any existing vectors for this landmark
             )
 
             result["stats"]["vectors_stored"] = len(vector_ids)
@@ -489,14 +490,13 @@ class LandmarkPipeline:
             items_with_embeddings, desc="Storing vectors"
         ):
             try:
-                # Create a prefix with landmark ID for better vector organization
-                id_prefix = f"{landmark_id}-"
-
-                # Store chunks with enhanced metadata from landmark_id
+                # Store chunks with fixed IDs to prevent duplication
                 vector_ids = self.pinecone_db.store_chunks(
                     chunks=chunks_with_embeddings,
-                    id_prefix=id_prefix,
+                    id_prefix="",  # No need for id_prefix with fixed IDs
                     landmark_id=landmark_id,
+                    use_fixed_ids=True,  # Explicitly use fixed IDs to prevent duplication
+                    delete_existing=True,  # Delete any existing vectors for this landmark
                 )
 
                 if vector_ids:
