@@ -48,6 +48,9 @@ jobs:
           mypy nyc_landmarks
         continue-on-error: true
 
+      - name: Install Bandit
+        run: pip install bandit
+
       - name: Security scan with bandit
         run: |
           bandit -c pyproject.toml -r nyc_landmarks
