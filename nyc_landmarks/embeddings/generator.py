@@ -9,7 +9,12 @@ import time
 from typing import Any, Dict, List
 
 import openai
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_random_exponential,
+)
 
 from nyc_landmarks.config.settings import settings
 

@@ -20,7 +20,10 @@ from typing import Dict, Optional
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from nyc_landmarks.utils.logger import get_logger
-from scripts.fetch_landmark_reports import LandmarkReportFetcher, ensure_directory_exists
+from scripts.fetch_landmark_reports import (
+    LandmarkReportFetcher,
+    ensure_directory_exists,
+)
 
 # Configure logger for this script
 logger = get_logger(name="fetch_all_landmark_reports")
@@ -42,10 +45,7 @@ def fetch_all_lpc_reports(client, page_size=50, max_pages=None, filters=None):
     logger.info("Fetching all LPC reports using MCP client")
 
     # Prepare arguments for the MCP tool
-    arguments = {
-        "limit": page_size,
-        "page": 1
-    }
+    arguments = {"limit": page_size, "page": 1}
 
     # Add filters if provided
     if filters:
@@ -56,7 +56,7 @@ def fetch_all_lpc_reports(client, page_size=50, max_pages=None, filters=None):
     response = client.use_mcp_tool(
         server_name="coredatastore-swagger-mcp",
         tool_name="GetLpcReports",
-        arguments=arguments
+        arguments=arguments,
     )
 
     if not response or "results" not in response or "total" not in response:
@@ -84,7 +84,7 @@ def fetch_all_lpc_reports(client, page_size=50, max_pages=None, filters=None):
         page_response = client.use_mcp_tool(
             server_name="coredatastore-swagger-mcp",
             tool_name="GetLpcReports",
-            arguments=arguments
+            arguments=arguments,
         )
 
         if page_response and "results" in page_response:

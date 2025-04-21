@@ -5,7 +5,7 @@ This module provides functions to fetch LPC reports and landmark data
 from the CoreDataStore API using MCP tools with pagination support.
 """
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 
 def fetch_all_lpc_reports(
@@ -60,7 +60,7 @@ def fetch_all_lpc_reports(
     response = mcp_client.use_mcp_tool(
         server_name="coredatastore-swagger-mcp",
         tool_name="GetLpcReports",
-        arguments=args
+        arguments=args,
     )
 
     if not response or "total" not in response or "results" not in response:
@@ -82,7 +82,7 @@ def fetch_all_lpc_reports(
         response = mcp_client.use_mcp_tool(
             server_name="coredatastore-swagger-mcp",
             tool_name="GetLpcReports",
-            arguments=args
+            arguments=args,
         )
 
         if not response or "results" not in response:
@@ -122,11 +122,7 @@ def fetch_all_landmarks_for_report(
     current_page = 1
 
     # Prepare base arguments
-    args = {
-        "limit": page_size,
-        "page": current_page,
-        "LpcNumber": lpc_number
-    }
+    args = {"limit": page_size, "page": current_page, "LpcNumber": lpc_number}
 
     # Add optional fields list
     if fields_list:
@@ -142,7 +138,7 @@ def fetch_all_landmarks_for_report(
     response = mcp_client.use_mcp_tool(
         server_name="coredatastore-swagger-mcp",
         tool_name="GetLandmarks",
-        arguments=args
+        arguments=args,
     )
 
     if not response or "total" not in response or "results" not in response:
@@ -164,7 +160,7 @@ def fetch_all_landmarks_for_report(
         response = mcp_client.use_mcp_tool(
             server_name="coredatastore-swagger-mcp",
             tool_name="GetLandmarks",
-            arguments=args
+            arguments=args,
         )
 
         if not response or "results" not in response:

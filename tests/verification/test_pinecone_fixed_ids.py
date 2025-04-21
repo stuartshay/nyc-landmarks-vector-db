@@ -89,9 +89,7 @@ def verify_landmark_vectors(pinecone_db, random_vector, landmark_id, verbose=Fal
     # Check if vectors exist with the correct ID format
     filter_dict = {"landmark_id": landmark_id}
     vectors = pinecone_db.query_vectors(
-        query_vector=random_vector,
-        top_k=10,
-        filter_dict=filter_dict
+        query_vector=random_vector, top_k=10, filter_dict=filter_dict
     )
 
     landmark_results = {
@@ -99,7 +97,7 @@ def verify_landmark_vectors(pinecone_db, random_vector, landmark_id, verbose=Fal
         "vectors_found": len(vectors),
         "fixed_id_format_correct": True,
         "metadata_consistent": True,
-        "vectors": []
+        "vectors": [],
     }
 
     if vectors:
@@ -113,7 +111,7 @@ def verify_landmark_vectors(pinecone_db, random_vector, landmark_id, verbose=Fal
             vector_data = {
                 "id": vector_id,
                 "score": vector.get("score"),
-                "metadata": vector.get("metadata", {})
+                "metadata": vector.get("metadata", {}),
             }
 
             # Check ID format
@@ -126,15 +124,26 @@ def verify_landmark_vectors(pinecone_db, random_vector, landmark_id, verbose=Fal
             metadata = vector.get("metadata", {})
             if "landmark_id" not in metadata or metadata["landmark_id"] != landmark_id:
                 landmark_results["metadata_consistent"] = False
-                logger.warning(f"  Vector {i+1} has incorrect metadata: {metadata.get('landmark_id')}")
+                logger.warning(
+                    f"  Vector {i+1} has incorrect metadata: {metadata.get('landmark_id')}"
+                )
 
             # Check for essential metadata fields
-            essential_fields = ["landmark_id", "chunk_index", "total_chunks", "processing_date"]
-            missing_fields = [field for field in essential_fields if field not in metadata]
+            essential_fields = [
+                "landmark_id",
+                "chunk_index",
+                "total_chunks",
+                "processing_date",
+            ]
+            missing_fields = [
+                field for field in essential_fields if field not in metadata
+            ]
 
             if missing_fields:
                 landmark_results["metadata_consistent"] = False
-                logger.warning(f"  Vector {i+1} is missing essential metadata: {missing_fields}")
+                logger.warning(
+                    f"  Vector {i+1} is missing essential metadata: {missing_fields}"
+                )
 
             # Add vector data to results
             landmark_results["vectors"].append(vector_data)
@@ -167,14 +176,20 @@ def create_verification_summary(results):
     landmark_ids = [lid for lid in results if lid != "summary"]
     summary = {
         "total_landmarks_checked": len(landmark_ids),
-        "landmarks_with_vectors": sum(1 for lid in landmark_ids if results[lid]["vectors_found"] > 0),
-        "correct_id_format": sum(1 for lid in landmark_ids if results[lid]["fixed_id_format_correct"]),
-        "consistent_metadata": sum(1 for lid in landmark_ids if results[lid]["metadata_consistent"]),
+        "landmarks_with_vectors": sum(
+            1 for lid in landmark_ids if results[lid]["vectors_found"] > 0
+        ),
+        "correct_id_format": sum(
+            1 for lid in landmark_ids if results[lid]["fixed_id_format_correct"]
+        ),
+        "consistent_metadata": sum(
+            1 for lid in landmark_ids if results[lid]["metadata_consistent"]
+        ),
         "all_checks_passed": all(
             results[lid]["fixed_id_format_correct"]
             and results[lid]["metadata_consistent"]
             for lid in landmark_ids
-        )
+        ),
     }
 
     return summary
@@ -207,9 +222,13 @@ def test_landmark_fixed_ids(pinecone_db, random_vector):
     logger.info(f"Landmarks with consistent metadata: {summary['consistent_metadata']}")
 
     if summary["all_checks_passed"]:
-        logger.info("\n✅ SUCCESS: All vectors have correct fixed ID format and consistent metadata")
+        logger.info(
+            "\n✅ SUCCESS: All vectors have correct fixed ID format and consistent metadata"
+        )
     else:
-        logger.warning("\n⚠️ WARNING: Some vectors have incorrect ID format or inconsistent metadata")
+        logger.warning(
+            "\n⚠️ WARNING: Some vectors have incorrect ID format or inconsistent metadata"
+        )
 
     # Save results if output directory is provided
     output_dir = os.environ.get("VERIFICATION_OUTPUT_DIR")
@@ -218,8 +237,12 @@ def test_landmark_fixed_ids(pinecone_db, random_vector):
 
     # Assert that all tests passed
     assert summary["landmarks_with_vectors"] > 0, "No vectors found for any landmark"
-    assert summary["correct_id_format"] == summary["total_landmarks_checked"], "Some vectors have incorrect ID format"
-    assert summary["consistent_metadata"] == summary["total_landmarks_checked"], "Some vectors have inconsistent metadata"
+    assert (
+        summary["correct_id_format"] == summary["total_landmarks_checked"]
+    ), "Some vectors have incorrect ID format"
+    assert (
+        summary["consistent_metadata"] == summary["total_landmarks_checked"]
+    ), "Some vectors have inconsistent metadata"
 
 
 @pytest.mark.integration
@@ -242,7 +265,9 @@ def test_pinecone_index_stats(pinecone_db):
 
 
 @pytest.mark.integration
-def test_deterministic_ids_during_update(pinecone_db, embedding_generator, random_vector):
+def test_deterministic_ids_during_update(
+    pinecone_db, embedding_generator, random_vector
+):
     """Test that deterministic IDs work properly during updates."""
     # Choose a test landmark ID
     test_landmark_id = "LP-00001"
@@ -250,9 +275,7 @@ def test_deterministic_ids_during_update(pinecone_db, embedding_generator, rando
     # Get existing vectors
     filter_dict = {"landmark_id": test_landmark_id}
     initial_vectors = pinecone_db.query_vectors(
-        query_vector=random_vector,
-        top_k=10,
-        filter_dict=filter_dict
+        query_vector=random_vector, top_k=10, filter_dict=filter_dict
     )
 
     if not initial_vectors:
@@ -265,7 +288,9 @@ def test_deterministic_ids_during_update(pinecone_db, embedding_generator, rando
     # In a real test, we would update these vectors, but for this passive test,
     # we'll just verify that all IDs follow the deterministic pattern
     for vector_id in initial_ids:
-        assert vector_id.startswith(f"{test_landmark_id}-chunk-"), f"Vector ID doesn't follow deterministic pattern: {vector_id}"
+        assert vector_id.startswith(
+            f"{test_landmark_id}-chunk-"
+        ), f"Vector ID doesn't follow deterministic pattern: {vector_id}"
 
 
 if __name__ == "__main__":

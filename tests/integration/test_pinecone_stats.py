@@ -74,10 +74,14 @@ def test_vector_query():
         pinecone_db = PineconeDB()
 
         # Check if initialization was successful
-        assert pinecone_db.index is not None, "PineconeDB index object was not initialized."
+        assert (
+            pinecone_db.index is not None
+        ), "PineconeDB index object was not initialized."
 
         # Generate a random query vector with the right dimensions
-        logger.info(f"Generating random query vector with {pinecone_db.dimensions} dimensions...")
+        logger.info(
+            f"Generating random query vector with {pinecone_db.dimensions} dimensions..."
+        )
         random_vector = np.random.rand(pinecone_db.dimensions).tolist()
 
         # Query for similar vectors
@@ -86,7 +90,9 @@ def test_vector_query():
         logger.info(f"Query returned {len(results)} results")
 
         # Assert that results are returned as a list
-        assert isinstance(results, list), f"Expected query results to be a list, but got {type(results)}"
+        assert isinstance(
+            results, list
+        ), f"Expected query results to be a list, but got {type(results)}"
 
         # If there are results, validate their structure
         if results:
@@ -94,16 +100,22 @@ def test_vector_query():
             logger.info(f"Validating sample result: {sample}")
             assert "id" in sample, "Result missing 'id' field"
             assert "score" in sample, "Result missing 'score' field"
-            assert isinstance(sample.get("score"), float), f"Expected score to be float, got {type(sample.get('score'))}"
+            assert isinstance(
+                sample.get("score"), float
+            ), f"Expected score to be float, got {type(sample.get('score'))}"
 
             # Check if metadata exists and is a dictionary
             if "metadata" in sample:
-                assert isinstance(sample["metadata"], dict), f"Expected metadata to be dict, got {type(sample.get('metadata'))}"
+                assert isinstance(
+                    sample["metadata"], dict
+                ), f"Expected metadata to be dict, got {type(sample.get('metadata'))}"
 
         logger.info("Vector query test completed successfully.")
 
     except Exception as e:
-        logger.exception(f"An exception occurred during test_vector_query: {e}", exc_info=True)
+        logger.exception(
+            f"An exception occurred during test_vector_query: {e}", exc_info=True
+        )
         pytest.fail(f"Test failed due to exception: {e}")
     finally:
         logger.info("--- Finished test_vector_query ---")
