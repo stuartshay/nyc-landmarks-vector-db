@@ -89,8 +89,8 @@ setup(
         "pdfplumber>=0.11.0",
         "azure-storage-blob>=12.25.0",
         "google-cloud-secret-manager>=2.23.0",
-        "sqlalchemy>=2.0.40",
-        "psycopg2-binary>=2.9.10",
+        # "sqlalchemy>=2.0.40",  # No longer using SQL database
+        # "psycopg2-binary>=2.9.10",  # PostgreSQL dependency removed
         "pydantic>=2.11.0",
         "pydantic-settings>=2.2.0",  # Added for settings module
         "python-dotenv>=1.1.0",

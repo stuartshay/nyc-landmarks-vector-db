@@ -52,8 +52,7 @@ googleapis-common-protos[grpc]==1.70.0
     #   google-api-core
     #   grpc-google-iam-v1
     #   grpcio-status
-greenlet==3.2.0
-    # via sqlalchemy
+# greenlet==3.2.0 removed (was for SQLAlchemy)
 grpc-google-iam-v1==0.14.2
     # via google-cloud-secret-manager
 grpcio==1.71.0
@@ -114,8 +113,7 @@ protobuf==5.29.4
     #   grpc-google-iam-v1
     #   grpcio-status
     #   proto-plus
-psycopg2-binary==2.9.10
-    # via nyc-landmarks-vector-db (setup.py)
+# psycopg2-binary==2.9.10 removed (PostgreSQL dependency)
 pyasn1==0.6.1
     # via
     #   pyasn1-modules
@@ -164,8 +162,7 @@ sniffio==1.3.1
     # via
     #   anyio
     #   openai
-sqlalchemy==2.0.40
-    # via nyc-landmarks-vector-db (setup.py)
+# sqlalchemy==2.0.40 removed (no longer using SQL database)
 starlette==0.46.2
     # via fastapi
 tiktoken==0.9.0
