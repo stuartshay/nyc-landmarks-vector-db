@@ -2,14 +2,15 @@ import argparse
 import json
 import math
 import sys
+from typing import Optional
 
 
 def generate_matrix(
     total_records: int,
     api_page_size: int,
     job_batch_size: int,
-    start_page_override: int = None,
-    end_page_override: int = None,
+    start_page_override: Optional[int] = None,
+    end_page_override: Optional[int] = None,
 ) -> str:
     """
     Generates a GitHub Actions matrix configuration JSON for batch processing.

@@ -14,7 +14,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 # Add the project root to the path so we can import nyc_landmarks modules
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -29,7 +29,12 @@ from scripts.fetch_landmark_reports import (
 logger = get_logger(name="fetch_all_landmark_reports")
 
 
-def fetch_all_lpc_reports(client, page_size=50, max_pages=None, filters=None):
+def fetch_all_lpc_reports(
+    client: Any,
+    page_size: int = 50,
+    max_pages: Optional[int] = None,
+    filters: Optional[Dict[str, Any]] = None
+) -> Tuple[List[Dict[str, Any]], int]:
     """
     Fetch all LPC reports using the MCP client.
 
@@ -73,7 +78,9 @@ def fetch_all_lpc_reports(client, page_size=50, max_pages=None, filters=None):
     logger.info(f"Total reports: {total_count}, Total pages: {total_pages}")
 
     # Initialize collection with first page results
-    all_reports = list(response["results"])
+    all_reports: List[Dict[str, Any]] = []
+    if isinstance(response, Dict) and "results" in response:
+        all_reports = list(response["results"])
 
     # Fetch remaining pages
     for page in range(2, total_pages + 1):
@@ -101,7 +108,7 @@ def fetch_with_direct_client(
     page_size: int = 50,
     max_pages: Optional[int] = None,
     output_dir: str = "logs",
-) -> Dict:
+) -> Dict[str, Union[str, int, float]]:
     """
     Fetch all landmark reports using the direct API client.
 
@@ -126,9 +133,15 @@ def fetch_with_direct_client(
     logger.info(f"Fetching first page with page_size={page_size}")
     response = fetcher.api_client._make_request("GET", f"/api/LpcReport/{page_size}/1")
 
-    if not response or "results" not in response or "total" not in response:
+    if not response or not isinstance(response, Dict) or "results" not in response or "total" not in response:
         logger.error("Invalid response from API")
-        return {"error": "Invalid API response", "reports_fetched": 0}
+        return {
+            "error": "Invalid API response",
+            "reports_fetched": 0,
+            "total_reports": 0,
+            "reports_with_pdfs": 0,
+            "elapsed_time": 0.0
+        }
 
     total_count = response["total"]
     total_pages = (total_count + page_size - 1) // page_size
@@ -140,8 +153,9 @@ def fetch_with_direct_client(
     logger.info(f"Total reports: {total_count}, Total pages: {total_pages}")
 
     # Initialize collection
-    all_reports = []
-    all_reports.extend(response["results"])
+    all_reports: List[Dict[str, Any]] = []
+    if isinstance(response, Dict) and "results" in response and isinstance(response["results"], list):
+        all_reports.extend(response["results"])
 
     # Fetch remaining pages
     for page in range(2, total_pages + 1):
@@ -188,9 +202,9 @@ def fetch_with_direct_client(
 def fetch_with_mcp_client(
     page_size: int = 50,
     max_pages: Optional[int] = None,
-    filters: Optional[Dict] = None,
+    filters: Optional[Dict[str, Any]] = None,
     output_dir: str = "logs",
-) -> Dict:
+) -> Dict[str, Union[str, int, float]]:
     """
     Fetch all landmark reports using the MCP client.
 
@@ -207,14 +221,17 @@ def fetch_with_mcp_client(
 
     try:
         # Try to import the MCP client
-        from claude_dev import use_mcp_tool
+        from claude_dev import use_mcp_tool  # type: ignore
 
         # Create a simple wrapper class to match our expected interface
         class McpClient:
-            def use_mcp_tool(self, server_name, tool_name, arguments):
-                return use_mcp_tool(
+            def use_mcp_tool(self, server_name: str, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+                result = use_mcp_tool(
                     server_name=server_name, tool_name=tool_name, arguments=arguments
                 )
+                if isinstance(result, Dict):
+                    return result
+                return {}
 
         # Start timing
         start_time = time.time()
@@ -247,16 +264,19 @@ def fetch_with_mcp_client(
         logger.info(f"Results saved to {all_reports_path}")
 
         # Extract PDF URLs
-        pdf_info = []
+        pdf_info: List[Dict[str, str]] = []
         for report in all_reports:
-            if "pdfReportUrl" in report and report["pdfReportUrl"]:
-                pdf_info.append(
-                    {
-                        "id": report.get("lpNumber", ""),
-                        "name": report.get("name", ""),
-                        "pdf_url": report["pdfReportUrl"],
-                    }
-                )
+            if isinstance(report, Dict) and "pdfReportUrl" in report and report["pdfReportUrl"]:
+                # Cast to string to fix the __getitem__ error
+                if isinstance(report, Dict) and isinstance(report.get("pdfReportUrl"), str):
+                    pdf_url = report.get("pdfReportUrl", "")
+                    pdf_info.append(
+                        {
+                            "id": report.get("lpNumber", ""),
+                            "name": report.get("name", ""),
+                            "pdf_url": pdf_url,
+                        }
+                    )
 
         # Save PDF URLs to JSON
         pdf_urls_path = Path(output_dir) / f"all_pdf_urls_mcp_{timestamp}.json"
@@ -274,10 +294,16 @@ def fetch_with_mcp_client(
 
     except ImportError:
         logger.error("MCP client not available")
-        return {"error": "MCP client not available", "reports_fetched": 0}
+        return {
+            "error": "MCP client not available",
+            "reports_fetched": 0,
+            "total_reports": 0,
+            "reports_with_pdfs": 0,
+            "elapsed_time": 0.0
+        }
 
 
-def main():
+def main() -> None:
     """Main entry point with argument parsing."""
     parser = argparse.ArgumentParser(
         description="Fetch all landmark reports using pagination"

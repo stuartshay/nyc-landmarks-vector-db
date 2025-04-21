@@ -41,7 +41,7 @@ app.include_router(chat.router)
 
 # Add global exception handler
 @app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Global exception handler for the application."""
     logger.error(f"Global exception handler caught: {exc}")
     return JSONResponse(

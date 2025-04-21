@@ -37,7 +37,7 @@ def fetch_all_lpc_reports(
     current_page = 1
 
     # Prepare base arguments
-    args = {
+    args: Dict[str, Any] = {
         "limit": page_size,
         "page": current_page,
     }
@@ -122,7 +122,7 @@ def fetch_all_landmarks_for_report(
     current_page = 1
 
     # Prepare base arguments
-    args = {"limit": page_size, "page": current_page, "LpcNumber": lpc_number}
+    args: Dict[str, Any] = {"limit": page_size, "page": current_page, "LpcNumber": lpc_number}
 
     # Add optional fields list
     if fields_list:

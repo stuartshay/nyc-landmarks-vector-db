@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 # Import needed modules - update imports for the new Pinecone API
-from pinecone import Pinecone, ServerlessSpec
+from pinecone import Pinecone, ServerlessSpec  # type: ignore
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.utils.logger import get_logger
@@ -23,7 +23,7 @@ from nyc_landmarks.utils.logger import get_logger
 logger = get_logger(name="create_pinecone_index")
 
 
-def create_nyc_landmarks_index():
+def create_nyc_landmarks_index() -> bool:
     """Create the NYC Landmarks index in Pinecone using the updated API."""
 
     # Get settings from configuration
