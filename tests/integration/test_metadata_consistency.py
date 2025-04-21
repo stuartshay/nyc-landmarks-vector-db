@@ -5,17 +5,13 @@ This test verifies that metadata is consistently maintained between
 the CoreDataStore API and Pinecone vectors with our fixed ID implementation.
 """
 
-import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
 
-import numpy as np
 import pytest
 
 # Add project root to path
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
-from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.db_client import get_db_client
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.vectordb.enhanced_metadata import get_metadata_collector

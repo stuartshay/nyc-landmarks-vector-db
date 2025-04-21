@@ -2,7 +2,6 @@
 Test the fixed ID functionality in PineconeDB
 """
 
-import os
 import sys
 import time
 from pathlib import Path

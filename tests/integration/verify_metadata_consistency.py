@@ -7,11 +7,10 @@ It checks if the landmark_id format and other metadata fields match correctly.
 """
 
 import json
-import os
 import sys
 from pathlib import Path
 from pprint import pprint
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 # Add the project root to the path
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
@@ -129,7 +128,7 @@ def verify_landmark_metadata(landmark_id: str) -> Dict[str, Any]:
                             "metadata" in result
                             and result["metadata"].get("landmark_id") == landmark_id
                         ):
-                            logger.info(f"Found match through semantic search")
+                            logger.info("Found match through semantic search")
                             results["matches_found"] = 1
                             pinecone_metadata = result.get("metadata", {})
                             results["pinecone_metadata"] = pinecone_metadata

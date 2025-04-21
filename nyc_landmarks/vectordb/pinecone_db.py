@@ -142,9 +142,7 @@ class PineconeDB:
                             try:
                                 # Try to convert to dict if it has dict-like behavior
                                 if hasattr(ns_data, "items"):
-                                    namespaces_dict[ns_name] = {
-                                        k: v for k, v in ns_data.items()
-                                    }
+                                    namespaces_dict[ns_name] = dict(ns_data)
                                 else:
                                     # If it's already a dict or similar
                                     namespaces_dict[ns_name] = ns_data

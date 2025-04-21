@@ -30,17 +30,17 @@ jobs:
 
       - name: Lint with flake8
         run: |
-          flake8 nyc_landmarks tests
+          flake8 nyc_landmarks tests scripts notebooks .
         continue-on-error: true
 
       - name: Check formatting with black
         run: |
-          black --check nyc_landmarks tests
+          black --check nyc_landmarks tests scripts notebooks
         continue-on-error: true
 
       - name: Sort imports with isort
         run: |
-          isort --check --profile black nyc_landmarks tests
+          isort --check --profile black nyc_landmarks tests scripts notebooks
         continue-on-error: true
 
       - name: Type checking with mypy

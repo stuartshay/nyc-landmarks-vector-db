@@ -6,7 +6,6 @@ vectors instead of creating duplicates when processing the same landmark twice.
 """
 
 import logging
-import os
 import sys
 import time
 from pathlib import Path
@@ -17,7 +16,6 @@ import pytest
 # Add project root to path
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from nyc_landmarks.config.settings import settings
-from nyc_landmarks.db.db_client import get_db_client
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
 # Configure logging for tests
