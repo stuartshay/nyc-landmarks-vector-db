@@ -123,7 +123,7 @@ pydantic==2.11.3
     #   fastapi
     #   nyc-landmarks-vector-db (setup.py)
     #   openai
-pydantic-core==2.33.1
+pydantic-core==2.34.1
     # via pydantic
 pypdf2==3.0.1
     # via nyc-landmarks-vector-db (setup.py)
