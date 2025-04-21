@@ -133,6 +133,7 @@ python-dateutil==2.9.0.post0
     # via pinecone-client
 python-dotenv==1.1.0
     # via nyc-landmarks-vector-db (setup.py)
+pytest-cov==6.1.1
 regex==2024.11.6
     # via tiktoken
 requests==2.32.3
