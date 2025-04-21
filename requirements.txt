@@ -120,10 +120,10 @@ pycparser==2.22
     # via cffi
 pydantic==2.11.3
     # via
-    #   fastapi
+    #   fastapiERROR: Cannot install -r requirements.txt (line 121) and pydantic-core==2.34.1 because these package versions have conflicting dependencies.
     #   nyc-landmarks-vector-db (setup.py)
     #   openai
-pydantic-core==2.34.1
+pydantic-core==2.33.1
     # via pydantic
 pypdf2==3.0.1
     # via nyc-landmarks-vector-db (setup.py)
