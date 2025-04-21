@@ -14,12 +14,11 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 # Add the project root to the path so we can import nyc_landmarks modules
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from nyc_landmarks.db.fetchers import fetch_all_lpc_reports
 from nyc_landmarks.utils.logger import get_logger
 from scripts.fetch_landmark_reports import LandmarkReportFetcher, ensure_directory_exists
 
