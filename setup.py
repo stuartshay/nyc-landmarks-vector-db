@@ -92,8 +92,11 @@ setup(
         "sqlalchemy>=2.0.40",
         "psycopg2-binary>=2.9.10",
         "pydantic>=2.11.0",
+        "pydantic-settings>=2.2.0",  # Added for settings module
         "python-dotenv>=1.1.0",
         "tiktoken>=0.9.0",
+        "numpy>=1.26.0",  # Added for vector tests
+        "pandas>=2.2.0",  # Added for dataframe tests
     ],
     extras_require={
         "dev": [
@@ -102,6 +105,9 @@ setup(
             "isort>=5.12.0",
             "flake8>=6.0.0",
             "mypy>=1.2.0",
+            "pytest-cov>=6.1.1",  # Added for coverage
+            "pandas>=2.2.0",  # Added explicitly for tests
+            "numpy>=1.26.0",  # Added explicitly for tests
         ],
         "lint": ["ruff"],
         "coverage": ["pytest-cov"],
