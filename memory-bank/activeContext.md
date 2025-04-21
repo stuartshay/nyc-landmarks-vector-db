@@ -35,6 +35,7 @@ We are in the initial setup phase of the NYC Landmarks Vector Database project. 
 - **Established a formal practice of executing all notebooks in the terminal with `jupyter nbconvert` to ensure they run correctly in headless environments and to produce output files that can be committed for review.**
 - **Enhanced PineconeDB implementation with deterministic vector IDs to prevent duplicate records and maintain metadata consistency when processing the same landmarks multiple times. This resolves issues with growing database size and inconsistent filtering.**
 - **Created comprehensive verification tools for Pinecone database validation, including both standalone script (`verify_pinecone_fixed_ids.py`) and integrated test modules (`tests/verification/test_pinecone_fixed_ids.py` and `tests/integration/test_pinecone_validation.py`)**
+- **Updated project dependencies in setup.py and requirements.txt to use the latest stable versions. Specifically updated fastapi, uvicorn, openai, pinecone-client, and other key dependencies. Fixed grpcio and grpcio-status to use stable versions rather than release candidates.**
 
 ## Next Steps
 1. Re-run the GitHub Actions workflow to verify that the Docker image is now built and pushed successfully.
