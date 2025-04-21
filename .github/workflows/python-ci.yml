@@ -53,6 +53,7 @@ jobs:
           bandit -c pyproject.toml -r nyc_landmarks
         continue-on-error: true
 
-      - name: Test with pytest
+      - name: Test with pytest (unit tests only)
         run: |
-          pytest --cov=nyc_landmarks tests/
+          # Run only unit tests in CI to avoid dependency/credential issues
+          pytest --cov=nyc_landmarks tests/unit/ tests/test_config/
