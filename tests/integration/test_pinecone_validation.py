@@ -8,16 +8,16 @@ These tests validate that:
 """
 
 import os
-import pytest
+
 import numpy as np
+import pytest
 
-from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 from nyc_landmarks.utils.logger import get_logger
-
+from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 from tests.verification.test_pinecone_fixed_ids import (
-    verify_landmark_vectors,
     create_verification_summary,
-    save_verification_results
+    save_verification_results,
+    verify_landmark_vectors,
 )
 
 # Set up logger

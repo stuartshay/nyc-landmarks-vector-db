@@ -7,15 +7,16 @@ These tests verify:
 3. Filtering works as expected
 """
 
-import os
 import json
-import pytest
-import numpy as np
+import os
 from pathlib import Path
 
-from nyc_landmarks.vectordb.pinecone_db import PineconeDB
+import numpy as np
+import pytest
+
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.utils.logger import get_logger
+from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
 # Set up logger
 logger = get_logger(name="test_pinecone_fixed_ids")
