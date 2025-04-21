@@ -13,7 +13,10 @@ import pytest
 # Add project root to path
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
-from nyc_landmarks.db.fetchers import fetch_all_landmarks_for_report, fetch_all_lpc_reports
+from nyc_landmarks.db.fetchers import (
+    fetch_all_landmarks_for_report,
+    fetch_all_lpc_reports,
+)
 
 
 class MockMcpClient:

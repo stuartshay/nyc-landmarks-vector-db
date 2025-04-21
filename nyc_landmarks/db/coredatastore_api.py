@@ -109,7 +109,9 @@ class CoreDataStoreAPI:
 
             # Check if response is a dictionary before accessing attributes
             if not isinstance(response, dict):
-                logger.error(f"Expected dictionary response but got {type(response).__name__}")
+                logger.error(
+                    f"Expected dictionary response but got {type(response).__name__}"
+                )
                 return None
 
             # Convert the response to a format compatible with what the PostgresDB provided
@@ -641,7 +643,9 @@ class CoreDataStoreAPI:
 
             # Check if response is a dictionary before accessing attributes
             if not isinstance(response, dict):
-                logger.error(f"Expected dictionary response but got {type(response).__name__}")
+                logger.error(
+                    f"Expected dictionary response but got {type(response).__name__}"
+                )
                 return None
 
             # Extract the PDF report URL

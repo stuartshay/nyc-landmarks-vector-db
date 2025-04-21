@@ -40,7 +40,9 @@ class TestLandmarkPagination:
 
         # Verify pages contain different reports
         page1_ids = {report["lpNumber"] for report in reports if "lpNumber" in report}
-        page2_ids = {report["lpNumber"] for report in page2_reports if "lpNumber" in report}
+        page2_ids = {
+            report["lpNumber"] for report in page2_reports if "lpNumber" in report
+        }
         assert page1_ids.isdisjoint(page2_ids), "Overlapping reports between pages"
 
     @pytest.mark.integration
@@ -75,7 +77,9 @@ class TestLandmarkPagination:
             all_reports.extend(page_reports)
 
             # Extract IDs and check for duplicates
-            page_ids = {report["lpNumber"] for report in page_reports if "lpNumber" in report}
+            page_ids = {
+                report["lpNumber"] for report in page_reports if "lpNumber" in report
+            }
             overlap = all_ids.intersection(page_ids)
             assert not overlap, f"Duplicate IDs found: {overlap}"
 

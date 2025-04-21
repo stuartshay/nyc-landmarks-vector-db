@@ -8,16 +8,16 @@ These tests validate that:
 """
 
 import os
-import pytest
+
 import numpy as np
+import pytest
 
-from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 from nyc_landmarks.utils.logger import get_logger
-
+from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 from tests.verification.test_pinecone_fixed_ids import (
-    verify_landmark_vectors,
     create_verification_summary,
-    save_verification_results
+    save_verification_results,
+    verify_landmark_vectors,
 )
 
 # Set up logger
@@ -58,9 +58,7 @@ def test_common_landmarks_have_vectors(pinecone_db, random_vector):
         # Query vectors for this landmark
         filter_dict = {"landmark_id": landmark_id}
         vectors = pinecone_db.query_vectors(
-            query_vector=random_vector,
-            top_k=10,
-            filter_dict=filter_dict
+            query_vector=random_vector, top_k=10, filter_dict=filter_dict
         )
 
         # Check that we found vectors
@@ -70,8 +68,9 @@ def test_common_landmarks_have_vectors(pinecone_db, random_vector):
         # Check vector IDs follow the pattern
         for vector in vectors:
             vector_id = vector.get("id", "")
-            assert vector_id.startswith(f"{landmark_id}-chunk-"), \
-                f"Vector ID {vector_id} does not follow pattern {landmark_id}-chunk-X"
+            assert vector_id.startswith(
+                f"{landmark_id}-chunk-"
+            ), f"Vector ID {vector_id} does not follow pattern {landmark_id}-chunk-X"
 
 
 @pytest.mark.integration
@@ -86,7 +85,7 @@ def test_deterministic_ids_consistency(pinecone_db, random_vector):
         vectors = pinecone_db.query_vectors(
             query_vector=random_vector,
             top_k=20,  # Get more to ensure we see patterns
-            filter_dict=filter_dict
+            filter_dict=filter_dict,
         )
 
         if not vectors:
@@ -97,13 +96,16 @@ def test_deterministic_ids_consistency(pinecone_db, random_vector):
 
         # Check if IDs have the correct format: {landmark_id}-chunk-{index}
         for vid in vector_ids:
-            assert vid.startswith(f"{landmark_id}-chunk-"), \
-                f"Vector ID {vid} does not start with {landmark_id}-chunk-"
+            assert vid.startswith(
+                f"{landmark_id}-chunk-"
+            ), f"Vector ID {vid} does not start with {landmark_id}-chunk-"
 
             # Extract chunk index and verify it's a number
             try:
                 chunk_index = int(vid.split("-chunk-")[1])
-                assert 0 <= chunk_index < 100, f"Chunk index {chunk_index} out of expected range"
+                assert (
+                    0 <= chunk_index < 100
+                ), f"Chunk index {chunk_index} out of expected range"
             except (ValueError, IndexError):
                 assert False, f"Vector ID {vid} does not contain a valid chunk index"
 
@@ -111,8 +113,9 @@ def test_deterministic_ids_consistency(pinecone_db, random_vector):
         # Get the total_chunks value from metadata if available
         if vectors[0].get("metadata", {}).get("total_chunks"):
             expected_chunks = int(vectors[0]["metadata"]["total_chunks"])
-            assert len(vectors) <= expected_chunks, \
-                f"Found {len(vectors)} vectors but expected {expected_chunks} based on metadata"
+            assert (
+                len(vectors) <= expected_chunks
+            ), f"Found {len(vectors)} vectors but expected {expected_chunks} based on metadata"
 
 
 @pytest.mark.integration
@@ -125,9 +128,7 @@ def test_metadata_consistency(pinecone_db, random_vector):
         # Query vectors for this landmark
         filter_dict = {"landmark_id": landmark_id}
         vectors = pinecone_db.query_vectors(
-            query_vector=random_vector,
-            top_k=10,
-            filter_dict=filter_dict
+            query_vector=random_vector, top_k=10, filter_dict=filter_dict
         )
 
         if not vectors:
@@ -138,8 +139,13 @@ def test_metadata_consistency(pinecone_db, random_vector):
 
         # Essential fields that should be consistent across all chunks
         consistent_fields = [
-            "landmark_id", "name", "borough", "style",
-            "location", "designation_date", "type"
+            "landmark_id",
+            "name",
+            "borough",
+            "style",
+            "location",
+            "designation_date",
+            "type",
         ]
 
         # Check that essential fields are consistent across all vectors
@@ -149,8 +155,9 @@ def test_metadata_consistency(pinecone_db, random_vector):
             for field in consistent_fields:
                 if field in first_metadata:
                     assert field in metadata, f"Field {field} missing from vector {i}"
-                    assert metadata[field] == first_metadata[field], \
-                        f"Field {field} is inconsistent: {metadata[field]} vs {first_metadata[field]}"
+                    assert (
+                        metadata[field] == first_metadata[field]
+                    ), f"Field {field} is inconsistent: {metadata[field]} vs {first_metadata[field]}"
 
             # Check chunk-specific fields
             assert "chunk_index" in metadata, f"Missing chunk_index in vector {i}"
@@ -160,8 +167,9 @@ def test_metadata_consistency(pinecone_db, random_vector):
             if "chunk_index" in metadata:
                 chunk_index = metadata["chunk_index"]
                 id_index = vector.get("id", "").split("-chunk-")[1]
-                assert str(int(chunk_index)) == id_index, \
-                    f"Chunk index in metadata {chunk_index} doesn't match ID {id_index}"
+                assert (
+                    str(int(chunk_index)) == id_index
+                ), f"Chunk index in metadata {chunk_index} doesn't match ID {id_index}"
 
 
 @pytest.mark.integration
@@ -196,9 +204,12 @@ def test_comprehensive_vector_validation(pinecone_db, random_vector):
         save_verification_results(results, output_dir)
 
     # Assert that all landmarks have vectors and they're valid
-    assert summary["landmarks_with_vectors"] == summary["total_landmarks_checked"], \
-        "Some landmarks don't have vectors"
-    assert summary["correct_id_format"] == summary["total_landmarks_checked"], \
-        "Some vectors have incorrect ID format"
-    assert summary["consistent_metadata"] == summary["total_landmarks_checked"], \
-        "Some vectors have inconsistent metadata"
+    assert (
+        summary["landmarks_with_vectors"] == summary["total_landmarks_checked"]
+    ), "Some landmarks don't have vectors"
+    assert (
+        summary["correct_id_format"] == summary["total_landmarks_checked"]
+    ), "Some vectors have incorrect ID format"
+    assert (
+        summary["consistent_metadata"] == summary["total_landmarks_checked"]
+    ), "Some vectors have inconsistent metadata"
