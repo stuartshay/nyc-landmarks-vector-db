@@ -142,7 +142,7 @@ def verify_landmark_vectors(pinecone_db, random_vector, landmark_id, verbose=Fal
                 logger.info(f"  Vector {i+1}:")
                 logger.info(f"    ID: {vector_id}")
                 logger.info(f"    Score: {vector.get('score')}")
-                logger.info(f"    Metadata:")
+                logger.info("    Metadata:")
                 for key, value in metadata.items():
                     logger.info(f"      {key}: {value}")
     else:
@@ -170,8 +170,8 @@ def create_verification_summary(results):
         "correct_id_format": sum(1 for lid in landmark_ids if results[lid]["fixed_id_format_correct"]),
         "consistent_metadata": sum(1 for lid in landmark_ids if results[lid]["metadata_consistent"]),
         "all_checks_passed": all(
-            results[lid]["fixed_id_format_correct"] and
-            results[lid]["metadata_consistent"]
+            results[lid]["fixed_id_format_correct"]
+            and results[lid]["metadata_consistent"]
             for lid in landmark_ids
         )
     }
@@ -270,8 +270,8 @@ def test_deterministic_ids_during_update(pinecone_db, embedding_generator, rando
 if __name__ == "__main__":
     # This allows running the test file directly for debugging
     # It will run one specific test function
-    pinecone_db = PineconeDB()
-    random_vector = np.random.rand(pinecone_db.dimensions).tolist()
+    test_db = PineconeDB()
+    test_vector = np.random.rand(test_db.dimensions).tolist()
 
     # Run just the main test
-    test_landmark_fixed_ids(pinecone_db, random_vector)
+    test_landmark_fixed_ids(test_db, test_vector)

@@ -85,7 +85,7 @@ def test_deterministic_ids_consistency(pinecone_db, random_vector):
         filter_dict = {"landmark_id": landmark_id}
         vectors = pinecone_db.query_vectors(
             query_vector=random_vector,
-            top_k=20, # Get more to ensure we see patterns
+            top_k=20,  # Get more to ensure we see patterns
             filter_dict=filter_dict
         )
 

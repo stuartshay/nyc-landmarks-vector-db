@@ -26,6 +26,76 @@ from scripts.fetch_landmark_reports import LandmarkReportFetcher, ensure_directo
 logger = get_logger(name="fetch_all_landmark_reports")
 
 
+def fetch_all_lpc_reports(client, page_size=50, max_pages=None, filters=None):
+    """
+    Fetch all LPC reports using the MCP client.
+
+    Args:
+        client: MCP client instance
+        page_size: Number of reports per page
+        max_pages: Maximum number of pages to fetch (optional)
+        filters: Optional filters to apply
+
+    Returns:
+        Tuple of (all_reports, total_count)
+    """
+    logger.info("Fetching all LPC reports using MCP client")
+
+    # Prepare arguments for the MCP tool
+    arguments = {
+        "limit": page_size,
+        "page": 1
+    }
+
+    # Add filters if provided
+    if filters:
+        arguments.update(filters)
+
+    # Make the first request to get total count
+    logger.info(f"Fetching first page with page_size={page_size}")
+    response = client.use_mcp_tool(
+        server_name="coredatastore-swagger-mcp",
+        tool_name="GetLpcReports",
+        arguments=arguments
+    )
+
+    if not response or "results" not in response or "total" not in response:
+        logger.error("Invalid response from MCP API")
+        return [], 0
+
+    total_count = response["total"]
+    total_pages = (total_count + page_size - 1) // page_size
+
+    if max_pages:
+        total_pages = min(total_pages, max_pages)
+        logger.info(f"Limiting to {max_pages} pages")
+
+    logger.info(f"Total reports: {total_count}, Total pages: {total_pages}")
+
+    # Initialize collection with first page results
+    all_reports = list(response["results"])
+
+    # Fetch remaining pages
+    for page in range(2, total_pages + 1):
+        logger.info(f"Fetching page {page} of {total_pages}")
+        arguments["page"] = page
+
+        # Make the MCP request
+        page_response = client.use_mcp_tool(
+            server_name="coredatastore-swagger-mcp",
+            tool_name="GetLpcReports",
+            arguments=arguments
+        )
+
+        if page_response and "results" in page_response:
+            all_reports.extend(page_response["results"])
+            logger.info(f"Fetched {len(all_reports)} of {total_count} reports")
+        else:
+            logger.warning(f"Failed to fetch page {page}")
+
+    return all_reports, total_count
+
+
 def fetch_with_direct_client(
     api_key: Optional[str] = None,
     page_size: int = 50,

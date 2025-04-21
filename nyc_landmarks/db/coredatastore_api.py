@@ -109,7 +109,7 @@ class CoreDataStoreAPI:
 
             # Check if response is a dictionary before accessing attributes
             if not isinstance(response, dict):
-                logger.error(f"Expected dictionary response but got {type(response)}")
+                logger.error(f"Expected dictionary response but got {type(response).__name__}")
                 return None
 
             # Convert the response to a format compatible with what the PostgresDB provided
@@ -236,13 +236,13 @@ class CoreDataStoreAPI:
                 params["SortOrder"] = sort_order
 
             # Make the API request
-            endpoint = f"/api/LpcReport"
+            endpoint = "/api/LpcReport"
             response = self._make_request("GET", endpoint, params=params)
 
             # Ensure response is a dictionary
             if not isinstance(response, dict):
                 raise TypeError(
-                    f"Expected dictionary response but got {type(response)}"
+                    f"Expected dictionary response but got {type(response).__name__}"
                 )
 
             # Validate the response with our Pydantic models
@@ -641,7 +641,7 @@ class CoreDataStoreAPI:
 
             # Check if response is a dictionary before accessing attributes
             if not isinstance(response, dict):
-                logger.error(f"Expected dictionary response but got {type(response)}")
+                logger.error(f"Expected dictionary response but got {type(response).__name__}")
                 return None
 
             # Extract the PDF report URL

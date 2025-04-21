@@ -118,6 +118,7 @@ The project is in the initial setup and infrastructure development phase. We hav
 - Integration tests depend on CoreDataStore API being available
 - MCP server tests need to be run in an environment with the server connected
 - [RESOLVED] Previous CI/CD workflow failed due to missing Dockerfile. This has now been fixed.
+- [RESOLVED] Fixed flake8 issues including unnecessary dict comprehension, unnecessary generators (set comprehensions), f-string with missing placeholders, and syntactic errors in coredatastore_api.py. The remaining complexity issues (C901) will require more extensive refactoring.
 
 ## Performance Metrics
 - Initial PDF processing rate: ~15 documents per minute

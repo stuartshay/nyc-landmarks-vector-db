@@ -191,7 +191,7 @@ class TestLandmarkReportFetcher(unittest.TestCase):
         os.makedirs(output_dir, exist_ok=True)
 
         # Call method and check result
-        with patch("os.makedirs") as mock_makedirs:
+        with patch("os.makedirs"):
             result = self.fetcher.download_sample_pdf(pdf_info, output_dir, 1)
             expected = [f"{output_dir}/LP-12345.pdf"]
             self.assertEqual(result, expected)
