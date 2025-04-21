@@ -45,7 +45,7 @@ jobs:
 
       - name: Type checking with mypy
         run: |
-          mypy nyc_landmarks
+          mypy nyc_landmarks scripts
         continue-on-error: true
 
       - name: Install Bandit

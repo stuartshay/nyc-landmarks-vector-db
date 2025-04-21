@@ -24,7 +24,7 @@ from nyc_landmarks.utils.logger import get_logger
 logger = get_logger(name="fetch_landmark_reports")
 
 
-def ensure_directory_exists(directory_path: str) -> None:
+def ensure_directory_exists(directory_path: Union[str, Path]) -> None:
     """Ensure that the specified directory exists.
 
     Args:
@@ -73,7 +73,13 @@ class CoreDataStoreClient:
 
             # Return JSON response if available
             if response.content:
-                return response.json()
+                result = response.json()
+                if isinstance(result, dict):
+                    return result
+                elif isinstance(result, list):
+                    return result
+                else:
+                    return {}  # Convert other types to empty dict
             return {}
 
         except requests.exceptions.RequestException as e:
@@ -100,7 +106,8 @@ class LandmarkReportFetcher:
 
             # Extract and return the results list
             if response and isinstance(response, dict) and "results" in response:
-                return response["results"]
+                results: List[Dict[str, Any]] = response["results"]
+                return results
             return []
 
         except Exception as e:
@@ -169,7 +176,7 @@ class LandmarkReportFetcher:
         pages: int = 1,
         download_samples: bool = False,
         sample_limit: int = 1,
-    ):
+    ) -> Dict[str, int]:
         """Run the fetcher."""
         all_reports = []
 
@@ -223,7 +230,7 @@ class LandmarkReportFetcher:
         return {"total_reports": len(all_reports), "reports_with_pdfs": len(pdf_info)}
 
 
-def main():
+def main() -> None:
     """Main entry point with argument parsing."""
     parser = argparse.ArgumentParser(
         description="Fetch landmark reports and extract PDF URLs"
