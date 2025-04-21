@@ -41,20 +41,21 @@ def test_settings_defaults():
     assert settings.CHUNK_OVERLAP == 200
 
 
-def test_postgres_connection_string_assembly():
-    """Test that PostgreSQL connection string is assembled correctly."""
-    test_settings = {
-        "POSTGRES_USER": "testuser",
-        "POSTGRES_PASSWORD": "testpass",
-        "POSTGRES_HOST": "testhost",
-        "POSTGRES_PORT": "5432",
-        "POSTGRES_DB": "testdb",
-    }
-
-    with patch.dict(os.environ, test_settings):
-        settings = Settings()
-        expected_conn_string = "postgresql://testuser:testpass@testhost:5432/testdb"
-        assert settings.POSTGRES_CONNECTION_STRING == expected_conn_string
+# PostgreSQL is no longer used in the project, test removed
+# def test_postgres_connection_string_assembly():
+#     """Test that PostgreSQL connection string is assembled correctly."""
+#     test_settings = {
+#         "POSTGRES_USER": "testuser",
+#         "POSTGRES_PASSWORD": "testpass",
+#         "POSTGRES_HOST": "testhost",
+#         "POSTGRES_PORT": "5432",
+#         "POSTGRES_DB": "testdb",
+#     }
+#
+#     with patch.dict(os.environ, test_settings):
+#         settings = Settings()
+#         expected_conn_string = "postgresql://testuser:testpass@testhost:5432/testdb"
+#         assert settings.POSTGRES_CONNECTION_STRING == expected_conn_string
 
 
 def test_pinecone_dimensions_match_embedding_dimensions():

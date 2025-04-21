@@ -62,7 +62,7 @@ class DbClient:
         if hasattr(self.client, "get_landmarks_page"):
             return self.client.get_landmarks_page(page_size, page)
 
-        # For PostgreSQL or other clients that don't support pagination directly,
+        # For other clients that don't support pagination directly,
         # we'll implement it here
         try:
             # Get all landmarks
