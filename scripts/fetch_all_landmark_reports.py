@@ -20,10 +20,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from nyc_landmarks.utils.logger import get_logger
-from scripts.fetch_landmark_reports import (
-    LandmarkReportFetcher,
-    ensure_directory_exists,
-)
+from scripts.fetch_landmark_reports import LandmarkReportFetcher, ensure_directory_exists
 
 # Configure logger for this script
 logger = get_logger(name="fetch_all_landmark_reports")
@@ -33,7 +30,7 @@ def fetch_all_lpc_reports(
     client: Any,
     page_size: int = 50,
     max_pages: Optional[int] = None,
-    filters: Optional[Dict[str, Any]] = None
+    filters: Optional[Dict[str, Any]] = None,
 ) -> Tuple[List[Dict[str, Any]], int]:
     """
     Fetch all LPC reports using the MCP client.
@@ -133,14 +130,19 @@ def fetch_with_direct_client(
     logger.info(f"Fetching first page with page_size={page_size}")
     response = fetcher.api_client._make_request("GET", f"/api/LpcReport/{page_size}/1")
 
-    if not response or not isinstance(response, Dict) or "results" not in response or "total" not in response:
+    if (
+        not response
+        or not isinstance(response, Dict)
+        or "results" not in response
+        or "total" not in response
+    ):
         logger.error("Invalid response from API")
         return {
             "error": "Invalid API response",
             "reports_fetched": 0,
             "total_reports": 0,
             "reports_with_pdfs": 0,
-            "elapsed_time": 0.0
+            "elapsed_time": 0.0,
         }
 
     total_count = response["total"]
@@ -154,7 +156,11 @@ def fetch_with_direct_client(
 
     # Initialize collection
     all_reports: List[Dict[str, Any]] = []
-    if isinstance(response, Dict) and "results" in response and isinstance(response["results"], list):
+    if (
+        isinstance(response, Dict)
+        and "results" in response
+        and isinstance(response["results"], list)
+    ):
         all_reports.extend(response["results"])
 
     # Fetch remaining pages
@@ -225,7 +231,9 @@ def fetch_with_mcp_client(
 
         # Create a simple wrapper class to match our expected interface
         class McpClient:
-            def use_mcp_tool(self, server_name: str, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+            def use_mcp_tool(
+                self, server_name: str, tool_name: str, arguments: Dict[str, Any]
+            ) -> Dict[str, Any]:
                 result = use_mcp_tool(
                     server_name=server_name, tool_name=tool_name, arguments=arguments
                 )
@@ -266,9 +274,15 @@ def fetch_with_mcp_client(
         # Extract PDF URLs
         pdf_info: List[Dict[str, str]] = []
         for report in all_reports:
-            if isinstance(report, Dict) and "pdfReportUrl" in report and report["pdfReportUrl"]:
+            if (
+                isinstance(report, Dict)
+                and "pdfReportUrl" in report
+                and report["pdfReportUrl"]
+            ):
                 # Cast to string to fix the __getitem__ error
-                if isinstance(report, Dict) and isinstance(report.get("pdfReportUrl"), str):
+                if isinstance(report, Dict) and isinstance(
+                    report.get("pdfReportUrl"), str
+                ):
                     pdf_url = report.get("pdfReportUrl", "")
                     pdf_info.append(
                         {
@@ -299,7 +313,7 @@ def fetch_with_mcp_client(
             "reports_fetched": 0,
             "total_reports": 0,
             "reports_with_pdfs": 0,
-            "elapsed_time": 0.0
+            "elapsed_time": 0.0,
         }
 
 
