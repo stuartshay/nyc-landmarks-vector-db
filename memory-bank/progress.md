@@ -98,9 +98,11 @@ The project is in the initial setup and infrastructure development phase. We hav
 - [ ] Research Pinecone Assistant MCP server integration as potential enhancement to vector search capabilities
 - [ ] Enhance vector search with advanced filtering and relevance metrics
 - [ ] Create API endpoints for vector search
-- [ ] Implement conversation memory system
-- [ ] Build chat API with context awareness
-- [ ] Add filtering by landmark ID
+- [x] Implement basic conversation memory system
+- [x] Build fully functional Chat API endpoint with basic context retrieval and response generation
+- [x] Add filtering by landmark ID (Implemented in the Chat API)
+- [ ] Implement advanced context retrieval for better response quality
+- [ ] Add streaming responses for real-time feedback
 
 ### Phase 4: Testing, Documentation & Deployment
 - [x] Write unit tests for core components
@@ -111,6 +113,7 @@ The project is in the initial setup and infrastructure development phase. We hav
 - [ ] Integrate vector database verification into the CI/CD pipeline
 - [ ] Implement CI workflow for testing on Pull Requests.
 - [ ] Create comprehensive user documentation
+- [x] Created GitHub Actions workflow for deploying to Google Cloud Run (deploy-gcp.yml)
 - [ ] Deploy initial version
 
 ## Known Issues

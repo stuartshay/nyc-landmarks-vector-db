@@ -1,16 +1,16 @@
 # NYC Landmarks Vector Database - Active Context
 
 ## Current Work Focus
-We are in the initial setup phase of the NYC Landmarks Vector Database project. Our immediate focus is on:
+We are now focusing on implementing the Chat API functionality for the NYC Landmarks Vector Database project. Our immediate priorities are:
 
-1. Setting up the project structure and organization
-2. Establishing the foundation for the PDF processing pipeline
-3. Creating the configuration management system
-4. Setting up connections to external services (OpenAI, Pinecone, Azure, CoreDataStore API)
-5. Implementing comprehensive testing for scripts and API integrations
-6. Integrating Pydantic for data validation throughout the system
+1. **Implementing a fully functional Chat API endpoint with basic context retrieval and response generation**
+2. Building robust conversation management with the existing conversation memory system
+3. Integrating vector search capabilities to retrieve relevant landmark information
+4. Generating high-quality responses using OpenAI's chat completions API
+5. Adding comprehensive error handling and logging
+6. Creating appropriate unit tests for the Chat API
 7. Enhancing vector search capabilities and implementing query testing
-8. **Implementing robust vector database verification to ensure fixed IDs and metadata consistency**
+8. Implementing robust vector database verification to ensure fixed IDs and metadata consistency
 
 ## Recent Changes
 - Created initial project documentation in the memory bank
@@ -36,6 +36,10 @@ We are in the initial setup phase of the NYC Landmarks Vector Database project. 
 - **Enhanced PineconeDB implementation with deterministic vector IDs to prevent duplicate records and maintain metadata consistency when processing the same landmarks multiple times. This resolves issues with growing database size and inconsistent filtering.**
 - **Created comprehensive verification tools for Pinecone database validation, including both standalone script (`verify_pinecone_fixed_ids.py`) and integrated test modules (`tests/verification/test_pinecone_fixed_ids.py` and `tests/integration/test_pinecone_validation.py`)**
 - **Updated project dependencies in setup.py and requirements.txt to use the latest stable versions. Specifically updated fastapi, uvicorn, openai, pinecone-client, and other key dependencies. Fixed grpcio and grpcio-status to use stable versions rather than release candidates.**
+- **Implemented a fully functional Chat API endpoint that uses the existing conversation memory system and includes robust error handling and data validation.**
+- **Added unit tests for the Chat API that cover basic conversation, existing conversation, landmark filtering, and error handling scenarios.**
+- **Enhanced the implementation to use proper Python type annotations for better code quality and maintainability.**
+- **Created a GitHub Actions workflow for deploying to Google Cloud Run (`deploy-gcp.yml`), enabling continuous deployment of the NYC Landmarks Vector DB service with appropriate memory allocation and environment configuration.**
 
 ## Next Steps
 1. Re-run the GitHub Actions workflow to verify that the Docker image is now built and pushed successfully.
