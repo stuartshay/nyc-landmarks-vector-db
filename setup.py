@@ -85,7 +85,7 @@ setup(
         "uvicorn>=0.34.0",
         "openai>=1.75.0",
         "pinecone>=2.0.0",  # Updated from pinecone-client to pinecone
-        "pypdf2>=3.0.1",
+        "pypdf>=3.15.1",  # Updated from pypdf2 to pypdf
         "pdfplumber>=0.11.0",
         "azure-storage-blob>=12.25.0",
         "google-cloud-secret-manager>=2.23.0",
