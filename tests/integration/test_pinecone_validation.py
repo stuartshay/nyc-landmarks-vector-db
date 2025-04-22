@@ -25,7 +25,7 @@ logger = get_logger(name="test_pinecone_validation")
 
 
 @pytest.fixture
-def pinecone_db():
+def pinecone_db() -> PineconeDB:
     """Return a PineconeDB instance."""
     return PineconeDB()
 
@@ -38,7 +38,7 @@ def random_vector():
 
 
 @pytest.mark.integration
-def test_pinecone_index_exists(pinecone_db):
+def test_pinecone_index_exists(pinecone_db: PineconeDB) -> None:
     """Test that the Pinecone index exists and is accessible."""
     stats = pinecone_db.get_index_stats()
     assert stats, "Failed to get Pinecone index stats"
@@ -173,7 +173,9 @@ def test_metadata_consistency(pinecone_db, random_vector):
 
 
 @pytest.mark.integration
-def test_comprehensive_vector_validation(pinecone_db, random_vector):
+def test_comprehensive_vector_validation(
+    pinecone_db: PineconeDB, random_vector: list[float]
+) -> None:
     """Run comprehensive validation on a set of landmarks."""
     # Define landmark IDs to test
     landmark_ids = ["LP-00001", "LP-00009", "LP-00042", "LP-00066"]

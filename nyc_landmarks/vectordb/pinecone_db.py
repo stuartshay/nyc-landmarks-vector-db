@@ -12,8 +12,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-# Import pinecone-client (using updated API)
-from pinecone import Pinecone  # type: ignore
+# Updated import for Pinecone SDK v6.x
+import pinecone
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.vectordb.enhanced_metadata import get_metadata_collector
@@ -64,8 +64,8 @@ class PineconeDB:
         # Initialize Pinecone client if API key is provided
         if self.api_key:
             try:
-                # Initialize Pinecone with new API
-                self.pc = Pinecone(api_key=self.api_key)
+                # Initialize Pinecone with updated API for v6.x
+                self.pc = pinecone.Pinecone(api_key=self.api_key)
                 logger.info("Initialized Pinecone client")
 
                 # Connect to index

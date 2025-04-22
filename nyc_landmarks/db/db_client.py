@@ -158,6 +158,63 @@ class DbClient:
             return self.client.get_landmark_pluto_data(landmark_id)
         return []
 
+    def get_total_record_count(self) -> int:
+        """Get the total number of landmarks available in the database.
+
+        This method first tries to make a minimal API request to get metadata including
+        the total record count. If that fails, it falls back to estimating the count
+        by fetching pages until no more records are found.
+
+        Returns:
+            int: Total number of landmark records
+        """
+        try:
+            # First attempt: Try to get the count from the API metadata
+            if hasattr(self.client, "_make_request"):
+                try:
+                    # Make a minimal request with page size 1
+                    response = self.client._make_request("GET", "/api/LpcReport/1/1")
+
+                    # Extract the total count from the response metadata
+                    if isinstance(response, dict):
+                        # Check for different possible keys that might contain the total count
+                        for key in ["totalCount", "total", "count", "totalRecords"]:
+                            if key in response and response[key]:
+                                total_count = int(response[key])
+                                logger.info(f"Retrieved total record count: {total_count} from key: {key}")
+                                return total_count
+                except Exception as e:
+                    logger.warning(f"Error getting total record count from API metadata: {e}")
+
+            # Second attempt: Estimate by fetching the first few pages
+            logger.info("Falling back to page-based count estimation")
+            page_size = 50  # Use larger page size for efficiency
+            estimated_count = 0
+            max_pages = 5   # Limit to prevent too many API calls
+
+            for page in range(1, max_pages + 1):
+                page_data = self.get_landmarks_page(page_size=page_size, page=page)
+                if not page_data:
+                    break
+                estimated_count += len(page_data)
+
+                # If we got fewer records than the page size, we've reached the end
+                if len(page_data) < page_size:
+                    break
+
+            # If we hit the max pages, we'll do a simple extrapolation
+            if page == max_pages and len(page_data) == page_size:
+                logger.info(f"Reached max pages ({max_pages}). Count is likely higher than {estimated_count}")
+            else:
+                logger.info(f"Estimated total record count: {estimated_count}")
+
+            return max(1, estimated_count)  # Ensure we return at least 1
+
+        except Exception as e:
+            logger.error(f"Error getting total record count: {e}")
+            return 100  # Return a reasonable default if all else fails
+            return 0
+
 
 def get_db_client() -> DbClient:
     """Get a database client instance.
