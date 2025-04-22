@@ -10,7 +10,7 @@ from setuptools.command.install import install
 class PreCommitCommand:
     """Base class for installing pre-commit hooks."""
 
-    def run_pre_commit_install(self):
+    def run_pre_commit_install(self) -> None:
         try:
             print("Installing pre-commit hooks...")
             subprocess.check_call(["pre-commit", "install"])
@@ -28,7 +28,7 @@ class PreCommitCommand:
 class PostDevelopCommand(develop, PreCommitCommand):
     """Post-installation for development mode."""
 
-    def run(self):
+    def run(self) -> None:
         develop.run(self)
         self.run_pre_commit_install()
         # Create test_output directory
@@ -45,7 +45,7 @@ class PostDevelopCommand(develop, PreCommitCommand):
 class PostInstallCommand(install, PreCommitCommand):
     """Post-installation for installation mode."""
 
-    def run(self):
+    def run(self) -> None:
         install.run(self)
         # Only install pre-commit hooks in development environments
         if os.environ.get("INSTALL_PRE_COMMIT", "false").lower() == "true":
@@ -89,8 +89,6 @@ setup(
         "pdfplumber>=0.11.0",
         "azure-storage-blob>=12.25.0",
         "google-cloud-secret-manager>=2.23.0",
-        # "sqlalchemy>=2.0.40",  # No longer using SQL database
-        # "psycopg2-binary>=2.9.10",  # PostgreSQL dependency removed
         "pydantic>=2.11.0",
         "pydantic-settings>=2.2.0",  # Added for settings module
         "python-dotenv>=1.1.0",
