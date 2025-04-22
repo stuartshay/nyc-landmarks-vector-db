@@ -21,7 +21,7 @@ class TestLandmarkPagination:
     """Test class for landmark pagination functionality."""
 
     @pytest.mark.integration
-    def test_pagination_metadata(self):
+    def test_pagination_metadata(self) -> None:
         """Test that pagination metadata is correctly returned and processed."""
         # Create fetcher instance
         fetcher = LandmarkReportFetcher()
@@ -46,7 +46,7 @@ class TestLandmarkPagination:
         assert page1_ids.isdisjoint(page2_ids), "Overlapping reports between pages"
 
     @pytest.mark.integration
-    def test_fetch_all_pages(self):
+    def test_fetch_all_pages(self) -> None:
         """Test that all pages of reports can be fetched."""
         # Create fetcher instance
         fetcher = LandmarkReportFetcher()
