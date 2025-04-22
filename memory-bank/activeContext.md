@@ -39,6 +39,7 @@ We are now focusing on implementing the Chat API functionality for the NYC Landm
 - **Implemented a fully functional Chat API endpoint that uses the existing conversation memory system and includes robust error handling and data validation.**
 - **Added unit tests for the Chat API that cover basic conversation, existing conversation, landmark filtering, and error handling scenarios.**
 - **Enhanced the implementation to use proper Python type annotations for better code quality and maintainability.**
+- **Created a GitHub Actions workflow for deploying to Google Cloud Run (`deploy-gcp.yml`), enabling continuous deployment of the NYC Landmarks Vector DB service with appropriate memory allocation and environment configuration.**
 
 ## Next Steps
 1. Re-run the GitHub Actions workflow to verify that the Docker image is now built and pushed successfully.

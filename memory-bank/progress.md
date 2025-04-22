@@ -113,6 +113,7 @@ The project is in the initial setup and infrastructure development phase. We hav
 - [ ] Integrate vector database verification into the CI/CD pipeline
 - [ ] Implement CI workflow for testing on Pull Requests.
 - [ ] Create comprehensive user documentation
+- [x] Created GitHub Actions workflow for deploying to Google Cloud Run (deploy-gcp.yml)
 - [ ] Deploy initial version
 
 ## Known Issues
