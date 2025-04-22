@@ -181,16 +181,20 @@ class DbClient:
                         for key in ["totalCount", "total", "count", "totalRecords"]:
                             if key in response and response[key]:
                                 total_count = int(response[key])
-                                logger.info(f"Retrieved total record count: {total_count} from key: {key}")
+                                logger.info(
+                                    f"Retrieved total record count: {total_count} from key: {key}"
+                                )
                                 return total_count
                 except Exception as e:
-                    logger.warning(f"Error getting total record count from API metadata: {e}")
+                    logger.warning(
+                        f"Error getting total record count from API metadata: {e}"
+                    )
 
             # Second attempt: Estimate by fetching the first few pages
             logger.info("Falling back to page-based count estimation")
             page_size = 50  # Use larger page size for efficiency
             estimated_count = 0
-            max_pages = 5   # Limit to prevent too many API calls
+            max_pages = 5  # Limit to prevent too many API calls
 
             for page in range(1, max_pages + 1):
                 page_data = self.get_landmarks_page(page_size=page_size, page=page)
@@ -204,7 +208,9 @@ class DbClient:
 
             # If we hit the max pages, we'll do a simple extrapolation
             if page == max_pages and len(page_data) == page_size:
-                logger.info(f"Reached max pages ({max_pages}). Count is likely higher than {estimated_count}")
+                logger.info(
+                    f"Reached max pages ({max_pages}). Count is likely higher than {estimated_count}"
+                )
             else:
                 logger.info(f"Estimated total record count: {estimated_count}")
 
