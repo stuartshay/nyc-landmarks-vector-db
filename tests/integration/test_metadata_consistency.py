@@ -19,7 +19,7 @@ from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
 
 @pytest.mark.integration
-def test_metadata_consistency_with_fixed_ids():
+def test_metadata_consistency_with_fixed_ids() -> None:
     """Test that metadata is consistently maintained with fixed IDs."""
     # Skip test if no Pinecone connection
     pinecone_db = PineconeDB()
@@ -73,6 +73,11 @@ def test_metadata_consistency_with_fixed_ids():
     assert (
         expected_id in vector_ids
     ), f"Expected ID {expected_id} not found in {vector_ids}"
+
+    # Give Pinecone time to index the data
+    import time
+
+    time.sleep(2)
 
     # Step 4: Query for the vector to check metadata consistency
     filter_dict = {"landmark_id": landmark_id}
