@@ -2,10 +2,9 @@
 
 [![Python CI](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/python-ci.yml/badge.svg)](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/python-ci.yml) [![Dependency Review](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/dependency-review.yml)
 
-
-
-
 [![Process NYC Landmarks Data](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/process_landmarks.yml/badge.svg)](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/process_landmarks.yml)
+
+[![API Deploy to Google Cloud Run](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/deploy-gcp.yml/badge.svg)](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/deploy-gcp.yml)
 
 A vector database system for NYC landmarks that extracts metadata and  text from API and PDF reports, converts it to vector embeddings, and enables semantic search and chatbot functionality.
 
