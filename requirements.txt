@@ -97,7 +97,7 @@ pdfplumber==0.11.6
     # via nyc-landmarks-vector-db (setup.py)
 pillow==11.2.1
     # via pdfplumber
-pinecone-client==6.0.0
+pinecone>=2.0.0
     # via nyc-landmarks-vector-db (setup.py)
 pinecone-plugin-interface==0.0.7
     # via pinecone-client

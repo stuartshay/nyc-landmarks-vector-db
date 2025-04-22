@@ -84,7 +84,7 @@ setup(
         "fastapi>=0.115.0",
         "uvicorn>=0.34.0",
         "openai>=1.75.0",
-        "pinecone-client>=6.0.0",
+        "pinecone>=2.0.0",  # Updated from pinecone-client to pinecone
         "pypdf2>=3.0.1",
         "pdfplumber>=0.11.0",
         "azure-storage-blob>=12.25.0",
