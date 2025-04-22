@@ -2,25 +2,44 @@
 Chat API module for NYC Landmarks Vector Database.
 
 This module provides API endpoints for chatbot functionality with
-conversation memory and vector search integration.
+conversation memory and vector search integration. It enables users
+to interact with the NYC Landmarks database using natural language.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+import time
+from typing import Any, Dict, List, Optional, Protocol, Tuple, TypedDict, Union
 
 import openai
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from openai.types.chat import (
+    ChatCompletion,
+    ChatCompletionAssistantMessageParam,
+    ChatCompletionMessageParam,
+    ChatCompletionSystemMessageParam,
+    ChatCompletionUserMessageParam,
+)
+from pydantic import BaseModel, Field, validator
+
+
+# Define a protocol for QueryMatch to avoid direct import
+class QueryMatch(Protocol):
+    """Protocol for Pinecone query match object."""
+
+    id: str
+    score: float
+    metadata: Dict[str, Any]
+
 
 from nyc_landmarks.chat.conversation import conversation_store
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.db_client import DbClient
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
+from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
 # Configure logging
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=settings.LOG_LEVEL.value)
+logger = get_logger(__name__)
 
 # Create API router
 router = APIRouter(
@@ -69,17 +88,17 @@ class ChatResponse(BaseModel):
 # --- Dependency injection functions ---
 
 
-def get_embedding_generator():
+def get_embedding_generator() -> EmbeddingGenerator:
     """Get an instance of EmbeddingGenerator."""
     return EmbeddingGenerator()
 
 
-def get_vector_db():
+def get_vector_db() -> PineconeDB:
     """Get an instance of PineconeDB."""
     return PineconeDB()
 
 
-def get_db_client():
+def get_db_client() -> DbClient:
     """Get an instance of DbClient."""
     return DbClient()
 
@@ -93,7 +112,7 @@ async def chat_message(
     embedding_generator: EmbeddingGenerator = Depends(get_embedding_generator),
     vector_db: PineconeDB = Depends(get_vector_db),
     db_client: DbClient = Depends(get_db_client),
-):
+) -> ChatResponse:
     """Process a chat message and generate a response.
 
     Args:
@@ -144,9 +163,18 @@ async def chat_message(
 
         # Process matches to create context
         for i, match in enumerate(matches):
-            text = match.metadata.get("text", "")
-            landmark_id = match.metadata.get("landmark_id", "")
-            score = match.score
+            # Handle both object-style and dict-style match objects
+            try:
+                # Try accessing as an object (Protocol definition)
+                metadata = match.metadata
+                score = match.score
+            except (AttributeError, TypeError):
+                # Fall back to dict access (actual Pinecone response)
+                metadata = match.get("metadata", {})
+                score = match.get("score", 0)
+
+            text = metadata.get("text", "")
+            landmark_id = metadata.get("landmark_id", "")
 
             # Only use matches with a reasonable similarity score
             if score < 0.7:  # This threshold can be adjusted
@@ -171,7 +199,7 @@ async def chat_message(
             sources.append(source)
 
         # Create message content with context
-        messages = []
+        messages: List[ChatCompletionMessageParam] = []
 
         # Add system message with context
         if context_text:
@@ -193,7 +221,7 @@ async def chat_message(
                 }
             )
 
-        # Add conversation history (last 5 messages)
+        # Add conversation history (last 10 messages)
         for msg in conversation.get_messages(limit=10):
             if (
                 msg["role"] != "system"
@@ -239,7 +267,7 @@ async def chat_message(
 
 
 @router.get("/conversations/{conversation_id}", response_model=List[ChatMessage])
-async def get_conversation_history(conversation_id: str):
+async def get_conversation_history(conversation_id: str) -> List[ChatMessage]:
     """Get conversation history.
 
     Args:
@@ -277,7 +305,7 @@ async def get_conversation_history(conversation_id: str):
 
 
 @router.delete("/conversations/{conversation_id}", response_model=Dict[str, bool])
-async def delete_conversation(conversation_id: str):
+async def delete_conversation(conversation_id: str) -> Dict[str, bool]:
     """Delete a conversation.
 
     Args:
