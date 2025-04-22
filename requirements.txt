@@ -99,6 +99,8 @@ pillow==11.2.1
     # via pdfplumber
 pinecone>=2.0.0
     # via nyc-landmarks-vector-db (setup.py)
+tenacity>=8.2.0
+    # via nyc-landmarks-vector-db (setup.py)
 pinecone-plugin-interface==0.0.7
     # via pinecone-client
 proto-plus==1.26.1

@@ -95,6 +95,7 @@ setup(
         "tiktoken>=0.9.0",
         "numpy>=1.26.0",  # Added for vector tests
         "pandas>=2.2.0",  # Added for dataframe tests
+        "tenacity>=8.2.0",  # Added for retry logic in API calls
     ],
     extras_require={
         "dev": [
