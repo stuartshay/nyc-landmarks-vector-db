@@ -99,7 +99,7 @@ class Conversation:
 class ConversationStore:
     """In-memory store for conversation history."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the conversation store."""
         self.conversations: Dict[str, Conversation] = {}
         self.ttl = settings.CONVERSATION_TTL  # Time to live in seconds
