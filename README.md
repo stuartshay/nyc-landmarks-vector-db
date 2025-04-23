@@ -9,7 +9,7 @@
 
 ```
 Deployed Application   
-https://nyc-landmarks-vector-db-1052843754581.us-east4.run.app/docs
+https://vector-db.coredatastore.com/docs
 ```
 
 A vector database system for NYC landmarks that extracts metadata and  text from API and PDF reports, converts it to vector embeddings, and enables semantic search and chatbot functionality.
@@ -394,8 +394,6 @@ The project uses the CoreDataStore API as the exclusive data source for NYC land
 - `PINECONE_API_KEY`: Your API key for the Pinecone vector database
 - `PINECONE_ENVIRONMENT`: The Pinecone environment to use
 - `PINECONE_INDEX_NAME`: The name of your Pinecone index
-- `AZURE_STORAGE_CONNECTION_STRING`: Connection string for Azure Blob Storage
-- `AZURE_STORAGE_CONTAINER_NAME`: Container name for landmark PDFs
 - `GOOGLE_CLOUD_PROJECT`: Google Cloud project ID for Secret Store
 - `TEXT_CHUNK_SIZE`: Size of text chunks for embedding (tokens)
 - `TEXT_CHUNK_OVERLAP`: Overlap between chunks (percentage)
@@ -413,7 +411,6 @@ Detailed documentation is available in the `memory-bank/` directory:
 - `activeContext.md`: Current work focus and considerations
 - `progress.md`: Project progress and status
 
-Additional technical documentation for CI/CD setup is available in `docs/ci_cd_pipeline.md`.
 
 ## License
 
