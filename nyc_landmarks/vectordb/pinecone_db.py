@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
 # Updated import for Pinecone SDK v6.x
-import pinecone
+import pinecone  # type: ignore[import-untyped]
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.vectordb.enhanced_metadata import get_metadata_collector

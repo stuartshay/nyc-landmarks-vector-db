@@ -157,8 +157,14 @@ async def chat_message(
             # Handle both object-style and dict-style match objects
             try:
                 # Try accessing as an object (Protocol definition)
-                metadata = match.metadata
-                score = match.score
+                metadata = (
+                    match.metadata
+                    if hasattr(match, "metadata")
+                    else match.get("metadata", {})
+                )
+                score = (
+                    match.score if hasattr(match, "score") else match.get("score", 0)
+                )
             except (AttributeError, TypeError):
                 # Fall back to dict access (actual Pinecone response)
                 metadata = match.get("metadata", {})
@@ -228,7 +234,7 @@ async def chat_message(
         )
 
         # Extract response content
-        assistant_response = response.choices[0].message.content
+        assistant_response = response.choices[0].message.content or ""
 
         # Add assistant response to conversation
         conversation.add_message("assistant", assistant_response)
