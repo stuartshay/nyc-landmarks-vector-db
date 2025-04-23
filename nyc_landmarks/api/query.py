@@ -84,17 +84,17 @@ class LandmarkListResponse(BaseModel):
 # --- Dependency injection functions ---
 
 
-def get_embedding_generator():
+def get_embedding_generator() -> EmbeddingGenerator:
     """Get an instance of EmbeddingGenerator."""
     return EmbeddingGenerator()
 
 
-def get_vector_db():
+def get_vector_db() -> PineconeDB:
     """Get an instance of PineconeDB."""
     return PineconeDB()
 
 
-def get_db_client():
+def get_db_client() -> DbClient:
     """Get an instance of DbClient."""
     return DbClient()
 
@@ -108,7 +108,7 @@ async def search_text(
     embedding_generator: EmbeddingGenerator = Depends(get_embedding_generator),
     vector_db: PineconeDB = Depends(get_vector_db),
     db_client: DbClient = Depends(get_db_client),
-):
+) -> SearchResponse:
     """Search for text using vector similarity.
 
     Args:
@@ -136,9 +136,9 @@ async def search_text(
         results = []
         for match in matches:
             # Extract data from match
-            text = match.metadata.get("text", "")
-            landmark_id = match.metadata.get("landmark_id", "")
-            score = match.score
+            text = match["metadata"].get("text", "")
+            landmark_id = match["metadata"].get("landmark_id", "")
+            score = match["score"]
 
             # Get landmark name from database if available
             landmark_name = None
@@ -152,7 +152,7 @@ async def search_text(
                 score=score,
                 landmark_id=landmark_id,
                 landmark_name=landmark_name,
-                metadata={k: v for k, v in match.metadata.items() if k != "text"},
+                metadata={k: v for k, v in match["metadata"].items() if k != "text"},
             )
 
             results.append(result)
@@ -175,7 +175,7 @@ async def get_landmarks(
         20, description="Maximum number of landmarks to return", ge=1, le=100
     ),
     db_client: DbClient = Depends(get_db_client),
-):
+) -> LandmarkListResponse:
     """Get a list of landmarks.
 
     Args:
@@ -217,7 +217,7 @@ async def get_landmarks(
 async def get_landmark(
     landmark_id: str,
     db_client: DbClient = Depends(get_db_client),
-):
+) -> LandmarkInfo:
     """Get information about a specific landmark.
 
     Args:
@@ -262,7 +262,7 @@ async def search_landmarks_text(
         20, description="Maximum number of landmarks to return", ge=1, le=100
     ),
     db_client: DbClient = Depends(get_db_client),
-):
+) -> LandmarkListResponse:
     """Search for landmarks by text (direct database search, not vector search).
 
     Args:

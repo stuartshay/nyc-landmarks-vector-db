@@ -6,20 +6,18 @@ conversation memory and vector search integration. It enables users
 to interact with the NYC Landmarks database using natural language.
 """
 
-import logging
-import time
-from typing import Any, Dict, List, Optional, Protocol, Tuple, TypedDict, Union
+from typing import Any, Dict, List, Optional, Protocol
 
 import openai
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from openai.types.chat import (
-    ChatCompletion,
-    ChatCompletionAssistantMessageParam,
-    ChatCompletionMessageParam,
-    ChatCompletionSystemMessageParam,
-    ChatCompletionUserMessageParam,
-)
-from pydantic import BaseModel, Field, validator
+from fastapi import APIRouter, Depends, HTTPException
+from openai.types.chat import ChatCompletionMessageParam
+from pydantic import BaseModel, Field
+
+from nyc_landmarks.chat.conversation import conversation_store
+from nyc_landmarks.db.db_client import DbClient
+from nyc_landmarks.embeddings.generator import EmbeddingGenerator
+from nyc_landmarks.utils.logger import get_logger
+from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
 
 # Define a protocol for QueryMatch to avoid direct import
@@ -30,13 +28,6 @@ class QueryMatch(Protocol):
     score: float
     metadata: Dict[str, Any]
 
-
-from nyc_landmarks.chat.conversation import conversation_store
-from nyc_landmarks.config.settings import settings
-from nyc_landmarks.db.db_client import DbClient
-from nyc_landmarks.embeddings.generator import EmbeddingGenerator
-from nyc_landmarks.utils.logger import get_logger
-from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
 # Configure logging
 logger = get_logger(__name__)

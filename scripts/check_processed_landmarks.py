@@ -7,21 +7,18 @@ and compare against the available landmarks from the API.
 """
 
 import json
-import os
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Set
+from typing import List, Optional
 
 # Add project root to path
 project_root = Path(__file__).resolve().parent.parent
 sys.path.append(str(project_root))
-
-from nyc_landmarks.db.db_client import get_db_client
-from nyc_landmarks.utils.logger import get_logger
-
-# Use our adapter instead of importing directly from the module
 sys.path.append(str(project_root / "notebooks"))
+
+
+# Configure pinecone dependencies
 try:
     from pinecone_adapter import PineconeAdapterDB as PineconeDB
     from pinecone_adapter import get_adapter_from_settings
@@ -40,7 +37,7 @@ except ImportError:
 KNOWN_LANDMARKS = ["LP-00001", "LP-00009", "LP-00042", "LP-00066"]
 
 
-def fetch_all_landmarks(page_limit=None):
+def fetch_all_landmarks(page_limit: Optional[int] = None) -> List[str]:
     """
     Fetch all landmarks from the API.
 
