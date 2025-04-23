@@ -120,7 +120,7 @@ jobs:
             PINECONE_INDEX_NAME=${{ secrets.PINECONE_INDEX_NAME }}
             COREDATASTORE_API_KEY=${{ secrets.COREDATASTORE_API_KEY }}
             CONVERSATION_TTL=86400
-          flags: '--memory 2Gi --cpu 1 --concurrency 80 --max-instances 10 --min-instances 1 --timeout 300s --allow-unauthenticated'
+          flags: '--memory 1Gi --cpu 1 --concurrency 80 --max-instances 10 --min-instances 1 --timeout 300s --allow-unauthenticated --port 5000'
 
       - name: Show Output
         run: echo "${{ steps.deploy.outputs.url }}"
