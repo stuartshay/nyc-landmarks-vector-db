@@ -3,12 +3,11 @@ name: API Deploy to Google Cloud Run
 on:
   push:
     branches:
-      - main
       - master
   workflow_dispatch:
 
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   SERVICE_NAME: nyc-landmarks-vector-db
   REGION: us-east4
   DOCKER_IMAGE_TAG: 0.0.1.${{ github.run_number }}
