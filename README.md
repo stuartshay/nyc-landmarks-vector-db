@@ -6,6 +6,12 @@
 
 [![API Deploy to Google Cloud Run](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/deploy-gcp.yml/badge.svg)](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/deploy-gcp.yml)
 
+
+```
+Deployed Application   
+https://nyc-landmarks-vector-db-1052843754581.us-east4.run.app/docs
+```
+
 A vector database system for NYC landmarks that extracts metadata and  text from API and PDF reports, converts it to vector embeddings, and enables semantic search and chatbot functionality.
 
 ## Project Overview
