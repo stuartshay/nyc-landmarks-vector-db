@@ -3,12 +3,11 @@ name: API Deploy to Google Cloud Run
 on:
   push:
     branches:
-      - main
       - master
   workflow_dispatch:
 
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   SERVICE_NAME: nyc-landmarks-vector-db
   REGION: us-east4
   DOCKER_IMAGE_TAG: 0.0.1.${{ github.run_number }}
@@ -66,7 +65,7 @@ jobs:
       - name: Set up Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: ${{ env.PROJECT_ID }}
+          project_id: ${{ env.GCP_PROJECT_ID}}
 
       - name: Configure Docker
         run: gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY_HOST }}
@@ -121,7 +120,7 @@ jobs:
             PINECONE_INDEX_NAME=${{ secrets.PINECONE_INDEX_NAME }}
             COREDATASTORE_API_KEY=${{ secrets.COREDATASTORE_API_KEY }}
             CONVERSATION_TTL=86400
-          flags: '--memory 2Gi --cpu 1 --concurrency 80 --max-instances 10 --min-instances 1 --timeout 300s --allow-unauthenticated'
+          flags: '--memory 1Gi --cpu 1 --concurrency 80 --max-instances 10 --min-instances 1 --timeout 300s --allow-unauthenticated --port 8000'
 
       - name: Show Output
         run: echo "${{ steps.deploy.outputs.url }}"
