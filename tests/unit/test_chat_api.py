@@ -4,16 +4,14 @@ Unit tests for Chat API functionality.
 This module tests the chat API endpoints, response generation, and conversation management.
 """
 
-import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
 from openai.types.chat import ChatCompletionMessage
-from openai.types.chat.chat_completion import ChatCompletion, Choice
+from openai.types.chat.chat_completion import Choice
 
-from nyc_landmarks.api.chat import ChatRequest, ChatResponse, router
-from nyc_landmarks.chat.conversation import Conversation, ConversationStore
+from nyc_landmarks.chat.conversation import Conversation
 from nyc_landmarks.main import app
 
 
@@ -58,7 +56,7 @@ def mock_pinecone_match():
 class MockChatCompletion:
     """Mock for OpenAI ChatCompletion."""
 
-    def __init__(self, content="This is a test response"):
+    def __init__(self, content: str = "This is a test response") -> None:
         self.choices = [
             Choice(
                 index=0,
@@ -68,10 +66,10 @@ class MockChatCompletion:
         ]
 
 
-@pytest.mark.unit
 class TestChatAPI:
     """Test cases for the Chat API."""
 
+    @pytest.mark.integration
     @patch("nyc_landmarks.api.chat.conversation_store")
     @patch("nyc_landmarks.api.chat.openai.chat.completions.create")
     @patch("nyc_landmarks.api.chat.PineconeDB")
@@ -113,6 +111,7 @@ class TestChatAPI:
         assert mock_pinecone_db.return_value.query_vectors.called
         assert mock_openai_create.called
 
+    @pytest.mark.integration
     @patch("nyc_landmarks.api.chat.conversation_store")
     @patch("nyc_landmarks.api.chat.openai.chat.completions.create")
     @patch("nyc_landmarks.api.chat.PineconeDB")
@@ -157,6 +156,7 @@ class TestChatAPI:
         assert mock_pinecone_db.return_value.query_vectors.called
         assert mock_openai_create.called
 
+    @pytest.mark.integration
     @patch("nyc_landmarks.api.chat.conversation_store")
     @patch("nyc_landmarks.api.chat.openai.chat.completions.create")
     @patch("nyc_landmarks.api.chat.PineconeDB")
@@ -270,6 +270,7 @@ class TestChatAPI:
         assert response.status_code == 404
         assert "Conversation not found" in response.json()["detail"]
 
+    @pytest.mark.integration
     @patch("nyc_landmarks.api.chat.openai.chat.completions.create")
     @patch("nyc_landmarks.api.chat.conversation_store")
     @patch("nyc_landmarks.api.chat.EmbeddingGenerator")
