@@ -20,10 +20,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from nyc_landmarks.utils.logger import get_logger
-from scripts.fetch_landmark_reports import (
-    LandmarkReportFetcher,
-    ensure_directory_exists,
-)
+from scripts.fetch_landmark_reports import LandmarkReportFetcher, ensure_directory_exists
 
 # Configure logger for this script
 logger = get_logger(name="fetch_all_landmark_reports")

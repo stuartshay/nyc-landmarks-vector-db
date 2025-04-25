@@ -14,7 +14,7 @@ import pytest
 
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
-from tests.verification.test_pinecone_fixed_ids import (
+from tests.integration.test_pinecone_fixed_ids import (
     create_verification_summary,
     save_verification_results,
     verify_landmark_vectors,
