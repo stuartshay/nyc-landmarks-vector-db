@@ -79,7 +79,7 @@ class EmbeddingGenerator:
                 )
 
             logger.debug(f"Generated embedding with {len(embedding)} dimensions")
-            return embedding
+            return [float(value) for value in embedding]  # Explicit cast to list[float]
         except openai.AuthenticationError as e:
             logger.error(f"Authentication error with OpenAI API: {e}")
             raise

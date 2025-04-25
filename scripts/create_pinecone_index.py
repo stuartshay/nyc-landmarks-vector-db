@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 # Import needed modules - update imports for the new Pinecone API
-from pinecone import Pinecone, ServerlessSpec  # type: ignore
+from pinecone import Pinecone, ServerlessSpec
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.utils.logger import get_logger

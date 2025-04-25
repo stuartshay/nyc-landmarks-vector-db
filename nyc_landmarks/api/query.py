@@ -10,7 +10,9 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Query as QueryParam
+from fastapi.routing import APIRoute
 from pydantic import BaseModel, Field
+from typing_extensions import Annotated
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.db_client import DbClient
