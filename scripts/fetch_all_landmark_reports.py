@@ -230,7 +230,7 @@ def fetch_with_mcp_client(
 
     try:
         # Try to import the MCP client
-        from claude_dev import use_mcp_tool  # type: ignore
+        from claude_dev import use_mcp_tool
 
         # Create a simple wrapper class to match our expected interface
         class McpClient:

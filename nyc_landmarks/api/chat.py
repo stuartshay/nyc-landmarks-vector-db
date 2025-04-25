@@ -97,7 +97,7 @@ def get_db_client() -> DbClient:
 # --- API endpoints ---
 
 
-@router.post("/message", response_model=ChatResponse)  # type: ignore
+@router.post("/message", response_model=ChatResponse)
 async def chat_message(
     request: ChatRequest,
     embedding_generator: EmbeddingGenerator = Depends(get_embedding_generator),
@@ -263,7 +263,7 @@ async def chat_message(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/conversations/{conversation_id}", response_model=List[ChatMessage])  # type: ignore
+@router.get("/conversations/{conversation_id}", response_model=List[ChatMessage])
 async def get_conversation_history(conversation_id: str) -> List[ChatMessage]:
     """Get conversation history.
 
@@ -301,7 +301,7 @@ async def get_conversation_history(conversation_id: str) -> List[ChatMessage]:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/conversations/{conversation_id}", response_model=Dict[str, bool])  # type: ignore
+@router.delete("/conversations/{conversation_id}", response_model=Dict[str, bool])
 async def delete_conversation(conversation_id: str) -> Dict[str, bool]:
     """Delete a conversation.
 

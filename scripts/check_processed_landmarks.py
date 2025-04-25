@@ -12,24 +12,30 @@ import time
 from pathlib import Path
 from typing import List, Optional
 
+# Import db client and logger
+from nyc_landmarks.db.db_client import get_db_client
+from nyc_landmarks.utils.logger import get_logger
+
 # Add project root to path
 project_root = Path(__file__).resolve().parent.parent
 sys.path.append(str(project_root))
 sys.path.append(str(project_root / "notebooks"))
 
-# Import db client and logger
-from nyc_landmarks.db.db_client import get_db_client
-from nyc_landmarks.utils.logging import get_logger
 
 # Configure pinecone dependencies
 try:
-    from pinecone_adapter import PineconeAdapterDB as PineconeDB
-    from pinecone_adapter import get_adapter_from_settings
+    # NOTE: These imports are intentionally placed here after modifying sys.path
+    # to ensure the project root is in the Python path before importing project modules.
+    from pinecone_adapter import (  # type: ignore # noqa: E402
+        PineconeAdapterDB as PineconeDB,
+    )
+    from pinecone_adapter import get_adapter_from_settings  # type: ignore # noqa: E402
 
     logger = get_logger(name="check_processed_landmarks")
     logger.info("Using PineconeAdapter")
 except ImportError:
-    from nyc_landmarks.vectordb.pinecone_db import PineconeDB
+    # NOTE: This import is intentionally placed here as a fallback if pinecone_adapter is not available
+    from nyc_landmarks.vectordb.pinecone_db import PineconeDB  # noqa: E402
 
     get_adapter_from_settings = None
     logger = get_logger(name="check_processed_landmarks")
@@ -93,14 +99,14 @@ def fetch_all_landmarks(page_limit: Optional[int] = None) -> List[str]:
     return all_landmark_ids
 
 
-def get_sample_processed_landmarks():
+def get_sample_processed_landmarks() -> set[str]:
     """
     Check if sample landmarks have been processed.
 
     Returns:
         Set of processed landmarks
     """
-    processed = set()
+    processed: set[str] = set()
 
     # Initialize PineconeDB
     try:
@@ -144,7 +150,7 @@ def get_sample_processed_landmarks():
     return processed
 
 
-def estimate_processed_count(processed_samples, total_count) -> int:
+def estimate_processed_count(processed_samples: set[str], total_count: int) -> int:
     """
     Estimate the total number of processed landmarks based on samples.
 
@@ -235,7 +241,8 @@ def main() -> None:
 
     # If all samples were processed, estimate based on the sample ratio
     elif sample_processed_count == len(KNOWN_LANDMARKS):
-        if float(results["estimated_processed_percentage"]) > 95:
+        # Use a more type-safe approach for the comparison
+        if results["estimated_processed_percentage"] > 95:  # type: ignore
             print("\nMost or all landmarks have been processed.")
         else:
             print(

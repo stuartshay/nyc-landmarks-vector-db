@@ -19,7 +19,7 @@ import os
 import sys
 
 try:
-    from pinecone import Pinecone  # type: ignore
+    from pinecone import Pinecone
 
     print("Initializing Pinecone connection...")
     pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"])

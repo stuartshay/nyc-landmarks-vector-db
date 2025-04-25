@@ -10,6 +10,7 @@ import json
 import sys
 import time
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 
@@ -18,31 +19,33 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.append(str(project_root))
 
 # Import necessary modules
-from nyc_landmarks.db.db_client import get_db_client
+# NOTE: These imports are intentionally placed here after modifying sys.path
+# to ensure the project root is in the Python path before importing project modules.
+from nyc_landmarks.db.db_client import get_db_client  # noqa: E402
+from nyc_landmarks.vectordb.pinecone_db import PineconeDB  # noqa: E402
 
 # Check if our adapter exists, otherwise create a mock
 adapter_path = project_root / "notebooks" / "pinecone_adapter.py"
 if adapter_path.exists():
     sys.path.append(str(project_root / "notebooks"))
     try:
-        from pinecone_adapter import get_adapter_from_settings
+        from pinecone_adapter import get_adapter_from_settings  # type: ignore
 
+        get_adapter_from_settings_available = True
         print("Using PineconeAdapter")
     except ImportError:
         # Fall back to using PineconeDB directly
-        from nyc_landmarks.vectordb.pinecone_db import PineconeDB
-
         print("Using PineconeDB directly")
+        get_adapter_from_settings_available = False
         get_adapter_from_settings = None
 else:
     # Fall back to using PineconeDB directly
-    from nyc_landmarks.vectordb.pinecone_db import PineconeDB
-
     print("Using PineconeDB directly")
+    get_adapter_from_settings_available = False
     get_adapter_from_settings = None
 
 
-def fetch_sample_landmarks(limit=100):
+def fetch_sample_landmarks(limit: int = 100) -> list[str]:
     """Fetch a sample of landmark IDs for testing."""
     print(f"Fetching up to {limit} landmarks from API...")
     db_client = get_db_client()
@@ -50,7 +53,7 @@ def fetch_sample_landmarks(limit=100):
     # Fetch first page of landmarks
     landmarks = db_client.get_landmarks_page(page_size=limit, page=1)
 
-    landmark_ids = []
+    landmark_ids: list[str] = []
     for landmark in landmarks:
         landmark_id = landmark.get("id", "") or landmark.get("lpNumber", "")
         if landmark_id:
@@ -60,7 +63,9 @@ def fetch_sample_landmarks(limit=100):
     return landmark_ids
 
 
-def check_landmarks_in_pinecone(landmark_ids):
+def check_landmarks_in_pinecone(
+    landmark_ids: list[str],
+) -> Optional[dict[str, list[str]]]:
     """Check which landmarks have vectors in Pinecone."""
     # Initialize Pinecone DB
     if get_adapter_from_settings:
@@ -111,7 +116,7 @@ def check_landmarks_in_pinecone(landmark_ids):
     return {"processed": processed, "unprocessed": unprocessed}
 
 
-def main():
+def main() -> None:
     """Main entry point."""
     # Fetch landmark IDs
     landmark_ids = fetch_sample_landmarks(limit=100)
