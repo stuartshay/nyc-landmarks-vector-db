@@ -142,7 +142,7 @@ python-dotenv==1.1.0
     # via
     #   nyc-landmarks-vector-db (setup.py)
     #   pydantic-settings
-pytz==2025.1
+pytz==2025.2
     # via pandas
 regex==2024.11.6
     # via tiktoken
