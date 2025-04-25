@@ -107,6 +107,7 @@ setup(
             "pytest-cov>=6.1.1",  # Added for coverage
             "pandas>=2.2.0",  # Added explicitly for tests
             "numpy>=1.26.0",  # Added explicitly for tests
+            "pandas-stubs>=2.1.1.0",  # Added for pandas type checking
         ],
         "lint": ["ruff"],
         "coverage": ["pytest-cov"],

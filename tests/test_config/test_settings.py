@@ -8,7 +8,7 @@ from unittest.mock import patch
 from nyc_landmarks.config.settings import Environment, LogLevel, Settings
 
 
-def test_settings_defaults():
+def test_settings_defaults() -> None:
     """Test that Settings has the expected default values."""
     settings = Settings()
 
@@ -41,24 +41,7 @@ def test_settings_defaults():
     assert settings.CHUNK_OVERLAP == 200
 
 
-# PostgreSQL is no longer used in the project, test removed
-# def test_postgres_connection_string_assembly():
-#     """Test that PostgreSQL connection string is assembled correctly."""
-#     test_settings = {
-#         "POSTGRES_USER": "testuser",
-#         "POSTGRES_PASSWORD": "testpass",
-#         "POSTGRES_HOST": "testhost",
-#         "POSTGRES_PORT": "5432",
-#         "POSTGRES_DB": "testdb",
-#     }
-#
-#     with patch.dict(os.environ, test_settings):
-#         settings = Settings()
-#         expected_conn_string = "postgresql://testuser:testpass@testhost:5432/testdb"
-#         assert settings.POSTGRES_CONNECTION_STRING == expected_conn_string
-
-
-def test_pinecone_dimensions_match_embedding_dimensions():
+def test_pinecone_dimensions_match_embedding_dimensions() -> None:
     """Test that Pinecone dimensions match OpenAI embedding dimensions."""
     test_settings = {
         "OPENAI_EMBEDDING_DIMENSIONS": "3072",  # text-embedding-3-large
@@ -72,14 +55,14 @@ def test_pinecone_dimensions_match_embedding_dimensions():
         )  # Should match OPENAI_EMBEDDING_DIMENSIONS
 
 
-def test_environment_enum():
+def test_environment_enum() -> None:
     """Test the Environment enum."""
     assert Environment.DEVELOPMENT.value == "development"
     assert Environment.STAGING.value == "staging"
     assert Environment.PRODUCTION.value == "production"
 
 
-def test_log_level_enum():
+def test_log_level_enum() -> None:
     """Test the LogLevel enum."""
     assert LogLevel.DEBUG.value == "DEBUG"
     assert LogLevel.INFO.value == "INFO"

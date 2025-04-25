@@ -18,7 +18,6 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.append(str(project_root))
 
 # Import necessary modules
-from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.db_client import get_db_client
 
 # Check if our adapter exists, otherwise create a mock
@@ -26,7 +25,7 @@ adapter_path = project_root / "notebooks" / "pinecone_adapter.py"
 if adapter_path.exists():
     sys.path.append(str(project_root / "notebooks"))
     try:
-        from pinecone_adapter import PineconeAdapterDB, get_adapter_from_settings
+        from pinecone_adapter import get_adapter_from_settings
 
         print("Using PineconeAdapter")
     except ImportError:

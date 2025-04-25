@@ -23,12 +23,12 @@ from scripts.fetch_landmark_reports import CoreDataStoreClient, LandmarkReportFe
 class TestCoreDataStoreClient(unittest.TestCase):
     """Test the CoreDataStoreClient class."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures."""
         self.api_key = "test_api_key"
         self.client = CoreDataStoreClient(self.api_key)
 
-    def test_init_with_api_key(self):
+    def test_init_with_api_key(self) -> None:
         """Test initialization with API key."""
         self.assertEqual(self.client.base_url, "https://api.coredatastore.com")
         self.assertEqual(self.client.api_key, self.api_key)
@@ -36,7 +36,7 @@ class TestCoreDataStoreClient(unittest.TestCase):
             self.client.headers, {"Authorization": f"Bearer {self.api_key}"}
         )
 
-    def test_init_without_api_key(self):
+    def test_init_without_api_key(self) -> None:
         """Test initialization without API key."""
         client = CoreDataStoreClient()
         self.assertEqual(client.base_url, "https://api.coredatastore.com")
@@ -44,7 +44,7 @@ class TestCoreDataStoreClient(unittest.TestCase):
         self.assertEqual(client.headers, {})
 
     @patch("scripts.fetch_landmark_reports.requests.request")
-    def test_make_request_success(self, mock_request):
+    def test_make_request_success(self, mock_request: MagicMock) -> None:
         """Test successful API request."""
         # Set up mock response
         mock_response = MagicMock()
@@ -67,7 +67,7 @@ class TestCoreDataStoreClient(unittest.TestCase):
         )
 
     @patch("scripts.fetch_landmark_reports.requests.request")
-    def test_make_request_error(self, mock_request):
+    def test_make_request_error(self, mock_request: MagicMock) -> None:
         """Test API request with error."""
         # Set up mock to raise an exception
         mock_request.side_effect = RequestException("Test error")
@@ -82,18 +82,18 @@ class TestCoreDataStoreClient(unittest.TestCase):
 class TestLandmarkReportFetcher(unittest.TestCase):
     """Test the LandmarkReportFetcher class."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures."""
         self.api_key = "test_api_key"
         self.fetcher = LandmarkReportFetcher(self.api_key)
 
-    def test_init(self):
+    def test_init(self) -> None:
         """Test initialization."""
         self.assertIsInstance(self.fetcher.api_client, CoreDataStoreClient)
         self.assertEqual(self.fetcher.api_client.api_key, self.api_key)
 
     @patch.object(CoreDataStoreClient, "_make_request")
-    def test_get_lpc_reports_success(self, mock_make_request):
+    def test_get_lpc_reports_success(self, mock_make_request: MagicMock) -> None:
         """Test successful retrieval of LPC reports."""
         # Set up mock response
         mock_response = {
@@ -117,7 +117,7 @@ class TestLandmarkReportFetcher(unittest.TestCase):
         mock_make_request.assert_called_once_with("GET", "/api/LpcReport/10/1")
 
     @patch.object(CoreDataStoreClient, "_make_request")
-    def test_get_lpc_reports_error(self, mock_make_request):
+    def test_get_lpc_reports_error(self, mock_make_request: MagicMock) -> None:
         """Test error handling when retrieving LPC reports."""
         # Set up mock to raise an exception
         mock_make_request.side_effect = Exception("Test error")
@@ -126,7 +126,7 @@ class TestLandmarkReportFetcher(unittest.TestCase):
         result = self.fetcher.get_lpc_reports(10, 1)
         self.assertEqual(result, [])
 
-    def test_extract_pdf_urls(self):
+    def test_extract_pdf_urls(self) -> None:
         """Test extraction of PDF URLs from reports."""
         # Test data
         reports = [
@@ -165,7 +165,9 @@ class TestLandmarkReportFetcher(unittest.TestCase):
 
     @patch("scripts.fetch_landmark_reports.requests.get")
     @patch("builtins.open", new_callable=unittest.mock.mock_open)
-    def test_download_sample_pdf(self, mock_open, mock_get):
+    def test_download_sample_pdf(
+        self, mock_open: MagicMock, mock_get: MagicMock
+    ) -> None:
         """Test downloading of sample PDFs."""
         # Test data
         pdf_info = [
@@ -204,7 +206,13 @@ class TestLandmarkReportFetcher(unittest.TestCase):
     @patch.object(LandmarkReportFetcher, "get_lpc_reports")
     @patch.object(LandmarkReportFetcher, "extract_pdf_urls")
     @patch.object(LandmarkReportFetcher, "download_sample_pdf")
-    def test_run(self, mock_download, mock_extract, mock_get, mock_open):
+    def test_run(
+        self,
+        mock_download: MagicMock,
+        mock_extract: MagicMock,
+        mock_get: MagicMock,
+        mock_open: MagicMock,
+    ) -> None:
         """Test the main run method."""
         # Set up mock responses
         mock_get.return_value = [

@@ -17,6 +17,9 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.append(str(project_root))
 sys.path.append(str(project_root / "notebooks"))
 
+# Import db client and logger
+from nyc_landmarks.db.db_client import get_db_client
+from nyc_landmarks.utils.logging import get_logger
 
 # Configure pinecone dependencies
 try:
@@ -141,7 +144,7 @@ def get_sample_processed_landmarks():
     return processed
 
 
-def estimate_processed_count(processed_samples, total_count):
+def estimate_processed_count(processed_samples, total_count) -> int:
     """
     Estimate the total number of processed landmarks based on samples.
 
@@ -164,7 +167,7 @@ def estimate_processed_count(processed_samples, total_count):
     return min(estimated, total_count)
 
 
-def main():
+def main() -> None:
     """Main function."""
     # Create output directory
     output_dir = project_root / "data" / "processing_status"
@@ -232,7 +235,7 @@ def main():
 
     # If all samples were processed, estimate based on the sample ratio
     elif sample_processed_count == len(KNOWN_LANDMARKS):
-        if results["estimated_processed_percentage"] > 95:
+        if float(results["estimated_processed_percentage"]) > 95:
             print("\nMost or all landmarks have been processed.")
         else:
             print(

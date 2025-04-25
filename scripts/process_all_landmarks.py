@@ -19,7 +19,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Set, Tuple
 
 import numpy as np
 from tqdm import tqdm
@@ -250,7 +250,7 @@ def process_landmark(
                 "borough": landmark.get("borough", ""),
                 "chunk_index": i,
                 "total_chunks": len(chunks),
-                "source": "pdf",
+                "source": "pd",
                 "pdf_url": pdf_url,
             }
 
@@ -502,12 +502,12 @@ def main():
         else:
             logger.warning(
                 f"⚠️ {results['failed']} landmarks failed to process. "
-                f"Check logs and failures file for details."
+                "Check logs and failures file for details."
             )
 
             # Print first few failures
             if results["failures"]:
-                logger.info(f"\nFirst 5 failures:")
+                logger.info("\nFirst 5 failures:")
                 for i, (landmark_id, error) in enumerate(
                     list(results["failures"].items())[:5]
                 ):
