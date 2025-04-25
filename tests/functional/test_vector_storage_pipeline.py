@@ -13,6 +13,7 @@ import shutil
 import tempfile
 import time
 from pathlib import Path
+from typing import Generator
 
 import pytest
 
@@ -29,7 +30,7 @@ logging.basicConfig(level=settings.LOG_LEVEL.value)
 
 
 @pytest.fixture
-def temp_dirs():
+def temp_dirs() -> Generator[dict, None, None]:
     """Create temporary directories for test artifacts."""
     base_dir = tempfile.mkdtemp()
     pdfs_dir = Path(base_dir) / "pdfs"
@@ -45,7 +46,7 @@ def temp_dirs():
 
 
 @pytest.mark.integration
-def test_vector_storage_pipeline(temp_dirs):
+def test_vector_storage_pipeline(temp_dirs: dict) -> None:
     """Test the complete vector storage pipeline with one landmark."""
     logger.info("=== Testing complete vector storage pipeline ===")
 
@@ -200,7 +201,7 @@ def test_vector_storage_pipeline(temp_dirs):
 
 
 @pytest.mark.integration
-def test_pinecone_connection_and_operations():
+def test_pinecone_connection_and_operations() -> None:
     """Test basic Pinecone operations to ensure the database is accessible."""
     logger.info("=== Testing Pinecone connection and basic operations ===")
 

@@ -21,7 +21,7 @@ logging.basicConfig(level=settings.LOG_LEVEL.value)
 
 
 @pytest.mark.integration
-def test_pinecone_connection():
+def test_pinecone_connection() -> None:
     """Test basic Pinecone connection and index stats."""
     logger.info("=== Testing Pinecone connection ===")
 
@@ -46,7 +46,7 @@ def test_pinecone_connection():
 
 
 @pytest.mark.integration
-def test_vector_storage_and_retrieval():
+def test_vector_storage_and_retrieval() -> None:
     """Test vector storage and retrieval capabilities."""
     logger.info("=== Testing vector storage and retrieval ===")
 
@@ -85,7 +85,7 @@ def test_vector_storage_and_retrieval():
     # Try to retrieve the vector
     logger.info("Querying for the stored vector")
     matches = pinecone_db.query_vectors(
-        query_vector=sample_chunk["embedding"],
+        query_vector=list(sample_chunk["embedding"]),
         top_k=5,
         filter_dict={"landmark_id": "TEST-LANDMARK"},
     )

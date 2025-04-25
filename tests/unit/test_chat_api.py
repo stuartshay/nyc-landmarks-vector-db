@@ -4,6 +4,7 @@ Unit tests for Chat API functionality.
 This module tests the chat API endpoints, response generation, and conversation management.
 """
 
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -16,13 +17,13 @@ from nyc_landmarks.main import app
 
 
 @pytest.fixture
-def test_client():
+def test_client() -> TestClient:
     """Create a test client for the FastAPI application."""
     return TestClient(app)
 
 
 @pytest.fixture
-def mock_conversation():
+def mock_conversation() -> Conversation:
     """Create a mock conversation for testing."""
     conversation = Conversation(conversation_id="test-id")
     conversation.add_message("system", "System message")
@@ -32,11 +33,11 @@ def mock_conversation():
 
 
 @pytest.fixture
-def mock_pinecone_match():
+def mock_pinecone_match() -> Any:
     """Create a mock pinecone match result."""
 
     class MockMatch:
-        def __init__(self, id, score, metadata):
+        def __init__(self, id: str, score: float, metadata: dict) -> None:
             self.id = id
             self.score = score
             self.metadata = metadata
@@ -77,14 +78,14 @@ class TestChatAPI:
     @patch("nyc_landmarks.api.chat.DbClient")
     def test_chat_message_new_conversation(
         self,
-        mock_db_client,
-        mock_embedding_generator,
-        mock_pinecone_db,
-        mock_openai_create,
-        mock_conv_store,
-        test_client,
-        mock_conversation,
-    ):
+        mock_db_client: Any,
+        mock_embedding_generator: Any,
+        mock_pinecone_db: Any,
+        mock_openai_create: Any,
+        mock_conv_store: Any,
+        test_client: TestClient,
+        mock_conversation: Conversation,
+    ) -> None:
         """Test chat_message endpoint with a new conversation."""
         # Setup mocks
         mock_conv_store.get_conversation.return_value = None
@@ -119,14 +120,14 @@ class TestChatAPI:
     @patch("nyc_landmarks.api.chat.DbClient")
     def test_chat_message_existing_conversation(
         self,
-        mock_db_client,
-        mock_embedding_generator,
-        mock_pinecone_db,
-        mock_openai_create,
-        mock_conv_store,
-        test_client,
-        mock_conversation,
-    ):
+        mock_db_client: Any,
+        mock_embedding_generator: Any,
+        mock_pinecone_db: Any,
+        mock_openai_create: Any,
+        mock_conv_store: Any,
+        test_client: TestClient,
+        mock_conversation: Conversation,
+    ) -> None:
         """Test chat_message endpoint with an existing conversation."""
         # Setup mocks
         mock_conv_store.get_conversation.return_value = mock_conversation
@@ -164,15 +165,15 @@ class TestChatAPI:
     @patch("nyc_landmarks.api.chat.DbClient")
     def test_chat_message_with_landmark_filter(
         self,
-        mock_db_client,
-        mock_embedding_generator,
-        mock_pinecone_db,
-        mock_openai_create,
-        mock_conv_store,
-        test_client,
-        mock_conversation,
-        mock_pinecone_match,
-    ):
+        mock_db_client: Any,
+        mock_embedding_generator: Any,
+        mock_pinecone_db: Any,
+        mock_openai_create: Any,
+        mock_conv_store: Any,
+        test_client: TestClient,
+        mock_conversation: Conversation,
+        mock_pinecone_match: Any,
+    ) -> None:
         """Test chat_message endpoint with landmark filtering."""
         # Setup mocks
         mock_conv_store.get_conversation.return_value = None
@@ -215,8 +216,11 @@ class TestChatAPI:
 
     @patch("nyc_landmarks.api.chat.conversation_store")
     def test_get_conversation_history(
-        self, mock_conv_store, test_client, mock_conversation
-    ):
+        self,
+        mock_conv_store: Any,
+        test_client: TestClient,
+        mock_conversation: Conversation,
+    ) -> None:
         """Test get_conversation_history endpoint."""
         # Setup mocks
         mock_conv_store.get_conversation.return_value = mock_conversation
@@ -231,7 +235,9 @@ class TestChatAPI:
         assert response.json()[1]["role"] == "assistant"
 
     @patch("nyc_landmarks.api.chat.conversation_store")
-    def test_get_conversation_history_not_found(self, mock_conv_store, test_client):
+    def test_get_conversation_history_not_found(
+        self, mock_conv_store: Any, test_client: TestClient
+    ) -> None:
         """Test get_conversation_history with non-existent conversation."""
         # Setup mocks
         mock_conv_store.get_conversation.return_value = None
@@ -244,7 +250,9 @@ class TestChatAPI:
         assert "Conversation not found" in response.json()["detail"]
 
     @patch("nyc_landmarks.api.chat.conversation_store")
-    def test_delete_conversation(self, mock_conv_store, test_client):
+    def test_delete_conversation(
+        self, mock_conv_store: Any, test_client: TestClient
+    ) -> None:
         """Test delete_conversation endpoint."""
         # Setup mocks
         mock_conv_store.delete_conversation.return_value = True
@@ -258,7 +266,9 @@ class TestChatAPI:
         assert mock_conv_store.delete_conversation.called_with("test-id")
 
     @patch("nyc_landmarks.api.chat.conversation_store")
-    def test_delete_conversation_not_found(self, mock_conv_store, test_client):
+    def test_delete_conversation_not_found(
+        self, mock_conv_store: Any, test_client: TestClient
+    ) -> None:
         """Test delete_conversation with non-existent conversation."""
         # Setup mocks
         mock_conv_store.delete_conversation.return_value = False
@@ -278,14 +288,14 @@ class TestChatAPI:
     @patch("nyc_landmarks.api.chat.DbClient")
     def test_openai_error_handling(
         self,
-        mock_db_client,
-        mock_pinecone_db,
-        mock_embedding_generator,
-        mock_conv_store,
-        mock_openai_create,
-        test_client,
-        mock_conversation,
-    ):
+        mock_db_client: Any,
+        mock_pinecone_db: Any,
+        mock_embedding_generator: Any,
+        mock_conv_store: Any,
+        mock_openai_create: Any,
+        test_client: TestClient,
+        mock_conversation: Conversation,
+    ) -> None:
         """Test error handling for OpenAI API errors."""
         # Setup mocks
         mock_conv_store.get_conversation.return_value = None

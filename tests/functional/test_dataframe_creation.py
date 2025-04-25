@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.DEBUG)  # Use DEBUG for detailed test logs
 
 
 @pytest.mark.functional
-def test_namespace_dataframe_creation():
+def test_namespace_dataframe_creation() -> None:
     """
     Tests the creation of the namespace DataFrame from mock stats data,
     replicating the logic in cell 8 of pinecone_db_stats.ipynb.
@@ -72,10 +72,10 @@ def test_namespace_dataframe_creation():
         # Extract data into lists with standard Python types
         namespaces_list = [str(item["Namespace"]) for item in namespace_data]
         vector_counts_list = [
-            int(item["Vector Count"]) for item in namespace_data
+            item["Vector Count"] for item in namespace_data
         ]  # Already int from step 2
         percentages_list = [
-            float(item["Percentage"]) for item in namespace_data
+            item["Percentage"] for item in namespace_data
         ]  # Already float from step 2
 
         # Create DataFrame column by column

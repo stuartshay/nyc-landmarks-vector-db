@@ -9,7 +9,12 @@ import time
 from typing import Any, Dict, List
 
 import openai
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_random_exponential,
+)
 
 from nyc_landmarks.config.settings import settings
 
@@ -40,7 +45,9 @@ class EmbeddingGenerator:
             logger.warning("OpenAI API key not provided")
 
     @retry(
-        retry=retry_if_exception_type((openai.RateLimitError, openai.APITimeoutError)),
+        retry=retry_if_exception_type(
+            (openai.RateLimitError, openai.APITimeoutError, openai.APIConnectionError)
+        ),
         wait=wait_random_exponential(min=1, max=60),
         stop=stop_after_attempt(6),
         reraise=True,
@@ -65,10 +72,31 @@ class EmbeddingGenerator:
             # Extract embedding from response
             embedding = response.data[0].embedding
 
+            # Verify dimensions match what's expected
+            if len(embedding) != self.dimensions:
+                logger.warning(
+                    f"Embedding dimensions mismatch: expected {self.dimensions}, got {len(embedding)}"
+                )
+
             logger.debug(f"Generated embedding with {len(embedding)} dimensions")
             return embedding
+        except openai.AuthenticationError as e:
+            logger.error(f"Authentication error with OpenAI API: {e}")
+            raise
+        except openai.RateLimitError as e:
+            logger.error(f"Rate limit exceeded with OpenAI API: {e}")
+            raise
+        except openai.APITimeoutError as e:
+            logger.error(f"Timeout error with OpenAI API: {e}")
+            raise
+        except openai.APIConnectionError as e:
+            logger.error(f"Connection error with OpenAI API: {e}")
+            raise
+        except openai.BadRequestError as e:
+            logger.error(f"Bad request to OpenAI API: {e}")
+            raise
         except Exception as e:
-            logger.error(f"Error generating embedding: {e}")
+            logger.error(f"Unexpected error generating embedding: {e}")
             raise
 
     def generate_embeddings_batch(
@@ -109,11 +137,30 @@ class EmbeddingGenerator:
                     f"Generated embeddings for batch {i//batch_size + 1} of {(len(texts) + batch_size - 1) // batch_size}"
                 )
 
-                # Sleep to avoid rate limits (if not the last batch)
+                # Implement adaptive rate limiting based on the batch size
                 if i + batch_size < len(texts):
-                    time.sleep(0.5)
+                    # Calculate sleep time based on batch size to avoid rate limits
+                    sleep_time = min(
+                        0.5 * (batch_size / 10), 1.0
+                    )  # Scale with batch size but cap at 1 second
+                    logger.debug(f"Sleeping for {sleep_time:.2f}s to avoid rate limits")
+                    time.sleep(sleep_time)
+            except openai.RateLimitError as e:
+                logger.error(f"Rate limit exceeded with OpenAI API: {e}")
+                # Sleep longer and retry on rate limit errors
+                time.sleep(5)
+                raise
+            except openai.APITimeoutError as e:
+                logger.error(f"Timeout error with OpenAI API: {e}")
+                raise
+            except openai.APIConnectionError as e:
+                logger.error(f"Connection error with OpenAI API: {e}")
+                raise
+            except openai.BadRequestError as e:
+                logger.error(f"Bad request to OpenAI API: {e}")
+                raise
             except Exception as e:
-                logger.error(f"Error generating embeddings for batch: {e}")
+                logger.error(f"Unexpected error generating embeddings for batch: {e}")
                 raise
 
         return embeddings
@@ -122,10 +169,13 @@ class EmbeddingGenerator:
         """Process text chunks and add embeddings.
 
         Args:
-            chunks: List of chunk dictionaries with text and metadata
+            chunks: List of chunk dictionaries with text and metadata.
+                   Each chunk must be a dictionary containing at least a 'text' key
+                   with the text content to embed. Other metadata keys will be preserved.
+                   Example: [{'text': 'content to embed', 'chunk_index': 0, 'metadata': {...}}]
 
         Returns:
-            List of chunk dictionaries with embeddings added
+            List of chunk dictionaries with embeddings added as an 'embedding' key
         """
         # Extract texts from chunks
         texts = [chunk["text"] for chunk in chunks]
