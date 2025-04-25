@@ -8,7 +8,7 @@
 
 
 ```
-Deployed Application   
+Deployed Application
 https://vector-db.coredatastore.com/docs
 ```
 

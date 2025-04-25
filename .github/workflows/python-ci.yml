@@ -59,4 +59,4 @@ jobs:
       - name: Test with pytest (unit tests only)
         run: |
           # Run only unit tests in CI to avoid dependency/credential issues
-          pytest --cov=nyc_landmarks tests/unit/ tests/test_config/
+          pytest --cov=nyc_landmarks -m "not integration" tests/
