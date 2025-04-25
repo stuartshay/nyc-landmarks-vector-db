@@ -102,7 +102,7 @@ def get_db_client() -> DbClient:
 # --- API endpoints ---
 
 
-@router.post("/search", response_model=SearchResponse)  # type: ignore
+@router.post("/search", response_model=SearchResponse)
 async def search_text(
     query: TextQuery,
     embedding_generator: EmbeddingGenerator = Depends(get_embedding_generator),
@@ -169,7 +169,7 @@ async def search_text(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/landmarks", response_model=LandmarkListResponse)  # type: ignore
+@router.get("/landmarks", response_model=LandmarkListResponse)
 async def get_landmarks(
     limit: int = QueryParam(
         20, description="Maximum number of landmarks to return", ge=1, le=100
@@ -213,7 +213,7 @@ async def get_landmarks(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/landmark/{landmark_id}", response_model=LandmarkInfo)  # type: ignore
+@router.get("/landmark/{landmark_id}", response_model=LandmarkInfo)
 async def get_landmark(
     landmark_id: str,
     db_client: DbClient = Depends(get_db_client),
@@ -255,7 +255,7 @@ async def get_landmark(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/search/text", response_model=LandmarkListResponse)  # type: ignore
+@router.get("/search/text", response_model=LandmarkListResponse)
 async def search_landmarks_text(
     q: str = QueryParam(..., description="Search query"),
     limit: int = QueryParam(

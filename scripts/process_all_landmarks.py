@@ -19,7 +19,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import numpy as np
 from tqdm import tqdm
@@ -45,7 +45,9 @@ logging.basicConfig(
 )
 
 
-def fetch_all_landmark_ids(db_client, page_size=100, limit=None) -> Set[str]:
+def fetch_all_landmark_ids(
+    db_client: Any, page_size: int = 100, limit: Optional[int] = None
+) -> Set[str]:
     """
     Fetch all landmark IDs from the CoreDataStore API.
 
@@ -121,7 +123,7 @@ def fetch_all_landmark_ids(db_client, page_size=100, limit=None) -> Set[str]:
 
 
 def check_processing_status(
-    pinecone_db, landmark_ids, batch_size=10
+    pinecone_db: PineconeDB, landmark_ids: Set[str], batch_size: int = 10
 ) -> Tuple[Set[str], Set[str]]:
     """
     Check which landmarks already have vectors in Pinecone.
@@ -191,13 +193,13 @@ def check_processing_status(
 
 
 def process_landmark(
-    db_client,
-    pinecone_db,
-    embedding_generator,
-    pdf_extractor,
-    text_chunker,
-    landmark_id,
-):
+    db_client: Any,
+    pinecone_db: PineconeDB,
+    embedding_generator: EmbeddingGenerator,
+    pdf_extractor: PDFExtractor,
+    text_chunker: TextChunker,
+    landmark_id: str,
+) -> Tuple[bool, int, Optional[str]]:
     """
     Process a single landmark and store its vectors in Pinecone.
 
@@ -227,7 +229,7 @@ def process_landmark(
             return False, 0, f"Landmark {landmark_id} has no PDF report"
 
         # Extract text from PDF
-        text = pdf_extractor.extract_from_url(pdf_url)
+        text = pdf_extractor.extract_text_from_url(pdf_url)
         if not text:
             return (
                 False,
@@ -236,7 +238,7 @@ def process_landmark(
             )
 
         # Chunk the text
-        chunks = text_chunker.chunk_text(text)
+        chunks = text_chunker.chunk_text_by_tokens(text)
         if not chunks:
             return False, 0, f"Failed to chunk text for landmark {landmark_id}"
 
@@ -255,7 +257,7 @@ def process_landmark(
             }
 
             # Generate embedding
-            embedding = embedding_generator.get_embedding(chunk)
+            embedding = embedding_generator.generate_embedding(chunk)
 
             # Add to processed chunks
             processed_chunks.append(
@@ -282,14 +284,14 @@ def process_landmark(
 
 
 def process_landmarks_batch(
-    db_client,
-    pinecone_db,
-    embedding_generator,
-    pdf_extractor,
-    text_chunker,
-    landmarks_to_process,
-    batch_size=10,
-):
+    db_client: Any,
+    pinecone_db: PineconeDB,
+    embedding_generator: EmbeddingGenerator,
+    pdf_extractor: PDFExtractor,
+    text_chunker: TextChunker,
+    landmarks_to_process: List[str],
+    batch_size: int = 10,
+) -> Dict[str, Any]:
     """
     Process a batch of landmarks and store their vectors in Pinecone.
 
@@ -305,7 +307,7 @@ def process_landmarks_batch(
     Returns:
         Dict with processing statistics
     """
-    results = {
+    results: Dict[str, Any] = {
         "total": len(landmarks_to_process),
         "successful": 0,
         "failed": 0,
@@ -366,7 +368,9 @@ def process_landmarks_batch(
     return results
 
 
-def save_results(results, output_dir=None):
+def save_results(
+    results: Dict[str, Any], output_dir: Optional[Union[str, Path]] = None
+) -> None:
     """
     Save processing results to files.
 
@@ -406,7 +410,7 @@ def save_results(results, output_dir=None):
         logger.info(f"Saved failed landmarks list to {failures_file}")
 
 
-def main():
+def main() -> None:
     """
     Main entry point.
     """
