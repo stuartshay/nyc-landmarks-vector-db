@@ -65,7 +65,7 @@ grpcio-status==1.71.0
     # via
     #   -c constraints.txt
     #   google-api-core
-h11==0.14.0
+h11==0.16.0
     # via
     #   httpcore
     #   uvicorn
