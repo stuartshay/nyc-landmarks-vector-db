@@ -75,7 +75,23 @@ We are now focusing on implementing the Chat API functionality for the NYC Landm
   - CI/CD integration to ensure quality in automated workflows
   - Reusable verification components across scripts and tests
 
-### Potential Technology Integrations
+### MCP Server Integration
+
+#### CoreDataStore Swagger MCP Server
+- MCP server configured for direct access to CoreDataStore API
+- Provides multiple tools for retrieving NYC landmarks data:
+  - GetLpcReport: Get details for a specific landmark preservation report
+  - GetLpcReports: List multiple landmark reports with filtering options
+  - GetLandmarks: Retrieve buildings linked to landmarks
+  - GetLandmarkStreets: Get street information for landmarks
+  - GetLpcPhotoArchive/GetLpcPhotoArchiveCount: Access photo archive
+  - GetPlutoRecord: Access PLUTO data
+  - GetBoroughs, GetNeighborhoods, GetObjectTypes, GetArchitectureStyles: Reference data
+  - GetLpcContent: Access additional content
+- Integration is included in project configuration but currently experiencing connection timeouts (confirmed with multiple tool attempts)
+- All MCP tool calls result in timeout errors with code -32001, suggesting potential configuration or connectivity issues that need to be resolved
+- Integration testing code is implemented to verify functionality when server is available
+- Encapsulated in DB client with proper error handling and fallback mechanisms
 
 #### Pinecone Assistant MCP Server
 - Identified as a potential enhancement to our current Pinecone implementation

@@ -81,7 +81,15 @@ flowchart TD
 - The DbClient class provides a unified interface that abstracts away the complexity of the API calls.
 - The CoreDataStore API client provides extensive functionality including access to landmark data, buildings, photos, PLUTO data, etc.
 - Error handling is implemented at the client level with appropriate logging and fallback mechanisms.
-- An MCP server wraps the CoreDataStore API, providing additional tools for interacting with the API directly.
+- An MCP server (coredatastore-swagger-mcp) wraps the CoreDataStore API, providing comprehensive tools for interacting with the API directly, including:
+  - Access to landmark reports (GetLpcReport, GetLpcReports)
+  - Building information (GetLandmarks, GetLandmarkStreets)
+  - Photo archives (GetLpcPhotoArchive, GetLpcPhotoArchiveCount)
+  - Property data (GetPlutoRecord)
+  - Reference data (GetBoroughs, GetNeighborhoods, GetObjectTypes, GetArchitectureStyles)
+  - Miscellaneous content (GetLpcContent)
+- Integration testing infrastructure with mock implementations for testing without actual API dependencies
+- Support for pagination when fetching large datasets across multiple API calls
 
 ### 7. Credential Management
 - All credentials (OpenAI API keys, Azure storage credentials, Pinecone API keys, CoreDataStore API keys) will be managed through Google Cloud Secret Store.

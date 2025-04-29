@@ -8,7 +8,8 @@ The project is in the initial setup and infrastructure development phase. We hav
 - ✅ Identified technical requirements and constraints
 - ✅ Implemented CoreDataStore API client for landmark data access
 - ✅ Decided to use CoreDataStore API exclusively as the data source
-- ✅ Added coredatastore-swagger-mcp server to provide API tools
+- ✅ Added coredatastore-swagger-mcp server to provide API tools with comprehensive functionality for accessing NYC landmarks data 
+- ✅ Implemented integration testing for MCP tools with proper mocking and validation
 - ✅ Created Pydantic models for data validation
 - ✅ Implemented unit tests for landmark report fetcher
 - ✅ Implemented integration tests using actual API data
