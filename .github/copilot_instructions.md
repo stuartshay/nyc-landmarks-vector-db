@@ -42,4 +42,42 @@ When answering questions or providing assistance, please refer to the following 
 - External services include OpenAI (for embeddings), Pinecone (vector database), Azure (storage), and PostgreSQL
 - Environmental variables are managed through the .env file and should be referenced in code through the config module
 
+## Package Management Guidelines
+
+1. **Dual Dependency Management**:
+   - `setup.py` defines package metadata and flexible dependencies with minimum version constraints (`>=`)
+   - `requirements.txt` contains pinned, exact versions for reproducible environments
+   - Both files must be kept in sync using the `sync_versions.sh` script
+
+2. **Adding New Dependencies**:
+   - Always add new dependencies to `setup.py` first with appropriate version constraints
+   - Then generate `requirements.txt` using: `pip-compile --constraint=constraints.txt --output-file=requirements.txt`
+   - Commit both files together as a single change
+
+3. **Version Management**:
+   - Use `>=` version constraints in `setup.py` for flexibility
+   - The `requirements.txt` file should have exact versions with `==` for reproducibility
+   - Avoid using specific versions in `setup.py` unless absolutely necessary
+
+4. **Dependency Updates**:
+   - Dependabot manages automated updates, checking for security vulnerabilities
+   - Our GitHub workflow automatically syncs versions between files when Dependabot creates updates
+   - When suggesting manual dependency updates, recommend updating both files using the sync script
+   - To manually sync versions: `./sync_versions.sh`
+
+5. **Environment Setup**:
+   - For development environments, recommend using the `setup_env.sh` script
+   - For tests and CI/CD, use `requirements.txt` to ensure consistent environments
+   - For package distribution, reference the `setup.py` configuration
+
+6. **Specific Package Requirements**:
+   - Pinecone SDK: Must use v6.0.2 or later (not the legacy client)
+   - Follow the PyPI page at https://pypi.org/project/pinecone/
+   - For updating Pinecone SDK specifically, use `./update_pinecone.sh`
+
+7. **Python Version**:
+   - Project requires Python 3.11+
+   - Virtual environment should be created using `venv311/`
+   - All dependencies should be compatible with Python 3.11+
+
 When helping with this project, please regularly check the memory bank folder to provide the most accurate and contextually appropriate assistance.

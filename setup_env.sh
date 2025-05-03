@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# This script sets up the Python 3.11 virtual environment with all required dependencies
+# for running the NYC Landmarks Vector DB notebooks
+
+# Set colors for better readability
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+echo -e "${BLUE}Setting up Python 3.11 environment for NYC Landmarks Vector DB...${NC}"
+
+# Directory where the script is located
+PROJECT_DIR="$(pwd)"
+VENV_DIR="${PROJECT_DIR}/venv311"
+
+# Check if Python 3.11 is available
+if ! command -v python3.11 &> /dev/null; then
+    echo -e "${RED}Python 3.11 is not installed. Please install it first.${NC}"
+    exit 1
+fi
+
+# Create virtual environment if it doesn't exist
+if [ ! -d "$VENV_DIR" ]; then
+    echo -e "${BLUE}Creating Python 3.11 virtual environment...${NC}"
+    python3.11 -m venv "$VENV_DIR"
+else
+    echo -e "${GREEN}Virtual environment already exists at ${VENV_DIR}${NC}"
+fi
+
+# Activate virtual environment
+echo -e "${BLUE}Activating virtual environment...${NC}"
+source "$VENV_DIR/bin/activate"
+
+# Verify Python version
+echo -e "${GREEN}Using $(python --version)${NC}"
+
+# Upgrade pip
+echo -e "${BLUE}Upgrading pip...${NC}"
+pip install --upgrade pip
+
+# Install pip-tools for dependency management
+echo -e "${BLUE}Installing pip-tools for dependency management...${NC}"
+pip install pip-tools
+
+# Install dependencies from requirements.txt
+echo -e "${BLUE}Installing dependencies from requirements.txt...${NC}"
+pip install -r requirements.txt
+
+# Install matplotlib (required for the notebook but might not be in requirements.txt)
+echo -e "${BLUE}Ensuring matplotlib is installed...${NC}"
+pip install matplotlib
+
+# Install the package itself in development mode
+echo -e "${BLUE}Installing the package in development mode...${NC}"
+pip install -e .
+
+# Verify Pinecone version
+echo -e "${BLUE}Checking Pinecone version...${NC}"
+pip show pinecone
+
+echo -e "${GREEN}Environment setup complete!${NC}"
+echo -e "${GREEN}To activate this environment, run:${NC}"
+echo -e "   source ${VENV_DIR}/bin/activate"
+echo -e "${GREEN}To start the Jupyter notebook, run:${NC}"
+echo -e "   bash run_notebook.sh"

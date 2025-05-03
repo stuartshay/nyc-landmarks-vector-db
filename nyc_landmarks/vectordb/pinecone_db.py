@@ -12,13 +12,13 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-# Updated import for Pinecone SDK v6.x
+# Import for Pinecone SDK v6.x
 import pinecone  # type: ignore[import-untyped]
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.vectordb.enhanced_metadata import get_metadata_collector
 
-# Configure logging the
+# Configure logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=settings.LOG_LEVEL.value)
 
@@ -64,7 +64,7 @@ class PineconeDB:
         # Initialize Pinecone client if API key is provided
         if self.api_key:
             try:
-                # Initialize Pinecone with updated API for v6.x
+                # Initialize Pinecone with SDK v6.x API
                 self.pc = pinecone.Pinecone(api_key=self.api_key)
                 logger.info("Initialized Pinecone client")
 
@@ -83,15 +83,21 @@ class PineconeDB:
             logger.error("Pinecone client is not initialized.")
             raise RuntimeError("Pinecone client is not initialized.")
         try:
+            # Get list of indexes with v6.x API
             indexes = self.pc.list_indexes()
-            if self.index_name not in indexes.names():
+
+            # Check if the index name exists in the list of available indexes
+            index_names = [index.name for index in indexes]
+            if self.index_name not in index_names:
                 logger.warning(
-                    f"Index '{self.index_name}' does not exist. "
+                    f"Index '{self.index_name}' does not exist in available indexes: {index_names}. "
                     f"This should be pre-created in the Pinecone dashboard."
                 )
                 logger.info(
                     "Attempting to connect anyway in case of list_indexes inconsistency..."
                 )
+
+            # Connect to index with v6.x API
             self.index = self.pc.Index(self.index_name)
             logger.info(f"Connected to Pinecone index: {self.index_name}")
         except Exception as e:

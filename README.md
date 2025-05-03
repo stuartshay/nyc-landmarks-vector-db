@@ -198,6 +198,97 @@ This project includes a fully configured development container that provides a c
    python -m nyc_landmarks.main
    ```
 
+## Dependency Management
+
+This project uses a dual approach to dependency management:
+
+- **setup.py**: Defines package metadata and flexible dependencies with minimum version constraints (`>=`)
+- **requirements.txt**: Contains pinned, exact versions for reproducible environments
+
+### Installing Dependencies
+
+For development:
+```bash
+# Set up the environment using the setup script
+./setup_env.sh
+
+# Activate the virtual environment
+source venv311/bin/activate
+
+# Install the package in development mode
+pip install -e .
+```
+
+### Keeping Dependencies in Sync
+
+We use automated tools to keep `setup.py` and `requirements.txt` in sync:
+
+1. **Automated Sync**: Our GitHub workflow automatically syncs versions between files when Dependabot creates updates
+2. **Manual Sync**: Run `./sync_versions.sh` to manually sync versions between files
+3. **Generating requirements.txt**: Generate requirements.txt from setup.py using pip-compile:
+   ```bash
+   pip-compile --constraint=constraints.txt --output-file=requirements.txt
+   ```
+
+### Adding New Dependencies
+
+To add a new dependency:
+1. Add it to `setup.py` with an appropriate version constraint
+2. Regenerate `requirements.txt` using pip-compile
+3. Commit both files together
+
+## Package Management
+
+This project uses a dual dependency management approach to balance flexibility with reproducibility:
+
+### Dependency Files
+
+- **setup.py**: Contains package metadata and flexible dependencies with minimum versions (`>=`)
+- **requirements.txt**: Contains exact pinned versions (`==`) for reproducible environments
+
+### Adding New Dependencies
+
+1. First add the dependency to `setup.py` with appropriate version constraints:
+   ```python
+   install_requires=[
+       # ...existing dependencies...
+       "new-package>=1.0.0",  # Add new package here
+   ],
+   ```
+
+2. Then generate the updated `requirements.txt`:
+   ```bash
+   pip-compile --constraint=constraints.txt --output-file=requirements.txt
+   ```
+
+3. Commit both files together.
+
+### Synchronizing Versions
+
+We provide a script to keep `setup.py` and `requirements.txt` in sync:
+
+```bash
+# Make the script executable if needed
+chmod +x sync_versions.sh
+
+# Run the synchronization
+./sync_versions.sh
+```
+
+### Updating Pinecone SDK
+
+This project requires Pinecone SDK v6.0.2 or later. To update the Pinecone SDK:
+
+```bash
+./update_pinecone.sh
+```
+
+### Dependency Updates
+
+- Dependabot automatically checks for updates and security vulnerabilities
+- When Dependabot creates PRs, our GitHub workflow syncs versions between files
+- Always test thoroughly after dependency updates
+
 #### Google Cloud CLI Setup in Dev Container
 
 The development container comes with the Google Cloud CLI pre-installed. To use it for accessing secrets:

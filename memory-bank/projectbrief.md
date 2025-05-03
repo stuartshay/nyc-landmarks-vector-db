@@ -12,20 +12,26 @@ This project aims to create a vector database of New York City landmarks by extr
 6. Enable conversation memory for the chatbot
 7. Support filtering by landmark ID
 8. Integrate with CoreDataStore API exclusively as the data source
+9. Integrate Wikipedia articles associated with landmarks into the vector database
+10. Enable combined search across both PDF reports and Wikipedia content
 
 ## Key Goals
 - Create a system that can answer detailed questions about NYC landmarks
-- Enable semantic search across the landmark documentation
+- Enable semantic search across the landmark documentation and associated Wikipedia articles
 - Build a foundation for a conversational AI about NYC landmarks
 - Create a scalable, maintainable architecture for the system
 - Implement secure credential management using Google Cloud Secret Store
 - Set up CI/CD pipeline using GitHub Actions
+- Integrate multiple data sources (PDF reports and Wikipedia) to enhance information quality
+- Provide proper source attribution in search results and chat responses
 
 ## Success Criteria
 - Successfully extract and process text from PDF reports
 - Generate high-quality embeddings for all landmark documents
-- Store embeddings in Pinecone with appropriate metadata
+- Fetch, process, and store Wikipedia article content for landmarks
+- Store embeddings in Pinecone with appropriate metadata for source attribution
 - Create functional API endpoints for querying the vector database
 - Enable chatbot functionality with conversation memory
 - Implement secure credential management
 - Document the system thoroughly
+- Provide clear source attribution to distinguish PDF content from Wikipedia content

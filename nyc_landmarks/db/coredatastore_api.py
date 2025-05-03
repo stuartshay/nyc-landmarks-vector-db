@@ -2,7 +2,7 @@
 CoreDataStore API client module for NYC Landmarks Vector Database.
 
 This module handles connections to the CoreDataStore REST API
-that provides NYC landmark information.
+that provides NYC landmark information and associated web content like Wikipedia articles.
 """
 
 import logging
@@ -13,6 +13,7 @@ import requests
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.models.landmark_models import LpcReportResponse
+from nyc_landmarks.models.wikipedia_models import WikipediaArticleModel
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -662,3 +663,85 @@ class CoreDataStoreAPI:
         except Exception as e:
             logger.error(f"Error getting PDF report URL for landmark: {e}")
             return None
+
+    def get_wikipedia_articles(self, landmark_id: str) -> List[WikipediaArticleModel]:
+        """Get Wikipedia articles associated with a landmark.
+
+        This method queries the WebContent endpoint to retrieve Wikipedia articles
+        associated with a specific landmark.
+
+        Args:
+            landmark_id: ID of the landmark (LP number, e.g., "LP-00001")
+
+        Returns:
+            List of WikipediaArticleModel objects, empty list if none found
+        """
+        try:
+            # Ensure landmark_id is properly formatted with LP prefix
+            if not landmark_id.startswith("LP-"):
+                lpc_id = f"LP-{landmark_id.zfill(5)}"
+            else:
+                lpc_id = landmark_id
+
+            # Make the API request
+            response = self._make_request("GET", f"/api/WebContent/{lpc_id}")
+
+            # Process the response
+            articles = []
+            if response and isinstance(response, list):
+                for item in response:
+                    # Filter for Wikipedia articles only
+                    if item.get("recordType") == "Wikipedia":
+                        try:
+                            # Validate with Pydantic model
+                            article = WikipediaArticleModel(**item)
+                            articles.append(article)
+                        except Exception as e:
+                            logger.warning(f"Error validating Wikipedia article: {e}")
+                            continue
+
+            if not articles:
+                logger.info(f"No Wikipedia articles found for landmark: {landmark_id}")
+            else:
+                logger.info(f"Found {len(articles)} Wikipedia articles for landmark: {landmark_id}")
+
+            return articles
+
+        except Exception as e:
+            logger.error(f"Error getting Wikipedia articles for landmark {landmark_id}: {e}")
+            return []
+
+    def get_all_landmarks_with_wikipedia(self, limit: Optional[int] = None) -> Dict[str, List[WikipediaArticleModel]]:
+        """Get all landmarks with their associated Wikipedia articles.
+
+        This method queries all landmarks and checks each for Wikipedia articles,
+        building a dictionary mapping landmark IDs to their Wikipedia articles.
+
+        Args:
+            limit: Maximum number of landmarks to check (optional)
+
+        Returns:
+            Dictionary mapping landmark IDs to lists of WikipediaArticleModel objects
+        """
+        try:
+            # Get all landmarks
+            landmarks = self.get_all_landmarks(limit)
+            result = {}
+
+            # Process each landmark to check for Wikipedia articles
+            for landmark in landmarks:
+                landmark_id = landmark.get("id", "")
+                if not landmark_id:
+                    continue
+
+                # Get Wikipedia articles for this landmark
+                articles = self.get_wikipedia_articles(landmark_id)
+                if articles:
+                    result[landmark_id] = articles
+
+            logger.info(f"Found {len(result)} landmarks with Wikipedia articles out of {len(landmarks)} total")
+            return result
+
+        except Exception as e:
+            logger.error(f"Error getting landmarks with Wikipedia articles: {e}")
+            return {}

@@ -5,8 +5,13 @@
     "python.testing.pytestArgs": [
         "tests"
     ],
-    "python.defaultInterpreterPath": "/home/vagrant/miniconda/envs/nyc-landmarks/bin/python",
+    "python.defaultInterpreterPath": "${workspaceFolder}/venv311/bin/python",
+    "python.testing.cwd": "${workspaceFolder}",
     "python.testing.autoTestDiscoverOnSaveEnabled": true,
-    "mypy.dmypyExecutable": "/home/vagrant/miniconda/envs/nyc-landmarks/bin/dmypy",
+    "editor.formatOnSave": true,
+    "python.linting.enabled": true,
+    "python.linting.flake8Enabled": true,
+    "python.formatting.provider": "black",
+    "mypy.dmypyExecutable": "${workspaceFolder}/venv311/bin/dmypy",
     "mypy.runUsingActiveInterpreter": true
 }

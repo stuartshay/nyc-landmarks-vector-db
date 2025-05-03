@@ -81,21 +81,24 @@ setup(
         "install": PostInstallCommand,
     },
     install_requires=[
-        "fastapi>=0.115.0",
-        "uvicorn>=0.34.0",
+        "fastapi>=0.115.12",
+        "uvicorn>=0.34.2",
         "openai>=1.75.0",
-        "pinecone>=2.0.0",  # Updated from pinecone-client to pinecone
-        "pypdf>=3.15.1",  # Updated from pypdf2 to pypdf
-        "pdfplumber>=0.11.0",
-        "azure-storage-blob>=12.25.0",
-        "google-cloud-secret-manager>=2.23.0",
-        "pydantic>=2.11.0",
-        "pydantic-settings>=2.2.0",  # Added for settings module
+        "pinecone>=6.0.2",  # Updated from pinecone-client to pinecone
+        "pypdf>=5.4.0",  # Updated from pypdf2 to pypdf
+        "pdfplumber>=0.11.6",
+        "azure-storage-blob>=12.25.1",
+        "google-cloud-secret-manager>=2.23.3",
+        "pydantic>=2.11.3",
+        "pydantic-settings>=2.2.1",  # Added for settings module
         "python-dotenv>=1.1.0",
         "tiktoken>=0.9.0",
         "numpy>=1.26.0",  # Added for vector tests
         "pandas>=2.2.0",  # Added for dataframe tests
-        "tenacity>=8.2.0",  # Added for retry logic in API calls
+        "tenacity>=9.1.2",  # Added for retry logic in API calls
+        "matplotlib",  # Added for notebooks
+        "folium",  # Added for map visualizations in notebooks
+        "scikit-learn",  # Added for clustering in notebooks
     ],
     extras_require={
         "dev": [
@@ -108,6 +111,14 @@ setup(
             "pandas>=2.2.0",  # Added explicitly for tests
             "numpy>=1.26.0",  # Added explicitly for tests
             "pandas-stubs>=2.1.1.0",  # Added for pandas type checking
+            "pytest-asyncio>=0.24.0",  # Added for asyncio support in tests
+            "pre-commit>=3.8.0",  # Added for pre-commit hooks
+            "pip-tools>=7.5.0",  # Added for managing requirements
+            "jupyterlab",  # Added for running notebooks
+            "ipywidgets",  # Added for notebook interactivity
+            "plotly",  # Added for interactive plots in notebooks
+            "seaborn",  # Added for statistical plots in notebooks
+            "tqdm",  # Added for progress bars in notebooks/scripts
         ],
         "lint": ["ruff"],
         "coverage": ["pytest-cov"],
