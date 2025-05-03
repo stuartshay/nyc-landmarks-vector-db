@@ -1,17 +1,22 @@
 {
-    "python.testing.pytestEnabled": true,
-    "python.testing.unittestEnabled": false,
-    "python.testing.nosetestsEnabled": false,
-    "python.testing.pytestArgs": [
-        "tests"
-    ],
-    "python.defaultInterpreterPath": "${workspaceFolder}/venv311/bin/python",
-    "python.testing.cwd": "${workspaceFolder}",
-    "python.testing.autoTestDiscoverOnSaveEnabled": true,
-    "editor.formatOnSave": true,
-    "python.linting.enabled": true,
-    "python.linting.flake8Enabled": true,
-    "python.formatting.provider": "black",
-    "mypy.dmypyExecutable": "${workspaceFolder}/venv311/bin/dmypy",
-    "mypy.runUsingActiveInterpreter": true
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.testing.nosetestsEnabled": false,
+  "python.testing.pytestArgs": [
+    "tests",
+    "-v"
+  ],
+  "python.defaultInterpreterPath": "${workspaceFolder}/venv311/bin/python",
+  "python.testing.cwd": "${workspaceFolder}",
+  "python.testing.autoTestDiscoverOnSaveEnabled": true,
+  "python.terminal.activateEnvironment": true,
+  "python.terminal.activateEnvInCurrentTerminal": true,
+  "editor.formatOnSave": true,
+  "python.linting.enabled": true,
+  "python.linting.flake8Enabled": true,
+  "python.formatting.provider": "black",
+  "mypy.dmypyExecutable": "${workspaceFolder}/venv311/bin/dmypy",
+  "mypy.runUsingActiveInterpreter": true,
+  "python.envFile": "${workspaceFolder}/.env",
+  "python.testing.pytestPath": "${workspaceFolder}/venv311/bin/pytest"
 }
