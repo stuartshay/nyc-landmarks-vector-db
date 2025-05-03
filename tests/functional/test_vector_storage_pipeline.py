@@ -182,7 +182,13 @@ def test_vector_storage_pipeline(temp_dirs: dict) -> None:
         # (Note: may not match exactly due to vector normalization, approximate NN, etc.)
         found_match = False
         for match in matches:
-            if match.metadata.get("landmark_id") == landmark_id:
+            # Handle match object or dictionary
+            metadata = (
+                match.metadata
+                if hasattr(match, "metadata")
+                else match.get("metadata", {})
+            )
+            if metadata.get("landmark_id") == landmark_id:
                 found_match = True
                 break
 

@@ -5,22 +5,21 @@
     "--env-file",
     "${localWorkspaceFolder}/.env"
   ],
-  "postCreateCommand": "pip install -e .[dev] && pre-commit install",
+  "postCreateCommand": "pip install -e .[dev] && pre-commit install && mkdir -p test_output/notebooks",
+  "postStartCommand": "echo 'Verifying environment...' && python -m pytest --version",
   "remoteUser": "vscode",
   "containerEnv": {
     "PYTHONPATH": "${containerWorkspaceFolder}"
   },
-  "settings": {
-    "terminal.integrated.defaultProfile.linux": "zsh",
-    "terminal.integrated.profiles.linux": {
-      "zsh": {
-        "path": "/bin/zsh"
-      }
-    }
-  },
   "customizations": {
     "vscode": {
       "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.profiles.linux": {
+          "zsh": {
+            "path": "/bin/zsh"
+          }
+        },
         "python.defaultInterpreterPath": "/usr/local/bin/python",
         "python.analysis.typeCheckingMode": "strict",
         "python.languageServer": "Pylance",
@@ -44,14 +43,17 @@
         ],
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
-          "source.organizeImports": true
+          "source.organizeImports": "always"
         },
         "python.testing.pytestEnabled": true,
         "python.testing.unittestEnabled": false,
         "python.testing.nosetestsEnabled": false,
         "python.testing.pytestArgs": [
-          "tests"
+          "tests",
+          "-v"
         ],
+        "python.testing.pytestPath": "/usr/local/bin/pytest",
+        "python.testing.autoTestDiscoverOnSaveEnabled": true,
         "editor.rulers": [
           88
         ],
@@ -59,12 +61,12 @@
         "editor.insertSpaces": true,
         "editor.detectIndentation": false,
         "files.trimTrailingWhitespace": true,
-        "files.insertFinalNewline": true,
-        "terminal.integrated.defaultProfile.linux": "zsh"
+        "files.insertFinalNewline": true
       },
       "extensions": [
         "ms-python.python",
         "ms-python.vscode-pylance",
+        "ms-python.debugpy",
         "matangover.mypy",
         "charliermarsh.ruff",
         "littlefoxteam.vscode-python-test-adapter",
@@ -83,7 +85,7 @@
         "mechatroner.rainbow-csv",
         "redhat.vscode-yaml",
         "donjayamanne.githistory",
-        "bungcip.better-toml"
+        "saoudrizwan.claude-dev"
       ]
     }
   }

@@ -6,7 +6,7 @@
     "tests",
     "-v"
   ],
-  "python.defaultInterpreterPath": "${workspaceFolder}/venv311/bin/python",
+  "python.defaultInterpreterPath": "/usr/local/bin/python",
   "python.testing.cwd": "${workspaceFolder}",
   "python.testing.autoTestDiscoverOnSaveEnabled": true,
   "python.terminal.activateEnvironment": true,
@@ -15,8 +15,8 @@
   "python.linting.enabled": true,
   "python.linting.flake8Enabled": true,
   "python.formatting.provider": "black",
-  "mypy.dmypyExecutable": "${workspaceFolder}/venv311/bin/dmypy",
+  "mypy.dmypyExecutable": "/usr/local/bin/dmypy",
   "mypy.runUsingActiveInterpreter": true,
   "python.envFile": "${workspaceFolder}/.env",
-  "python.testing.pytestPath": "${workspaceFolder}/venv311/bin/pytest"
+  "python.testing.pytestPath": "/usr/local/bin/pytest"
 }

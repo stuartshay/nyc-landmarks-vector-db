@@ -198,6 +198,87 @@ This project includes a fully configured development container that provides a c
    python -m nyc_landmarks.main
    ```
 
+## Development Environment Options
+
+### Method 1: Using VS Code Development Container (Recommended)
+
+The easiest way to set up the development environment is to use Visual Studio Code with the Dev Containers extension, which automatically configures everything for you.
+
+1. **Prerequisites:**
+   - Install [Visual Studio Code](https://code.visualstudio.com/)
+   - Install [Docker Desktop](https://www.docker.com/products/docker-desktop)
+   - Install [VS Code Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+
+2. **Open in Container:**
+   - Open VS Code
+   - Use the command palette (`Ctrl+Shift+P` or `Cmd+Shift+P`) and select "Dev Containers: Open Folder in Container..."
+   - Select the project repository folder
+   - VS Code will build the container and install all dependencies automatically
+
+3. **Configuration:**
+   - Copy `.env.sample` to `.env` and add your API keys and configuration
+   - Everything else is automatically set up by the devcontainer
+
+### Method 2: Local Development Setup
+
+If you prefer not to use containers, follow these steps to set up locally:
+
+#### Prerequisites
+- Python 3.11+
+- Git
+
+#### Steps
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/yourusername/nyc-landmarks-vector-db.git
+   cd nyc-landmarks-vector-db
+   ```
+
+2. **Create and activate a virtual environment:**
+   ```bash
+   python3.11 -m venv venv
+
+   # Activate the virtual environment
+   # On Unix or MacOS:
+   source venv/bin/activate
+   # On Windows:
+   venv\Scripts\activate
+   ```
+
+3. **Install dependencies:**
+   ```bash
+   # Install regular dependencies
+   pip install -r requirements.txt
+
+   # Install development dependencies
+   pip install -e ".[dev]"
+   ```
+
+4. **Set up pre-commit hooks:**
+   ```bash
+   pip install pre-commit
+   pre-commit install
+   pre-commit run --all-files  # Optional
+   ```
+
+5. **Configure environment variables:**
+   ```bash
+   cp .env.sample .env
+   # Edit .env with your credentials
+   ```
+
+6. **Configure MCP server for CoreDataStore API:**
+   ```bash
+   # Set up the coredatastore-swagger-mcp server
+   # as detailed in techContext.md
+   ```
+
+7. **Run the application:**
+   ```bash
+   python -m nyc_landmarks.main
+   ```
+
 ## Dependency Management
 
 This project uses a dual approach to dependency management:

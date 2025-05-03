@@ -5,7 +5,9 @@ Thank you for considering contributing to the NYC Landmarks Vector Database proj
 ## Development Process
 
 1. **Fork the repository** and clone your fork locally
-2. **Set up the development environment** following instructions in the README.md
+2. **Set up the development environment** using one of these methods:
+   - **Recommended:** Use VS Code with Dev Containers (see "Development Environment Options" in README.md)
+   - Alternatively, follow the local setup instructions in README.md
 3. **Create a new branch** for your feature or bugfix
    ```bash
    git checkout -b feature/your-feature-name
