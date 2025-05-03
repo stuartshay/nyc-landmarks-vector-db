@@ -20,8 +20,12 @@ class WikipediaArticleModel(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    id: Optional[int] = Field(None, description="Unique identifier for the article record")
-    lpNumber: str = Field(..., description="Landmark Preservation Commission identifier")
+    id: Optional[int] = Field(
+        None, description="Unique identifier for the article record"
+    )
+    lpNumber: str = Field(
+        ..., description="Landmark Preservation Commission identifier"
+    )
     url: str = Field(..., description="URL to the Wikipedia article")
     title: str = Field(..., description="Title of the Wikipedia article")
     recordType: str = Field("Wikipedia", description="Type of record")
@@ -45,7 +49,9 @@ class WikipediaContentModel(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    lpNumber: str = Field(..., description="Landmark Preservation Commission identifier")
+    lpNumber: str = Field(
+        ..., description="Landmark Preservation Commission identifier"
+    )
     url: str = Field(..., description="URL to the Wikipedia article")
     title: str = Field(..., description="Title of the Wikipedia article")
     content: str = Field(..., description="Raw content of the Wikipedia article")
@@ -76,11 +82,19 @@ class WikipediaProcessingResult(BaseModel):
     landmarks_with_wikipedia: int = Field(
         ..., description="Number of landmarks with Wikipedia articles"
     )
-    total_articles: int = Field(..., description="Total number of Wikipedia articles found")
-    articles_processed: int = Field(..., description="Number of articles successfully processed")
-    articles_with_errors: int = Field(..., description="Number of articles with processing errors")
+    total_articles: int = Field(
+        ..., description="Total number of Wikipedia articles found"
+    )
+    articles_processed: int = Field(
+        ..., description="Number of articles successfully processed"
+    )
+    articles_with_errors: int = Field(
+        ..., description="Number of articles with processing errors"
+    )
     total_chunks: int = Field(..., description="Total number of text chunks generated")
-    chunks_embedded: int = Field(..., description="Number of chunks successfully embedded")
+    chunks_embedded: int = Field(
+        ..., description="Number of chunks successfully embedded"
+    )
 
     def __str__(self) -> str:
         """Return a string representation of the processing result."""

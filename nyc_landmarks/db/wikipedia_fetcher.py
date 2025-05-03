@@ -90,14 +90,18 @@ class WikipediaFetcher:
             # Add a delay to respect rate limits
             time.sleep(self.rate_limit_delay)
 
-            logger.info(f"Successfully fetched Wikipedia content ({len(content)} chars)")
+            logger.info(
+                f"Successfully fetched Wikipedia content ({len(content)} chars)"
+            )
             return content
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Error fetching Wikipedia content from {url}: {e}")
             raise
         except Exception as e:
-            logger.error(f"Unexpected error processing Wikipedia content from {url}: {e}")
+            logger.error(
+                f"Unexpected error processing Wikipedia content from {url}: {e}"
+            )
             return None
 
     def _clean_wikipedia_text(self, text: str) -> str:
@@ -162,7 +166,9 @@ class WikipediaFetcher:
                 if current_chunk_size > chunk_overlap:
                     # Try to get approximately chunk_overlap characters from the end
                     words = current_chunk.split()
-                    overlap_words = words[-((chunk_overlap // 5) + 1):]  # Estimate words by average length
+                    overlap_words = words[
+                        -((chunk_overlap // 5) + 1) :
+                    ]  # Estimate words by average length
                     current_chunk = " ".join(overlap_words)
                     current_chunk_size = len(current_chunk)
                 else:
@@ -192,13 +198,18 @@ class WikipediaFetcher:
         total_chunks = len(chunks)
         for chunk in chunks:
             chunk["metadata"]["total_chunks"] = total_chunks
-            chunk["total_chunks"] = total_chunks  # Redundant but matches existing code pattern
+            chunk["total_chunks"] = (
+                total_chunks  # Redundant but matches existing code pattern
+            )
 
         logger.info(f"Split Wikipedia article into {len(chunks)} chunks")
         return chunks
 
     def process_wikipedia_article(
-        self, article: WikipediaArticleModel, chunk_size: int = 1000, chunk_overlap: int = 200
+        self,
+        article: WikipediaArticleModel,
+        chunk_size: int = 1000,
+        chunk_overlap: int = 200,
     ) -> Optional[WikipediaContentModel]:
         """Process a Wikipedia article for embedding.
 
@@ -243,7 +254,10 @@ class WikipediaFetcher:
             return None
 
     def process_landmark_wikipedia_articles(
-        self, articles: List[WikipediaArticleModel], chunk_size: int = 1000, chunk_overlap: int = 200
+        self,
+        articles: List[WikipediaArticleModel],
+        chunk_size: int = 1000,
+        chunk_overlap: int = 200,
     ) -> Tuple[List[WikipediaContentModel], WikipediaProcessingResult]:
         """Process all Wikipedia articles for a landmark.
 

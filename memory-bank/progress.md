@@ -8,7 +8,7 @@ The project is in the initial setup and infrastructure development phase. We hav
 - ✅ Identified technical requirements and constraints
 - ✅ Implemented CoreDataStore API client for landmark data access
 - ✅ Decided to use CoreDataStore API exclusively as the data source
-- ✅ Added coredatastore-swagger-mcp server to provide API tools with comprehensive functionality for accessing NYC landmarks data 
+- ✅ Added coredatastore-swagger-mcp server to provide API tools with comprehensive functionality for accessing NYC landmarks data
 - ✅ Implemented integration testing for MCP tools with proper mocking and validation
 - ✅ Created Pydantic models for data validation
 - ✅ Implemented unit tests for landmark report fetcher
@@ -153,7 +153,7 @@ The project is in the initial setup and infrastructure development phase. We hav
 - Average end-to-end processing time: 4.5 minutes per landmark document
 
 ## Next Major Milestones
-1. **Wikipedia Article Integration (In Progress)**: 
+1. **Wikipedia Article Integration (In Progress)**:
    - ✅ Core implementation completed with models, fetching, processing, and storage
    - 🔄 Testing and validation of the implementation
    - 🔄 Integration with vector search and chat API

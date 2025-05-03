@@ -52,13 +52,22 @@ pip install -r requirements.txt
 echo -e "${BLUE}Ensuring matplotlib is installed...${NC}"
 pip install matplotlib
 
-# Install the package itself in development mode
-echo -e "${BLUE}Installing the package in development mode...${NC}"
-pip install -e .
+# Install the package itself in development mode with dev dependencies
+echo -e "${BLUE}Installing the package in development mode with dev dependencies...${NC}"
+pip install -e ".[dev]"
 
 # Verify Pinecone version
 echo -e "${BLUE}Checking Pinecone version...${NC}"
 pip show pinecone
+
+# Verify pre-commit is installed and set up hooks
+echo -e "${BLUE}Setting up pre-commit hooks...${NC}"
+if command -v pre-commit &> /dev/null; then
+    pre-commit install
+    echo -e "${GREEN}Pre-commit hooks installed successfully!${NC}"
+else
+    echo -e "${RED}pre-commit is not installed. Please check your installation.${NC}"
+fi
 
 echo -e "${GREEN}Environment setup complete!${NC}"
 echo -e "${GREEN}To activate this environment, run:${NC}"

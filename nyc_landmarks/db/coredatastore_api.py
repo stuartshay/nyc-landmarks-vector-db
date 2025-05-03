@@ -703,15 +703,21 @@ class CoreDataStoreAPI:
             if not articles:
                 logger.info(f"No Wikipedia articles found for landmark: {landmark_id}")
             else:
-                logger.info(f"Found {len(articles)} Wikipedia articles for landmark: {landmark_id}")
+                logger.info(
+                    f"Found {len(articles)} Wikipedia articles for landmark: {landmark_id}"
+                )
 
             return articles
 
         except Exception as e:
-            logger.error(f"Error getting Wikipedia articles for landmark {landmark_id}: {e}")
+            logger.error(
+                f"Error getting Wikipedia articles for landmark {landmark_id}: {e}"
+            )
             return []
 
-    def get_all_landmarks_with_wikipedia(self, limit: Optional[int] = None) -> Dict[str, List[WikipediaArticleModel]]:
+    def get_all_landmarks_with_wikipedia(
+        self, limit: Optional[int] = None
+    ) -> Dict[str, List[WikipediaArticleModel]]:
         """Get all landmarks with their associated Wikipedia articles.
 
         This method queries all landmarks and checks each for Wikipedia articles,
@@ -739,7 +745,9 @@ class CoreDataStoreAPI:
                 if articles:
                     result[landmark_id] = articles
 
-            logger.info(f"Found {len(result)} landmarks with Wikipedia articles out of {len(landmarks)} total")
+            logger.info(
+                f"Found {len(result)} landmarks with Wikipedia articles out of {len(landmarks)} total"
+            )
             return result
 
         except Exception as e:

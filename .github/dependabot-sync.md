@@ -6,7 +6,7 @@ This file provides instructions for Dependabot to understand our dependency mana
 
 - `requirements.txt` is the source of truth for exact versions
 - `setup.py` contains flexible version ranges (using `>=`)
-- After Dependabot updates `requirements.txt`, our GitHub workflow runs `sync_versions.sh` 
+- After Dependabot updates `requirements.txt`, our GitHub workflow runs `sync_versions.sh`
   to update the corresponding versions in `setup.py`
 
 ## Workflow

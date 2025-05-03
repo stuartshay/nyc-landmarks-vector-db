@@ -81,7 +81,9 @@ def process_landmark_wikipedia(
                 chunks_embedded=0,
             )
 
-        logger.info(f"Found {len(articles)} Wikipedia articles for landmark: {landmark_id}")
+        logger.info(
+            f"Found {len(articles)} Wikipedia articles for landmark: {landmark_id}"
+        )
 
         # Process the articles
         processed_articles, result = wiki_fetcher.process_landmark_wikipedia_articles(
@@ -89,7 +91,9 @@ def process_landmark_wikipedia(
         )
 
         if not processed_articles:
-            logger.warning(f"No Wikipedia articles processed for landmark: {landmark_id}")
+            logger.warning(
+                f"No Wikipedia articles processed for landmark: {landmark_id}"
+            )
             return result
 
         # Generate embeddings and store in Pinecone for each article
@@ -114,7 +118,9 @@ def process_landmark_wikipedia(
             )
 
             total_chunks_embedded += len(vector_ids)
-            logger.info(f"Stored {len(vector_ids)} vectors for article: {article.title}")
+            logger.info(
+                f"Stored {len(vector_ids)} vectors for article: {article.title}"
+            )
 
         # Update the result with the number of chunks embedded
         result.chunks_embedded = total_chunks_embedded

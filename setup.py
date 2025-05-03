@@ -113,7 +113,7 @@ setup(
             "pandas-stubs>=2.1.1.0",  # Added for pandas type checking
             "pytest-asyncio>=0.24.0",  # Added for asyncio support in tests
             "pre-commit>=3.8.0",  # Added for pre-commit hooks
-            "pip-tools>=7.5.0",  # Added for managing requirements
+            "pip-tools",  # Added for managing requirements
             "jupyterlab",  # Added for running notebooks
             "ipywidgets",  # Added for notebook interactivity
             "plotly",  # Added for interactive plots in notebooks
