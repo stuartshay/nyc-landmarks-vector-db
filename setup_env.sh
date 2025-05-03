@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script sets up the Python 3.11 virtual environment with all required dependencies
+# This script sets up a Python virtual environment with all required dependencies
 # for running the NYC Landmarks Vector DB notebooks
 
 # Set colors for better readability
@@ -9,22 +9,16 @@ BLUE='\033[0;34m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}Setting up Python 3.11 environment for NYC Landmarks Vector DB...${NC}"
+echo -e "${BLUE}Setting up Python environment for NYC Landmarks Vector DB...${NC}"
 
 # Directory where the script is located
 PROJECT_DIR="$(pwd)"
-VENV_DIR="${PROJECT_DIR}/venv311"
-
-# Check if Python 3.11 is available
-if ! command -v python3.11 &> /dev/null; then
-    echo -e "${RED}Python 3.11 is not installed. Please install it first.${NC}"
-    exit 1
-fi
+VENV_DIR="${PROJECT_DIR}/venv"
 
 # Create virtual environment if it doesn't exist
 if [ ! -d "$VENV_DIR" ]; then
-    echo -e "${BLUE}Creating Python 3.11 virtual environment...${NC}"
-    python3.11 -m venv "$VENV_DIR"
+    echo -e "${BLUE}Creating Python virtual environment...${NC}"
+    python -m venv "$VENV_DIR"
 else
     echo -e "${GREEN}Virtual environment already exists at ${VENV_DIR}${NC}"
 fi

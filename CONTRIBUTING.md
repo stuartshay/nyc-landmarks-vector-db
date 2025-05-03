@@ -71,6 +71,19 @@ We use several tools to enforce code quality:
 - Never commit API keys or secrets
 - Use environment variables for configuration
 
+### Dependency Management
+
+- Add new dependencies to `setup.py` in the appropriate section:
+  - Runtime dependencies go in the `install_requires` list
+  - Development dependencies go in the `extras_require["dev"]` list
+  - Always add a comment explaining why the dependency is needed
+- After adding a dependency to `setup.py`, update the requirements files:
+  ```bash
+  # Update requirements.txt for production dependencies
+  ./sync_versions.sh
+  ```
+- Document any new dependencies in your PR description
+
 ## Setting Up Your Development Environment
 
 ### Pre-commit Hooks

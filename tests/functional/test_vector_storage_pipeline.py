@@ -23,6 +23,7 @@ from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.pdf.extractor import PDFExtractor
 from nyc_landmarks.pdf.text_chunker import TextChunker
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
+from tests.utils.test_mocks import get_mock_landmark, get_mock_landmark_pdf_text
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -73,25 +74,12 @@ def test_vector_storage_pipeline(temp_dirs: dict) -> None:
     # Try to fetch from API if available
     landmark_data = db_client.get_landmark_by_id(landmark_id)
 
-    # If API is unreachable, use mock data
+    # If API is unreachable, use mock data from our utility
     if not landmark_data:
         logger.warning(
             "Could not fetch landmark data from API, using mock data instead"
         )
-        landmark_data = {
-            "id": landmark_id,
-            "name": "Pieter Claesen Wyckoff House",
-            "location": "5816 Clarendon Road",
-            "borough": "Brooklyn",
-            "type": "Individual Landmark",
-            "designation_date": "1965-10-14",
-            "description": "Test description for testing purposes",
-            "architect": "Unknown",
-            "style": "Dutch Colonial",
-            "neighborhood": "Brownsville",
-            "pdfReportUrl": "https://cdn.informationcart.com/pdf/0001.pdf",
-            "photoUrl": "",
-        }
+        landmark_data = get_mock_landmark(landmark_id)
 
     logger.info(f"Using landmark: {landmark_data.get('name', 'Unknown')}")
 
