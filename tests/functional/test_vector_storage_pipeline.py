@@ -45,7 +45,7 @@ def temp_dirs() -> Generator[dict, None, None]:
     shutil.rmtree(base_dir)
 
 
-@pytest.mark.integration
+@pytest.mark.functional
 def test_vector_storage_pipeline(temp_dirs: dict) -> None:
     """Test the complete vector storage pipeline with one landmark."""
     logger.info("=== Testing complete vector storage pipeline ===")
@@ -244,7 +244,7 @@ def test_vector_storage_pipeline(temp_dirs: dict) -> None:
     logger.info("=== Vector storage pipeline test completed successfully ===")
 
 
-@pytest.mark.integration
+@pytest.mark.functional
 def test_pinecone_connection_and_operations() -> None:
     """Test basic Pinecone operations to ensure the database is accessible."""
     logger.info("=== Testing Pinecone connection and basic operations ===")
