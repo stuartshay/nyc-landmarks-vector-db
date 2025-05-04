@@ -119,7 +119,7 @@ packaging==25.0
     # via matplotlib
 pandas==2.2.3
     # via nyc-landmarks-vector-db (setup.py)
-pdfminer-six==20250327
+pdfminer-six==20250416
     # via pdfplumber
 pdfplumber==0.11.6
     # via nyc-landmarks-vector-db (setup.py)
