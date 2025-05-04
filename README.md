@@ -481,6 +481,29 @@ This project enforces:
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed information on our development workflow and code standards.
 
+## Package Management
+
+The project includes a comprehensive script for managing Python dependencies:
+
+```bash
+# Update all packages to their latest versions
+./manage_packages.sh update
+
+# Sync versions between requirements.txt and setup.py
+./manage_packages.sh sync
+
+# Update Pinecone SDK specifically
+./manage_packages.sh pinecone
+
+# Check for outdated packages
+./manage_packages.sh check
+
+# Show help information
+./manage_packages.sh help
+```
+
+This script ensures consistent package versions between `setup.py` and `requirements.txt` and simplifies dependency updates.
+
 ## VS Code Integration
 
 This project includes Visual Studio Code configuration for an optimal development experience:

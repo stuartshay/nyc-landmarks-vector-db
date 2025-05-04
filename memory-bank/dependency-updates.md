@@ -38,17 +38,23 @@ Three new utility scripts were created to facilitate dependency management:
 
 ## Usage
 
-To update dependencies in the future:
+To manage dependencies in the future, use the consolidated script with different commands:
 
 ```bash
-# Option 1: Direct update (simplest)
-./direct_update.sh
+# Update all packages to their latest versions
+./manage_packages.sh update
 
-# Option 2: Update setup.py first, then regenerate requirements
-./update_dependencies.sh
+# Sync versions between requirements.txt and setup.py
+./manage_packages.sh sync
 
-# Option 3: Manual synchronization after Dependabot updates
-./sync_versions.sh
+# Update Pinecone SDK specifically
+./manage_packages.sh pinecone
+
+# Check for outdated packages
+./manage_packages.sh check
+
+# Show help information
+./manage_packages.sh help
 ```
 
 ## Testing Results
