@@ -185,7 +185,9 @@ def _get_context_from_vector_db(
 
         # Get landmark name from database if available
         landmark_name = None
-        if landmark_id is not None:  # Ensure landmark_id is not None before passing to get_landmark_by_id
+        if (
+            landmark_id is not None
+        ):  # Ensure landmark_id is not None before passing to get_landmark_by_id
             landmark = db_client.get_landmark_by_id(landmark_id)
             if landmark:
                 landmark_name = landmark.get("name")

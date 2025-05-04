@@ -1,83 +1,68 @@
 """Type stubs for Pinecone SDK"""
-from typing import Any, Dict, List, Optional, Union, Protocol
 
+from typing import Any, Dict, List, Optional, Protocol, Union
 
 class NamespaceData(Protocol):
     """Protocol for namespace data."""
-    def items(self) -> Any: ...
 
+    def items(self) -> Any: ...
 
 class IndexStats:
     """Statistics about a Pinecone index."""
+
     dimension: int
     index_fullness: float
     total_vector_count: int
     namespaces: Dict[str, NamespaceData]
 
-
 class Match:
     """Match object returned from a query."""
+
     id: str
     score: float
     metadata: Optional[Dict[str, Any]]
 
-
 class QueryResponse:
     """Response from a query."""
-    matches: List[Match]
 
+    matches: List[Match]
 
 class Index:
     """Pinecone index client."""
 
     def __init__(self, name: str) -> None: ...
-
     def describe_index_stats(self) -> IndexStats: ...
-
     def upsert(
-        self,
-        vectors: List[Dict[str, Any]],
-        namespace: Optional[str] = None
+        self, vectors: List[Dict[str, Any]], namespace: Optional[str] = None
     ) -> Dict[str, Any]: ...
-
     def delete(
         self,
         ids: Optional[List[str]] = None,
         filter: Optional[Dict[str, Any]] = None,
         namespace: Optional[str] = None,
-        delete_all: Optional[bool] = None
+        delete_all: Optional[bool] = None,
     ) -> Dict[str, Any]: ...
-
     def query(
         self,
         vector: List[float],
         top_k: int,
         include_metadata: bool = False,
         namespace: Optional[str] = None,
-        filter: Optional[Dict[str, Any]] = None
+        filter: Optional[Dict[str, Any]] = None,
     ) -> QueryResponse: ...
-
 
 class IndexDefinition:
     """Definition of a Pinecone index."""
-    name: str
 
+    name: str
 
 class Pinecone:
     """Pinecone client."""
 
     def __init__(self, api_key: str) -> None: ...
-
     def list_indexes(self) -> List[IndexDefinition]: ...
-
     def Index(self, name: str) -> Index: ...
-
     def create_index(
-        self,
-        name: str,
-        dimension: int,
-        metric: str,
-        **kwargs: Any
+        self, name: str, dimension: int, metric: str, **kwargs: Any
     ) -> None: ...
-
     def delete_index(self, name: str) -> None: ...

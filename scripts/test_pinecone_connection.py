@@ -25,7 +25,12 @@ try:
     pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
     print("Listing Pinecone indexes to verify connectivity...")
     indexes = pc.list_indexes()
-    print(f"Successfully connected to Pinecone. Available indexes: {indexes.names()}")
+    index_names = (
+        [idx.name for idx in indexes]
+        if hasattr(indexes, "__iter__")
+        else getattr(indexes, "names", [])
+    )
+    print(f"Successfully connected to Pinecone. Available indexes: {index_names}")
     sys.exit(0)
 except Exception as e:
     print(f"Failed to connect to Pinecone: {str(e)}")

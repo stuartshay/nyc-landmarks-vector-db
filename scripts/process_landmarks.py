@@ -349,20 +349,7 @@ class LandmarkPipeline:
         Returns:
             Dict: Processing results with statistics and status
         """
-        result = {
-            "landmark_id": landmark.get("id", "") or landmark.get("lpNumber", ""),
-            "status": "failed",
-            "errors": [],
-            "stats": {
-                "pdf_downloaded": False,
-                "text_extracted": False,
-                "chunks_created": 0,
-                "embeddings_generated": 0,
-                "vectors_stored": 0,
-                "processing_time": 0,
-            },
-        }
-
+        result = self._initialize_result(landmark)
         start_time = time.time()
 
         try:
@@ -371,93 +358,22 @@ class LandmarkPipeline:
             if not landmark_id:
                 raise ValueError("Landmark missing ID")
 
-            # Get PDF URL
-            pdf_url = landmark.get("pdfReportUrl")
-            if not pdf_url:
-                pdf_url = self.db_client.get_landmark_pdf_url(landmark_id)
+            # Get PDF URL and download
+            filepath = self._download_pdf(landmark, landmark_id, result)
 
-            if not pdf_url:
-                raise ValueError(f"No PDF URL found for landmark {landmark_id}")
-
-            # Download PDF
-            filename = f"{landmark_id.replace('/', '_')}.pdf"
-            filepath = self.pdfs_dir / filename
-
-            if not filepath.exists():
-                logger.info(f"Downloading PDF for {landmark_id} from {pdf_url}")
-                response = requests.get(pdf_url, stream=True, timeout=30)
-                response.raise_for_status()
-
-                with open(filepath, "wb") as f:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        f.write(chunk)
-
-            result["stats"]["pdf_downloaded"] = True
-
-            # Step 2: Extract text
-            logger.info(f"Extracting text from PDF for landmark {landmark_id}")
-            # Using extract_text_from_bytes instead of non-existent extract_text method
-            with open(filepath, "rb") as f:
-                pdf_bytes = f.read()
-                text = self.pdf_extractor.extract_text_from_bytes(pdf_bytes)
-
-            if not text:
-                raise ValueError(
-                    f"No text extracted from PDF for landmark {landmark_id}"
-                )
-
-            # Save text to file
-            text_filename = filepath.stem + ".txt"
-            text_filepath = self.text_dir / text_filename
-            with open(text_filepath, "w", encoding="utf-8") as f:
-                f.write(text)
-
-            result["stats"]["text_extracted"] = True
+            # Step 2: Extract and save text
+            text = self._extract_and_save_text(filepath, landmark_id, result)
 
             # Step 3: Chunk text
-            logger.info(f"Chunking text for landmark {landmark_id}")
-            chunks = self.text_chunker.chunk_text_by_tokens(text)
-            enriched_chunks = []
-
-            for i, chunk in enumerate(chunks):
-                chunk_dict = {
-                    "text": chunk,
-                    "chunk_index": i,
-                    "total_chunks": len(chunks),
-                    "metadata": {
-                        "landmark_id": landmark_id,
-                        "chunk_index": i,
-                        "total_chunks": len(chunks),
-                        "source_type": "pdf",
-                        "processing_date": time.strftime("%Y-%m-%d"),
-                    },
-                }
-                enriched_chunks.append(chunk_dict)
-
-            result["stats"]["chunks_created"] = len(chunks)
+            enriched_chunks = self._chunk_text(text, landmark_id, result)
 
             # Step 4: Generate embeddings
-            logger.info(f"Generating embeddings for landmark {landmark_id}")
-            texts = [chunk["text"] for chunk in enriched_chunks]
-            embeddings = self.embedding_generator.generate_embeddings_batch(texts)
-
-            chunks_with_embeddings = enriched_chunks.copy()
-            for i, embedding in enumerate(embeddings):
-                chunks_with_embeddings[i]["embedding"] = embedding
-
-            result["stats"]["embeddings_generated"] = len(embeddings)
-
-            # Step 5: Store vectors with fixed IDs to prevent duplication
-            logger.info(f"Storing vectors for landmark {landmark_id} using fixed IDs")
-            vector_ids = self.pinecone_db.store_chunks(
-                chunks=chunks_with_embeddings,
-                id_prefix="",  # No need for id_prefix with fixed IDs
-                landmark_id=landmark_id,
-                use_fixed_ids=True,  # Explicitly use fixed IDs to prevent duplication
-                delete_existing=True,  # Delete any existing vectors for this landmark
+            chunks_with_embeddings = self._generate_embeddings(
+                enriched_chunks, landmark_id, result
             )
 
-            result["stats"]["vectors_stored"] = len(vector_ids)
+            # Step 5: Store vectors
+            self._store_vectors(chunks_with_embeddings, landmark_id, result)
 
             # Set success status
             result["status"] = "success"
@@ -471,6 +387,188 @@ class LandmarkPipeline:
         result["stats"]["processing_time"] = time.time() - start_time
 
         return result
+
+    def _initialize_result(self, landmark: Dict[str, Any]) -> Dict[str, Any]:
+        """Initialize the result dictionary for landmark processing.
+
+        Args:
+            landmark: Dictionary containing landmark data
+
+        Returns:
+            Dict with initialized result structure
+        """
+        return {
+            "landmark_id": landmark.get("id", "") or landmark.get("lpNumber", ""),
+            "status": "failed",
+            "errors": [],
+            "stats": {
+                "pdf_downloaded": False,
+                "text_extracted": False,
+                "chunks_created": 0,
+                "embeddings_generated": 0,
+                "vectors_stored": 0,
+                "processing_time": 0,
+            },
+        }
+
+    def _download_pdf(
+        self, landmark: Dict[str, Any], landmark_id: str, result: Dict[str, Any]
+    ) -> Path:
+        """Download PDF for the landmark.
+
+        Args:
+            landmark: Dictionary containing landmark data
+            landmark_id: ID of the landmark
+            result: Result dictionary to update
+
+        Returns:
+            Path to the downloaded PDF file
+
+        Raises:
+            ValueError: If PDF URL is not found or download fails
+        """
+        # Get PDF URL
+        pdf_url = landmark.get("pdfReportUrl")
+        if not pdf_url:
+            pdf_url = self.db_client.get_landmark_pdf_url(landmark_id)
+
+        if not pdf_url:
+            raise ValueError(f"No PDF URL found for landmark {landmark_id}")
+
+        # Download PDF
+        filename = f"{landmark_id.replace('/', '_')}.pdf"
+        filepath = self.pdfs_dir / filename
+
+        if not filepath.exists():
+            logger.info(f"Downloading PDF for {landmark_id} from {pdf_url}")
+            response = requests.get(pdf_url, stream=True, timeout=30)
+            response.raise_for_status()
+
+            with open(filepath, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+
+        result["stats"]["pdf_downloaded"] = True
+        return filepath
+
+    def _extract_and_save_text(
+        self, filepath: Path, landmark_id: str, result: Dict[str, Any]
+    ) -> str:
+        """Extract text from PDF and save to file.
+
+        Args:
+            filepath: Path to the PDF file
+            landmark_id: ID of the landmark
+            result: Result dictionary to update
+
+        Returns:
+            Extracted text
+
+        Raises:
+            ValueError: If no text was extracted
+        """
+        logger.info(f"Extracting text from PDF for landmark {landmark_id}")
+        with open(filepath, "rb") as f:
+            pdf_bytes = f.read()
+            text = self.pdf_extractor.extract_text_from_bytes(pdf_bytes)
+
+        if not text:
+            raise ValueError(f"No text extracted from PDF for landmark {landmark_id}")
+
+        # Save text to file
+        text_filename = filepath.stem + ".txt"
+        text_filepath = self.text_dir / text_filename
+        with open(text_filepath, "w", encoding="utf-8") as f:
+            f.write(text)
+
+        result["stats"]["text_extracted"] = True
+        return text
+
+    def _chunk_text(
+        self, text: str, landmark_id: str, result: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """Chunk text and create enriched chunks.
+
+        Args:
+            text: Text to chunk
+            landmark_id: ID of the landmark
+            result: Result dictionary to update
+
+        Returns:
+            List of enriched chunks
+        """
+        logger.info(f"Chunking text for landmark {landmark_id}")
+        chunks = self.text_chunker.chunk_text_by_tokens(text)
+        enriched_chunks = []
+
+        for i, chunk in enumerate(chunks):
+            chunk_dict = {
+                "text": chunk,
+                "chunk_index": i,
+                "total_chunks": len(chunks),
+                "metadata": {
+                    "landmark_id": landmark_id,
+                    "chunk_index": i,
+                    "total_chunks": len(chunks),
+                    "source_type": "pdf",
+                    "processing_date": time.strftime("%Y-%m-%d"),
+                },
+            }
+            enriched_chunks.append(chunk_dict)
+
+        result["stats"]["chunks_created"] = len(chunks)
+        return enriched_chunks
+
+    def _generate_embeddings(
+        self,
+        enriched_chunks: List[Dict[str, Any]],
+        landmark_id: str,
+        result: Dict[str, Any],
+    ) -> List[Dict[str, Any]]:
+        """Generate embeddings for chunks.
+
+        Args:
+            enriched_chunks: List of enriched chunks
+            landmark_id: ID of the landmark
+            result: Result dictionary to update
+
+        Returns:
+            List of chunks with embeddings
+        """
+        logger.info(f"Generating embeddings for landmark {landmark_id}")
+        texts = [chunk["text"] for chunk in enriched_chunks]
+        embeddings = self.embedding_generator.generate_embeddings_batch(texts)
+
+        chunks_with_embeddings = enriched_chunks.copy()
+        for i, embedding in enumerate(embeddings):
+            chunks_with_embeddings[i]["embedding"] = embedding
+
+        result["stats"]["embeddings_generated"] = len(embeddings)
+        return chunks_with_embeddings
+
+    def _store_vectors(
+        self,
+        chunks_with_embeddings: List[Dict[str, Any]],
+        landmark_id: str,
+        result: Dict[str, Any],
+    ) -> None:
+        """Store vectors in Pinecone.
+
+        Args:
+            chunks_with_embeddings: List of chunks with embeddings
+            landmark_id: ID of the landmark
+            result: Result dictionary to update
+        """
+        logger.info(f"Storing vectors for landmark {landmark_id} using fixed IDs")
+        vector_ids = self.pinecone_db.store_chunks(
+            chunks=chunks_with_embeddings,
+            id_prefix="",  # No need for id_prefix with fixed IDs
+            landmark_id=landmark_id,
+            use_fixed_ids=True,  # Explicitly use fixed IDs to prevent duplication
+            delete_existing=True,  # Delete any existing vectors for this landmark
+        )
+
+        result["stats"]["vectors_stored"] = len(vector_ids)
 
     def store_in_vector_db(
         self,

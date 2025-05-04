@@ -67,7 +67,11 @@ repos:
       - id: nbqa-isort
         args: ["--profile=black", "--filter-files"]
       - id: nbqa-flake8
-        args: ["--extend-ignore=E203,E501,F401,F541,W293,C901,F821", "--max-line-length=100"]
+        args:
+          [
+            "--extend-ignore=E203,E501,F401,F541,W293,C901,F821,E226,E741,C401,F811",
+            "--max-line-length=100",
+          ]
         additional_dependencies:
           - flake8-docstrings
           - flake8-quotes

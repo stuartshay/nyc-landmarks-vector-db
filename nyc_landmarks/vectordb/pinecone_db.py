@@ -137,9 +137,13 @@ class PineconeDB:
                 stats_dict["namespaces"] = self._extract_namespaces(stats_response)
 
                 # Add total vector count
-                stats_dict["total_vector_count"] = self._extract_vector_count(stats_response)
+                stats_dict["total_vector_count"] = self._extract_vector_count(
+                    stats_response
+                )
 
-                logger.debug(f"Successfully retrieved and built index stats dict: {stats_dict}")
+                logger.debug(
+                    f"Successfully retrieved and built index stats dict: {stats_dict}"
+                )
                 return stats_dict
             except Exception as build_e:
                 logger.exception(
@@ -330,7 +334,7 @@ class PineconeDB:
         self,
         chunks: List[Dict[str, Any]],
         enhanced_metadata: Dict[str, Any],
-        id_prefix: str = ""
+        id_prefix: str = "",
     ) -> Tuple[List[Tuple[str, List[float], Dict[str, Any]]], List[str]]:
         """Prepare vectors for batch storage in Pinecone.
 
@@ -367,9 +371,7 @@ class PineconeDB:
         return vectors, vector_ids
 
     def _prepare_chunk_metadata(
-        self,
-        chunk: Dict[str, Any],
-        enhanced_metadata: Dict[str, Any]
+        self, chunk: Dict[str, Any], enhanced_metadata: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Prepare metadata for a chunk by merging with enhanced metadata.
 
@@ -539,7 +541,12 @@ class PineconeDB:
         try:
             # Check if index exists using new API
             indexes = self.pc.list_indexes()
-            index_names = indexes if isinstance(indexes, list) else indexes.names
+            # Handle different Pinecone SDK versions that return different types
+            index_names = (
+                [idx.name for idx in indexes]
+                if hasattr(indexes, "__iter__")
+                else getattr(indexes, "names", [])
+            )
             if self.index_name in index_names:
                 # Delete the index using new API
                 self.pc.delete_index(self.index_name)
@@ -629,7 +636,9 @@ class PineconeDB:
             self._delete_existing_vectors_for_landmark(landmark_id)
 
         # Get enhanced metadata
-        enhanced_metadata = self.metadata_collector.collect_landmark_metadata(landmark_id)
+        enhanced_metadata = self.metadata_collector.collect_landmark_metadata(
+            landmark_id
+        )
         logger.info(f"Retrieved enhanced metadata for landmark: {landmark_id}")
 
         # Prepare vectors with fixed IDs for batch storage
@@ -648,7 +657,7 @@ class PineconeDB:
         self,
         chunks: List[Dict[str, Any]],
         landmark_id: str,
-        enhanced_metadata: Dict[str, Any]
+        enhanced_metadata: Dict[str, Any],
     ) -> Tuple[List[Tuple[str, List[float], Dict[str, Any]]], List[str]]:
         """Prepare vectors with fixed IDs based on landmark_id and chunk_index.
 
@@ -783,9 +792,7 @@ class PineconeDB:
                         logger.warning(
                             f"Could not process namespace data for {ns_name}: {ns_e}"
                         )
-                        namespaces_dict[ns_name] = {
-                            "error": "Could not process data"
-                        }
+                        namespaces_dict[ns_name] = {"error": "Could not process data"}
 
         return namespaces_dict
 
@@ -820,9 +827,13 @@ class PineconeDB:
             stats_dict["namespaces"] = self._extract_namespaces(stats_response)
 
             # Add total vector count
-            stats_dict["total_vector_count"] = self._extract_vector_count(stats_response)
+            stats_dict["total_vector_count"] = self._extract_vector_count(
+                stats_response
+            )
 
-            logger.debug(f"Successfully retrieved and built index stats dict: {stats_dict}")
+            logger.debug(
+                f"Successfully retrieved and built index stats dict: {stats_dict}"
+            )
             return stats_dict
         except Exception as build_e:
             logger.exception(

@@ -13,8 +13,12 @@ from pathlib import Path
 # Add the project root to the path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
+# Use type ignore for ServerlessSpec as it might not be available in all Pinecone versions
+# This still allows the script to run with different versions of the Pinecone SDK
+# mypy will ignore this potential import error
 # Import needed modules - update imports for the new Pinecone API
-from pinecone import Pinecone, ServerlessSpec
+from pinecone import ServerlessSpec  # type: ignore
+from pinecone import Pinecone
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.utils.logger import get_logger
@@ -42,7 +46,12 @@ def create_nyc_landmarks_index() -> bool:
 
     # Check if index already exists
     indexes = pc.list_indexes()
-    if index_name in indexes.names():
+    index_names = (
+        [idx.name for idx in indexes]
+        if hasattr(indexes, "__iter__")
+        else getattr(indexes, "names", [])
+    )
+    if index_name in index_names:
         logger.info(f"Index '{index_name}' already exists")
         return True
 

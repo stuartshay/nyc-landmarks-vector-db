@@ -205,9 +205,7 @@ class DbClient:
                         )
                         return total_count
         except Exception as e:
-            logger.warning(
-                f"Error getting total record count from API metadata: {e}"
-            )
+            logger.warning(f"Error getting total record count from API metadata: {e}")
 
         return 0
 
