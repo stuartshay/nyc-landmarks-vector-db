@@ -289,15 +289,34 @@ This project uses a dual approach to dependency management:
 ### Installing Dependencies
 
 For development:
+
+There are two ways to set up your development environment:
+
+**Option A: Using the automated setup script (recommended for notebook users)**
 ```bash
+# Make the script executable
+chmod +x ./setup_env.sh
+
 # Set up the environment using the setup script
 ./setup_env.sh
 
-# Activate the virtual environment
-source venv311/bin/activate
+# The script will create a virtual environment, install all dependencies,
+# and set up pre-commit hooks automatically
+```
 
-# Install the package in development mode
-pip install -e .
+**Option B: Manual setup**
+```bash
+# Create a virtual environment
+python -m venv venv
+
+# Activate the virtual environment
+source venv/bin/activate
+
+# Install the package in development mode with all dev dependencies
+pip install -e ".[dev]"
+
+# Set up pre-commit hooks
+pre-commit install
 ```
 
 ### Keeping Dependencies in Sync
@@ -361,7 +380,7 @@ chmod +x sync_versions.sh
 This project requires Pinecone SDK v6.0.2 or later. To update the Pinecone SDK:
 
 ```bash
-./update_pinecone.sh
+./manage_packages.sh pinecone
 ```
 
 ### Dependency Updates
@@ -480,6 +499,29 @@ This project enforces:
 - Security scanning with bandit
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed information on our development workflow and code standards.
+
+## Package Management
+
+The project includes a comprehensive script for managing Python dependencies:
+
+```bash
+# Update all packages to their latest versions
+./manage_packages.sh update
+
+# Sync versions between requirements.txt and setup.py
+./manage_packages.sh sync
+
+# Update Pinecone SDK specifically
+./manage_packages.sh pinecone
+
+# Check for outdated packages
+./manage_packages.sh check
+
+# Show help information
+./manage_packages.sh help
+```
+
+This script ensures consistent package versions between `setup.py` and `requirements.txt` and simplifies dependency updates.
 
 ## VS Code Integration
 

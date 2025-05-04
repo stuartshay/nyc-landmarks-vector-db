@@ -86,14 +86,14 @@ setup(
     install_requires=[
         "fastapi>=0.115.12",
         "uvicorn>=0.34.2",
-        "openai>=1.75.0",
+        "openai>=1.77.0",
         "pinecone>=6.0.2",  # Updated from pinecone-client to pinecone
         "pypdf>=5.4.0",  # Updated from pypdf2 to pypdf
         "pdfplumber>=0.11.6",
         "azure-storage-blob>=12.25.1",
         "google-cloud-secret-manager>=2.23.3",
-        "pydantic>=2.11.3",
-        "pydantic-settings>=2.2.1",  # Added for settings module
+        "pydantic>=2.11.4",
+        "pydantic-settings>=2.9.1",  # Added for settings module
         "python-dotenv>=1.1.0",
         "tiktoken>=0.9.0",
         "numpy>=1.26.0",  # Added for vector tests
