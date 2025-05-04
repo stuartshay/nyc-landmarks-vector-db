@@ -104,7 +104,7 @@ markupsafe==3.0.2
     # via jinja2
 matplotlib==3.10.1
     # via nyc-landmarks-vector-db (setup.py)
-numpy==1.26.4
+numpy==2.2.5
     # via
     #   contourpy
     #   folium
