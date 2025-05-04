@@ -117,7 +117,7 @@ openai==1.75.0
     # via nyc-landmarks-vector-db (setup.py)
 packaging==25.0
     # via matplotlib
-pandas==2.2.2
+pandas==2.2.3
     # via nyc-landmarks-vector-db (setup.py)
 pdfminer-six==20250327
     # via pdfplumber
