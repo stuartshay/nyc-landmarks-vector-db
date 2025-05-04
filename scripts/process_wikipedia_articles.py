@@ -10,17 +10,13 @@ and stores the embeddings in Pinecone with metadata.
 import argparse
 import logging
 import time
-from typing import List, Optional
+from typing import Optional
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
 from nyc_landmarks.db.wikipedia_fetcher import WikipediaFetcher
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
-from nyc_landmarks.models.wikipedia_models import (
-    WikipediaArticleModel,
-    WikipediaContentModel,
-    WikipediaProcessingResult,
-)
+from nyc_landmarks.models.wikipedia_models import WikipediaProcessingResult
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
 # Configure logging
@@ -196,7 +192,7 @@ def process_all_landmarks_wikipedia(
             if not landmark_id:
                 continue
 
-            logger.info(f"Processing landmark {i+1}/{len(landmarks)}: {landmark_id}")
+            logger.info(f"Processing landmark {i + 1}/{len(landmarks)}: {landmark_id}")
 
             # Process the landmark
             result = process_landmark_wikipedia(
@@ -246,7 +242,7 @@ def process_all_landmarks_wikipedia(
         )
 
 
-def main():
+def main() -> None:
     """Main entry point for the script."""
     parser = argparse.ArgumentParser(
         description="Process Wikipedia articles for NYC landmarks and store them in the vector database"

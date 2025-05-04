@@ -1,5 +1,5 @@
 import os
-import subprocess
+import subprocess  # nosec B404 - Subprocess is used safely with fixed commands
 
 from setuptools import find_packages, setup
 from setuptools.command.develop import develop
@@ -13,7 +13,9 @@ class PreCommitCommand:
     def run_pre_commit_install(self) -> None:
         try:
             print("Installing pre-commit hooks...")
-            subprocess.check_call(["pre-commit", "install"])
+            subprocess.check_call(
+                ["pre-commit", "install"]
+            )  # nosec B603, B607 - Using fixed command
             print("Pre-commit hooks installed successfully!")
         except subprocess.CalledProcessError:
             print(

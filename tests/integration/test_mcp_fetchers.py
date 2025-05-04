@@ -51,10 +51,10 @@ class MockMcpClient:
         for i in range(start_idx, end_idx):
             results.append(
                 {
-                    "lpNumber": f"LP-{i+1:05d}",
-                    "name": f"Test Landmark {i+1}",
+                    "lpNumber": f"LP-{i + 1:05d}",
+                    "name": f"Test Landmark {i + 1}",
                     "borough": "Mock Borough",
-                    "pdfReportUrl": f"https://example.com/pdf/LP-{i+1:05d}.pdf",
+                    "pdfReportUrl": f"https://example.com/pdf/LP-{i + 1:05d}.pdf",
                 }
             )
 
@@ -94,9 +94,9 @@ class MockMcpClient:
         for i in range(start_idx, end_idx):
             results.append(
                 {
-                    "id": f"B{i+1:05d}",
+                    "id": f"B{i + 1:05d}",
                     "lpNumber": lpc_number,
-                    "address": f"{i+1} Test Street",
+                    "address": f"{i + 1} Test Street",
                     "borough": "Mock Borough",
                 }
             )

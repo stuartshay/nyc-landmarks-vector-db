@@ -16,12 +16,12 @@ Run this script after setting up the environment to confirm everything is workin
 
 import importlib
 import os
-import subprocess
+import subprocess  # nosec B404 - Subprocess is used safely with fixed commands
 import sys
 from pathlib import Path
 
 
-def check_python_version():
+def check_python_version() -> bool:
     """Check that Python is at least version 3.11."""
     print(f"Python version: {sys.version}")
     if sys.version_info.major != 3 or sys.version_info.minor < 11:
@@ -31,7 +31,7 @@ def check_python_version():
     return True
 
 
-def check_packages():
+def check_packages() -> bool:
     """Check that required packages are installed."""
     required_packages = [
         "fastapi",
@@ -59,7 +59,7 @@ def check_packages():
     return all_installed
 
 
-def check_directory_structure():
+def check_directory_structure() -> bool:
     """Check that required directories exist."""
     required_dirs = [
         "nyc_landmarks",
@@ -79,12 +79,12 @@ def check_directory_structure():
     return all_dirs_exist
 
 
-def check_pre_commit():
+def check_pre_commit() -> bool:
     """Check that pre-commit hooks are installed."""
     try:
         result = subprocess.run(
             ["pre-commit", "--version"], capture_output=True, text=True, check=True
-        )
+        )  # nosec B603, B607 - Using fixed command
         print(f"✅ Pre-commit is installed: {result.stdout.strip()}")
 
         # Check if .git/hooks/pre-commit exists
@@ -99,15 +99,19 @@ def check_pre_commit():
         return False
 
 
-def check_development_tools():
+def check_development_tools() -> bool:
     """Check that development tools are working."""
     try:
         # Check pytest
-        subprocess.run(["pytest", "--version"], capture_output=True, check=True)
+        subprocess.run(
+            ["pytest", "--version"], capture_output=True, check=True
+        )  # nosec B603, B607 - Using fixed command
         print("✅ pytest is working")
 
         # Check black
-        subprocess.run(["black", "--version"], capture_output=True, check=True)
+        subprocess.run(
+            ["black", "--version"], capture_output=True, check=True
+        )  # nosec B603, B607 - Using fixed command
         print("✅ black formatter is working")
 
         return True
@@ -116,7 +120,7 @@ def check_development_tools():
         return False
 
 
-def main():
+def main() -> int:
     """Run all checks and report status."""
     print("NYC Landmarks Vector DB Environment Health Check")
     print("=" * 50)

@@ -4,8 +4,6 @@ Global pytest configuration file.
 This file configures pytest to automatically apply markers based on test location.
 """
 
-import os
-
 import pytest
 
 

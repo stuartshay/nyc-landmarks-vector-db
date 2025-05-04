@@ -134,7 +134,7 @@ class EmbeddingGenerator:
                 embeddings.extend(batch_embeddings)
 
                 logger.info(
-                    f"Generated embeddings for batch {i//batch_size + 1} of {(len(texts) + batch_size - 1) // batch_size}"
+                    f"Generated embeddings for batch {i // batch_size + 1} of {(len(texts) + batch_size - 1) // batch_size}"
                 )
 
                 # Implement adaptive rate limiting based on the batch size

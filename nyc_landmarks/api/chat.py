@@ -6,14 +6,14 @@ conversation memory and vector search integration. It enables users
 to interact with the NYC Landmarks database using natural language.
 """
 
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Dict, List, Optional, Protocol, Tuple
 
 import openai
 from fastapi import APIRouter, Depends, HTTPException
 from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel, Field
 
-from nyc_landmarks.chat.conversation import conversation_store
+from nyc_landmarks.chat.conversation import Conversation, conversation_store
 from nyc_landmarks.db.db_client import DbClient
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.utils.logger import get_logger
@@ -94,6 +94,176 @@ def get_db_client() -> DbClient:
     return DbClient()
 
 
+# --- Helper functions ---
+
+
+def _get_or_create_conversation(conversation_id: Optional[str] = None) -> Conversation:
+    """Get an existing conversation or create a new one.
+
+    Args:
+        conversation_id: Optional ID of an existing conversation
+
+    Returns:
+        The conversation object
+    """
+    conversation = None
+    if conversation_id:
+        conversation = conversation_store.get_conversation(conversation_id)
+
+    if not conversation:
+        conversation = conversation_store.create_conversation()
+
+        # Add system message to new conversation
+        system_message = (
+            "You are a knowledgeable assistant that specializes in New York City landmarks. "
+            "Your responses should be informative, accurate, and based on the information "
+            "provided in the landmark reports and database."
+        )
+        conversation.add_message("system", system_message)
+
+    return conversation
+
+
+def _get_context_from_vector_db(
+    query: str,
+    embedding_generator: EmbeddingGenerator,
+    vector_db: PineconeDB,
+    db_client: DbClient,
+    landmark_id: Optional[str] = None,
+) -> Tuple[str, List[Dict[str, Any]]]:
+    """Get relevant context from the vector database.
+
+    Args:
+        query: User's query
+        embedding_generator: EmbeddingGenerator instance
+        vector_db: PineconeDB instance
+        db_client: Database client instance
+        landmark_id: Optional landmark ID to filter results
+
+    Returns:
+        Tuple of (context_text, sources)
+    """
+    context_text = ""
+    sources = []
+
+    # Generate embedding for the query
+    query_embedding = embedding_generator.generate_embedding(query)
+
+    # Prepare filter if landmark_id is provided
+    filter_dict = None
+    if landmark_id:
+        filter_dict = {"landmark_id": landmark_id}
+
+    # Query the vector database
+    matches = vector_db.query_vectors(query_embedding, top_k=3, filter_dict=filter_dict)
+
+    # Process matches to create context
+    for i, match in enumerate(matches):
+        # Handle both object-style and dict-style match objects
+        try:
+            # Try accessing as an object (Protocol definition)
+            metadata = (
+                match.metadata
+                if hasattr(match, "metadata")
+                else match.get("metadata", {})
+            )
+            score = match.score if hasattr(match, "score") else match.get("score", 0)
+        except (AttributeError, TypeError):
+            # Fall back to dict access (actual Pinecone response)
+            metadata = match.get("metadata", {})
+            score = match.get("score", 0)
+
+        text = metadata.get("text", "")
+        landmark_id = metadata.get("landmark_id", "")
+
+        # Only use matches with a reasonable similarity score
+        if score < 0.7:  # This threshold can be adjusted
+            continue
+
+        # Add to context text
+        context_text += f"\nContext {i + 1}:\n{text}\n"
+
+        # Get landmark name from database if available
+        landmark_name = None
+        landmark = db_client.get_landmark_by_id(landmark_id)
+        if landmark:
+            landmark_name = landmark.get("name")
+
+        # Add to sources
+        source = {
+            "text": text[:200] + "..." if len(text) > 200 else text,
+            "landmark_id": landmark_id,
+            "landmark_name": landmark_name,
+            "score": score,
+        }
+        sources.append(source)
+
+    return context_text, sources
+
+
+def _prepare_chat_messages(
+    conversation: Conversation, context_text: str
+) -> List[ChatCompletionMessageParam]:
+    """Prepare the list of messages for the chat completion API.
+
+    Args:
+        conversation: Conversation object
+        context_text: Context text from vector search
+
+    Returns:
+        List of messages for the chat completion API
+    """
+    messages: List[ChatCompletionMessageParam] = []
+
+    # Add system message with context
+    if context_text:
+        system_context = (
+            "You are a knowledgeable assistant that specializes in New York City landmarks. "
+            "Use the following information from landmark reports to inform your response. "
+            f"{context_text}\n\n"
+            "Based on the above context, provide a helpful, accurate response about NYC landmarks. "
+            "If the context doesn't contain relevant information to answer the question, "
+            "say that you don't have specific information about that and provide general "
+            "information about NYC landmarks if possible."
+        )
+        messages.append({"role": "system", "content": system_context})
+    else:
+        messages.append(
+            {
+                "role": "system",
+                "content": "You are a knowledgeable assistant that specializes in New York City landmarks.",
+            }
+        )
+
+    # Add conversation history (last 10 messages)
+    for msg in conversation.get_messages(limit=10):
+        if msg["role"] != "system":  # Skip system messages, we've handled them above
+            messages.append({"role": msg["role"], "content": msg["content"]})
+
+    return messages
+
+
+def _convert_to_chat_messages(conversation: Conversation) -> List[ChatMessage]:
+    """Convert conversation messages to ChatMessage objects.
+
+    Args:
+        conversation: Conversation object
+
+    Returns:
+        List of ChatMessage objects
+    """
+    chat_messages = []
+    for msg in conversation.get_messages():
+        if msg["role"] != "system":  # Skip system messages in the response
+            chat_message = ChatMessage(
+                role=msg["role"],
+                content=msg["content"],
+                timestamp=msg["timestamp"],
+            )
+            chat_messages.append(chat_message)
+    return chat_messages
+
+
 # --- API endpoints ---
 
 
@@ -117,113 +287,22 @@ async def chat_message(
     """
     try:
         # Get or create conversation
-        conversation = None
-        if request.conversation_id:
-            conversation = conversation_store.get_conversation(request.conversation_id)
-
-        if not conversation:
-            conversation = conversation_store.create_conversation()
-
-            # Add system message to new conversation
-            system_message = (
-                "You are a knowledgeable assistant that specializes in New York City landmarks. "
-                "Your responses should be informative, accurate, and based on the information "
-                "provided in the landmark reports and database."
-            )
-            conversation.add_message("system", system_message)
+        conversation = _get_or_create_conversation(request.conversation_id)
 
         # Add user message to conversation
         conversation.add_message("user", request.message)
 
         # Get relevant context from vector database
-        context_text = ""
-        sources = []
-
-        # Generate embedding for the query
-        query_embedding = embedding_generator.generate_embedding(request.message)
-
-        # Prepare filter if landmark_id is provided
-        filter_dict = None
-        if request.landmark_id:
-            filter_dict = {"landmark_id": request.landmark_id}
-
-        # Query the vector database
-        matches = vector_db.query_vectors(
-            query_embedding, top_k=3, filter_dict=filter_dict
+        context_text, sources = _get_context_from_vector_db(
+            request.message,
+            embedding_generator,
+            vector_db,
+            db_client,
+            request.landmark_id,
         )
 
-        # Process matches to create context
-        for i, match in enumerate(matches):
-            # Handle both object-style and dict-style match objects
-            try:
-                # Try accessing as an object (Protocol definition)
-                metadata = (
-                    match.metadata
-                    if hasattr(match, "metadata")
-                    else match.get("metadata", {})
-                )
-                score = (
-                    match.score if hasattr(match, "score") else match.get("score", 0)
-                )
-            except (AttributeError, TypeError):
-                # Fall back to dict access (actual Pinecone response)
-                metadata = match.get("metadata", {})
-                score = match.get("score", 0)
-
-            text = metadata.get("text", "")
-            landmark_id = metadata.get("landmark_id", "")
-
-            # Only use matches with a reasonable similarity score
-            if score < 0.7:  # This threshold can be adjusted
-                continue
-
-            # Add to context text
-            context_text += f"\nContext {i+1}:\n{text}\n"
-
-            # Get landmark name from database if available
-            landmark_name = None
-            landmark = db_client.get_landmark_by_id(landmark_id)
-            if landmark:
-                landmark_name = landmark.get("name")
-
-            # Add to sources
-            source = {
-                "text": text[:200] + "..." if len(text) > 200 else text,
-                "landmark_id": landmark_id,
-                "landmark_name": landmark_name,
-                "score": score,
-            }
-            sources.append(source)
-
-        # Create message content with context
-        messages: List[ChatCompletionMessageParam] = []
-
-        # Add system message with context
-        if context_text:
-            system_context = (
-                "You are a knowledgeable assistant that specializes in New York City landmarks. "
-                "Use the following information from landmark reports to inform your response. "
-                f"{context_text}\n\n"
-                "Based on the above context, provide a helpful, accurate response about NYC landmarks. "
-                "If the context doesn't contain relevant information to answer the question, "
-                "say that you don't have specific information about that and provide general "
-                "information about NYC landmarks if possible."
-            )
-            messages.append({"role": "system", "content": system_context})
-        else:
-            messages.append(
-                {
-                    "role": "system",
-                    "content": "You are a knowledgeable assistant that specializes in New York City landmarks.",
-                }
-            )
-
-        # Add conversation history (last 10 messages)
-        for msg in conversation.get_messages(limit=10):
-            if (
-                msg["role"] != "system"
-            ):  # Skip system messages, we've handled them above
-                messages.append({"role": msg["role"], "content": msg["content"]})
+        # Prepare messages for chat completion API
+        messages = _prepare_chat_messages(conversation, context_text)
 
         # Generate response using OpenAI API
         response = openai.chat.completions.create(
@@ -240,15 +319,7 @@ async def chat_message(
         conversation.add_message("assistant", assistant_response)
 
         # Convert conversation messages to ChatMessage objects
-        chat_messages = []
-        for msg in conversation.get_messages():
-            if msg["role"] != "system":  # Skip system messages in the response
-                chat_message = ChatMessage(
-                    role=msg["role"],
-                    content=msg["content"],
-                    timestamp=msg["timestamp"],
-                )
-                chat_messages.append(chat_message)
+        chat_messages = _convert_to_chat_messages(conversation)
 
         # Create and return response
         return ChatResponse(
@@ -283,17 +354,7 @@ async def get_conversation_history(conversation_id: str) -> List[ChatMessage]:
             )
 
         # Convert conversation messages to ChatMessage objects
-        chat_messages = []
-        for msg in conversation.get_messages():
-            if msg["role"] != "system":  # Skip system messages in the response
-                chat_message = ChatMessage(
-                    role=msg["role"],
-                    content=msg["content"],
-                    timestamp=msg["timestamp"],
-                )
-                chat_messages.append(chat_message)
-
-        return chat_messages
+        return _convert_to_chat_messages(conversation)
     except HTTPException:
         raise
     except Exception as e:

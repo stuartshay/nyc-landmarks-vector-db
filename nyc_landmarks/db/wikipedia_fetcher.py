@@ -8,7 +8,7 @@ for landmarks to be embedded and stored in the vector database.
 import logging
 import re
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, TypedDict
 
 import requests
 from bs4 import BeautifulSoup
@@ -29,6 +29,14 @@ from nyc_landmarks.models.wikipedia_models import (
 # Configure logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=settings.LOG_LEVEL.value)
+
+
+# Define chunk type for mypy
+class ChunkDict(TypedDict):
+    text: str
+    chunk_index: int
+    metadata: Dict[str, Any]
+    total_chunks: int  # Added for type checking
 
 
 class WikipediaFetcher:
@@ -126,7 +134,7 @@ class WikipediaFetcher:
 
     def chunk_wikipedia_text(
         self, text: str, chunk_size: int = 1000, chunk_overlap: int = 200
-    ) -> List[Dict[str, Any]]:
+    ) -> List[ChunkDict]:
         """Split Wikipedia article text into chunks suitable for embedding.
 
         Args:
@@ -152,12 +160,13 @@ class WikipediaFetcher:
             # save the current chunk and start a new one with overlap
             if current_chunk_size + len(paragraph) > chunk_size and current_chunk:
                 # Create chunk metadata
-                chunk = {
+                chunk: ChunkDict = {
                     "text": current_chunk.strip(),
                     "chunk_index": chunk_index,
                     "metadata": {
                         "chunk_index": chunk_index,
                     },
+                    "total_chunks": 0,  # Will be updated later
                 }
                 chunks.append(chunk)
                 chunk_index += 1
@@ -185,14 +194,15 @@ class WikipediaFetcher:
 
         # Don't forget the last chunk
         if current_chunk:
-            chunk = {
+            final_chunk: ChunkDict = {
                 "text": current_chunk.strip(),
                 "chunk_index": chunk_index,
                 "metadata": {
                     "chunk_index": chunk_index,
                 },
+                "total_chunks": 0,  # Will be updated later
             }
-            chunks.append(chunk)
+            chunks.append(final_chunk)
 
         # Add total chunks information to each chunk's metadata
         total_chunks = len(chunks)

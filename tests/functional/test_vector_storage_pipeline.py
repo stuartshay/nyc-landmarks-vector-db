@@ -23,7 +23,7 @@ from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.pdf.extractor import PDFExtractor
 from nyc_landmarks.pdf.text_chunker import TextChunker
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
-from tests.utils.test_mocks import get_mock_landmark, get_mock_landmark_pdf_text
+from tests.utils.test_mocks import get_mock_landmark
 
 # Configure logging
 logger = logging.getLogger(__name__)

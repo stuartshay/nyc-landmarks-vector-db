@@ -199,7 +199,7 @@ class LandmarkReportFetcher:
         # Print a few examples
         for i, item in enumerate(pdf_info[:5]):
             logger.info(
-                f"Example {i+1}: {item['id']} - {item['name']} - {item['pdf_url']}"
+                f"Example {i + 1}: {item['id']} - {item['name']} - {item['pdf_url']}"
             )
 
         # Download sample PDFs if requested
