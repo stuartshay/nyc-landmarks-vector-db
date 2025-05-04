@@ -170,56 +170,79 @@ class DbClient:
         """
         try:
             # First attempt: Try to get the count from the API metadata
-            if hasattr(self.client, "_make_request"):
-                try:
-                    # Make a minimal request with page size 1
-                    response = self.client._make_request("GET", "/api/LpcReport/1/1")
+            count_from_metadata = self._get_count_from_api_metadata()
+            if count_from_metadata > 0:
+                return count_from_metadata
 
-                    # Extract the total count from the response metadata
-                    if isinstance(response, dict):
-                        # Check for different possible keys that might contain the total count
-                        for key in ["totalCount", "total", "count", "totalRecords"]:
-                            if key in response and response[key]:
-                                total_count = int(response[key])
-                                logger.info(
-                                    f"Retrieved total record count: {total_count} from key: {key}"
-                                )
-                                return total_count
-                except Exception as e:
-                    logger.warning(
-                        f"Error getting total record count from API metadata: {e}"
-                    )
-
-            # Second attempt: Estimate by fetching the first few pages
-            logger.info("Falling back to page-based count estimation")
-            page_size = 50  # Use larger page size for efficiency
-            estimated_count = 0
-            max_pages = 5  # Limit to prevent too many API calls
-
-            for page in range(1, max_pages + 1):
-                page_data = self.get_landmarks_page(page_size=page_size, page=page)
-                if not page_data:
-                    break
-                estimated_count += len(page_data)
-
-                # If we got fewer records than the page size, we've reached the end
-                if len(page_data) < page_size:
-                    break
-
-            # If we hit the max pages, we'll do a simple extrapolation
-            if page == max_pages and len(page_data) == page_size:
-                logger.info(
-                    f"Reached max pages ({max_pages}). Count is likely higher than {estimated_count}"
-                )
-            else:
-                logger.info(f"Estimated total record count: {estimated_count}")
-
-            return max(1, estimated_count)  # Ensure we return at least 1
+            # Second attempt: Estimate by fetching pages
+            return self._estimate_count_from_pages()
 
         except Exception as e:
             logger.error(f"Error getting total record count: {e}")
             return 100  # Return a reasonable default if all else fails
+
+    def _get_count_from_api_metadata(self) -> int:
+        """Try to get the record count from API metadata.
+
+        Returns:
+            int: The total record count or 0 if not found
+        """
+        if not hasattr(self.client, "_make_request"):
             return 0
+
+        try:
+            # Make a minimal request with page size 1
+            response = self.client._make_request("GET", "/api/LpcReport/1/1")
+
+            # Extract the total count from the response metadata
+            if isinstance(response, dict):
+                # Check for different possible keys that might contain the total count
+                for key in ["totalCount", "total", "count", "totalRecords"]:
+                    if key in response and response[key]:
+                        total_count = int(response[key])
+                        logger.info(
+                            f"Retrieved total record count: {total_count} from key: {key}"
+                        )
+                        return total_count
+        except Exception as e:
+            logger.warning(f"Error getting total record count from API metadata: {e}")
+
+        return 0
+
+    def _estimate_count_from_pages(self) -> int:
+        """Estimate the total record count by fetching pages.
+
+        Returns:
+            int: The estimated total record count
+        """
+        logger.info("Falling back to page-based count estimation")
+        page_size = 50  # Use larger page size for efficiency
+        estimated_count = 0
+        max_pages = 5  # Limit to prevent too many API calls
+        reached_end = False
+
+        for page in range(1, max_pages + 1):
+            page_data = self.get_landmarks_page(page_size=page_size, page=page)
+            if not page_data:
+                reached_end = True
+                break
+
+            estimated_count += len(page_data)
+
+            # If we got fewer records than the page size, we've reached the end
+            if len(page_data) < page_size:
+                reached_end = True
+                break
+
+        # If we hit the max pages without reaching the end, log a warning
+        if not reached_end:
+            logger.info(
+                f"Reached max pages ({max_pages}). Count is likely higher than {estimated_count}"
+            )
+        else:
+            logger.info(f"Estimated total record count: {estimated_count}")
+
+        return max(1, estimated_count)  # Ensure we return at least 1
 
 
 def get_db_client() -> DbClient:

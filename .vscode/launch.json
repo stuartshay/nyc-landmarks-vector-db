@@ -3,7 +3,7 @@
     "configurations": [
         {
             "name": "Python: Current File",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
@@ -14,7 +14,7 @@
         },
         {
             "name": "Python: Main Application",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "nyc_landmarks.main",
             "console": "integratedTerminal",
@@ -25,7 +25,7 @@
         },
         {
             "name": "Python: FastAPI",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "uvicorn",
             "args": [
@@ -44,7 +44,7 @@
         },
         {
             "name": "Python: Process Landmark PDFs",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/scripts/process_landmark_pdfs.py",
             "args": [
@@ -59,7 +59,7 @@
         },
         {
             "name": "Python: Demo Script",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/scripts/demo.py",
             "args": [
@@ -76,7 +76,7 @@
         },
         {
             "name": "Python: Test Current File",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "pytest",
             "args": [
@@ -91,7 +91,7 @@
         },
         {
             "name": "Python: All Tests",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "pytest",
             "args": [

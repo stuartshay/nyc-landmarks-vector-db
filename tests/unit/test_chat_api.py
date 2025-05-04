@@ -209,10 +209,10 @@ class TestChatAPI:
         assert response.json()["landmark_id"] == "LP-00001"
         assert len(response.json()["sources"]) == 1
         assert response.json()["sources"][0]["landmark_id"] == "LP-00001"
-        assert mock_pinecone_db.return_value.query_vectors.called_with(
-            filter_dict={"landmark_id": "LP-00001"}
-        )
-        assert mock_db_client.return_value.get_landmark_by_id.called_with("LP-00001")
+        # Check if filter_dict was included in the query_vectors call
+        call_kwargs = mock_pinecone_db.return_value.query_vectors.call_args[1]
+        assert call_kwargs.get("filter_dict") == {"landmark_id": "LP-00001"}
+        mock_db_client.return_value.get_landmark_by_id.assert_called_with("LP-00001")
 
     @patch("nyc_landmarks.api.chat.conversation_store")
     def test_get_conversation_history(
@@ -263,7 +263,7 @@ class TestChatAPI:
         # Assert
         assert response.status_code == 200
         assert response.json()["success"] is True
-        assert mock_conv_store.delete_conversation.called_with("test-id")
+        mock_conv_store.delete_conversation.assert_called_with("test-id")
 
     @patch("nyc_landmarks.api.chat.conversation_store")
     def test_delete_conversation_not_found(

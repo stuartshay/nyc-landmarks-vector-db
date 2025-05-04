@@ -198,6 +198,178 @@ This project includes a fully configured development container that provides a c
    python -m nyc_landmarks.main
    ```
 
+## Development Environment Options
+
+### Method 1: Using VS Code Development Container (Recommended)
+
+The easiest way to set up the development environment is to use Visual Studio Code with the Dev Containers extension, which automatically configures everything for you.
+
+1. **Prerequisites:**
+   - Install [Visual Studio Code](https://code.visualstudio.com/)
+   - Install [Docker Desktop](https://www.docker.com/products/docker-desktop)
+   - Install [VS Code Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+
+2. **Open in Container:**
+   - Open VS Code
+   - Use the command palette (`Ctrl+Shift+P` or `Cmd+Shift+P`) and select "Dev Containers: Open Folder in Container..."
+   - Select the project repository folder
+   - VS Code will build the container and install all dependencies automatically
+
+3. **Configuration:**
+   - Copy `.env.sample` to `.env` and add your API keys and configuration
+   - Everything else is automatically set up by the devcontainer
+
+### Method 2: Local Development Setup
+
+If you prefer not to use containers, follow these steps to set up locally:
+
+#### Prerequisites
+- Python 3.11+
+- Git
+
+#### Steps
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/yourusername/nyc-landmarks-vector-db.git
+   cd nyc-landmarks-vector-db
+   ```
+
+2. **Create and activate a virtual environment:**
+   ```bash
+   python3.11 -m venv venv
+
+   # Activate the virtual environment
+   # On Unix or MacOS:
+   source venv/bin/activate
+   # On Windows:
+   venv\Scripts\activate
+   ```
+
+3. **Install dependencies:**
+   ```bash
+   # Install regular dependencies
+   pip install -r requirements.txt
+
+   # Install development dependencies
+   pip install -e ".[dev]"
+   ```
+
+4. **Set up pre-commit hooks:**
+   ```bash
+   pip install pre-commit
+   pre-commit install
+   pre-commit run --all-files  # Optional
+   ```
+
+5. **Configure environment variables:**
+   ```bash
+   cp .env.sample .env
+   # Edit .env with your credentials
+   ```
+
+6. **Configure MCP server for CoreDataStore API:**
+   ```bash
+   # Set up the coredatastore-swagger-mcp server
+   # as detailed in techContext.md
+   ```
+
+7. **Run the application:**
+   ```bash
+   python -m nyc_landmarks.main
+   ```
+
+## Dependency Management
+
+This project uses a dual approach to dependency management:
+
+- **setup.py**: Defines package metadata and flexible dependencies with minimum version constraints (`>=`)
+- **requirements.txt**: Contains pinned, exact versions for reproducible environments
+
+### Installing Dependencies
+
+For development:
+```bash
+# Set up the environment using the setup script
+./setup_env.sh
+
+# Activate the virtual environment
+source venv311/bin/activate
+
+# Install the package in development mode
+pip install -e .
+```
+
+### Keeping Dependencies in Sync
+
+We use automated tools to keep `setup.py` and `requirements.txt` in sync:
+
+1. **Automated Sync**: Our GitHub workflow automatically syncs versions between files when Dependabot creates updates
+2. **Manual Sync**: Run `./sync_versions.sh` to manually sync versions between files
+3. **Generating requirements.txt**: Generate requirements.txt from setup.py using pip-compile:
+   ```bash
+   pip-compile --constraint=constraints.txt --output-file=requirements.txt
+   ```
+
+### Adding New Dependencies
+
+To add a new dependency:
+1. Add it to `setup.py` with an appropriate version constraint
+2. Regenerate `requirements.txt` using pip-compile
+3. Commit both files together
+
+## Package Management
+
+This project uses a dual dependency management approach to balance flexibility with reproducibility:
+
+### Dependency Files
+
+- **setup.py**: Contains package metadata and flexible dependencies with minimum versions (`>=`)
+- **requirements.txt**: Contains exact pinned versions (`==`) for reproducible environments
+
+### Adding New Dependencies
+
+1. First add the dependency to `setup.py` with appropriate version constraints:
+   ```python
+   install_requires=[
+       # ...existing dependencies...
+       "new-package>=1.0.0",  # Add new package here
+   ],
+   ```
+
+2. Then generate the updated `requirements.txt`:
+   ```bash
+   pip-compile --constraint=constraints.txt --output-file=requirements.txt
+   ```
+
+3. Commit both files together.
+
+### Synchronizing Versions
+
+We provide a script to keep `setup.py` and `requirements.txt` in sync:
+
+```bash
+# Make the script executable if needed
+chmod +x sync_versions.sh
+
+# Run the synchronization
+./sync_versions.sh
+```
+
+### Updating Pinecone SDK
+
+This project requires Pinecone SDK v6.0.2 or later. To update the Pinecone SDK:
+
+```bash
+./update_pinecone.sh
+```
+
+### Dependency Updates
+
+- Dependabot automatically checks for updates and security vulnerabilities
+- When Dependabot creates PRs, our GitHub workflow syncs versions between files
+- Always test thoroughly after dependency updates
+
 #### Google Cloud CLI Setup in Dev Container
 
 The development container comes with the Google Cloud CLI pre-installed. To use it for accessing secrets:
@@ -368,7 +540,12 @@ nyc-landmarks-vector-db/
 │   └── demo.py                   # Demo script
 ├── sample_pdfs/                  # Sample PDFs for testing
 ├── .github/                      # GitHub Actions workflows
-├── memory-bank/                  # Project documentation
+├── memory-bank/                  # Project documentation and institutional knowledge
+│   ├── README.md                 # Guide for using the memory bank
+│   ├── test-improvements.md      # Record of test infrastructure improvements
+│   ├── ci_cd_pipeline.md         # CI/CD documentation
+│   ├── research_items.md         # Research findings and decisions
+│   └── ...                       # Other project documentation
 ├── requirements.txt              # Dependencies
 ├── setup.py                      # Package setup
 └── README.md                     # This file

@@ -1,16 +1,13 @@
 # NYC Landmarks Vector Database - Active Context
 
 ## Current Work Focus
-We are now focusing on implementing the Chat API functionality for the NYC Landmarks Vector Database project. Our immediate priorities are:
+We are now implementing the Wikipedia Article integration for the NYC Landmarks Vector Database project. Significant implementation work has already been completed, with several components already in place. Our current priorities are:
 
-1. **Implementing a fully functional Chat API endpoint with basic context retrieval and response generation**
-2. Building robust conversation management with the existing conversation memory system
-3. Integrating vector search capabilities to retrieve relevant landmark information
-4. Generating high-quality responses using OpenAI's chat completions API
-5. Adding comprehensive error handling and logging
-6. Creating appropriate unit tests for the Chat API
-7. Enhancing vector search capabilities and implementing query testing
-8. Implementing robust vector database verification to ensure fixed IDs and metadata consistency
+1. **Testing and Validating the Wikipedia Article Integration**: Testing the already implemented components for Wikipedia article integration, including fetching, processing, and storing Wikipedia content in the vector database.
+2. **Enhancing Vector Search with Wikipedia Content**: Updating the vector search capabilities to properly handle and distinguish between PDF content and Wikipedia content in search results.
+3. **Updating the Chat API**: Enhancing the Chat API to leverage the combined PDF and Wikipedia content for improved responses.
+4. **CI/CD Integration**: Adding Wikipedia processing to the GitHub Actions workflow for automated updates.
+5. **Documentation and Analytics**: Updating project documentation and implementing tracking for the enhanced data sources.
 
 ## Recent Changes
 - Created initial project documentation in the memory bank
@@ -40,22 +37,75 @@ We are now focusing on implementing the Chat API functionality for the NYC Landm
 - **Added unit tests for the Chat API that cover basic conversation, existing conversation, landmark filtering, and error handling scenarios.**
 - **Enhanced the implementation to use proper Python type annotations for better code quality and maintainability.**
 - **Created a GitHub Actions workflow for deploying to Google Cloud Run (`deploy-gcp.yml`), enabling continuous deployment of the NYC Landmarks Vector DB service with appropriate memory allocation and environment configuration.**
+- **Implemented core Wikipedia article integration components:**
+  - **Created Pydantic models for Wikipedia article data (`WikipediaArticleModel`, `WikipediaContentModel`, `WikipediaProcessingResult`)**
+  - **Enhanced CoreDataStore API client with methods to fetch Wikipedia articles for landmarks**
+  - **Developed a Wikipedia content fetcher with rate limiting, error handling, and retries**
+  - **Implemented text processing pipeline for Wikipedia content including cleaning and chunking**
+  - **Created a processing script to handle Wikipedia article embedding and storage in Pinecone**
+  - **Added a notebook for testing Wikipedia integration (`wikipedia_integration_testing.ipynb`)**
 
 ## Next Steps
-1. Re-run the GitHub Actions workflow to verify that the Docker image is now built and pushed successfully.
-2. Implement comprehensive error handling and logging in the API client
-3. Optimize MCP server tools for interacting with CoreDataStore API
-4. Optimize chunking strategy based on landmark document analysis
-5. Implement parallel processing for handling multiple PDFs
-6. Add resumable processing to handle interruptions
-7. Develop quality assurance tools for embedding evaluation
-8. Expand the query testing notebook with more advanced filtering options and visualizations
-9. Create API endpoints for vector search based on the notebook's approach
-10. Implement conversation memory system
-11. Build chat API with context awareness
-12. **Integrate vector database validation tests into GitHub Actions workflow to ensure metadata consistency in CI pipeline**
+The following steps are needed to complete the Wikipedia article integration:
+
+### Phase 1: Testing and Validation (Current Focus)
+1. Test the existing Wikipedia article fetching functionality with a range of landmarks
+2. Validate the text processing pipeline for Wikipedia content
+3. Verify embedding generation and vector storage with proper metadata
+4. Create comprehensive integration tests for the Wikipedia processing pipeline
+5. Run performance analyses to optimize the processing pipeline
+
+### Phase 2: Vector Search Enhancement
+1. Update vector search queries to handle the combined PDF and Wikipedia sources
+2. Implement source filtering options in the query interface
+3. Add proper source attribution in search results
+4. Enhance metadata filtering to leverage Wikipedia-specific fields
+5. Optimize relevance ranking to balance PDF and Wikipedia content
+
+### Phase 3: Chat API Integration
+1. Update the Chat API to retrieve context from both PDF and Wikipedia sources
+2. Implement source weighting for better response quality
+3. Add source attribution in chat responses
+4. Enhance conversation memory to track source preferences
+
+### Phase 4: CI/CD Integration
+1. Add Wikipedia processing to the GitHub Actions workflow
+2. Implement incremental updates for efficiency
+3. Create monitoring and alerting for Wikipedia processing
+4. Add vector database verification for Wikipedia content
+
+### Phase 5: Documentation and Analytics
+1. Update technical documentation with Wikipedia integration details
+2. Create user guides for the enhanced search capabilities
+3. Implement tracking for sources used in vector searches
+4. Develop dashboards for monitoring Wikipedia content statistics
 
 ## Active Decisions and Considerations
+
+### Wikipedia Article Integration Strategy
+- **Implementation Status:**
+  - ✅ Modular pipeline for Wikipedia article processing is implemented
+  - ✅ Leveraging existing components (embedding generator, vector storage)
+  - ✅ Wikipedia-specific functionality developed (fetcher, chunker)
+  - ✅ Source attribution in metadata to distinguish between PDF and Wikipedia content
+- **Data Flow (Implemented):**
+  - ✅ Fetch landmarks from CoreDataStore API using pagination
+  - ✅ Check for associated Wikipedia articles for each landmark
+  - ✅ Fetch article content using provided URLs with rate limiting and retries
+  - ✅ Process content for embedding (cleaning, chunking)
+  - ✅ Generate embeddings for chunks
+  - ✅ Store in Pinecone with enhanced metadata
+- **Metadata Enhancement (Implemented):**
+  - ✅ "source_type" field with value "wikipedia" (vs "pdf" for existing content)
+  - ✅ Wikipedia URL as "article_url" in metadata
+  - ✅ Article title as "article_title" in metadata
+  - ✅ Maintained existing landmark metadata (ID, name, borough, etc.)
+- **Technical Solutions (Implemented):**
+  - ✅ Rate limiting for Wikipedia requests (1 second between requests)
+  - ✅ Retry mechanism with exponential backoff for transient errors
+  - ✅ Error handling for missing or inaccessible articles
+  - ✅ Deterministic vector IDs for Wikipedia content to prevent duplication
+  - ✅ Configured chunking strategy for Wikipedia content (1000 chars with 200 char overlap)
 
 ### Vector Database Verification Strategy
 - **Created a dual-approach to vector database verification:**
@@ -75,7 +125,23 @@ We are now focusing on implementing the Chat API functionality for the NYC Landm
   - CI/CD integration to ensure quality in automated workflows
   - Reusable verification components across scripts and tests
 
-### Potential Technology Integrations
+### MCP Server Integration
+
+#### CoreDataStore Swagger MCP Server
+- MCP server configured for direct access to CoreDataStore API
+- Provides multiple tools for retrieving NYC landmarks data:
+  - GetLpcReport: Get details for a specific landmark preservation report
+  - GetLpcReports: List multiple landmark reports with filtering options
+  - GetLandmarks: Retrieve buildings linked to landmarks
+  - GetLandmarkStreets: Get street information for landmarks
+  - GetLpcPhotoArchive/GetLpcPhotoArchiveCount: Access photo archive
+  - GetPlutoRecord: Access PLUTO data
+  - GetBoroughs, GetNeighborhoods, GetObjectTypes, GetArchitectureStyles: Reference data
+  - GetLpcContent: Access additional content
+- Integration is included in project configuration but currently experiencing connection timeouts (confirmed with multiple tool attempts)
+- All MCP tool calls result in timeout errors with code -32001, suggesting potential configuration or connectivity issues that need to be resolved
+- Integration testing code is implemented to verify functionality when server is available
+- Encapsulated in DB client with proper error handling and fallback mechanisms
 
 #### Pinecone Assistant MCP Server
 - Identified as a potential enhancement to our current Pinecone implementation
@@ -214,6 +280,9 @@ We are now focusing on implementing the Chat API functionality for the NYC Landm
 7. Managing dependencies and ensuring consistent environment setup
 8. Optimizing vector search queries for better relevance and performance
 9. **Maintaining metadata consistency when reprocessing landmarks in the vector database**
+10. **Integrating Wikipedia content with existing PDF content in the vector database**
+11. **Handling potential rate limits when fetching Wikipedia articles**
+12. **Ensuring proper attribution and distinction between PDF and Wikipedia content in search results**
 
 ## Team Collaboration
 - Documentation being maintained in the memory bank

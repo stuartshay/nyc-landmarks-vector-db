@@ -8,7 +8,8 @@ The project is in the initial setup and infrastructure development phase. We hav
 - ✅ Identified technical requirements and constraints
 - ✅ Implemented CoreDataStore API client for landmark data access
 - ✅ Decided to use CoreDataStore API exclusively as the data source
-- ✅ Added coredatastore-swagger-mcp server to provide API tools
+- ✅ Added coredatastore-swagger-mcp server to provide API tools with comprehensive functionality for accessing NYC landmarks data
+- ✅ Implemented integration testing for MCP tools with proper mocking and validation
 - ✅ Created Pydantic models for data validation
 - ✅ Implemented unit tests for landmark report fetcher
 - ✅ Implemented integration tests using actual API data
@@ -61,6 +62,12 @@ The project is in the initial setup and infrastructure development phase. We hav
 - ✅ Implemented reusable verification components that can be used in both manual scripts and automated tests
 - ✅ Created detailed validation for vector IDs and metadata consistency
 - ✅ Updated to latest stable dependency versions for improved functionality and security
+- ✅ Created comprehensive Pydantic models for Wikipedia article data (`WikipediaArticleModel`, `WikipediaContentModel`, `WikipediaProcessingResult`)
+- ✅ Implemented CoreDataStore API client methods to fetch Wikipedia articles for landmarks
+- ✅ Developed Wikipedia content fetcher with robust error handling, rate limiting, and retry mechanisms
+- ✅ Implemented Wikipedia text processing pipeline (cleaning, chunking) optimized for article content
+- ✅ Created processing script for Wikipedia article embedding and storage in Pinecone
+- ✅ Added notebook for testing and analyzing Wikipedia content integration (`wikipedia_integration_testing.ipynb`)
 
 ## What's Left to Build
 
@@ -104,7 +111,21 @@ The project is in the initial setup and infrastructure development phase. We hav
 - [ ] Implement advanced context retrieval for better response quality
 - [ ] Add streaming responses for real-time feedback
 
-### Phase 4: Testing, Documentation & Deployment
+### Phase 4: Wikipedia Article Integration
+- [x] Enhance CoreDataStore API client to fetch Wikipedia articles associated with landmarks
+- [x] Create Pydantic models for Wikipedia article data
+- [x] Develop Wikipedia content fetching and processing pipeline
+- [x] Implement Wikipedia article chunking strategy
+- [x] Generate embeddings for Wikipedia article chunks
+- [x] Store Wikipedia content in Pinecone with appropriate metadata
+- [ ] Create integration tests for Wikipedia article pipeline
+- [x] Develop a notebook for testing and analyzing Wikipedia content integration
+- [ ] Implement the Wikipedia integration in the GitHub Actions workflow
+- [x] Add comprehensive error handling for Wikipedia article processing
+- [ ] Enhance vector search to include Wikipedia content with source attribution
+- [ ] Update Chat API to leverage Wikipedia content in responses
+
+### Phase 5: Testing, Documentation & Deployment
 - [x] Write unit tests for core components
 - [x] Create integration tests for API interactions
 - [x] Implement verification tests for vector database integrity
@@ -132,10 +153,15 @@ The project is in the initial setup and infrastructure development phase. We hav
 - Average end-to-end processing time: 4.5 minutes per landmark document
 
 ## Next Major Milestones
-1. **Testing Improvements**: Add end-to-end tests and set up CI/CD pipeline
-2. **Error Handling**: Implement comprehensive error handling and logging
-3. **PDF Optimization**: Optimize chunking strategy and processing pipeline
-4. **Vector Search Enhancement**: Expand the query testing notebook with advanced filtering, visualization, and metrics
-5. **Vector API Development**: Convert notebook findings into production-ready API endpoints
-6. **Chat API**: Implement conversation memory and context-aware chat API
-7. **CI Integration**: Add vector database verification to GitHub Actions workflow
+1. **Wikipedia Article Integration (In Progress)**:
+   - ✅ Core implementation completed with models, fetching, processing, and storage
+   - 🔄 Testing and validation of the implementation
+   - 🔄 Integration with vector search and chat API
+   - 🔄 CI/CD workflow integration
+2. **Vector Search Enhancement**: Expand search capabilities to utilize both PDF and Wikipedia content
+3. **Chat API Enhancement**: Update to use combined sources with attribution
+4. **Testing Improvements**: Add end-to-end tests and enhance CI/CD pipeline
+5. **PDF Optimization**: Optimize chunking strategy and processing pipeline
+6. **Vector API Development**: Convert notebook findings into production-ready API endpoints
+7. **Analytics Development**: Create dashboards for monitoring vector database usage and content sources
+8. **CI Integration**: Add vector database verification to GitHub Actions workflow

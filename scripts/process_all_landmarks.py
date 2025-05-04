@@ -462,10 +462,10 @@ def main() -> None:
     # Print status
     logger.info(f"Total landmarks: {len(all_landmark_ids)}")
     logger.info(
-        f"Processed landmarks: {len(processed_landmarks)} ({len(processed_landmarks)/len(all_landmark_ids)*100:.2f}%)"
+        f"Processed landmarks: {len(processed_landmarks)} ({len(processed_landmarks) / len(all_landmark_ids) * 100:.2f}%)"
     )
     logger.info(
-        f"Unprocessed landmarks: {len(unprocessed_landmarks)} ({len(unprocessed_landmarks)/len(all_landmark_ids)*100:.2f}%)"
+        f"Unprocessed landmarks: {len(unprocessed_landmarks)} ({len(unprocessed_landmarks) / len(all_landmark_ids) * 100:.2f}%)"
     )
 
     # Process unprocessed landmarks
@@ -492,11 +492,11 @@ def main() -> None:
         logger.info(f"Total landmarks processed: {results['total']}")
         logger.info(
             f"Successfully processed: {results['successful']} "
-            f"({results['successful']/results['total']*100:.2f}%)"
+            f"({results['successful'] / results['total'] * 100:.2f}%)"
         )
         logger.info(
             f"Failed to process: {results['failed']} "
-            f"({results['failed']/results['total']*100:.2f}%)"
+            f"({results['failed'] / results['total'] * 100:.2f}%)"
         )
         logger.info(f"Total chunks created: {results['total_chunks']}")
 

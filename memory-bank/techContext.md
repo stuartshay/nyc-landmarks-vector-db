@@ -7,7 +7,15 @@
 2. **OpenAI API**: For generating text embeddings using their embedding models
 3. **Pinecone**: Vector database for storing and searching text embeddings
 4. **CoreDataStore API**: REST API for accessing NYC landmarks data
-5. **coredatastore-swagger-mcp**: MCP server providing tools for CoreDataStore API
+5. **coredatastore-swagger-mcp**: MCP server providing tools for CoreDataStore API, including:
+   - GetLpcReport: Get details for a specific landmark report
+   - GetLpcReports: List multiple landmark reports with filtering options
+   - GetLandmarks: Retrieve buildings linked to landmarks
+   - GetLandmarkStreets: Get street information for landmarks
+   - GetLpcPhotoArchive/GetLpcPhotoArchiveCount: Access photo archive
+   - GetPlutoRecord: Access PLUTO data
+   - GetBoroughs, GetNeighborhoods, GetObjectTypes, GetArchitectureStyles: Reference data
+   - GetLpcContent: Access additional content
 6. **Azure Blob Storage**: Current storage location for landmark PDF reports
 7. **Google Cloud Secret Store**: For secure credential management
 

@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # Maintain dependencies for Python
+  # Maintain dependencies for Python in setup.py and requirements.txt
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
@@ -27,6 +27,16 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    # Custom versioning strategy
+    versioning-strategy:
+      # Use the version specified in the package to determine the new version
+      increase-if-necessary: false
+      # Using lockfile to ensure both requirements.txt and setup.py stay in sync
+      lockfile-only: false
+      # Update package versions in setup.py to match
+      widen: false
+      # Update all dependencies, not just direct ones
+      update-dependency-type: "all"
 
   # Maintain dependencies for GitHub Actions
   - package-ecosystem: "github-actions"

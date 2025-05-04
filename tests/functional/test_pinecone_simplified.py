@@ -21,6 +21,7 @@ logging.basicConfig(level=settings.LOG_LEVEL.value)
 
 
 @pytest.mark.integration
+@pytest.mark.functional
 def test_pinecone_connection() -> None:
     """Test basic Pinecone connection and index stats."""
     logger.info("=== Testing Pinecone connection ===")
@@ -46,6 +47,7 @@ def test_pinecone_connection() -> None:
 
 
 @pytest.mark.integration
+@pytest.mark.functional
 def test_vector_storage_and_retrieval() -> None:
     """Test vector storage and retrieval capabilities."""
     logger.info("=== Testing vector storage and retrieval ===")

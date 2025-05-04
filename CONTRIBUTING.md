@@ -5,7 +5,9 @@ Thank you for considering contributing to the NYC Landmarks Vector Database proj
 ## Development Process
 
 1. **Fork the repository** and clone your fork locally
-2. **Set up the development environment** following instructions in the README.md
+2. **Set up the development environment** using one of these methods:
+   - **Recommended:** Use VS Code with Dev Containers (see "Development Environment Options" in README.md)
+   - Alternatively, follow the local setup instructions in README.md
 3. **Create a new branch** for your feature or bugfix
    ```bash
    git checkout -b feature/your-feature-name
@@ -56,6 +58,8 @@ We use several tools to enforce code quality:
 - Document all public modules, functions, classes, and methods
 - Use Google-style docstrings
 - Keep documentation up-to-date when changing code
+- Store project-wide documentation, research, and improvement notes in the `memory-bank/` directory
+- Use descriptive filenames with hyphens (e.g., `test-improvements.md`, `api-design.md`)
 
 ### Testing
 
@@ -68,6 +72,32 @@ We use several tools to enforce code quality:
 - We use bandit to scan for security issues
 - Never commit API keys or secrets
 - Use environment variables for configuration
+
+### Dependency Management
+
+- Add new dependencies to `setup.py` in the appropriate section:
+  - Runtime dependencies go in the `install_requires` list
+  - Development dependencies go in the `extras_require["dev"]` list
+  - Always add a comment explaining why the dependency is needed
+- After adding a dependency to `setup.py`, update the requirements files:
+  ```bash
+  # Update requirements.txt for production dependencies
+  ./sync_versions.sh
+  ```
+- Document any new dependencies in your PR description
+
+### GitHub Copilot Guidelines
+
+- Store relevant project documentation in the `memory-bank/` directory
+- When documenting changes or improvements, create or update a file in `memory-bank/`
+- Use descriptive filenames with hyphens (e.g., `test-improvements.md`)
+- When documenting code changes, include:
+  - Summary of changes
+  - Motivation for changes
+  - Benefits and improvements
+  - Any potential side effects
+  - Future considerations
+- Update existing documentation rather than creating duplicates
 
 ## Setting Up Your Development Environment
 

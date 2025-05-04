@@ -29,7 +29,7 @@ adapter_path = project_root / "notebooks" / "pinecone_adapter.py"
 if adapter_path.exists():
     sys.path.append(str(project_root / "notebooks"))
     try:
-        from pinecone_adapter import get_adapter_from_settings  # type: ignore
+        from pinecone_adapter import get_adapter_from_settings
 
         get_adapter_from_settings_available = True
         print("Using PineconeAdapter")

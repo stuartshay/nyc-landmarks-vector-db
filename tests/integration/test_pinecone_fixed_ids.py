@@ -320,7 +320,7 @@ def verify_landmark_vectors(pinecone_db, random_vector, landmark_id, verbose=Fal
             # Check ID format
             if not vector_id.startswith(expected_id_format):
                 landmark_results["fixed_id_format_correct"] = False
-                logger.warning(f"  Vector {i+1} has incorrect ID format: {vector_id}")
+                logger.warning(f"  Vector {i + 1} has incorrect ID format: {vector_id}")
                 logger.warning(f"  Expected format starting with: {expected_id_format}")
 
             # Check metadata
@@ -328,7 +328,7 @@ def verify_landmark_vectors(pinecone_db, random_vector, landmark_id, verbose=Fal
             if "landmark_id" not in metadata or metadata["landmark_id"] != landmark_id:
                 landmark_results["metadata_consistent"] = False
                 logger.warning(
-                    f"  Vector {i+1} has incorrect metadata: {metadata.get('landmark_id')}"
+                    f"  Vector {i + 1} has incorrect metadata: {metadata.get('landmark_id')}"
                 )
 
             # Check for essential metadata fields
@@ -345,14 +345,14 @@ def verify_landmark_vectors(pinecone_db, random_vector, landmark_id, verbose=Fal
             if missing_fields:
                 landmark_results["metadata_consistent"] = False
                 logger.warning(
-                    f"  Vector {i+1} is missing essential metadata: {missing_fields}"
+                    f"  Vector {i + 1} is missing essential metadata: {missing_fields}"
                 )
 
             # Add vector data to results
             landmark_results["vectors"].append(vector_data)
 
             if verbose:
-                logger.info(f"  Vector {i+1}:")
+                logger.info(f"  Vector {i + 1}:")
                 logger.info(f"    ID: {vector_id}")
                 logger.info(f"    Score: {vector.get('score')}")
                 logger.info("    Metadata:")

@@ -26,10 +26,8 @@ sys.path.append(str(project_root / "notebooks"))
 try:
     # NOTE: These imports are intentionally placed here after modifying sys.path
     # to ensure the project root is in the Python path before importing project modules.
-    from pinecone_adapter import (  # type: ignore # noqa: E402
-        PineconeAdapterDB as PineconeDB,
-    )
-    from pinecone_adapter import get_adapter_from_settings  # type: ignore # noqa: E402
+    from pinecone_adapter import PineconeAdapterDB as PineconeDB  # noqa: E402
+    from pinecone_adapter import get_adapter_from_settings  # noqa: E402
 
     logger = get_logger(name="check_processed_landmarks")
     logger.info("Using PineconeAdapter")
@@ -72,7 +70,7 @@ def fetch_all_landmarks(page_limit: Optional[int] = None) -> List[str]:
             landmarks = db_client.get_landmarks_page(page_size=page_size, page=page)
 
             if not landmarks:
-                logger.info(f"No more landmarks found after page {page-1}")
+                logger.info(f"No more landmarks found after page {page - 1}")
                 break
 
             # Process landmark IDs

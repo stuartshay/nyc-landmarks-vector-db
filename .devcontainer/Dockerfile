@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -24,6 +24,9 @@ RUN apt-get update \
     ca-certificates \
     gnupg \
     lsb-release \
+    vim \
+    less \
+    htop \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -55,10 +58,19 @@ RUN su $USERNAME -c "curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzs
 
 # Set up Python environment
 RUN pip install --upgrade pip \
-    && pip install pytest black isort flake8 mypy pylint pre-commit
+    && pip install pytest pytest-cov pytest-asyncio black isort flake8 mypy pylint pre-commit pip-tools
+
+# Install notebook tools and quality checks
+RUN pip install nbqa nbstripout jupyter jupyterlab ipywidgets plotly seaborn tqdm
+
+# Install development tools for pinecone and vector databases
+RUN pip install pinecone tenacity pandas-stubs
 
 # Set working directory
 WORKDIR /workspace
+
+# Create needed directories
+RUN mkdir -p /workspace/test_output/notebooks
 
 # Set the default user
 USER $USERNAME
@@ -68,3 +80,6 @@ ENV PYTHONPATH=/workspace
 
 # Make Zsh the default shell when the container starts
 SHELL ["/bin/zsh", "-c"]
+
+# Add a welcome message
+RUN echo 'echo "👋 Welcome to NYC Landmarks Vector DB Development Environment\n\nUse the VS Code task \"Check Development Environment\" to verify setup.\nUse the task \"Run All Tests\" to run the test suite.\n"' >> ~/.zshrc
