@@ -59,4 +59,5 @@ jobs:
       - name: Test with pytest (unit tests only)
         run: |
           # Run only unit tests in CI to avoid dependency/credential issues
-          pytest --cov=nyc_landmarks -m "not integration" tests/
+          # Skip both integration and functional tests as they require API access
+          pytest --cov=nyc_landmarks -m "not integration and not functional" tests/

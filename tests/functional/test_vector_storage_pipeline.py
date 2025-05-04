@@ -46,6 +46,7 @@ def temp_dirs() -> Generator[dict, None, None]:
     shutil.rmtree(base_dir)
 
 
+@pytest.mark.integration
 @pytest.mark.functional
 def test_vector_storage_pipeline(temp_dirs: dict) -> None:
     """Test the complete vector storage pipeline with one landmark."""
