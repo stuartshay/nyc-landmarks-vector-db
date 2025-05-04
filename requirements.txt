@@ -113,7 +113,7 @@ numpy==1.26.4
     #   pandas
     #   scikit-learn
     #   scipy
-openai==1.75.0
+openai==1.77.0
     # via nyc-landmarks-vector-db (setup.py)
 packaging==25.0
     # via matplotlib
