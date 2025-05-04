@@ -20,6 +20,18 @@ This directory contains the configuration for the Visual Studio Code Development
 4. Create a `.env` file based on `.env.sample` with your API keys and configuration
 5. Open the folder in VS Code and when prompted, click "Reopen in Container"
 
+### Alternative: Manual Container Build
+
+If you prefer not to use VS Code or need to test the container build process:
+
+```bash
+# Make the script executable
+chmod +x ./start_devcontainer.sh
+
+# Run the script to build and optionally launch VS Code
+./start_devcontainer.sh
+```
+
 ## Container Setup
 
 The container automatically:
