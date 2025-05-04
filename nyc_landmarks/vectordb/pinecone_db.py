@@ -98,7 +98,8 @@ class PineconeDB:
                 )
 
             # Connect to index with v6.x API
-            self.index = self.pc.Index(self.index_name)
+            # Using type: ignore to handle potential differences in Pinecone SDK versions
+            self.index = self.pc.Index(self.index_name)  # type: ignore
             logger.info(f"Connected to Pinecone index: {self.index_name}")
         except Exception as e:
             logger.error(f"Error connecting to Pinecone index: {e}")
@@ -129,49 +130,16 @@ class PineconeDB:
 
             # Build dictionary from the response
             try:
-                stats_dict = {}
+                # Base stats dictionary
+                stats_dict = self._extract_dimension_and_fullness(stats_response)
 
-                # Extract dimension if available
-                if hasattr(stats_response, "dimension"):
-                    stats_dict["dimension"] = stats_response.dimension
+                # Add namespaces
+                stats_dict["namespaces"] = self._extract_namespaces(stats_response)
 
-                # Extract index_fullness if available
-                if hasattr(stats_response, "index_fullness"):
-                    stats_dict["index_fullness"] = stats_response.index_fullness
+                # Add total vector count
+                stats_dict["total_vector_count"] = self._extract_vector_count(stats_response)
 
-                # Extract namespaces if available
-                if hasattr(stats_response, "namespaces"):
-                    namespaces_dict = {}
-                    for ns_name, ns_data in stats_response.namespaces.items():
-                        # Handle the case when ns_data might be None or not dict-compatible
-                        if ns_data is not None:
-                            try:
-                                # Try to convert to dict if it has dict-like behavior
-                                if hasattr(ns_data, "items"):
-                                    namespaces_dict[ns_name] = dict(ns_data)
-                                else:
-                                    # If it's already a dict or similar
-                                    namespaces_dict[ns_name] = ns_data
-                            except Exception as ns_e:
-                                logger.warning(
-                                    f"Could not process namespace data for {ns_name}: {ns_e}"
-                                )
-                                namespaces_dict[ns_name] = {
-                                    "error": "Could not process data"
-                                }
-                    stats_dict["namespaces"] = namespaces_dict
-                else:
-                    stats_dict["namespaces"] = {}
-
-                # Extract total_vector_count if available
-                if hasattr(stats_response, "total_vector_count"):
-                    stats_dict["total_vector_count"] = stats_response.total_vector_count
-                else:
-                    stats_dict["total_vector_count"] = 0
-
-                logger.debug(
-                    f"Successfully retrieved and built index stats dict: {stats_dict}"
-                )
+                logger.debug(f"Successfully retrieved and built index stats dict: {stats_dict}")
                 return stats_dict
             except Exception as build_e:
                 logger.exception(
@@ -304,26 +272,78 @@ class PineconeDB:
             logger.warning("Attempted to store empty chunks list")
             return []
 
-        # Delete existing vectors if requested and landmark_id is provided
+        # Delete existing vectors if requested
         if delete_existing and landmark_id:
-            try:
-                deleted = self.delete_vectors_by_landmark_id(landmark_id)
-                if not deleted:
-                    logger.warning(
-                        f"Failed to delete existing vectors for {landmark_id}"
-                    )
-            except Exception as e:
-                logger.error(f"Error deleting existing vectors: {e}")
+            self._delete_existing_vectors_for_landmark(landmark_id)
 
         # Get enhanced metadata if landmark_id is provided
+        enhanced_metadata = self._get_enhanced_metadata(landmark_id)
+
+        # Prepare vectors for batch storage
+        vectors, vector_ids = self._prepare_vectors_for_storage(
+            chunks, enhanced_metadata, id_prefix
+        )
+
+        # Store the vectors
+        success = self.store_vectors_batch(vectors)
+
+        if success:
+            return vector_ids
+        return []
+
+    def _delete_existing_vectors_for_landmark(self, landmark_id: str) -> bool:
+        """Delete existing vectors for a landmark.
+
+        Args:
+            landmark_id (str): The landmark ID
+
+        Returns:
+            bool: True if deletion was successful, False otherwise
+        """
+        try:
+            deleted = self.delete_vectors_by_landmark_id(landmark_id)
+            if not deleted:
+                logger.warning(f"Failed to delete existing vectors for {landmark_id}")
+            return deleted
+        except Exception as e:
+            logger.error(f"Error deleting existing vectors: {e}")
+            return False
+
+    def _get_enhanced_metadata(self, landmark_id: Optional[str]) -> Dict[str, Any]:
+        """Get enhanced metadata for a landmark.
+
+        Args:
+            landmark_id (Optional[str]): The landmark ID
+
+        Returns:
+            Dict[str, Any]: Enhanced metadata or empty dict if landmark_id is None
+        """
         enhanced_metadata = {}
         if landmark_id:
             enhanced_metadata = self.metadata_collector.collect_landmark_metadata(
                 landmark_id
             )
             logger.info(f"Retrieved enhanced metadata for landmark: {landmark_id}")
+        return enhanced_metadata
 
-        # Prepare vectors for batch storage
+    def _prepare_vectors_for_storage(
+        self,
+        chunks: List[Dict[str, Any]],
+        enhanced_metadata: Dict[str, Any],
+        id_prefix: str = ""
+    ) -> Tuple[List[Tuple[str, List[float], Dict[str, Any]]], List[str]]:
+        """Prepare vectors for batch storage in Pinecone.
+
+        Args:
+            chunks (List[Dict[str, Any]]): List of chunks to convert to vectors
+            enhanced_metadata (Dict[str, Any]): Enhanced metadata to add to each vector
+            id_prefix (str, optional): Prefix for vector IDs
+
+        Returns:
+            Tuple containing:
+            - List of tuples (vector_id, embedding, metadata) ready for storage
+            - List of vector IDs
+        """
         vectors = []
         vector_ids = []
 
@@ -337,42 +357,54 @@ class PineconeDB:
             vector_id = f"{id_prefix}{str(uuid.uuid4())}"
             vector_ids.append(vector_id)
 
-            # Get the embedding
+            # Get the embedding and prepare metadata
             embedding = chunk["embedding"]
-
-            # Get the metadata and add the text for retrieval
-            metadata = chunk["metadata"].copy()
-            # Include the text in metadata for retrieval
-            metadata["text"] = chunk["text"]
-
-            # Add today's processing date
-            metadata["processing_date"] = time.strftime("%Y-%m-%d")
-
-            # Merge with enhanced metadata if available
-            if enhanced_metadata:
-                # Keep only metadata fields that won't conflict with chunk-specific metadata
-                # and don't exceed Pinecone's metadata size limits
-                for key, value in enhanced_metadata.items():
-                    # Skip keys that already exist or text fields
-                    if key not in metadata and key != "text":
-                        metadata[key] = value
-
-            # Add chunk position information if available
-            if "chunk_index" in chunk:
-                metadata["chunk_index"] = chunk["chunk_index"]
-
-            if "total_chunks" in chunk:
-                metadata["total_chunks"] = chunk["total_chunks"]
+            metadata = self._prepare_chunk_metadata(chunk, enhanced_metadata)
 
             # Add to vectors list
             vectors.append((vector_id, embedding, metadata))
 
-        # Store the vectors
-        success = self.store_vectors_batch(vectors)
+        return vectors, vector_ids
 
-        if success:
-            return vector_ids
-        return []
+    def _prepare_chunk_metadata(
+        self,
+        chunk: Dict[str, Any],
+        enhanced_metadata: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Prepare metadata for a chunk by merging with enhanced metadata.
+
+        Args:
+            chunk (Dict[str, Any]): The chunk containing text, metadata, etc.
+            enhanced_metadata (Dict[str, Any]): Enhanced metadata from landmark
+
+        Returns:
+            Dict[str, Any]: Combined metadata for the chunk
+        """
+        # Get the metadata and add the text for retrieval
+        metadata: Dict[str, Any] = dict(chunk["metadata"].copy())
+
+        # Include the text in metadata for retrieval
+        metadata["text"] = chunk["text"]
+
+        # Add today's processing date
+        metadata["processing_date"] = time.strftime("%Y-%m-%d")
+
+        # Merge with enhanced metadata if available
+        if enhanced_metadata:
+            # Keep only metadata fields that won't conflict with chunk-specific metadata
+            for key, value in enhanced_metadata.items():
+                # Skip keys that already exist or text fields
+                if key not in metadata and key != "text":
+                    metadata[key] = value
+
+        # Add chunk position information if available
+        if "chunk_index" in chunk:
+            metadata["chunk_index"] = chunk["chunk_index"]
+
+        if "total_chunks" in chunk:
+            metadata["total_chunks"] = chunk["total_chunks"]
+
+        return metadata
 
     def query_vectors(
         self,
@@ -507,7 +539,8 @@ class PineconeDB:
         try:
             # Check if index exists using new API
             indexes = self.pc.list_indexes()
-            if self.index_name in indexes.names():
+            index_names = indexes if isinstance(indexes, list) else indexes.names
+            if self.index_name in index_names:
                 # Delete the index using new API
                 self.pc.delete_index(self.index_name)
                 logger.info(f"Successfully deleted index: {self.index_name}")
@@ -593,22 +626,42 @@ class PineconeDB:
 
         # First delete all existing vectors for this landmark if requested
         if delete_existing:
-            try:
-                deleted = self.delete_vectors_by_landmark_id(landmark_id)
-                if not deleted:
-                    logger.warning(
-                        f"Failed to delete existing vectors for {landmark_id}"
-                    )
-            except Exception as e:
-                logger.error(f"Error deleting existing vectors: {e}")
+            self._delete_existing_vectors_for_landmark(landmark_id)
 
         # Get enhanced metadata
-        enhanced_metadata = self.metadata_collector.collect_landmark_metadata(
-            landmark_id
-        )
+        enhanced_metadata = self.metadata_collector.collect_landmark_metadata(landmark_id)
         logger.info(f"Retrieved enhanced metadata for landmark: {landmark_id}")
 
-        # Prepare vectors for batch storage
+        # Prepare vectors with fixed IDs for batch storage
+        vectors, vector_ids = self._prepare_vectors_with_fixed_ids(
+            chunks, landmark_id, enhanced_metadata
+        )
+
+        # Store the vectors
+        success = self.store_vectors_batch(vectors)
+
+        if success:
+            return vector_ids
+        return []
+
+    def _prepare_vectors_with_fixed_ids(
+        self,
+        chunks: List[Dict[str, Any]],
+        landmark_id: str,
+        enhanced_metadata: Dict[str, Any]
+    ) -> Tuple[List[Tuple[str, List[float], Dict[str, Any]]], List[str]]:
+        """Prepare vectors with fixed IDs based on landmark_id and chunk_index.
+
+        Args:
+            chunks: List of chunk dictionaries
+            landmark_id: The landmark ID for creating deterministic IDs
+            enhanced_metadata: Enhanced metadata to merge with chunk metadata
+
+        Returns:
+            Tuple containing:
+            - List of tuples (vector_id, embedding, metadata) ready for storage
+            - List of vector IDs
+        """
         vectors = []
         vector_ids = []
 
@@ -627,37 +680,13 @@ class PineconeDB:
             # Get the embedding
             embedding = chunk["embedding"]
 
-            # Get the metadata and add the text for retrieval
-            metadata = chunk["metadata"].copy()
-            # Include the text in metadata for retrieval
-            metadata["text"] = chunk["text"]
-
-            # Add today's processing date
-            metadata["processing_date"] = time.strftime("%Y-%m-%d")
-
-            # Merge with enhanced metadata
-            if enhanced_metadata:
-                for key, value in enhanced_metadata.items():
-                    # Skip keys that already exist or text fields
-                    if key not in metadata and key != "text":
-                        metadata[key] = value
-
-            # Add chunk position information if available
-            if "chunk_index" in chunk:
-                metadata["chunk_index"] = chunk["chunk_index"]
-
-            if "total_chunks" in chunk:
-                metadata["total_chunks"] = chunk["total_chunks"]
+            # Prepare metadata for the chunk
+            metadata = self._prepare_chunk_metadata(chunk, enhanced_metadata)
 
             # Add to vectors list
             vectors.append((vector_id, embedding, metadata))
 
-        # Store the vectors
-        success = self.store_vectors_batch(vectors)
-
-        if success:
-            return vector_ids
-        return []
+        return vectors, vector_ids
 
     def recreate_index(self) -> bool:
         """
@@ -700,9 +729,104 @@ class PineconeDB:
             time.sleep(30)
 
             # Connect to the new index
-            self.index = self.pc.Index(self.index_name)
+            self.index = self.pc.Index(self.index_name)  # type: ignore
             logger.info(f"Successfully recreated index: {self.index_name}")
             return True
         except Exception as e:
             logger.error(f"Error recreating index: {e}")
             return False
+
+    def _extract_dimension_and_fullness(self, stats_response: Any) -> Dict[str, Any]:
+        """Extract dimension and index_fullness from stats response.
+
+        Args:
+            stats_response: Response from describe_index_stats
+
+        Returns:
+            Dictionary containing dimension and index_fullness
+        """
+        stats_dict = {}
+
+        # Extract dimension if available
+        if hasattr(stats_response, "dimension"):
+            stats_dict["dimension"] = stats_response.dimension
+
+        # Extract index_fullness if available
+        if hasattr(stats_response, "index_fullness"):
+            stats_dict["index_fullness"] = stats_response.index_fullness
+
+        return stats_dict
+
+    def _extract_namespaces(self, stats_response: Any) -> Dict[str, Any]:
+        """Extract namespaces information from stats response.
+
+        Args:
+            stats_response: Response from describe_index_stats
+
+        Returns:
+            Dictionary containing namespaces data
+        """
+        namespaces_dict = {}
+
+        if hasattr(stats_response, "namespaces"):
+            for ns_name, ns_data in stats_response.namespaces.items():
+                # Handle the case when ns_data might be None or not dict-compatible
+                if ns_data is not None:
+                    try:
+                        # Try to convert to dict if it has dict-like behavior
+                        if hasattr(ns_data, "items"):
+                            namespaces_dict[ns_name] = dict(ns_data)
+                        else:
+                            # If it's already a dict or similar
+                            namespaces_dict[ns_name] = ns_data
+                    except Exception as ns_e:
+                        logger.warning(
+                            f"Could not process namespace data for {ns_name}: {ns_e}"
+                        )
+                        namespaces_dict[ns_name] = {
+                            "error": "Could not process data"
+                        }
+
+        return namespaces_dict
+
+    def _extract_vector_count(self, stats_response: Any) -> int:
+        """Extract total vector count from stats response.
+
+        Args:
+            stats_response: Response from describe_index_stats
+
+        Returns:
+            Total vector count
+        """
+        if hasattr(stats_response, "total_vector_count"):
+            count: int = stats_response.total_vector_count
+            return count
+        return 0
+
+    def _process_stats_response(self, stats_response: Any) -> Dict[str, Any]:
+        """Process the stats response into a dictionary.
+
+        Args:
+            stats_response: Response from describe_index_stats
+
+        Returns:
+            Processed stats dictionary
+        """
+        try:
+            # Base stats dictionary
+            stats_dict = self._extract_dimension_and_fullness(stats_response)
+
+            # Add namespaces
+            stats_dict["namespaces"] = self._extract_namespaces(stats_response)
+
+            # Add total vector count
+            stats_dict["total_vector_count"] = self._extract_vector_count(stats_response)
+
+            logger.debug(f"Successfully retrieved and built index stats dict: {stats_dict}")
+            return stats_dict
+        except Exception as build_e:
+            logger.exception(
+                f"Error building dictionary from stats_response: {build_e}",
+                exc_info=True,
+            )
+            return {"error": f"Error processing stats response: {str(build_e)}"}

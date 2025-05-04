@@ -216,45 +216,94 @@ class CoreDataStoreAPI:
             Exception: If there is an error making the API request
         """
         try:
-            # Build the query parameters
-            params: Dict[str, Any] = {
-                "limit": limit,
-                "page": page,
-            }
-
-            # Add optional filters if provided
-            if borough:
-                params["Borough"] = borough
-            if object_type:
-                params["ObjectType"] = object_type
-            if neighborhood:
-                params["Neighborhood"] = neighborhood
-            if search_text:
-                params["SearchText"] = search_text
-            if parent_style_list:
-                params["ParentStyleList"] = parent_style_list
-            if sort_column:
-                params["SortColumn"] = sort_column
-            if sort_order:
-                params["SortOrder"] = sort_order
+            # Build the query parameters and make the request
+            params = self._build_lpc_report_params(
+                page=page,
+                limit=limit,
+                borough=borough,
+                object_type=object_type,
+                neighborhood=neighborhood,
+                search_text=search_text,
+                parent_style_list=parent_style_list,
+                sort_column=sort_column,
+                sort_order=sort_order,
+            )
 
             # Make the API request
             endpoint = "/api/LpcReport"
             response = self._make_request("GET", endpoint, params=params)
 
-            # Ensure response is a dictionary
-            if not isinstance(response, dict):
-                raise TypeError(
-                    f"Expected dictionary response but got {type(response).__name__}"
-                )
-
-            # Validate the response with our Pydantic models
-            validated_response = LpcReportResponse(**response)
-            return validated_response
+            return self._validate_lpc_report_response(response)
 
         except Exception as e:
             logger.error(f"Error getting LPC reports: {e}")
             raise Exception(f"Error getting LPC reports: {e}")
+
+    def _build_lpc_report_params(
+        self,
+        page: int = 1,
+        limit: int = 10,
+        borough: Optional[str] = None,
+        object_type: Optional[str] = None,
+        neighborhood: Optional[str] = None,
+        search_text: Optional[str] = None,
+        parent_style_list: Optional[List[str]] = None,
+        sort_column: Optional[str] = None,
+        sort_order: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Build query parameters for the LpcReport API endpoint.
+
+        Args:
+            Same as get_lpc_reports
+
+        Returns:
+            Dict of query parameters to send to the API
+        """
+        # Build the required query parameters
+        params: Dict[str, Any] = {
+            "limit": limit,
+            "page": page,
+        }
+
+        # Add optional filters if provided
+        if borough:
+            params["Borough"] = borough
+        if object_type:
+            params["ObjectType"] = object_type
+        if neighborhood:
+            params["Neighborhood"] = neighborhood
+        if search_text:
+            params["SearchText"] = search_text
+        if parent_style_list:
+            params["ParentStyleList"] = parent_style_list
+        if sort_column:
+            params["SortColumn"] = sort_column
+        if sort_order:
+            params["SortOrder"] = sort_order
+
+        return params
+
+    def _validate_lpc_report_response(self, response: Any) -> LpcReportResponse:
+        """Validate the API response and convert to a LpcReportResponse.
+
+        Args:
+            response: The raw API response
+
+        Returns:
+            LpcReportResponse: Validated response model
+
+        Raises:
+            TypeError: If response is not a dictionary
+        """
+        # Ensure response is a dictionary
+        if not isinstance(response, dict):
+            raise TypeError(
+                f"Expected dictionary response but got {type(response).__name__}"
+            )
+
+        # Validate the response with our Pydantic models
+        validated_response = LpcReportResponse(**response)
+        return validated_response
 
     def get_lpc_reports_with_mcp(
         self,

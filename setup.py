@@ -109,7 +109,9 @@ setup(
             "black>=23.3.0",
             "isort>=5.12.0",
             "flake8>=6.0.0",
-            "mypy>=1.2.0",
+            "mypy>=1.15.0",  # Updated version
+            "mypy_extensions>=1.0.0",  # Added for mypy support
+            "types-requests>=2.32.0",  # Added for requests type stubs
             "pytest-cov>=6.1.1",  # Added for coverage
             "pytest-dotenv>=0.5.2",  # Added for loading .env files in tests
             "pandas>=2.2.0",  # Added explicitly for tests

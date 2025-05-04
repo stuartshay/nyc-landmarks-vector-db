@@ -89,8 +89,12 @@ class WikipediaFetcher:
                 return None
 
             # Find all paragraphs in the content
-            paragraphs = content_div.find_all("p")
-            content = "\n\n".join([p.get_text() for p in paragraphs])
+            if hasattr(content_div, "find_all"):  # Ensure content_div has find_all method
+                paragraphs = content_div.find_all("p")
+                content = "\n\n".join([p.get_text() for p in paragraphs])
+            else:
+                logger.warning(f"Content div doesn't support find_all method: {type(content_div)}")
+                content = content_div.get_text() if hasattr(content_div, "get_text") else str(content_div)
 
             # Clean up the text
             content = self._clean_wikipedia_text(content)
@@ -249,12 +253,14 @@ class WikipediaFetcher:
                 chunk["metadata"]["landmark_id"] = article.lpNumber
 
             # Create and return the content model
+            # Convert ChunkDict to Dict[str, Any] as expected by WikipediaContentModel
+            chunks_as_dicts: List[Dict[str, Any]] = [{k: v for k, v in chunk.items()} for chunk in chunks]
             content_model = WikipediaContentModel(
                 lpNumber=article.lpNumber,
                 url=article.url,
                 title=article.title,
                 content=content,
-                chunks=chunks,
+                chunks=chunks_as_dicts,
             )
 
             return content_model

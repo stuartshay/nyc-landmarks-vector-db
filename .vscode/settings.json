@@ -15,8 +15,10 @@
   "python.linting.enabled": true,
   "python.linting.flake8Enabled": true,
   "python.formatting.provider": "black",
-  "mypy.dmypyExecutable": "/usr/local/bin/dmypy",
-  "mypy.runUsingActiveInterpreter": true,
   "python.envFile": "${workspaceFolder}/.env",
-  "python.testing.pytestPath": "${workspaceFolder}/venv/bin/pytest"
+  "python.testing.pytestPath": "${workspaceFolder}/venv/bin/pytest",
+  "mypy.dmypyExecutable": "${workspaceFolder}/venv/bin/dmypy",
+  "mypy.runUsingActiveInterpreter": true,
+  "mypy.executablePath": "${workspaceFolder}/venv/bin/mypy",
+  "python.linting.mypyEnabled": true
 }
