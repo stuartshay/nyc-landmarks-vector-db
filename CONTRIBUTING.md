@@ -58,6 +58,8 @@ We use several tools to enforce code quality:
 - Document all public modules, functions, classes, and methods
 - Use Google-style docstrings
 - Keep documentation up-to-date when changing code
+- Store project-wide documentation, research, and improvement notes in the `memory-bank/` directory
+- Use descriptive filenames with hyphens (e.g., `test-improvements.md`, `api-design.md`)
 
 ### Testing
 
@@ -83,6 +85,19 @@ We use several tools to enforce code quality:
   ./sync_versions.sh
   ```
 - Document any new dependencies in your PR description
+
+### GitHub Copilot Guidelines
+
+- Store relevant project documentation in the `memory-bank/` directory
+- When documenting changes or improvements, create or update a file in `memory-bank/`
+- Use descriptive filenames with hyphens (e.g., `test-improvements.md`)
+- When documenting code changes, include:
+  - Summary of changes
+  - Motivation for changes
+  - Benefits and improvements
+  - Any potential side effects
+  - Future considerations
+- Update existing documentation rather than creating duplicates
 
 ## Setting Up Your Development Environment
 

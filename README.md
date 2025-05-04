@@ -540,7 +540,12 @@ nyc-landmarks-vector-db/
 │   └── demo.py                   # Demo script
 ├── sample_pdfs/                  # Sample PDFs for testing
 ├── .github/                      # GitHub Actions workflows
-├── memory-bank/                  # Project documentation
+├── memory-bank/                  # Project documentation and institutional knowledge
+│   ├── README.md                 # Guide for using the memory bank
+│   ├── test-improvements.md      # Record of test infrastructure improvements
+│   ├── ci_cd_pipeline.md         # CI/CD documentation
+│   ├── research_items.md         # Research findings and decisions
+│   └── ...                       # Other project documentation
 ├── requirements.txt              # Dependencies
 ├── setup.py                      # Package setup
 └── README.md                     # This file

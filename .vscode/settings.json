@@ -6,7 +6,7 @@
     "tests",
     "-v"
   ],
-  "python.defaultInterpreterPath": "${env:PYTHON_PATH}",
+  "python.defaultInterpreterPath": "${workspaceFolder}/venv/bin/python",
   "python.testing.cwd": "${workspaceFolder}",
   "python.testing.autoTestDiscoverOnSaveEnabled": true,
   "python.terminal.activateEnvironment": true,
@@ -18,5 +18,5 @@
   "mypy.dmypyExecutable": "/usr/local/bin/dmypy",
   "mypy.runUsingActiveInterpreter": true,
   "python.envFile": "${workspaceFolder}/.env",
-  "python.testing.pytestPath": "${env:PYTEST_PATH}"
+  "python.testing.pytestPath": "${workspaceFolder}/venv/bin/pytest"
 }
