@@ -175,30 +175,26 @@ sync_versions() {
     if grep -q "\"$PKG_NAME>=.*\"" "$SETUP_PY"; then
       # Update the version
       sed -i "s/\"$PKG_NAME>=.*\"/\"$PKG_NAME>=$PKG_VERSION\"/" "$SETUP_PY"
-      echo "Updating $PKG_NAME: to version $PKG_VERSION"
       UPDATED=1
-    else
-      echo "Package $PKG_NAME found in requirements.txt but not in setup.py with >= format"
     fi
   done < "$TEMP_FILE"
 
   # Clean up
   rm "$TEMP_FILE"
 
-  # If we made changes, regenerate requirements.txt
+  # If we made changes, report it
   if [ $UPDATED -eq 1 ]; then
-    echo -e "${BLUE}Changes made to setup.py, regenerating requirements.txt...${NC}"
-    pip-compile --constraint=$CONSTRAINTS_TXT --output-file=$REQUIREMENTS_TXT
+      echo -e "${BLUE}Changes made to setup.py based on requirements.txt.${NC}"
   else
-    echo -e "${BLUE}No changes needed to setup.py${NC}"
+      echo -e "${BLUE}No version changes needed in setup.py.${NC}"
   fi
 
   echo -e "${GREEN}Version synchronization complete!${NC}"
   echo -e "${BLUE}Next steps:${NC}"
-  echo -e "1. Review changes to setup.py and requirements.txt"
+  echo -e "1. Review changes to setup.py"
   echo -e "2. Commit changes if they look good:${NC}"
-  echo -e "   git add $SETUP_PY $REQUIREMENTS_TXT"
-  echo -e "   git commit -m \"Sync package versions between setup.py and requirements.txt\""
+  echo -e "   git add $SETUP_PY"
+  echo -e "   git commit -m \\"Update package versions in setup.py\\""
 }
 
 # Update Pinecone SDK specifically

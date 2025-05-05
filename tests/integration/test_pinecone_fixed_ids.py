@@ -221,6 +221,57 @@ def cleanup_vectors(pinecone_db: PineconeDB, landmark_id: str) -> None:
 
 
 # Verification functions (used by test_pinecone_validation.py)
+
+
+def _check_vector_id_format(
+    vector_id: str, metadata: Dict[str, Any], landmark_id: str, verbose: bool
+) -> bool:
+    """Helper function to check the format and consistency of a vector ID."""
+    is_format_correct = True
+    expected_prefix = f"{landmark_id}-chunk-"
+    if not vector_id.startswith(expected_prefix):
+        is_format_correct = False
+        if verbose:
+            logger.error(f"Vector ID {vector_id} does not start with {expected_prefix}")
+    else:
+        try:
+            chunk_index_from_id = int(vector_id.split("-chunk-")[1])
+            if "chunk_index" in metadata:
+                chunk_index_from_meta = metadata["chunk_index"]
+                if int(chunk_index_from_meta) != chunk_index_from_id:
+                    is_format_correct = False
+                    if verbose:
+                        logger.error(
+                            f"ID chunk index {chunk_index_from_id} != metadata chunk index {chunk_index_from_meta}"
+                        )
+        except (ValueError, IndexError):
+            is_format_correct = False
+            if verbose:
+                logger.error(f"Could not parse chunk index from ID {vector_id}")
+    return is_format_correct
+
+
+def _check_metadata_consistency(
+    current_metadata: Dict[str, Any],
+    first_metadata: Dict[str, Any],
+    fields_to_check: List[str],
+    vector_id: str,
+    verbose: bool,
+) -> bool:
+    """Helper function to check consistency of metadata fields against the first vector."""
+    is_consistent = True
+    for field in fields_to_check:
+        if current_metadata.get(field) != first_metadata.get(field):
+            is_consistent = False
+            if verbose:
+                logger.error(
+                    f"Inconsistent metadata for {vector_id}: field '{field}' mismatch (Current: {current_metadata.get(field)}, First: {first_metadata.get(field)})"
+                )
+            # No need to check further fields if one is inconsistent
+            break
+    return is_consistent
+
+
 def verify_landmark_vectors(
     pinecone_db: PineconeDB,
     random_vector: List[float],
@@ -251,10 +302,11 @@ def verify_landmark_vectors(
         return landmark_results
 
     landmark_results["found_vectors"] = True
+    landmark_results["vectors"] = vectors  # Store vectors for potential further checks
     if verbose:
         logger.info(f"Found {len(vectors)} vectors for {landmark_id}")
 
-    first_metadata: Optional[Dict[str, Any]] = None
+    first_metadata: Optional[Dict[str, Any]] = vectors[0].get("metadata")
     consistent_fields = [
         "landmark_id",
         "name",
@@ -269,56 +321,16 @@ def verify_landmark_vectors(
         vector_id: str = vector.get("id", "")
         metadata: Dict[str, Any] = vector.get("metadata", {})
 
-        # Check ID format
-        expected_prefix = f"{landmark_id}-chunk-"
-        if not vector_id.startswith(expected_prefix):
+        # Check ID format using helper
+        if not _check_vector_id_format(vector_id, metadata, landmark_id, verbose):
             landmark_results["correct_id_format"] = False
-            if verbose:
-                logger.error(
-                    f"Vector ID {vector_id} does not start with {expected_prefix}"
-                )
-        else:
-            try:
-                chunk_index_from_id = int(vector_id.split("-chunk-")[1])
-                # Check chunk index in metadata matches ID
-                if "chunk_index" in metadata:
-                    chunk_index_from_meta = metadata["chunk_index"]
-                    if int(chunk_index_from_meta) != chunk_index_from_id:
-                        landmark_results["correct_id_format"] = False
-                        if verbose:
-                            logger.error(
-                                f"ID chunk index {chunk_index_from_id} != metadata chunk index {chunk_index_from_meta}"
-                            )
-            except (ValueError, IndexError):
-                landmark_results["correct_id_format"] = False
-                if verbose:
-                    logger.error(f"Could not parse chunk index from ID {vector_id}")
 
-        # Check metadata consistency
-        if i == 0:
-            first_metadata = metadata
-        elif first_metadata:
-            for field in consistent_fields:
-                if field in first_metadata:
-                    if (
-                        field not in metadata
-                        or metadata[field] != first_metadata[field]
-                    ):
-                        landmark_results["consistent_metadata"] = False
-                        if verbose:
-                            logger.error(
-                                f"Inconsistent metadata field '{field}': {metadata.get(field)} vs {first_metadata.get(field)}"
-                            )
-                        break  # Stop checking this vector's metadata
-
-        # Store vector info for detailed output if needed
-        vector_data: Dict[str, Any] = {
-            "id": vector_id,
-            "metadata_keys": list(metadata.keys()),
-            "chunk_index": metadata.get("chunk_index"),
-            "total_chunks": metadata.get("total_chunks"),
-        }
-        landmark_results["vectors"].append(vector_data)
+        # Check metadata consistency using helper (skip first vector)
+        if i > 0 and first_metadata:
+            if not _check_metadata_consistency(
+                metadata, first_metadata, consistent_fields, vector_id, verbose
+            ):
+                landmark_results["consistent_metadata"] = False
 
     return landmark_results
 

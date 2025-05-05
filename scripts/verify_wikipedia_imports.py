@@ -8,7 +8,7 @@ have been correctly imported and stored with proper metadata.
 
 import argparse
 import logging
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional  # Import Any
 
 import pandas as pd
 
@@ -23,9 +23,54 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _validate_single_vector(vector: Dict[str, Any], index: int) -> bool:
+    """Helper function to validate a single Wikipedia vector."""
+    is_vector_valid = True
+    vector_id = vector.get("id", f"unknown-{index}")
+    metadata = vector.get("metadata", {})
+    logger.info(f"Validating vector {vector_id}")
+
+    required_metadata: Dict[str, type] = {
+        "source_type": str,
+        "article_title": str,
+        "article_url": str,
+        "landmark_id": str,
+    }
+
+    # Check ID prefix
+    if not vector_id.startswith("wiki-"):
+        logger.warning(f"Vector {vector_id} does not have the 'wiki-' prefix")
+        is_vector_valid = False
+
+    # Check metadata fields
+    for field, expected_type in required_metadata.items():
+        if field not in metadata:
+            logger.warning(f"Vector {vector_id} is missing required field: {field}")
+            is_vector_valid = False
+            continue  # Skip further checks for this field if missing
+
+        value = metadata[field]
+        if field == "source_type":
+            if value != "wikipedia":
+                logger.warning(f"Vector {vector_id} has incorrect source_type: {value}")
+                is_vector_valid = False
+        elif not isinstance(value, expected_type):
+            logger.warning(
+                f"Vector {vector_id} field '{field}' has incorrect type: {type(value).__name__} (expected {expected_type.__name__})"
+            )
+            is_vector_valid = False
+
+    # Check text field
+    if "text" not in metadata or not metadata["text"]:
+        logger.warning(f"Vector {vector_id} is missing text content")
+        is_vector_valid = False
+
+    return is_vector_valid
+
+
 def list_wikipedia_vectors(
     landmark_id: Optional[str] = None, limit: int = 100
-) -> List[Dict]:
+) -> List[Dict[str, Any]]:  # Updated return type hint
     """
     List vectors in Pinecone with source_type=wikipedia.
 
@@ -80,7 +125,9 @@ def list_wikipedia_vectors(
     return results
 
 
-def validate_wikipedia_vectors(vectors: List[Dict]) -> bool:  # noqa: C901
+def validate_wikipedia_vectors(
+    vectors: List[Dict[str, Any]],
+) -> bool:  # Remove noqa: C901
     """
     Validate that Wikipedia vectors have the correct metadata structure.
 
@@ -95,62 +142,10 @@ def validate_wikipedia_vectors(vectors: List[Dict]) -> bool:  # noqa: C901
         return False
 
     all_valid = True
-    required_metadata = {
-        "source_type": "wikipedia",
-        "article_title": str,
-        "article_url": str,
-        "landmark_id": str,
-    }
-
+    # Use the helper function to validate each vector
     for i, vector in enumerate(vectors):
-        vector_id = vector.get("id", f"unknown-{i}")
-        metadata = vector.get("metadata", {})
-
-        logger.info(f"Validating vector {vector_id}")
-
-        # Check that the vector ID starts with "wiki-"
-        if not vector_id.startswith("wiki-"):
-            logger.warning(f"Vector {vector_id} does not have the 'wiki-' prefix")
-            all_valid = False
-
-        # Check required metadata fields
-        for field, expected_type in required_metadata.items():
-            if field not in metadata:
-                logger.warning(f"Vector {vector_id} is missing required field: {field}")
-                all_valid = False
-                continue
-
-            value = metadata[field]
-            if field == "source_type":
-                if value != "wikipedia":
-                    logger.warning(
-                        f"Vector {vector_id} has incorrect source_type: {value}"
-                    )
-                    all_valid = False
-            # Skip type checking for source_type as it's checked explicitly above
-            elif field != "source_type":
-                # Instead of using isinstance directly with a variable type,
-                # we handle each type explicitly to avoid mypy errors
-                if field == "article_title" and not isinstance(value, str):
-                    logger.warning(
-                        f"Vector {vector_id} field {field} is not a string: {type(value)}"
-                    )
-                    all_valid = False
-                elif field == "article_url" and not isinstance(value, str):
-                    logger.warning(
-                        f"Vector {vector_id} field {field} is not a string: {type(value)}"
-                    )
-                    all_valid = False
-                elif field == "landmark_id" and not isinstance(value, str):
-                    logger.warning(
-                        f"Vector {vector_id} field {field} is not a string: {type(value)}"
-                    )
-                    all_valid = False
-
-        # Check that the text field is present and not empty
-        if "text" not in metadata or not metadata["text"]:
-            logger.warning(f"Vector {vector_id} is missing text content")
-            all_valid = False
+        if not _validate_single_vector(vector, i):
+            all_valid = False  # Track if any vector fails validation
 
     if all_valid:
         logger.info("All vectors have valid metadata structure")
@@ -160,7 +155,9 @@ def validate_wikipedia_vectors(vectors: List[Dict]) -> bool:  # noqa: C901
     return all_valid
 
 
-def summarize_wikipedia_vectors(vectors: List[Dict]) -> None:
+def summarize_wikipedia_vectors(
+    vectors: List[Dict[str, Any]],
+) -> None:  # Updated parameter type hint
     """
     Summarize the Wikipedia vectors by landmark and article.
 
@@ -172,7 +169,7 @@ def summarize_wikipedia_vectors(vectors: List[Dict]) -> None:
         return
 
     # Extract key information for summary
-    data = []
+    data: List[Dict[str, Any]] = []  # Add explicit type hint
     for vector in vectors:
         metadata = vector.get("metadata", {})
 

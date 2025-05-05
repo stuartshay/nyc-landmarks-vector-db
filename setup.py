@@ -112,7 +112,10 @@ setup(
             "mypy>=1.15.0",  # Updated version
             "mypy_extensions>=1.0.0",  # Added for mypy support
             "types-requests>=2.32.0",  # Added for requests type stubs
-            "types-tabulate>=1.0.0",  # Added for tabulate type stubs
+            "types-tabulate>=0.9.0",  # Corrected version constraint
+            "types-setuptools>=72.1.0.20240727",  # Added for setuptools types
+            "pandas-stubs>=2.2.2.240514",  # Add pandas-stubs
+            "nbstripout>=0.6.1",  # Added for notebook cleaning
             "pytest-cov>=6.1.1",  # Added for coverage
             "pytest-dotenv>=0.5.2",  # Added for loading .env files in tests
             "pandas>=2.2.3",  # Added explicitly for tests
