@@ -268,7 +268,10 @@ class PineconeDB:
         # If using fixed IDs and landmark_id is provided, use store_chunks_with_fixed_ids
         if use_fixed_ids and landmark_id:
             return self.store_chunks_with_fixed_ids(
-                chunks=chunks, landmark_id=landmark_id, delete_existing=delete_existing
+                chunks=chunks,
+                landmark_id=landmark_id,
+                delete_existing=delete_existing,
+                id_prefix=id_prefix,
             )
 
         # Otherwise, use the original implementation with random UUIDs
@@ -612,6 +615,7 @@ class PineconeDB:
         chunks: List[Dict[str, Any]],
         landmark_id: str,
         delete_existing: bool = True,
+        id_prefix: str = "",
     ) -> List[str]:
         """
         Store text chunks with embeddings in the index using deterministic IDs.
@@ -623,6 +627,7 @@ class PineconeDB:
             chunks (List[Dict[str, Any]]): List of chunk dictionaries with 'text', 'metadata', and 'embedding'
             landmark_id (str): The landmark ID
             delete_existing (bool): Whether to delete existing vectors for this landmark
+            id_prefix (str): Optional prefix for vector IDs (e.g., "wiki-" for Wikipedia content)
 
         Returns:
             List[str]: List of vector IDs
@@ -643,7 +648,7 @@ class PineconeDB:
 
         # Prepare vectors with fixed IDs for batch storage
         vectors, vector_ids = self._prepare_vectors_with_fixed_ids(
-            chunks, landmark_id, enhanced_metadata
+            chunks, landmark_id, enhanced_metadata, id_prefix
         )
 
         # Store the vectors
@@ -658,6 +663,7 @@ class PineconeDB:
         chunks: List[Dict[str, Any]],
         landmark_id: str,
         enhanced_metadata: Dict[str, Any],
+        id_prefix: str = "",
     ) -> Tuple[List[Tuple[str, List[float], Dict[str, Any]]], List[str]]:
         """Prepare vectors with fixed IDs based on landmark_id and chunk_index.
 
@@ -665,6 +671,7 @@ class PineconeDB:
             chunks: List of chunk dictionaries
             landmark_id: The landmark ID for creating deterministic IDs
             enhanced_metadata: Enhanced metadata to merge with chunk metadata
+            id_prefix: Optional prefix for vector IDs (e.g., "wiki-" for Wikipedia content)
 
         Returns:
             Tuple containing:
@@ -682,8 +689,8 @@ class PineconeDB:
 
             # Generate a deterministic vector ID based on landmark_id and chunk_index
             chunk_index = chunk.get("chunk_index", 0)
-            # Format: LP-00009-chunk-0, LP-00009-chunk-1, etc.
-            vector_id = f"{landmark_id}-chunk-{chunk_index}"
+            # Format with optional prefix: wiki-LP-00009-chunk-0, LP-00009-chunk-1, etc.
+            vector_id = f"{id_prefix}{landmark_id}-chunk-{chunk_index}"
             vector_ids.append(vector_id)
 
             # Get the embedding

@@ -1,4 +1,5 @@
 #!/bin/bash
+#
 # manage_packages.sh - Comprehensive script for managing Python dependencies
 #
 # This script provides several commands for updating, syncing, and managing

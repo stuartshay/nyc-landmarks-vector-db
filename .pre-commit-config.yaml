@@ -43,6 +43,7 @@ repos:
         additional_dependencies:
           - types-requests
           - types-PyYAML
+          - types-tabulate
 
   - repo: https://github.com/PyCQA/bandit
     rev: 1.7.8

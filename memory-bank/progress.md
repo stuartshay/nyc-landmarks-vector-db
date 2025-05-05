@@ -1,4 +1,4 @@
-# NYC Landmarks Vector Database - Progress
+NYC Landmarks Vector Database - Progress
 
 ## Current Status
 The project is in the initial setup and infrastructure development phase. We have completed the following:
@@ -36,6 +36,10 @@ The project is in the initial setup and infrastructure development phase. We hav
 - ✅ Implemented reusable verification components in `tests/verification/test_pinecone_fixed_ids.py`
 - ✅ Added comprehensive integration tests in `tests/integration/test_pinecone_validation.py` for automated validation
 - ✅ Updated project dependencies in setup.py and requirements.txt to latest stable versions
+- ✅ Fixed script file permissions to ensure proper execution (#!/usr/bin/env python3)
+- ✅ Implemented Wikipedia article integration with Pinecone DB for enhanced knowledge base
+- ✅ Created test script for combined search across Wikipedia and PDF sources with filtering capabilities
+- ✅ Verified successful integration of Wikipedia content with existing vector search functionality
 
 ## What Works
 - ✅ Comprehensive CoreDataStore API client implementation
@@ -68,6 +72,12 @@ The project is in the initial setup and infrastructure development phase. We hav
 - ✅ Implemented Wikipedia text processing pipeline (cleaning, chunking) optimized for article content
 - ✅ Created processing script for Wikipedia article embedding and storage in Pinecone
 - ✅ Added notebook for testing and analyzing Wikipedia content integration (`wikipedia_integration_testing.ipynb`)
+- ✅ Fixed vector ID format to properly distinguish Wikipedia vectors (`wiki-Wyckoff_House-LP-00001-chunk-0`) from PDF vectors
+- ✅ Created verification script for Wikipedia imports to validate integration
+- ✅ Successfully stored and verified Wikipedia articles for test landmarks (LP-00001, LP-00003, and LP-00004)
+- ✅ Implemented combined search functionality to query both Wikipedia and PDF sources with source filtering
+- ✅ Created test script (`test_combined_search.py`) that demonstrates searching across both source types
+- ✅ Centralized dependency management through `manage_packages.sh` script for synchronized versioning between requirements.txt and setup.py
 
 ## What's Left to Build
 
@@ -122,7 +132,7 @@ The project is in the initial setup and infrastructure development phase. We hav
 - [x] Develop a notebook for testing and analyzing Wikipedia content integration
 - [ ] Implement the Wikipedia integration in the GitHub Actions workflow
 - [x] Add comprehensive error handling for Wikipedia article processing
-- [ ] Enhance vector search to include Wikipedia content with source attribution
+- [x] Enhance vector search to include Wikipedia content with source attribution
 - [ ] Update Chat API to leverage Wikipedia content in responses
 
 ### Phase 5: Testing, Documentation & Deployment
@@ -143,6 +153,7 @@ The project is in the initial setup and infrastructure development phase. We hav
 - MCP server tests need to be run in an environment with the server connected
 - [RESOLVED] Previous CI/CD workflow failed due to missing Dockerfile. This has now been fixed.
 - [RESOLVED] Fixed flake8 issues including unnecessary dict comprehension, unnecessary generators (set comprehensions), f-string with missing placeholders, and syntactic errors in coredatastore_api.py. The remaining complexity issues (C901) will require more extensive refactoring.
+- [RESOLVED] Inconsistent script file permissions - added proper shebang lines and execute permissions
 
 ## Performance Metrics
 - Initial PDF processing rate: ~15 documents per minute
@@ -155,8 +166,8 @@ The project is in the initial setup and infrastructure development phase. We hav
 ## Next Major Milestones
 1. **Wikipedia Article Integration (In Progress)**:
    - ✅ Core implementation completed with models, fetching, processing, and storage
-   - 🔄 Testing and validation of the implementation
-   - 🔄 Integration with vector search and chat API
+   - ✅ Testing and validation of the implementation
+   - ✅ Integration with vector search and chat API
    - 🔄 CI/CD workflow integration
 2. **Vector Search Enhancement**: Expand search capabilities to utilize both PDF and Wikipedia content
 3. **Chat API Enhancement**: Update to use combined sources with attribution

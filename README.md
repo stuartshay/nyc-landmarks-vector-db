@@ -35,6 +35,7 @@ flowchart TD
     subgraph "Data Sources"
         A[CoreDataStore API\nNYC Landmarks Data]
         B[Azure Blob Storage\nLandmark PDFs]
+        W[Wikipedia Articles]
     end
 
     subgraph "Database Layer"
@@ -45,6 +46,8 @@ flowchart TD
         C[PDF Text Extractor]
         D[Text Chunker]
         E[OpenAI Embedding Generator]
+        WF[Wikipedia Fetcher]
+        WP[Wikipedia Processor]
     end
 
     subgraph "Storage"
@@ -59,8 +62,12 @@ flowchart TD
 
     A --> DB
     DB --> C
+    DB --> WF
     B --> C
+    W --> WF
     C --> D
+    WF --> WP
+    WP --> D
     D --> E
     E --> F
     F --> H
@@ -76,12 +83,14 @@ flowchart TD
 ## Features
 
 - **PDF Processing Pipeline**: Extract text from PDF reports of NYC landmarks using PyPDF2/PDFPlumber
+- **Wikipedia Integration**: Fetch and process Wikipedia articles related to landmarks for additional content
 - **Intelligent Text Chunking**: Process text into optimized chunks (500-1000 tokens) with 10-20% overlap for context preservation
 - **High-Quality Embeddings**: Generate embeddings using OpenAI's text-embedding-3-small model (1536 dimensions)
-- **Rich Metadata Storage**: Store embeddings in Pinecone with comprehensive metadata including landmark ID, chunk position, source PDF details, and more
+- **Rich Metadata Storage**: Store embeddings in Pinecone with comprehensive metadata including landmark ID, source type (PDF/Wikipedia), chunk position, and more
+- **Multi-Source Search**: Search across both PDF and Wikipedia content with source filtering capabilities
 - **Semantic Search API**: Provide vector search API for natural language queries with relevant results
 - **Conversational AI**: Enable chatbot functionality with conversation memory for contextual follow-up questions
-- **Flexible Filtering**: Filter results by landmark ID, borough, neighborhood, and other metadata
+- **Flexible Filtering**: Filter results by landmark ID, source type, borough, neighborhood, and other metadata
 - **CoreDataStore Integration**: Access comprehensive NYC landmarks data exclusively through the CoreDataStore API
 - **MCP Server Tools**: Leverage coredatastore-swagger-mcp server for direct API interactions with extended functionality
 - **Secure Credential Management**: Manage all API keys and credentials through Google Cloud Secret Store

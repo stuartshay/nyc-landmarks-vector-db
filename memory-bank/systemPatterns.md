@@ -7,6 +7,7 @@ flowchart TD
     subgraph "Data Sources"
         A[CoreDataStore API\nNYC Landmarks Data]
         B[Azure Blob Storage\nLandmark PDFs]
+        W[Wikipedia Articles]
     end
 
     subgraph "Database Layer"
@@ -17,6 +18,8 @@ flowchart TD
         C[PDF Text Extractor]
         D[Text Chunker]
         E[OpenAI Embedding Generator]
+        WF[Wikipedia Fetcher]
+        WP[Wikipedia Processor]
     end
 
     subgraph "Storage"
@@ -31,8 +34,12 @@ flowchart TD
 
     A --> DB
     DB --> C
+    DB --> WF
     B --> C
+    W --> WF
     C --> D
+    WF --> WP
+    WP --> D
     D --> E
     E --> F
     F --> H
@@ -68,11 +75,16 @@ flowchart TD
 
 ### 5. Vector Database Structure
 - Pinecone will be our vector database due to its ease of use, performance, and free tier availability.
-- Each vector will correspond to a chunk of text from a landmark PDF.
-- Metadata will include:
+- Each vector corresponds to a chunk of text from either a landmark PDF or a Wikipedia article.
+- Vector IDs follow a consistent deterministic format:
+  - PDF vectors: `{landmark_id}-chunk-{chunk_index}` (e.g., `LP-00001-chunk-0`)
+  - Wikipedia vectors: `wiki-{article_title}-{landmark_id}-chunk-{chunk_index}` (e.g., `wiki-Wyckoff_House-LP-00001-chunk-0`)
+- Metadata includes:
   - Landmark ID
+  - Source type (pdf/wikipedia)
   - Chunk index/position
-  - Source PDF name/ID
+  - For PDFs: Source PDF name/ID
+  - For Wikipedia: Article title and URL
   - Date of embedding generation
   - Other relevant landmark metadata for filtering
 
