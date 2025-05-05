@@ -48,7 +48,9 @@ The current focus is on the Wikipedia article integration with Pinecone DB. We h
 1. **Vector ID Format**
    - For Wikipedia content: `wiki-{article_title}-{landmark_id}-chunk-{chunk_num}`
    - For PDF content: `{landmark_id}-{report_name}-{page_num}-{chunk_num}`
+   - For newer vectors with fixed ID implementation: `{landmark_id}-chunk-{chunk_num}`
    - This format allows for clear distinction between sources and enables filtering
+   - **Note**: Testing has revealed inconsistent ID formats in the index (particularly for LP-00001)
 
 2. **Source Type Attribution**
    - Added `source_type` field to all vectors (either "wikipedia" or "pdf")

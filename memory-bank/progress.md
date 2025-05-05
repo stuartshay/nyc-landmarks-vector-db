@@ -151,6 +151,10 @@ The project is in the initial setup and infrastructure development phase. We hav
 - Pylance errors in the Pydantic models due to import issues (can be resolved with proper environment setup)
 - Integration tests depend on CoreDataStore API being available
 - MCP server tests need to be run in an environment with the server connected
+- Inconsistent vector ID formats detected in the Pinecone index, particularly for landmark LP-00001:
+  - Expected format: `{landmark_id}-chunk-{chunk_num}`
+  - Some vectors have legacy formats like `test-LP-00001-LP-00001-chunk-0`
+  - This will require regenerating the index to standardize ID formats
 - [RESOLVED] Previous CI/CD workflow failed due to missing Dockerfile. This has now been fixed.
 - [RESOLVED] Fixed flake8 issues including unnecessary dict comprehension, unnecessary generators (set comprehensions), f-string with missing placeholders, and syntactic errors in coredatastore_api.py. The remaining complexity issues (C901) will require more extensive refactoring.
 - [RESOLVED] Inconsistent script file permissions - added proper shebang lines and execute permissions
@@ -164,15 +168,28 @@ The project is in the initial setup and infrastructure development phase. We hav
 - Average end-to-end processing time: 4.5 minutes per landmark document
 
 ## Next Major Milestones
-1. **Wikipedia Article Integration (In Progress)**:
+1. **Vector Database Regeneration (New)**:
+   - Create script to regenerate the Pinecone index with consistent ID formats
+   - Implement standardized ID format for all vector types (PDF, Wikipedia, etc.)
+   - Verify ID format consistency across all landmarks
+   - Update tests to expect standardized ID formats
+
+2. **Wikipedia Article Integration (In Progress)**:
    - ✅ Core implementation completed with models, fetching, processing, and storage
    - ✅ Testing and validation of the implementation
    - ✅ Integration with vector search and chat API
    - 🔄 CI/CD workflow integration
-2. **Vector Search Enhancement**: Expand search capabilities to utilize both PDF and Wikipedia content
-3. **Chat API Enhancement**: Update to use combined sources with attribution
-4. **Testing Improvements**: Add end-to-end tests and enhance CI/CD pipeline
-5. **PDF Optimization**: Optimize chunking strategy and processing pipeline
-6. **Vector API Development**: Convert notebook findings into production-ready API endpoints
-7. **Analytics Development**: Create dashboards for monitoring vector database usage and content sources
-8. **CI Integration**: Add vector database verification to GitHub Actions workflow
+
+3. **Vector Search Enhancement**: Expand search capabilities to utilize both PDF and Wikipedia content
+
+4. **Chat API Enhancement**: Update to use combined sources with attribution
+
+5. **Testing Improvements**: Add end-to-end tests and enhance CI/CD pipeline
+
+6. **PDF Optimization**: Optimize chunking strategy and processing pipeline
+
+7. **Vector API Development**: Convert notebook findings into production-ready API endpoints
+
+8. **Analytics Development**: Create dashboards for monitoring vector database usage and content sources
+
+9. **CI Integration**: Add vector database verification to GitHub Actions workflow
