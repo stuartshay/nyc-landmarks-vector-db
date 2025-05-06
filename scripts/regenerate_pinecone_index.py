@@ -10,24 +10,98 @@ recreates the index, and then reimports the vectors with the proper IDs.
 import argparse
 import json
 import logging
-import os
 import sys
 import time
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
-
-import numpy as np
-import tqdm
+from typing import Any, Dict, List, Set, Tuple
 
 # Add project root to path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
-from nyc_landmarks.config.settings import settings
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
 # Set up logger
 logger = get_logger("regenerate_pinecone_index")
+
+
+def _process_vector(vector: Dict[str, Any]) -> Tuple[str, str, str]:
+    """
+    Process a single vector to extract ID, source type, and landmark ID.
+
+    Args:
+        vector: Vector data dictionary
+
+    Returns:
+        Tuple of (vector_id, source_type, landmark_id)
+    """
+    vector_id = vector.get("id", "")
+    metadata = vector.get("metadata", {})
+
+    # Extract landmark_id from metadata
+    landmark_id = metadata.get("landmark_id", "unknown")
+
+    # Determine source_type
+    source_type = metadata.get("source_type", "")
+
+    # Infer source_type if missing
+    if not source_type:
+        # Try to infer from ID format
+        if vector_id.startswith("wiki-"):
+            source_type = "wikipedia"
+        else:
+            source_type = "pdf"
+        # Update metadata
+        metadata["source_type"] = source_type
+        logger.warning(f"Added missing source_type for vector {vector_id}")
+
+    return vector_id, source_type, landmark_id
+
+
+def _save_vector_files(
+    vectors_by_source: Dict[str, List[Dict[str, Any]]],
+    landmark_ids: Set[str],
+    output_path: Path,
+) -> None:
+    """
+    Save vectors and landmark IDs to output files.
+
+    Args:
+        vectors_by_source: Dictionary of vectors grouped by source type
+        landmark_ids: Set of unique landmark IDs
+        output_path: Directory to save files
+    """
+    # Save vectors grouped by source type
+    for source_type, vectors in vectors_by_source.items():
+        source_file = output_path / f"vectors_{source_type}.json"
+        with open(source_file, "w") as f:
+            json.dump(vectors, f)
+        logger.info(f"Saved {len(vectors)} {source_type} vectors to {source_file}")
+
+    # Save landmark IDs for reference
+    landmarks_file = output_path / "landmark_ids.json"
+    with open(landmarks_file, "w") as f:
+        json.dump(list(landmark_ids), f)
+    logger.info(f"Saved {len(landmark_ids)} landmark IDs to {landmarks_file}")
+
+
+def _fetch_vector_batch(
+    pinecone_db: PineconeDB, dummy_vector: List[float], batch_size: int
+) -> List[Dict[str, Any]]:
+    """
+    Fetch a batch of vectors from the Pinecone index.
+
+    Args:
+        pinecone_db: PineconeDB instance
+        dummy_vector: Vector to use for querying
+        batch_size: Number of vectors to fetch
+
+    Returns:
+        List of vector dictionaries
+    """
+    return pinecone_db.query_vectors(
+        query_vector=dummy_vector, top_k=batch_size, filter_dict=None
+    )
 
 
 def backup_vectors(
@@ -60,7 +134,7 @@ def backup_vectors(
 
     # Track progress
     exported_count = 0
-    landmark_ids = set()
+    landmark_ids: Set[str] = set()
     batch_num = 0
 
     # Dictionary to group vectors by source_type (pdf, wikipedia)
@@ -68,11 +142,9 @@ def backup_vectors(
 
     # Process vectors in batches
     while True:
-        # Query for a batch of vectors (no particular order)
+        # Query for a batch of vectors
         logger.info(f"Querying batch {batch_num} (size {batch_size})")
-        results = pinecone_db.query_vectors(
-            query_vector=dummy_vector, top_k=batch_size, filter_dict=None
-        )
+        results = _fetch_vector_batch(pinecone_db, dummy_vector, batch_size)
 
         # Break if no more vectors
         if not results:
@@ -80,12 +152,11 @@ def backup_vectors(
             break
 
         # Track the IDs we've seen in this batch
-        batch_ids = set()
+        batch_ids: Set[str] = set()
 
         # Process each vector
         for vector in results:
-            vector_id = vector.get("id", "")
-            metadata = vector.get("metadata", {})
+            vector_id, source_type, landmark_id = _process_vector(vector)
 
             # Skip if no ID (shouldn't happen)
             if not vector_id:
@@ -95,22 +166,11 @@ def backup_vectors(
             # Add to batch IDs
             batch_ids.add(vector_id)
 
-            # Extract landmark_id from metadata
-            landmark_id = metadata.get("landmark_id", "unknown")
+            # Track unique landmark IDs
             if landmark_id != "unknown":
                 landmark_ids.add(landmark_id)
 
-            # Add source_type if missing
-            if "source_type" not in metadata:
-                # Try to infer from ID format
-                if vector_id.startswith("wiki-"):
-                    metadata["source_type"] = "wikipedia"
-                else:
-                    metadata["source_type"] = "pdf"
-                logger.warning(f"Added missing source_type for vector {vector_id}")
-
             # Add to the appropriate source group
-            source_type = metadata.get("source_type", "unknown")
             vectors_by_source[source_type].append(vector)
 
             # Increment counter
@@ -128,18 +188,8 @@ def backup_vectors(
         # Increment batch number
         batch_num += 1
 
-    # Save vectors grouped by source type
-    for source_type, vectors in vectors_by_source.items():
-        source_file = output_path / f"vectors_{source_type}.json"
-        with open(source_file, "w") as f:
-            json.dump(vectors, f)
-        logger.info(f"Saved {len(vectors)} {source_type} vectors to {source_file}")
-
-    # Save landmark IDs for reference
-    landmarks_file = output_path / "landmark_ids.json"
-    with open(landmarks_file, "w") as f:
-        json.dump(list(landmark_ids), f)
-    logger.info(f"Saved {len(landmark_ids)} landmark IDs to {landmarks_file}")
+    # Save output files
+    _save_vector_files(vectors_by_source, landmark_ids, output_path)
 
     return exported_count, landmark_ids
 
@@ -157,7 +207,7 @@ def standardize_ids(
     Returns:
         List of vectors with standardized IDs
     """
-    standardized_vectors = []
+    standardized_vectors: List[Dict[str, Any]] = []
 
     for vector in vectors:
         vector_id = vector.get("id", "")
@@ -243,11 +293,11 @@ def restore_vectors(
 
         # Convert to format expected by store_vectors_batch
         batch_size = 100
-        for i in range(0, len(standardized_vectors), batch_size):
-            batch = standardized_vectors[i : i + batch_size]
+        for batch_start in range(0, len(standardized_vectors), batch_size):
+            batch = standardized_vectors[batch_start : batch_start + batch_size]
 
             # Prepare vectors for batch storage
-            pinecone_vectors = []
+            pinecone_vectors: List[Tuple[str, List[float], Dict[str, Any]]] = []
             for v in batch:
                 vector_id = v.get("id", "")
                 metadata = v.get("metadata", {})
@@ -310,7 +360,8 @@ def verify_standardized_ids(pinecone_db: PineconeDB) -> Tuple[int, int, int]:
 
     # Process in batches
     batch_size = 100
-    for i in range(0, total_vectors, batch_size):
+    batch_index = 0
+    while batch_index * batch_size < total_vectors:
         # Query for a batch of vectors
         results = pinecone_db.query_vectors(
             query_vector=dummy_vector, top_k=batch_size, filter_dict=None
@@ -334,6 +385,7 @@ def verify_standardized_ids(pinecone_db: PineconeDB) -> Tuple[int, int, int]:
             total_checked += 1
 
             # Check format based on source type
+            is_valid_format = False
             if source_type == "wikipedia":
                 # Should match: wiki-{article_title}-{landmark_id}-chunk-{chunk_index}
                 if (
@@ -341,17 +393,20 @@ def verify_standardized_ids(pinecone_db: PineconeDB) -> Tuple[int, int, int]:
                     and landmark_id in vector_id
                     and "-chunk-" in vector_id
                 ):
-                    correct_format += 1
+                    is_valid_format = True
                 else:
                     incorrect_format += 1
                     logger.warning(f"Incorrect Wikipedia ID format: {vector_id}")
             else:
                 # Should match: {landmark_id}-chunk-{chunk_index}
                 if vector_id.startswith(landmark_id) and "-chunk-" in vector_id:
-                    correct_format += 1
+                    is_valid_format = True
                 else:
                     incorrect_format += 1
                     logger.warning(f"Incorrect PDF ID format: {vector_id}")
+
+            if is_valid_format:
+                correct_format += 1
 
     # Log summary
     logger.info(f"Total vectors checked: {total_checked}")
@@ -418,9 +473,7 @@ def main() -> None:
     # Verify only mode
     if args.verify_only:
         logger.info("Running in verify-only mode")
-        total_checked, correct_format, incorrect_format = verify_standardized_ids(
-            pinecone_db
-        )
+        total_checked, _, incorrect_format = verify_standardized_ids(pinecone_db)
         if incorrect_format > 0:
             logger.warning(
                 f"Found {incorrect_format} vectors with non-standard ID format "
@@ -443,7 +496,7 @@ def main() -> None:
 
     # Backup phase
     exported_count = 0
-    landmark_ids = set()
+    landmark_ids: Set[str] = set()
     if not args.skip_backup:
         logger.info(f"Backing up vectors to {args.backup_dir}")
         exported_count, landmark_ids = backup_vectors(pinecone_db, args.backup_dir)
@@ -459,9 +512,7 @@ def main() -> None:
 
     # Verify the results
     logger.info("Verifying standardized ID formats")
-    total_checked, correct_format, incorrect_format = verify_standardized_ids(
-        pinecone_db
-    )
+    total_checked, _, incorrect_format = verify_standardized_ids(pinecone_db)
     if incorrect_format > 0:
         logger.warning(
             f"Found {incorrect_format} vectors with non-standard ID format "
