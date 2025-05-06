@@ -105,9 +105,10 @@ def process_landmark_wikipedia(
 
             # Store in Pinecone with deterministic IDs
             # We'll add "wiki" to the ID prefix to distinguish from PDF chunks
+            # Format: wiki-LP-00001-Wyckoff_House-chunk-0
             vector_ids = pinecone_db.store_chunks(
                 chunks=chunks_with_embeddings,
-                id_prefix=f"wiki-{landmark_id}-{article.title.replace(' ', '_')}-",
+                id_prefix=f"wiki-{article.title.replace(' ', '_')}-",
                 landmark_id=landmark_id,
                 use_fixed_ids=True,
                 delete_existing=delete_existing,

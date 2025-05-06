@@ -8,6 +8,7 @@ These tests validate that:
 """
 
 import os
+from typing import Any, Dict, List
 
 import numpy as np
 import pytest
@@ -31,7 +32,7 @@ def pinecone_db() -> PineconeDB:
 
 
 @pytest.fixture
-def random_vector():
+def random_vector() -> List[float]:
     """Return a random vector for testing queries."""
     db = PineconeDB()
     return np.random.rand(db.dimensions).tolist()
@@ -49,7 +50,9 @@ def test_pinecone_index_exists(pinecone_db: PineconeDB) -> None:
 
 
 @pytest.mark.integration
-def test_common_landmarks_have_vectors(pinecone_db, random_vector):
+def test_common_landmarks_have_vectors(
+    pinecone_db: PineconeDB, random_vector: List[float]
+) -> None:
     """Test that common landmarks have vectors in Pinecone."""
     # List of common landmark IDs to check
     landmark_ids = ["LP-00001", "LP-00009", "LP-00042", "LP-00066"]
@@ -57,7 +60,7 @@ def test_common_landmarks_have_vectors(pinecone_db, random_vector):
     for landmark_id in landmark_ids:
         # Query vectors for this landmark
         filter_dict = {"landmark_id": landmark_id}
-        vectors = pinecone_db.query_vectors(
+        vectors: List[Dict[str, Any]] = pinecone_db.query_vectors(
             query_vector=random_vector, top_k=10, filter_dict=filter_dict
         )
 
@@ -67,14 +70,16 @@ def test_common_landmarks_have_vectors(pinecone_db, random_vector):
 
         # Check vector IDs follow the pattern
         for vector in vectors:
-            vector_id = vector.get("id", "")
+            vector_id: str = vector.get("id", "")
             assert vector_id.startswith(
                 f"{landmark_id}-chunk-"
             ), f"Vector ID {vector_id} does not follow pattern {landmark_id}-chunk-X"
 
 
 @pytest.mark.integration
-def test_deterministic_ids_consistency(pinecone_db, random_vector):
+def test_deterministic_ids_consistency(
+    pinecone_db: PineconeDB, random_vector: List[float]
+) -> None:
     """Test that deterministic IDs are consistent across vectors."""
     # Get a couple of landmarks to verify
     test_landmarks = ["LP-00001", "LP-00009"]
@@ -82,7 +87,7 @@ def test_deterministic_ids_consistency(pinecone_db, random_vector):
     for landmark_id in test_landmarks:
         # Query vectors for this landmark
         filter_dict = {"landmark_id": landmark_id}
-        vectors = pinecone_db.query_vectors(
+        vectors: List[Dict[str, Any]] = pinecone_db.query_vectors(
             query_vector=random_vector,
             top_k=20,  # Get more to ensure we see patterns
             filter_dict=filter_dict,
@@ -92,7 +97,7 @@ def test_deterministic_ids_consistency(pinecone_db, random_vector):
             pytest.skip(f"No vectors found for {landmark_id}, skipping test")
 
         # Extract vector IDs and check for expected pattern
-        vector_ids = [v.get("id", "") for v in vectors]
+        vector_ids: List[str] = [v.get("id", "") for v in vectors]
 
         # Check if IDs have the correct format: {landmark_id}-chunk-{index}
         for vid in vector_ids:
@@ -111,15 +116,18 @@ def test_deterministic_ids_consistency(pinecone_db, random_vector):
 
         # Check if we have the expected number of chunks
         # Get the total_chunks value from metadata if available
-        if vectors[0].get("metadata", {}).get("total_chunks"):
-            expected_chunks = int(vectors[0]["metadata"]["total_chunks"])
+        first_vector_metadata = vectors[0].get("metadata", {})
+        if first_vector_metadata and first_vector_metadata.get("total_chunks"):
+            expected_chunks = int(first_vector_metadata["total_chunks"])
             assert (
                 len(vectors) <= expected_chunks
             ), f"Found {len(vectors)} vectors but expected {expected_chunks} based on metadata"
 
 
 @pytest.mark.integration
-def test_metadata_consistency(pinecone_db, random_vector):
+def test_metadata_consistency(
+    pinecone_db: PineconeDB, random_vector: List[float]
+) -> None:
     """Test that metadata is consistent across vectors for the same landmark."""
     # Sample landmarks to check
     test_landmarks = ["LP-00001", "LP-00009", "LP-00042"]
@@ -127,7 +135,7 @@ def test_metadata_consistency(pinecone_db, random_vector):
     for landmark_id in test_landmarks:
         # Query vectors for this landmark
         filter_dict = {"landmark_id": landmark_id}
-        vectors = pinecone_db.query_vectors(
+        vectors: List[Dict[str, Any]] = pinecone_db.query_vectors(
             query_vector=random_vector, top_k=10, filter_dict=filter_dict
         )
 
@@ -135,7 +143,7 @@ def test_metadata_consistency(pinecone_db, random_vector):
             pytest.skip(f"No vectors found for {landmark_id}, skipping test")
 
         # Get the metadata from the first vector
-        first_metadata = vectors[0].get("metadata", {})
+        first_metadata: Dict[str, Any] = vectors[0].get("metadata", {})
 
         # Essential fields that should be consistent across all chunks
         consistent_fields = [
@@ -150,7 +158,7 @@ def test_metadata_consistency(pinecone_db, random_vector):
 
         # Check that essential fields are consistent across all vectors
         for i, vector in enumerate(vectors):
-            metadata = vector.get("metadata", {})
+            metadata: Dict[str, Any] = vector.get("metadata", {})
 
             for field in consistent_fields:
                 if field in first_metadata:
@@ -165,36 +173,38 @@ def test_metadata_consistency(pinecone_db, random_vector):
 
             # Check chunk index matches the ID
             if "chunk_index" in metadata:
-                chunk_index = metadata["chunk_index"]
-                id_index = vector.get("id", "").split("-chunk-")[1]
-                assert (
-                    str(int(chunk_index)) == id_index
-                ), f"Chunk index in metadata {chunk_index} doesn't match ID {id_index}"
+                chunk_index: int = metadata["chunk_index"]
+                vector_id: str = vector.get("id", "")
+                if "-chunk-" in vector_id:
+                    id_index: str = vector_id.split("-chunk-")[1]
+                    assert (
+                        str(int(chunk_index)) == id_index
+                    ), f"Chunk index in metadata {chunk_index} doesn't match ID {id_index}"
 
 
 @pytest.mark.integration
 def test_comprehensive_vector_validation(
-    pinecone_db: PineconeDB, random_vector: list[float]
+    pinecone_db: PineconeDB, random_vector: List[float]
 ) -> None:
     """Run comprehensive validation on a set of landmarks."""
     # Define landmark IDs to test
     landmark_ids = ["LP-00001", "LP-00009", "LP-00042", "LP-00066"]
 
-    results = {}
+    results: Dict[str, Any] = {}
 
     # Verify each landmark
     for landmark_id in landmark_ids:
-        landmark_results = verify_landmark_vectors(
+        landmark_results: Dict[str, Any] = verify_landmark_vectors(
             pinecone_db, random_vector, landmark_id, verbose=True
         )
         results[landmark_id] = landmark_results
 
     # Create summary
-    summary = create_verification_summary(results)
+    summary: Dict[str, Any] = create_verification_summary(results)
     results["summary"] = summary
 
     # Log summary
-    logger.info("\nVerification Summary:")
+    logger.info("\\nVerification Summary:")
     logger.info(f"Total landmarks checked: {summary['total_landmarks_checked']}")
     logger.info(f"Landmarks with vectors: {summary['landmarks_with_vectors']}")
     logger.info(f"Landmarks with correct ID format: {summary['correct_id_format']}")

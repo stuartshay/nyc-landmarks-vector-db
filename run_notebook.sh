@@ -6,11 +6,17 @@ BLUE='\033[0;34m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-# Set the Python 3.11 virtual environment
-VENV_PATH="$(pwd)/venv311"
+# Set the Python virtual environment
+VENV_PATH="$(pwd)/venv"
+
+# Deactivate any existing virtual environment to prevent nested environments
+if [[ -n $VIRTUAL_ENV ]]; then
+  echo -e "${BLUE}Deactivating existing virtual environment...${NC}"
+  deactivate 2>/dev/null || true
+fi
 
 # Activate the virtual environment
-echo -e "${BLUE}Activating Python 3.11 virtual environment...${NC}"
+echo -e "${BLUE}Activating Python virtual environment...${NC}"
 source "$VENV_PATH/bin/activate"
 
 # Verify Python version

@@ -1,11 +1,11 @@
 """Type stubs for Pinecone SDK"""
 
-from typing import Any, Dict, List, Optional, Protocol, Union
+from typing import Any, Dict, List, Optional, TypedDict
 
-class NamespaceData(Protocol):
-    """Protocol for namespace data."""
+class NamespaceStats(TypedDict):
+    """TypedDict for namespace statistics."""
 
-    def items(self) -> Any: ...
+    vector_count: int
 
 class IndexStats:
     """Statistics about a Pinecone index."""
@@ -13,7 +13,7 @@ class IndexStats:
     dimension: int
     index_fullness: float
     total_vector_count: int
-    namespaces: Dict[str, NamespaceData]
+    namespaces: Dict[str, NamespaceStats]
 
 class Match:
     """Match object returned from a query."""

@@ -20,5 +20,9 @@
   "mypy.dmypyExecutable": "${workspaceFolder}/venv/bin/dmypy",
   "mypy.runUsingActiveInterpreter": true,
   "mypy.executablePath": "${workspaceFolder}/venv/bin/mypy",
-  "python.linting.mypyEnabled": true
+  "python.linting.mypyEnabled": true,
+  "python.analysis.stubPath": "stubs",
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportMissingTypeStubs": "none"
+  }
 }
