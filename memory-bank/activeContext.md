@@ -27,6 +27,12 @@ The current focus is on the Wikipedia article integration with Pinecone DB. We h
    - Added missing type stubs for external libraries (types-tabulate) to resolve mypy errors
    - Maintained separation between direct dependencies in setup.py and complete dependency tree in requirements.txt
 
+4. **Vector ID Standardization**
+   - Created `scripts/regenerate_pinecone_index.py` to standardize vector IDs
+   - Implemented backup functionality to preserve vectors before making changes
+   - Developed ID standardization logic for both PDF and Wikipedia content
+   - Added verification capabilities to validate ID formatting
+
 ### Recent Testing and Verification
 
 1. **Wikipedia Import Testing**
@@ -43,14 +49,19 @@ The current focus is on the Wikipedia article integration with Pinecone DB. We h
    - Fixed `test_combined_search.py` mypy errors by adding `types-tabulate` package
    - Ensured all scripts have proper shebang lines and execute permissions
 
+4. **Vector ID Validation Testing**
+   - Ran Pinecone validation tests to verify vector ID consistency
+   - Identified issues with LP-00001 vectors having inconsistent ID format
+   - Confirmed that 3 out of 4 test landmarks have correct ID formats, with only LP-00001 showing issues
+   - Verified that all landmarks maintain consistent metadata despite ID format issues
+
 ## Active Decisions
 
 1. **Vector ID Format**
    - For Wikipedia content: `wiki-{article_title}-{landmark_id}-chunk-{chunk_num}`
-   - For PDF content: `{landmark_id}-{report_name}-{page_num}-{chunk_num}`
-   - For newer vectors with fixed ID implementation: `{landmark_id}-chunk-{chunk_num}`
+   - For PDF content: `{landmark_id}-chunk-{chunk_num}`
    - This format allows for clear distinction between sources and enables filtering
-   - **Note**: Testing has revealed inconsistent ID formats in the index (particularly for LP-00001)
+   - **Note**: Testing has revealed inconsistent ID formats in the index (particularly for LP-00001, which uses `test-LP-00001-LP-00001-chunk-X` instead of the standard format)
 
 2. **Source Type Attribution**
    - Added `source_type` field to all vectors (either "wikipedia" or "pdf")
@@ -64,17 +75,32 @@ The current focus is on the Wikipedia article integration with Pinecone DB. We h
 
 ## Next Steps
 
-1. **CI/CD Integration**
-   - Add Wikipedia processing to GitHub Actions workflow
-   - Implement verification in the CI/CD pipeline
+1. **Execute Vector ID Standardization**
+   - Run the `scripts/regenerate_pinecone_index.py` script to fix inconsistent vector IDs
+   - Focus on fixing LP-00001 vectors that currently use the non-standard format `test-LP-00001-LP-00001-chunk-X`
+   - Use the `--verbose` flag for detailed logging during execution
+   - Verify all vectors follow the standardized format after regeneration by running the validation tests
 
-2. **Chat API Enhancement**
+2. **Testing Updates**
+   - Update integration tests to remove special handling for LP-00001's non-standard format
+   - Modify `tests/integration/test_pinecone_validation.py` to expect standardized ID formats for all landmarks
+   - Ensure all tests pass with the standardized vector ID formats
+
+3. **Wikipedia Integration Completion**
+   - Add Wikipedia processing to GitHub Actions workflow
+   - Implement verification steps in the CI/CD pipeline
+   - Create dedicated integration tests for the Wikipedia article pipeline
+
+4. **Query API Enhancement**
+   - Update the Query API to leverage both Wikipedia and PDF content
+   - Add source attribution in search results
+   - Implement combined search with proper filtering capabilities
+   - Use the `landmark_query_testing.ipynb` notebook to test enhanced search features
+
+5. **Chat API Enhancement**
    - Update to leverage both Wikipedia and PDF content
    - Add source attribution to responses
-
-3. **Testing Improvements**
-   - Add dedicated integration tests for Wikipedia article pipeline
-   - Implement end-to-end tests for complete vector search workflow
+   - Test using both content sources in chat generation
 
 ## Open Questions
 

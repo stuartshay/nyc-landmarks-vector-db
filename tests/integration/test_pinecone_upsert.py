@@ -23,14 +23,16 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=settings.LOG_LEVEL.value)
 
 
-def get_vector_count(pinecone_db, landmark_id):
+def get_vector_count(
+    pinecone_db: PineconeDB, landmark_id: str
+) -> tuple[int, list[dict[str, any]]]:
     """Get the number of vectors for a landmark."""
     # Create random vector for query
     random_vector = np.random.rand(settings.PINECONE_DIMENSIONS).tolist()
 
     # Query Pinecone
-    filter_dict = {"landmark_id": landmark_id}
-    results = pinecone_db.query_vectors(
+    filter_dict: dict[str, str] = {"landmark_id": landmark_id}
+    results: list[dict[str, any]] = pinecone_db.query_vectors(
         query_vector=random_vector,
         top_k=100,  # Set high to get all chunks
         filter_dict=filter_dict,
