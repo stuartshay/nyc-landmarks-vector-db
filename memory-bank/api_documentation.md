@@ -44,7 +44,7 @@ flowchart TD
 
     subgraph "API Calls and Data Processing"
         M[Step 1: Fetch Landmarks]
-        M -->|API Call| N[GET /api/LpcReport/{page_size}/{page}]
+        M -->|API Call| N["GET /api/LpcReport/{page_size}/{page}"]
         N --> O[Step 2: Download PDFs]
         O -->|API Call| P[GET PDF from pdfReportUrl]
         P --> Q[Step 3: Extract Text from PDFs]
