@@ -96,7 +96,7 @@ class LandmarkPipeline:
         Returns:
             List of landmark dictionaries
         """
-        all_landmarks = []
+        all_landmarks: List[Dict[str, Any]] = []
         total_pages_to_fetch = end_page - start_page + 1
 
         for page in range(start_page, end_page + 1):
@@ -139,7 +139,7 @@ class LandmarkPipeline:
         Returns:
             List of tuples with (landmark_id, pdf_path, landmark_data)
         """
-        downloaded = []
+        downloaded: List[Tuple[str, Path, Dict[str, Any]]] = []
 
         # Filter landmarks that have PDF URLs
         landmarks_with_pdfs = [
@@ -214,7 +214,7 @@ class LandmarkPipeline:
         Returns:
             List of tuples with (landmark_id, text_content, landmark_data)
         """
-        extracted_texts = []
+        extracted_texts: List[Tuple[str, str, Dict[str, Any]]] = []
 
         for landmark_id, pdf_path, landmark_data in tqdm(
             pdf_items, desc="Extracting text from PDFs"
@@ -266,7 +266,7 @@ class LandmarkPipeline:
                 # Add metadata to each chunk
                 enriched_chunks = []
                 for i, chunk in enumerate(chunks):
-                    chunk_dict = {
+                    chunk_dict: Dict[str, Any] = {
                         "text": chunk,
                         "chunk_index": i,
                         "total_chunks": len(chunks),
@@ -674,7 +674,7 @@ class LandmarkPipeline:
         # Step 2: Process landmarks in parallel
         logger.info(f"Processing {len(landmarks)} landmarks with {workers} workers")
 
-        results = []
+        results: List[Dict[str, Any]] = []
         with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as executor:
             future_to_landmark = {
                 executor.submit(self.process_landmark_worker, landmark): landmark
