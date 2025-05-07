@@ -14,6 +14,7 @@ The current focus is on the Wikipedia article integration with Pinecone DB. We h
    - Implemented distinct vector ID format for Wikipedia vectors (`wiki-{article_title}-{landmark_id}-chunk-{chunk_num}`)
    - Added verification scripts to validate the integration
    - Created comprehensive API documentation in `memory-bank/api_documentation.md` with Mermaid diagram of process flow
+   - Updated API documentation with correct response schemas for CoreDataStore API endpoints
 
 2. **Combined Search Implementation**
    - Created `test_combined_search.py` script to demonstrate search capabilities across both Wikipedia and PDF content

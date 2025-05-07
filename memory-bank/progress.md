@@ -28,7 +28,7 @@
 
 5. **API Documentation**: Created comprehensive documentation in `memory-bank/api_documentation.md` including:
    - Complete Mermaid diagram of the process_landmarks GitHub Action workflow
-   - Detailed documentation of the CoreDataStore API schema and endpoints
+   - Detailed documentation of the CoreDataStore API schema and endpoints with corrected response schemas
    - Data flow and transformation documentation
    - GitHub Action configuration options
 
