@@ -52,30 +52,49 @@ class EnhancedMetadataCollector:
             buildings = self.db_client.get_landmark_buildings(landmark_id, limit=1)
             if buildings:
                 building = buildings[0]
-                metadata.update(
-                    {
-                        "bbl": building.get("bbl", ""),
-                        "bin": building.get("bin", ""),
-                        "block": building.get("block", ""),
-                        "lot": building.get("lot", ""),
-                        "latitude": building.get("latitude", ""),
-                        "longitude": building.get("longitude", ""),
-                    }
-                )
+                # Handle both Dict and Pydantic model types
+                if isinstance(building, dict):
+                    metadata.update(
+                        {
+                            "bbl": building.get("bbl", ""),
+                            "bin": building.get("bin", ""),
+                            "block": building.get("block", ""),
+                            "lot": building.get("lot", ""),
+                            "latitude": building.get("latitude", ""),
+                            "longitude": building.get("longitude", ""),
+                        }
+                    )
+                else:
+                    # Access as attributes for Pydantic model
+                    metadata.update(
+                        {
+                            "bbl": getattr(building, "bbl", ""),
+                            "bin": getattr(building, "bin", ""),
+                            "block": getattr(building, "block", ""),
+                            "lot": getattr(building, "lot", ""),
+                            "latitude": getattr(building, "latitude", ""),
+                            "longitude": getattr(building, "longitude", ""),
+                        }
+                    )
 
-            # 2. Add photo information (reference to first photo)
-            photos = self.db_client.get_landmark_photos(landmark_id, limit=1)
-            if photos:
-                photo = photos[0]
-                metadata.update(
-                    {
-                        "has_photos": True,
-                        "photo_collection": photo.get("collection", ""),
-                        "photo_date_period": photo.get("date_period", ""),
-                    }
-                )
-            else:
-                metadata["has_photos"] = False
+            # 2. Set photo information (We no longer have the get_landmark_photos method)
+            # Instead set has_photos based on photoStatus from landmark metadata or from the metadata directly
+            landmark_details = self.db_client.get_landmark_by_id(landmark_id)
+
+            # Check if we have photo information from various sources
+            has_photos = False
+            if landmark_details:
+                if isinstance(landmark_details, dict) and landmark_details.get(
+                    "photoStatus"
+                ):
+                    has_photos = True
+                elif (
+                    hasattr(landmark_details, "photoStatus")
+                    and landmark_details.photoStatus
+                ):
+                    has_photos = True
+
+            metadata["has_photos"] = has_photos
 
             # 3. Add PLUTO data summary
             pluto_data = self.db_client.get_landmark_pluto_data(landmark_id)

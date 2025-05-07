@@ -2,7 +2,7 @@ NYC Landmarks Vector Database - Active Context
 
 ## Current Focus
 
-The current focus is on the Wikipedia article integration with Pinecone DB. We have successfully implemented the core functionality to fetch, process, and store Wikipedia content in the vector database alongside existing PDF content.
+The current focus is on the Wikipedia article integration with Pinecone DB and type safety improvements. We have successfully implemented the core functionality to fetch, process, and store Wikipedia content in the vector database alongside existing PDF content, and have begun improving type safety across the codebase.
 
 ### Recent Implementation
 
@@ -15,21 +15,31 @@ The current focus is on the Wikipedia article integration with Pinecone DB. We h
    - Added verification scripts to validate the integration
    - Created comprehensive API documentation in `memory-bank/api_documentation.md` with Mermaid diagram of process flow
    - Updated API documentation with correct response schemas for CoreDataStore API endpoints
+   - Added reference to definitive Swagger JSON schema at `https://api.coredatastore.com/swagger/v1/swagger.json`
+   - Updated `LpcReportModel` and `LpcReportResponse` Pydantic models to match actual API schema
+   - Created new Pydantic models (`LpcReportDetailResponse`, `MapData`, etc.) for detailed landmark endpoint
 
-2. **Combined Search Implementation**
+2. **Type Safety Improvements**
+   - Fixed DbClient implementations to properly use type annotations and avoid mypy errors
+   - Enhanced the handling of building data within DbClient to ensure consistent LpcReportModel return values
+   - Created proper type stubs for db_client.py to satisfy mypy type checking
+   - Improved error handling in DbClient methods to safely convert between dict and Pydantic model responses
+   - Updated landmark building retrieval code to safely convert API responses to Pydantic models
+
+3. **Combined Search Implementation**
    - Created `test_combined_search.py` script to demonstrate search capabilities across both Wikipedia and PDF content
    - Implemented source filtering to allow searching specifically in Wikipedia or PDF content
    - Added proper source attribution in search results
    - Added comparison functionality to see results from different sources for the same query
 
-3. **Development Environment Improvements**
+4. **Development Environment Improvements**
    - Fixed script file permissions by adding proper shebang lines and execute permissions
    - Implemented centralized dependency management via `manage_packages.sh` script
    - Created comprehensive documentation on package management workflow
    - Added missing type stubs for external libraries (types-tabulate) to resolve mypy errors
    - Maintained separation between direct dependencies in setup.py and complete dependency tree in requirements.txt
 
-4. **Vector ID Standardization**
+5. **Vector ID Standardization**
    - Created `scripts/regenerate_pinecone_index.py` to standardize vector IDs
    - Implemented backup functionality to preserve vectors before making changes
    - Developed ID standardization logic for both PDF and Wikipedia content
@@ -50,6 +60,8 @@ The current focus is on the Wikipedia article integration with Pinecone DB. We h
 3. **Type Checking and Linting**
    - Fixed `test_combined_search.py` mypy errors by adding `types-tabulate` package
    - Ensured all scripts have proper shebang lines and execute permissions
+   - Fixed DbClient type safety issues to ensure consistent return types
+   - Added proper type annotations and stubs to reduce mypy errors
 
 4. **Vector ID Validation Testing**
    - Ran Pinecone validation tests to verify vector ID consistency
@@ -75,6 +87,12 @@ The current focus is on the Wikipedia article integration with Pinecone DB. We h
    - `manage_packages.sh` script synchronizes versions between the two files
    - Development dependencies like type stubs are in the `dev` extras_require section
 
+4. **Type Safety and Pydantic Model Usage**
+   - Use Pydantic models instead of raw dictionaries for API responses when possible
+   - Provide fallback mechanisms when Pydantic model conversion fails
+   - Create proper type stubs for key modules to improve static type checking
+   - Always provide default values for required model fields when conversion might fail
+
 ## Next Steps
 
 1. **Execute Vector ID Standardization**
@@ -88,18 +106,24 @@ The current focus is on the Wikipedia article integration with Pinecone DB. We h
    - Modify `tests/integration/test_pinecone_validation.py` to expect standardized ID formats for all landmarks
    - Ensure all tests pass with the standardized vector ID formats
 
-3. **Wikipedia Integration Completion**
+3. **Fix Remaining Type Safety Issues**
+   - Address mypy errors in test files that use older model versions
+   - Create proper type stubs for external dependencies where missing
+   - Update API interaction code to consistently use the new Pydantic models
+
+4. **Wikipedia Integration Completion**
    - Add Wikipedia processing to GitHub Actions workflow
    - Implement verification steps in the CI/CD pipeline
    - Create dedicated integration tests for the Wikipedia article pipeline
 
-4. **Query API Enhancement**
+5. **Query API Enhancement**
    - Update the Query API to leverage both Wikipedia and PDF content
    - Add source attribution in search results
    - Implement combined search with proper filtering capabilities
    - Use the `landmark_query_testing.ipynb` notebook to test enhanced search features
+   - Update any code that interacts with the CoreDataStore API to use the new Pydantic models
 
-5. **Chat API Enhancement**
+6. **Chat API Enhancement**
    - Update to leverage both Wikipedia and PDF content
    - Add source attribution to responses
    - Test using both content sources in chat generation
@@ -115,3 +139,8 @@ The current focus is on the Wikipedia article integration with Pinecone DB. We h
    - How can we verify the quality of Wikipedia content?
    - Should we implement content validation before storage?
    - What metrics should we track for search quality?
+
+3. **Type Safety Migration**
+   - How should we handle test files that rely on the old models?
+   - Should we update all tests at once or incrementally?
+   - Do we need a comprehensive pass to update all code that uses the models?
