@@ -25,6 +25,13 @@ The current focus is on the Wikipedia article integration with Pinecone DB and t
    - Created proper type stubs for db_client.py to satisfy mypy type checking
    - Improved error handling in DbClient methods to safely convert between dict and Pydantic model responses
    - Updated landmark building retrieval code to safely convert API responses to Pydantic models
+   - Refactored `get_landmark_buildings` into smaller helper methods:
+     - `_standardize_lp_number`: Ensures consistent landmark ID formatting
+     - `_fetch_buildings_from_client`: Retrieves building data from the client API
+     - `_fetch_buildings_from_landmark_detail`: Falls back to landmark details when direct building fetch fails
+     - `_convert_building_items_to_models`: Converts various data types to consistent model objects
+   - Fixed the `get_wikipedia_articles` protocol method to return a valid empty list instead of None
+   - Enhanced API documentation to reflect the modular design and improved type handling in DbClient
 
 3. **Combined Search Implementation**
    - Created `test_combined_search.py` script to demonstrate search capabilities across both Wikipedia and PDF content

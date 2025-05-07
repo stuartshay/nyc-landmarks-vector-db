@@ -519,15 +519,22 @@ The NYC Landmarks project uses a central `DbClient` class that serves as an abst
 
 ### Key Features of the DB Client
 
-1. **Type Safety**: Uses Pydantic models (`LpcReportModel`, `LpcReportResponse`, `LpcReportDetailResponse`) for consistent data parsing and validation.
+1. **Type Safety**: Uses Pydantic models (`LpcReportModel`, `LpcReportResponse`, `LpcReportDetailResponse`) for consistent data parsing and validation with comprehensive handling of Union types.
 
-2. **Error Handling**: Contains comprehensive error handling with fallback mechanisms and proper logging.
+2. **Error Handling**: Contains comprehensive error handling with fallback mechanisms and proper logging, ensuring reliable API interactions even when response formats vary.
 
 3. **Flexible Response Handling**: Can return both Pydantic model objects or raw dictionaries depending on the needs of the caller.
 
 4. **Pagination Support**: Built-in pagination for large result sets with flexible page size control.
 
-5. **API Method Coverage**: Provides methods for all key CoreDataStore endpoints:
+5. **Modular Design**: Key methods are broken down into smaller, focused helper methods to improve maintainability and testability:
+   - `_standardize_lp_number`: Ensures consistent landmark ID formatting
+   - `_fetch_buildings_from_client`: Retrieves building data from the client API
+   - `_fetch_buildings_from_landmark_detail`: Falls back to landmark details when direct building fetch fails
+   - `_convert_building_items_to_models`: Converts various data types to consistent model objects
+   - `_convert_item_to_lpc_report_model`: Handles type conversion for individual items
+
+6. **API Method Coverage**: Provides methods for all key CoreDataStore endpoints:
    - `get_landmark_by_id`
    - `get_all_landmarks`
    - `get_landmarks_page`

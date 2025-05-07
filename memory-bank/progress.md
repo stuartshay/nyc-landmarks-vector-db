@@ -20,6 +20,13 @@
    - Created proper type stub for `db_client.py` to satisfy mypy type checking
    - Enhanced error handling for dict-to-model conversions with safe fallbacks
    - Improved landmark buildings retrieval to ensure consistent return types
+   - Refactored complex DbClient methods into smaller, focused helper methods for improved maintainability:
+     - `_standardize_lp_number` to ensure consistent landmark ID formatting
+     - `_fetch_buildings_from_client` to retrieve building data from the API
+     - `_fetch_buildings_from_landmark_detail` as a fallback mechanism
+     - `_convert_building_items_to_models` to ensure type-safe conversions
+   - Fixed the Wikipedia article protocol method to return a valid empty list instead of None
+   - Updated API documentation to reflect the improved design and type handling
    - Added robust error logging for conversion failures
    - Fixed mypy errors in the core DbClient functionality
 
