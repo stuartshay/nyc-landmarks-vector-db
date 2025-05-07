@@ -108,25 +108,30 @@ Retrieves a paginated list of landmark reports.
 **Response Schema:**
 ```json
 {
+  "total": 1765,
+  "page": 1,
+  "limit": 1,
+  "from": 1,
+  "to": 1,
   "results": [
     {
+      "name": "Pieter Claesen Wyckoff House",
+      "lpcId": "0001",
       "lpNumber": "LP-00001",
-      "name": "Example Landmark",
-      "street": "123 Example Street",
-      "borough": "Manhattan",
       "objectType": "Individual Landmark",
-      "dateDesignated": "1965-10-14",
-      "architect": "Example Architect",
-      "style": "Example Style",
-      "neighborhood": "Example Neighborhood",
-      "pdfReportUrl": "https://example.com/pdf/LP-00001.pdf",
-      "photoUrl": "https://example.com/photos/LP-00001.jpg"
+      "architect": "Unknown",
+      "style": "Dutch Colonial",
+      "street": "5816 Clarendon Road",
+      "borough": "Brooklyn",
+      "dateDesignated": "1965-10-14T00:00:00",
+      "photoStatus": true,
+      "mapStatus": true,
+      "neighborhood": "Brownsville",
+      "zipCode": "11203",
+      "photoUrl": "https://cdn.informationcart.com/images/0001.jpg",
+      "pdfReportUrl": "https://cdn.informationcart.com/pdf/0001.pdf"
     }
-  ],
-  "totalResults": 100,
-  "currentPage": 1,
-  "pageCount": 10,
-  "pageSize": 10
+  ]
 }
 ```
 
@@ -139,17 +144,80 @@ Retrieves detailed information about a specific landmark.
 **Response Schema:**
 ```json
 {
-  "lpNumber": "LP-00001",
-  "name": "Example Landmark",
-  "street": "123 Example Street",
-  "borough": "Manhattan",
+  "name": "Irad Hawley House",
+  "lpcId": "0009",
+  "lpNumber": "LP-00009",
   "objectType": "Individual Landmark",
-  "dateDesignated": "1965-10-14",
-  "architect": "Example Architect",
-  "style": "Example Style",
-  "neighborhood": "Example Neighborhood",
-  "pdfReportUrl": "https://example.com/pdf/LP-00001.pdf",
-  "photoUrl": "https://example.com/photos/LP-00001.jpg"
+  "architect": "Unknown",
+  "style": "Italianate",
+  "street": "47 Fifth Avenue",
+  "city": "New York",
+  "state": "NY",
+  "zipCode": "10003",
+  "borough": "Manhattan",
+  "dateDesignated": "1969-09-09T00:00:00",
+  "photoStatus": true,
+  "photoCollectionStatus": true,
+  "photoArchiveStatus": true,
+  "mapStatus": true,
+  "pdfStatus": true,
+  "neighborhood": "Greenwich Village",
+  "photoUrl": "https://cdn.informationcart.com/images/0009.jpg",
+  "pdfReportUrl": "https://cdn.informationcart.com/pdf/0009.pdf",
+  "bbl": 1005690004,
+  "bin": 1009274,
+  "objectId": 77954,
+  "shapeArea": 5092.7669125,
+  "shapeLength": 343.460548715,
+  "shapeLookupKey": "IndividualLandmarkSite",
+  "map": {
+    "zoom": 14,
+    "mapType": "Hybrid",
+    "centerPoint": {
+      "latitude": 40.734255355277064,
+      "longitude": -73.99444877077119
+    },
+    "markers": [
+      {
+        "point": {
+          "latitude": 40.73425,
+          "longitude": -73.99445
+        }
+      }
+    ]
+  },
+  "landmarks": [
+    {
+      "name": "Salmagundi Club",
+      "lpNumber": "LP-00009",
+      "bbl": "1005690004",
+      "binNumber": 1009274,
+      "boroughId": "MN",
+      "objectType": "Individual Landmark",
+      "block": 569,
+      "lot": 4,
+      "plutoAddress": "47 5 AVENUE",
+      "designatedAddress": "47 5 AVENUE",
+      "number": "47",
+      "street": "5 AVENUE",
+      "city": "Bronx",
+      "designatedDate": "1969-09-09T00:00:00",
+      "calendaredDate": null,
+      "publicHearingDate": "9/21/1965",
+      "historicDistrict": "No",
+      "otherHearingDate": null,
+      "isCurrent": false,
+      "status": "DESIGNATED",
+      "lastAction": null,
+      "priorStatus": null,
+      "recordType": null,
+      "isBuilding": false,
+      "isVacantLot": false,
+      "isSecondaryBuilding": false,
+      "latitude": 40.7342490239599,
+      "longitude": -73.9944453559693
+    }
+  ]
 }
 ```
 
@@ -165,20 +233,45 @@ Retrieves buildings associated with a landmark.
 
 **Response Schema:**
 ```json
-[
-  {
-    "name": "Example Building",
-    "designatedAddress": "123 Example Street",
-    "bbl": "1000000001",
-    "binNumber": "1234567",
-    "block": "100",
-    "lot": "1",
-    "boroughId": "1",
-    "latitude": 40.7128,
-    "longitude": -74.0060,
-    "designatedDate": "1965-10-14"
-  }
-]
+{
+  "total": 1375,
+  "page": 1,
+  "limit": 1,
+  "from": 1,
+  "to": 1,
+  "results": [
+    {
+      "name": "Brooklyn Heights Historic District",
+      "lpNumber": "LP-00099",
+      "bbl": "3002360006",
+      "binNumber": 3001821,
+      "boroughId": "BK",
+      "objectType": "Historic District",
+      "block": 236,
+      "lot": 6,
+      "plutoAddress": "79 PIERREPONT STREET",
+      "designatedAddress": "79 PIERREPONT STREET",
+      "number": "79",
+      "street": "PIERREPONT STREET",
+      "city": "Bronx",
+      "designatedDate": "1965-11-23T00:00:00",
+      "calendaredDate": null,
+      "publicHearingDate": "11/17/1965",
+      "historicDistrict": "Yes, Brooklyn Heights",
+      "otherHearingDate": null,
+      "isCurrent": false,
+      "status": "DESIGNATED",
+      "lastAction": null,
+      "priorStatus": null,
+      "recordType": null,
+      "isBuilding": false,
+      "isVacantLot": false,
+      "isSecondaryBuilding": false,
+      "latitude": 40.6957604571536,
+      "longitude": -73.9943739004516
+    }
+  ]
+}
 ```
 
 ### 3. Photo Archive API
@@ -194,21 +287,33 @@ Retrieves photos associated with a landmark.
 **Response Schema:**
 ```json
 {
+  "total": 1221,
+  "page": 1,
+  "limit": 10,
+  "from": 1,
+  "to": 10,
   "results": [
     {
-      "id": 12345,
-      "title": "Example Photo",
-      "description": "Example Description",
-      "collection": "Example Collection",
-      "photoUrl": "https://example.com/photos/12345.jpg",
-      "startDate": "1965",
-      "endDate": "1970"
+      "id": 283538,
+      "identifier": "nynyma_rec0040_3_00207_0008",
+      "url": "https://nycrecords.access.preservica.com/uncategorized/IO_46df2900-5b81-43fd-a318-e2473add3077/",
+      "title": "7 Hicks Street",
+      "borough": "Brooklyn (New York, N.Y.)",
+      "boroCode": "BK",
+      "block": 207,
+      "lot": 8,
+      "collection": "1940s Tax Department photographs",
+      "objectType": "Still Image",
+      "description": "Block 207 Lot 8",
+      "startDate": "1939",
+      "endDate": "1941",
+      "creator": "New York (N.Y.). Department of Finance",
+      "format": "Black-and-white negatives",
+      "language": "eng",
+      "photoExists": true,
+      "photoUrl": "https://archive.informationcart.com/nyc1940/BK/nynyma_rec0040_3_00207_0008.jpg"
     }
-  ],
-  "totalResults": 10,
-  "currentPage": 1,
-  "pageCount": 1,
-  "pageSize": 10
+  ]
 }
 ```
 
@@ -224,11 +329,11 @@ Retrieves web content (including Wikipedia articles) associated with a landmark.
 ```json
 [
   {
-    "recordType": "Wikipedia",
-    "articleTitle": "Example Article",
-    "articleUrl": "https://en.wikipedia.org/wiki/Example_Article",
-    "contentSummary": "Example summary text",
-    "lastUpdated": "2023-01-01T00:00:00Z"
+    "id": 586,
+    "lpNumber": "LP-00001",
+    "url": "https://en.wikipedia.org/wiki/Wyckoff_House",
+    "title": "Wyckoff House",
+    "recordType": "Wikipedia"
   }
 ]
 ```
