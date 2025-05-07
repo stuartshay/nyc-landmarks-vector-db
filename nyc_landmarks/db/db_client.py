@@ -35,9 +35,7 @@ class SupportsWikipedia(Protocol):
         """Get Wikipedia article by title."""
         pass
 
-    def get_wikipedia_articles(
-        self, landmark_id: str
-    ) -> List[WikipediaArticleModel]:
+    def get_wikipedia_articles(self, landmark_id: str) -> List[WikipediaArticleModel]:
         """Get Wikipedia articles for a landmark."""
         return []  # Protocol requires an actual return value
 
@@ -384,7 +382,9 @@ class DbClient:
             return f"LP-{landmark_id.zfill(5)}"
         return landmark_id
 
-    def _fetch_buildings_from_client(self, lp_number: str, limit: int) -> List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]]:
+    def _fetch_buildings_from_client(
+        self, lp_number: str, limit: int
+    ) -> List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]]:
         """Fetch buildings using the client's dedicated method.
 
         Args:
@@ -392,18 +392,29 @@ class DbClient:
             limit: Maximum number of buildings to return
 
         Returns:
-            List of building data dictionaries
+            List of building data (as Dict, LandmarkDetail, or LpcReportModel)
         """
         if not hasattr(self.client, "get_landmark_buildings"):
+            # Return empty list of the correct Union type
             return []
 
         try:
-            return self.client.get_landmark_buildings(lp_number, limit)
+            # The client.get_landmark_buildings result needs to be properly typed as a Union
+            buildings = self.client.get_landmark_buildings(lp_number, limit)
+            # Use type annotation to ensure we have the right return type
+            return cast(
+                List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]], buildings
+            )
         except Exception as e:
-            logger.error(f"Error calling client.get_landmark_buildings for {lp_number}: {e}")
+            logger.error(
+                f"Error calling client.get_landmark_buildings for {lp_number}: {e}"
+            )
+            # Return empty list of the correct Union type
             return []
 
-    def _fetch_buildings_from_landmark_detail(self, lp_number: str, limit: int) -> List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]]:
+    def _fetch_buildings_from_landmark_detail(
+        self, lp_number: str, limit: int
+    ) -> List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]]:
         """Fetch buildings from the landmark detail response.
 
         Args:
@@ -411,18 +422,24 @@ class DbClient:
             limit: Maximum number of buildings to return
 
         Returns:
-            List of LandmarkDetail objects
+            List of building data (as Dict, LandmarkDetail, or LpcReportModel)
         """
         landmark_detail_response = self.get_landmark_by_id(lp_number)
         if not isinstance(landmark_detail_response, LpcReportDetailResponse):
-            logger.info(f"Could not retrieve LpcReportDetailResponse for {lp_number} to extract buildings.")
-            return []
+            logger.info(
+                f"Could not retrieve LpcReportDetailResponse for {lp_number} to extract buildings."
+            )
+            # Return empty list of the correct Union type
+            return cast(List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]], [])
 
         # Get the landmarks list attribute
         landmarks_list = getattr(landmark_detail_response, "landmarks", None)
         if not isinstance(landmarks_list, list):
-            logger.info(f"landmark_detail_response for {lp_number} has no 'landmarks' list or it's not a list.")
-            return []
+            logger.info(
+                f"landmark_detail_response for {lp_number} has no 'landmarks' list or it's not a list."
+            )
+            # Return empty list of the correct Union type
+            return cast(List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]], [])
 
         # Filter valid LandmarkDetail objects
         valid_details: List[LandmarkDetail] = []
@@ -430,16 +447,25 @@ class DbClient:
             if isinstance(item, LandmarkDetail):
                 valid_details.append(item)
             else:
-                logger.debug(f"Item in landmarks list is not of type LandmarkDetail: {type(item)} for LP {lp_number}")
+                logger.debug(
+                    f"Item in landmarks list is not of type LandmarkDetail: {type(item)} for LP {lp_number}"
+                )
 
-        result = valid_details[:limit]
-        logger.info(f"Fetched {len(result)} building items from landmarks for {lp_number}.")
-        return result
+        # Limit the number of results
+        limited_results = valid_details[:limit]
+        logger.info(
+            f"Fetched {len(limited_results)} building items from landmarks for {lp_number}."
+        )
+
+        # Cast the list to the expected return type
+        return cast(
+            List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]], limited_results
+        )
 
     def _convert_building_items_to_models(
         self,
         items: List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]],
-        lp_number: str
+        lp_number: str,
     ) -> List[LpcReportModel]:
         """Convert building items to LpcReportModel objects.
 
@@ -461,7 +487,9 @@ class DbClient:
                 )
             )
 
-        logger.info(f"Processed {len(model_results)} building models for landmark {lp_number}.")
+        logger.info(
+            f"Processed {len(model_results)} building models for landmark {lp_number}."
+        )
         return model_results
 
     def get_landmark_buildings(
@@ -484,8 +512,12 @@ class DbClient:
 
         # If no buildings found, try fallback via landmark details
         if not building_items:
-            logger.info(f"No buildings from get_landmark_buildings for {lp_number}, trying fallback.")
-            building_items = self._fetch_buildings_from_landmark_detail(lp_number, limit)
+            logger.info(
+                f"No buildings from get_landmark_buildings for {lp_number}, trying fallback."
+            )
+            building_items = self._fetch_buildings_from_landmark_detail(
+                lp_number, limit
+            )
 
         # Convert the building items to LpcReportModel objects
         return self._convert_building_items_to_models(building_items, lp_number)
