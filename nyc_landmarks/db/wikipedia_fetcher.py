@@ -53,7 +53,7 @@ class WikipediaFetcher:
         self.rate_limit_delay = 1.0  # Seconds between requests to be polite
         logger.info("Initialized Wikipedia content fetcher")
 
-    @retry(
+    @retry(  # type: ignore[misc]
         retry=retry_if_exception_type(
             (requests.ConnectionError, requests.Timeout, requests.HTTPError)
         ),

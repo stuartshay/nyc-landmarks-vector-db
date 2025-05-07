@@ -49,7 +49,7 @@ class LpcReportModel(BaseModel):
     photoUrl: Optional[str] = Field(None, description="URL to a photo of the landmark")
     pdfReportUrl: Optional[str] = Field(None, description="URL to the PDF report")
 
-    @field_validator("pdfReportUrl", "photoUrl")
+    @field_validator("pdfReportUrl", "photoUrl", mode="after")  # type: ignore[misc]
     @classmethod
     def validate_url(cls, v: Optional[str]) -> Optional[str]:
         """Validate that URLs are properly formatted if they exist."""
@@ -217,7 +217,7 @@ class LpcReportDetailResponse(BaseModel):
         None, description="Associated landmark buildings"
     )
 
-    @field_validator("pdfReportUrl", "photoUrl")
+    @field_validator("pdfReportUrl", "photoUrl", mode="after")  # type: ignore[misc]
     @classmethod
     def validate_url(cls, v: Optional[str]) -> Optional[str]:
         """Validate that URLs are properly formatted if they exist."""
@@ -240,7 +240,7 @@ class PdfInfo(BaseModel):
     name: str = Field(..., description="Name of the landmark")
     pdf_url: str = Field(..., description="URL to the PDF report")
 
-    @field_validator("pdf_url")
+    @field_validator("pdf_url", mode="after")  # type: ignore[misc]
     @classmethod
     def validate_pdf_url(cls, v: str) -> str:
         """Validate that the PDF URL is properly formatted."""

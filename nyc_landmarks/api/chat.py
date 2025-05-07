@@ -91,7 +91,9 @@ def get_vector_db() -> PineconeDB:
 
 def get_db_client() -> DbClient:
     """Get an instance of DbClient."""
-    return DbClient()
+    from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
+
+    return DbClient(CoreDataStoreAPI())
 
 
 # --- Helper functions ---
@@ -270,7 +272,7 @@ def _convert_to_chat_messages(conversation: Conversation) -> List[ChatMessage]:
 # --- API endpoints ---
 
 
-@router.post("/message", response_model=ChatResponse)
+@router.post("/message", response_model=ChatResponse)  # type: ignore[misc]
 async def chat_message(
     request: ChatRequest,
     embedding_generator: EmbeddingGenerator = Depends(get_embedding_generator),
@@ -337,7 +339,7 @@ async def chat_message(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/conversations/{conversation_id}", response_model=List[ChatMessage])
+@router.get("/conversations/{conversation_id}", response_model=List[ChatMessage])  # type: ignore[misc]
 async def get_conversation_history(conversation_id: str) -> List[ChatMessage]:
     """Get conversation history.
 
@@ -365,7 +367,7 @@ async def get_conversation_history(conversation_id: str) -> List[ChatMessage]:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/conversations/{conversation_id}", response_model=Dict[str, bool])
+@router.delete("/conversations/{conversation_id}", response_model=Dict[str, bool])  # type: ignore[misc]
 async def delete_conversation(conversation_id: str) -> Dict[str, bool]:
     """Delete a conversation.
 

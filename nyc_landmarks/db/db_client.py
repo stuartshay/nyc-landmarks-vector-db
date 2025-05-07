@@ -6,20 +6,40 @@ using the CoreDataStore API to retrieve landmark information.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Protocol, Union, cast
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
 from nyc_landmarks.models.landmark_models import (
+    LpcReportResponse,  # Ensure LpcReportResponse is here
+)
+from nyc_landmarks.models.landmark_models import (
+    LandmarkDetail,
     LpcReportDetailResponse,
     LpcReportModel,
-    LpcReportResponse,
 )
 from nyc_landmarks.models.wikipedia_models import WikipediaArticleModel
 
 # Configure logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=settings.LOG_LEVEL.value)
+
+
+# Define the protocol for clients that support Wikipedia functions
+class SupportsWikipedia(Protocol):
+    """Protocol for clients that support Wikipedia article operations."""
+
+    def get_wikipedia_article_by_title(
+        self, title: str
+    ) -> Optional[Union[Dict[str, Any], WikipediaArticleModel]]:
+        """Get Wikipedia article by title."""
+        pass
+
+    def get_wikipedia_articles(
+        self, landmark_id: str
+    ) -> List[WikipediaArticleModel]:
+        """Get Wikipedia articles for a landmark."""
+        return []  # Protocol requires an actual return value
 
 
 class DbClient:
@@ -90,9 +110,10 @@ class DbClient:
         try:
             # Use the proper get_lpc_reports method instead of _make_request directly
             response = self.get_lpc_reports(page=page, limit=page_size)
-            if isinstance(response, LpcReportResponse):
-                # Converting to list to address type conversion issues
-                return list(response.results)
+            # The type of 'response' is LpcReportResponse, so isinstance check is redundant.
+            # if isinstance(response, LpcReportResponse):
+            # Converting to list to address type conversion issues
+            return list(response.results)
         except Exception as e:
             logger.warning(f"Error using Pydantic model for landmarks page: {e}")
             # Fall back to the dictionary-based approach
@@ -186,40 +207,40 @@ class DbClient:
         try:
             # If not available, try a more generic approach
             if hasattr(self.client, "get_landmarks_page"):
-                landmarks = self.client.get_landmarks_page(limit, page)
+                landmarks: List[Dict[str, Any]] = self.client.get_landmarks_page(
+                    limit, page
+                )
 
                 # Convert to models if needed to satisfy type checker
-                model_results = []
+                model_results: List[LpcReportModel] = []
                 for item in landmarks:
-                    if isinstance(item, dict):
-                        try:
-                            model_results.append(LpcReportModel(**item))
-                        except Exception as conversion_error:
-                            logger.warning(
-                                f"Error converting item to LpcReportModel: {conversion_error}"
+                    # item is always a dict here based on get_landmarks_page signature
+                    try:
+                        model_results.append(LpcReportModel(**item))
+                    except Exception as conversion_error:
+                        logger.warning(
+                            f"Error converting item to LpcReportModel: {conversion_error}"
+                        )
+                        # Create a minimal model with required fields
+                        model_results.append(
+                            LpcReportModel(
+                                name="Unknown",
+                                lpNumber="Unknown",
+                                lpcId="",
+                                objectType="",
+                                architect="",
+                                style="",
+                                street="",
+                                borough="",
+                                dateDesignated="",
+                                photoStatus=False,
+                                mapStatus=False,
+                                neighborhood="",
+                                zipCode="",
+                                photoUrl=None,
+                                pdfReportUrl=None,
                             )
-                            # Create a minimal model with required fields
-                            model_results.append(
-                                LpcReportModel(
-                                    name="Unknown",
-                                    lpNumber="Unknown",
-                                    lpcId="",
-                                    objectType="",
-                                    architect="",
-                                    style="",
-                                    street="",
-                                    borough="",
-                                    dateDesignated="",
-                                    photoStatus=False,
-                                    mapStatus=False,
-                                    neighborhood="",
-                                    zipCode="",
-                                    photoUrl=None,
-                                    pdfReportUrl=None,
-                                )
-                            )
-                    else:
-                        model_results.append(item)
+                        )
 
                 # Use "from" parameter via dictionary unpacking to avoid naming issues
                 start_record = int((page - 1) * limit + 1)
@@ -263,94 +284,263 @@ class DbClient:
             return self.client.get_landmark_pdf_url(landmark_id)
         return None
 
+    def _map_borough_id_to_name(self, borough_id: Optional[str]) -> Optional[str]:
+        """Maps a borough ID to its corresponding name."""
+        if borough_id is None:
+            return None
+        mapping = {
+            "1": "Manhattan",
+            "2": "Bronx",
+            "3": "Brooklyn",
+            "4": "Queens",
+            "5": "Staten Island",
+            "MN": "Manhattan",  # Common alternative
+            "BX": "Bronx",
+            "BK": "Brooklyn",
+            "QN": "Queens",
+            "SI": "Staten Island",
+        }
+        return mapping.get(
+            borough_id.upper(), borough_id
+        )  # Return original if not found, or log warning
+
+    def _convert_item_to_lpc_report_model(
+        self,
+        item: Union[Dict[str, Any], LandmarkDetail, LpcReportModel],
+        landmark_lp_number_context: Optional[str] = None,
+    ) -> LpcReportModel:
+        """
+        Converts a given item (dict, LandmarkDetail, or LpcReportModel)
+        into an LpcReportModel instance.
+        """
+        if isinstance(item, LpcReportModel):
+            return item
+
+        if isinstance(item, LandmarkDetail):
+            # Map fields from LandmarkDetail to LpcReportModel
+            # Some fields might be missing or need default values
+            return LpcReportModel(
+                name=item.name or "Unknown Building Name",
+                lpNumber=item.lpNumber or landmark_lp_number_context or "Unknown LP",
+                lpcId=None,  # LandmarkDetail doesn't have lpcId directly
+                objectType=item.objectType,
+                architect=None,  # LandmarkDetail doesn't have architect
+                style=None,  # LandmarkDetail doesn't have style
+                street=item.designatedAddress or item.street,
+                borough=self._map_borough_id_to_name(item.boroughId),
+                dateDesignated=item.designatedDate,
+                photoStatus=None,  # Not directly available in LandmarkDetail
+                mapStatus=None,  # Not directly available in LandmarkDetail
+                neighborhood=item.historicDistrict,  # Using historicDistrict as neighborhood
+                zipCode=None,  # Not directly in LandmarkDetail, might be part of plutoAddress
+                photoUrl=None,  # Not in LandmarkDetail
+                pdfReportUrl=None,  # Not in LandmarkDetail
+            )
+
+        # If execution reaches here, 'item' must be a dict due to the Union type hint
+        # and the preceding checks for LpcReportModel and LandmarkDetail.
+        # Thus, isinstance(item, dict) is not strictly necessary if type hints are correct.
+        # However, to be absolutely safe against unexpected inputs or if type hints are bypassed,
+        # it can be kept. For now, assuming type hints are honored by callers.
+        try:
+            # Attempt to directly create LpcReportModel from dict
+            # This assumes the dict keys match LpcReportModel fields
+            return LpcReportModel(**item)  # item is implicitly Dict[str, Any] here
+        except Exception as e:
+            logger.warning(
+                f"Error converting dict to LpcReportModel for LP {landmark_lp_number_context}: {e}. Dict keys: {list(item.keys())}"
+            )
+            # Fallback to a default model if direct conversion fails
+            return LpcReportModel(
+                name=item.get("name", "Unknown Building (dict conversion error)"),
+                lpNumber=item.get(
+                    "lpNumber", landmark_lp_number_context or "Unknown LP"
+                ),
+                lpcId=item.get("lpcId"),
+                objectType=item.get("objectType"),
+                architect=item.get("architect"),
+                style=item.get("style"),
+                street=item.get("street"),
+                borough=item.get("borough"),
+                dateDesignated=item.get("dateDesignated"),
+                photoStatus=item.get("photoStatus"),
+                mapStatus=item.get("mapStatus"),
+                neighborhood=item.get("neighborhood"),
+                zipCode=item.get("zipCode"),
+                photoUrl=item.get("photoUrl"),
+                pdfReportUrl=item.get("pdfReportUrl"),
+            )
+
+    def _standardize_lp_number(self, landmark_id: str) -> str:
+        """Standardize landmark_id format to LP-XXXXX format.
+
+        Args:
+            landmark_id: Raw landmark ID
+
+        Returns:
+            Standardized LP number
+        """
+        if not landmark_id.startswith("LP-"):
+            return f"LP-{landmark_id.zfill(5)}"
+        return landmark_id
+
+    def _fetch_buildings_from_client(self, lp_number: str, limit: int) -> List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]]:
+        """Fetch buildings using the client's dedicated method.
+
+        Args:
+            lp_number: Standardized LP number
+            limit: Maximum number of buildings to return
+
+        Returns:
+            List of building data dictionaries
+        """
+        if not hasattr(self.client, "get_landmark_buildings"):
+            return []
+
+        try:
+            return self.client.get_landmark_buildings(lp_number, limit)
+        except Exception as e:
+            logger.error(f"Error calling client.get_landmark_buildings for {lp_number}: {e}")
+            return []
+
+    def _fetch_buildings_from_landmark_detail(self, lp_number: str, limit: int) -> List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]]:
+        """Fetch buildings from the landmark detail response.
+
+        Args:
+            lp_number: Standardized LP number
+            limit: Maximum number of buildings to return
+
+        Returns:
+            List of LandmarkDetail objects
+        """
+        landmark_detail_response = self.get_landmark_by_id(lp_number)
+        if not isinstance(landmark_detail_response, LpcReportDetailResponse):
+            logger.info(f"Could not retrieve LpcReportDetailResponse for {lp_number} to extract buildings.")
+            return []
+
+        # Get the landmarks list attribute
+        landmarks_list = getattr(landmark_detail_response, "landmarks", None)
+        if not isinstance(landmarks_list, list):
+            logger.info(f"landmark_detail_response for {lp_number} has no 'landmarks' list or it's not a list.")
+            return []
+
+        # Filter valid LandmarkDetail objects
+        valid_details: List[LandmarkDetail] = []
+        for item in landmarks_list:
+            if isinstance(item, LandmarkDetail):
+                valid_details.append(item)
+            else:
+                logger.debug(f"Item in landmarks list is not of type LandmarkDetail: {type(item)} for LP {lp_number}")
+
+        result = valid_details[:limit]
+        logger.info(f"Fetched {len(result)} building items from landmarks for {lp_number}.")
+        return result
+
+    def _convert_building_items_to_models(
+        self,
+        items: List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]],
+        lp_number: str
+    ) -> List[LpcReportModel]:
+        """Convert building items to LpcReportModel objects.
+
+        Args:
+            items: List of building items
+            lp_number: Standardized LP number for context
+
+        Returns:
+            List of LpcReportModel objects
+        """
+        if not items:
+            return []
+
+        model_results: List[LpcReportModel] = []
+        for item in items:
+            model_results.append(
+                self._convert_item_to_lpc_report_model(
+                    item, landmark_lp_number_context=lp_number
+                )
+            )
+
+        logger.info(f"Processed {len(model_results)} building models for landmark {lp_number}.")
+        return model_results
+
     def get_landmark_buildings(
         self, landmark_id: str, limit: int = 50
     ) -> List[LpcReportModel]:
         """Get buildings associated with a landmark.
 
         Args:
-            landmark_id: ID of the landmark
+            landmark_id: ID of the landmark (LP number)
             limit: Maximum number of buildings to return
 
         Returns:
-            List of buildings (as LpcReportModel objects or dictionaries)
+            List of buildings (as LpcReportModel objects)
         """
-        try:
-            # Try to get buildings with Pydantic models - avoid direct _make_request
-            # Use proper API methods when available
-            if hasattr(self.client, "get_landmark_buildings"):
-                buildings = self.client.get_landmark_buildings(landmark_id, limit)
-                if isinstance(buildings, list):
-                    # Try to convert to LpcReportModel list if possible
-                    # Always convert to LpcReportModel objects to satisfy type checker
-                    model_results = []
-                    for bldg in buildings:
-                        if isinstance(bldg, dict):
-                            try:
-                                model_results.append(LpcReportModel(**bldg))
-                            except Exception as e:
-                                logger.warning(
-                                    f"Error converting dict to LpcReportModel: {e}"
-                                )
-                                model_results.append(
-                                    LpcReportModel(
-                                        name="Unknown Building",
-                                        lpNumber="Unknown",
-                                        lpcId="",
-                                        objectType="",
-                                        architect="",
-                                        style="",
-                                        street="",
-                                        borough="",
-                                        dateDesignated="",
-                                        photoStatus=False,
-                                        mapStatus=False,
-                                        neighborhood="",
-                                        zipCode="",
-                                        photoUrl=None,
-                                        pdfReportUrl=None,
-                                    )
-                                )
-                        elif isinstance(bldg, LpcReportModel):
-                            model_results.append(bldg)
-                    return model_results
-        except Exception as e:
-            logger.warning(f"Error using Pydantic model for landmark buildings: {e}")
+        # Standardize the LP number format
+        lp_number = self._standardize_lp_number(landmark_id)
 
-        # Fall back to the legacy method
-        if hasattr(self.client, "get_landmark_buildings"):
-            buildings = self.client.get_landmark_buildings(landmark_id, limit)
-            # Convert all items to LpcReportModel - this is safer than a cast
-            model_buildings = []
-            for bldg in buildings:
-                if isinstance(bldg, dict):
+        # Try dedicated client method first
+        building_items = self._fetch_buildings_from_client(lp_number, limit)
+
+        # If no buildings found, try fallback via landmark details
+        if not building_items:
+            logger.info(f"No buildings from get_landmark_buildings for {lp_number}, trying fallback.")
+            building_items = self._fetch_buildings_from_landmark_detail(lp_number, limit)
+
+        # Convert the building items to LpcReportModel objects
+        return self._convert_building_items_to_models(building_items, lp_number)
+
+    def get_wikipedia_article_by_title(
+        self, title: str
+    ) -> Optional[WikipediaArticleModel]:
+        """Get a Wikipedia article by title.
+
+        Args:
+            title: Title of the Wikipedia article
+
+        Returns:
+            WikipediaArticleModel object if found, None otherwise
+        """
+        if hasattr(self.client, "get_wikipedia_article_by_title"):
+            try:
+                # Cast to the protocol that defines the method
+                client_with_wiki_methods = cast(SupportsWikipedia, self.client)
+                article_data = client_with_wiki_methods.get_wikipedia_article_by_title(
+                    title
+                )
+
+                if isinstance(article_data, dict):
                     try:
-                        model_buildings.append(LpcReportModel(**bldg))
-                    except Exception as e:
-                        logger.warning(f"Error converting building to model: {e}")
-                        model_buildings.append(
-                            LpcReportModel(
-                                name="Unknown Building",
-                                lpNumber="Unknown",
-                                lpcId="",
-                                objectType="",
-                                architect="",
-                                style="",
-                                street="",
-                                borough="",
-                                dateDesignated="",
-                                photoStatus=False,
-                                mapStatus=False,
-                                neighborhood="",
-                                zipCode="",
-                                photoUrl=None,
-                                pdfReportUrl=None,
-                            )
+                        return WikipediaArticleModel(**article_data)
+                    except (
+                        Exception
+                    ) as e:  # Consider more specific PydanticValidationError if applicable
+                        logger.warning(
+                            f"Error converting Wikipedia article dict to model for title '{title}': {e}"
                         )
-                elif isinstance(bldg, LpcReportModel):
-                    model_buildings.append(bldg)
-            return model_buildings
-        return []
+                        return None
+                elif isinstance(article_data, WikipediaArticleModel):
+                    return article_data
+                elif article_data is None:
+                    # This is an expected outcome if the article is not found by the client method
+                    return None
+                else:
+                    # Log if the type is unexpected
+                    logger.warning(
+                        f"Received unexpected data type from get_wikipedia_article_by_title for title '{title}': {type(article_data)}"
+                    )
+                    return None
+            except Exception as e:
+                # Catch potential errors during the cast or method call itself
+                logger.error(
+                    f"Error accessing or processing get_wikipedia_article_by_title for title '{title}': {e}"
+                )
+                return None
+        else:
+            logger.debug(
+                f"Client does not have get_wikipedia_article_by_title method for title '{title}'."
+            )
+        return None
 
     def get_wikipedia_articles(self, landmark_id: str) -> List[WikipediaArticleModel]:
         """Get Wikipedia articles associated with a landmark.
@@ -362,7 +552,14 @@ class DbClient:
             List of WikipediaArticleModel objects, empty list if none found
         """
         if hasattr(self.client, "get_wikipedia_articles"):
-            return self.client.get_wikipedia_articles(landmark_id)
+            try:
+                client_with_wiki_methods = cast(SupportsWikipedia, self.client)
+                return client_with_wiki_methods.get_wikipedia_articles(landmark_id)
+            except Exception as e:
+                logger.error(
+                    f"Error accessing get_wikipedia_articles for landmark_id '{landmark_id}': {e}"
+                )
+                return []
         return []
 
     def get_landmark_pluto_data(self, landmark_id: str) -> List[Dict[str, Any]]:

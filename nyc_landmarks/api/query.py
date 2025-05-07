@@ -96,13 +96,15 @@ def get_vector_db() -> PineconeDB:
 
 def get_db_client() -> DbClient:
     """Get an instance of DbClient."""
-    return DbClient()
+    from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
+
+    return DbClient(CoreDataStoreAPI())
 
 
 # --- API endpoints ---
 
 
-@router.post("/search", response_model=SearchResponse)
+@router.post("/search", response_model=SearchResponse)  # type: ignore[misc]
 async def search_text(
     query: TextQuery,
     embedding_generator: EmbeddingGenerator = Depends(get_embedding_generator),
@@ -169,7 +171,7 @@ async def search_text(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/landmarks", response_model=LandmarkListResponse)
+@router.get("/landmarks", response_model=LandmarkListResponse)  # type: ignore[misc]
 async def get_landmarks(
     limit: int = QueryParam(
         20, description="Maximum number of landmarks to return", ge=1, le=100
@@ -213,7 +215,7 @@ async def get_landmarks(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/landmark/{landmark_id}", response_model=LandmarkInfo)
+@router.get("/landmark/{landmark_id}", response_model=LandmarkInfo)  # type: ignore[misc]
 async def get_landmark(
     landmark_id: str,
     db_client: DbClient = Depends(get_db_client),
@@ -255,7 +257,7 @@ async def get_landmark(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/search/text", response_model=LandmarkListResponse)
+@router.get("/search/text", response_model=LandmarkListResponse)  # type: ignore[misc]
 async def search_landmarks_text(
     q: str = QueryParam(..., description="Search query"),
     limit: int = QueryParam(

@@ -40,7 +40,7 @@ app.include_router(chat.router)
 
 
 # Add global exception handler
-@app.exception_handler(Exception)
+@app.exception_handler(Exception)  # type: ignore[misc]
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Global exception handler for the application."""
     logger.error(f"Global exception handler caught: {exc}")
@@ -51,14 +51,14 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 
 
 # Add health check endpoint
-@app.get("/health", tags=["health"])
+@app.get("/health", tags=["health"])  # type: ignore[misc]
 async def health_check() -> Dict[str, str]:
     """Health check endpoint."""
     return {"status": "ok"}
 
 
 # Add root endpoint
-@app.get("/", tags=["root"])
+@app.get("/", tags=["root"])  # type: ignore[misc]
 async def root() -> Dict[str, str]:
     """Root endpoint that returns a welcome message."""
     return {
