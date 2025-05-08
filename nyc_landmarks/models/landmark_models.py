@@ -65,7 +65,7 @@ class LpcReportResponse(BaseModel):
     This model includes pagination information and a list of LPC reports.
     """
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     total: int = Field(..., description="Total number of records available")
     page: int = Field(..., description="Current page number")
@@ -73,6 +73,14 @@ class LpcReportResponse(BaseModel):
     from_: int = Field(..., alias="from", description="Starting record number")
     to: int = Field(..., description="Ending record number")
     results: List[LpcReportModel] = Field(..., description="List of LPC reports")
+
+    @property
+    def totalCount(self) -> int:
+        return self.total
+
+    @property
+    def pageCount(self) -> int:
+        return self.page
 
 
 class MapPoint(BaseModel):

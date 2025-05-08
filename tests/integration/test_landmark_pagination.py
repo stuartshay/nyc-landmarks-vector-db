@@ -54,7 +54,7 @@ class TestLandmarkPagination:
         # Get first page with all metadata
         page_size = 50  # Use larger page size for efficiency
         all_reports = []
-        all_ids = set()
+        all_ids: set[str] = set()
 
         # Fetch first page to get metadata
         response = fetcher.api_client._make_request(

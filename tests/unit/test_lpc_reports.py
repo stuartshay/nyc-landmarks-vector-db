@@ -20,12 +20,14 @@ class TestLpcReports(unittest.TestCase):
         # Test with minimal required fields
         report = LpcReportModel(
             lpNumber="LP-00001",
+            lpcId="00001",
             name="Empire State Building",
             pdfReportUrl=None,
             borough="Manhattan",
             objectType="Individual Landmark",
             street="350 5th Ave",
             dateDesignated="1981-05-19",
+            photoStatus="false",
             architect="Shreve, Lamb & Harmon",
             style="Art Deco",
             neighborhood="Midtown",
@@ -60,6 +62,7 @@ class TestLpcReports(unittest.TestCase):
             results=[
                 LpcReportModel(
                     lpNumber="LP-00001",
+                    lpcId="00001",
                     name="Empire State Building",
                     pdfReportUrl=None,
                     borough="Manhattan",
@@ -85,12 +88,15 @@ class TestLpcReports(unittest.TestCase):
                     photoUrl=None,
                 ),
             ],
-            totalCount=2,
-            pageCount=1,
+            total=2,
+            page=1,
+            limit=2,
+            from_=1,
+            to=2,
         )
         self.assertEqual(len(response.results), 2)
-        self.assertEqual(response.totalCount, 2)
-        self.assertEqual(response.pageCount, 1)
+        self.assertEqual(response.total, 2)
+        self.assertEqual(response.page, 1)
         self.assertEqual(response.results[0].lpNumber, "LP-00001")
 
     @patch("nyc_landmarks.db.coredatastore_api.CoreDataStoreAPI._make_request")
@@ -114,8 +120,11 @@ class TestLpcReports(unittest.TestCase):
                     "objectType": "Individual Landmark",
                 },
             ],
-            "totalCount": 2,
-            "pageCount": 1,
+            "total": 2,
+            "page": 1,
+            "limit": 2,
+            "from": 1,
+            "to": 2,
         }
         mock_make_request.return_value = mock_response
 
@@ -136,7 +145,7 @@ class TestLpcReports(unittest.TestCase):
         # Verify the response was correctly processed using Pydantic
         self.assertIsInstance(response, LpcReportResponse)
         self.assertEqual(len(response.results), 2)
-        self.assertEqual(response.totalCount, 2)
+        self.assertEqual(response.total, 2)
         self.assertEqual(response.results[0].lpNumber, "LP-00001")
         self.assertEqual(response.results[1].name, "Chrysler Building")
 
@@ -149,18 +158,23 @@ class TestLpcReports(unittest.TestCase):
                 {"lpNumber": "LP-00001", "name": "Empire State Building"},
                 {"lpNumber": "LP-00002", "name": "Chrysler Building"},
             ],
-            "totalCount": 4,
-            "pageCount": 2,
+            "total": 4,
+            "page": 1,
+            "limit": 2,
+            "from": 1,
+            "to": 2,
         }
 
-        # Mock second page response
         mock_response_page2 = {
             "results": [
                 {"lpNumber": "LP-00003", "name": "Flatiron Building"},
                 {"lpNumber": "LP-00004", "name": "Woolworth Building"},
             ],
-            "totalCount": 4,
-            "pageCount": 2,
+            "total": 4,
+            "page": 2,
+            "limit": 2,
+            "from": 3,
+            "to": 4,
         }
 
         # Set up mock to return different responses for different requests
@@ -175,14 +189,14 @@ class TestLpcReports(unittest.TestCase):
 
         # Verify the first page response
         self.assertEqual(len(response_page1.results), 2)
-        self.assertEqual(response_page1.totalCount, 4)
-        self.assertEqual(response_page1.pageCount, 2)
+        self.assertEqual(response_page1.total, 4)
+        self.assertEqual(response_page1.page, 1)
         self.assertEqual(response_page1.results[0].lpNumber, "LP-00001")
 
         # Verify the second page response
         self.assertEqual(len(response_page2.results), 2)
-        self.assertEqual(response_page2.totalCount, 4)
-        self.assertEqual(response_page2.pageCount, 2)
+        self.assertEqual(response_page2.total, 4)
+        self.assertEqual(response_page2.page, 2)
         self.assertEqual(response_page2.results[0].lpNumber, "LP-00003")
 
         # Verify the pages have different content

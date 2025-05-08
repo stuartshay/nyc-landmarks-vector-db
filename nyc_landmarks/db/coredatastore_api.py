@@ -27,7 +27,7 @@ class CoreDataStoreAPI:
         """Initialize the CoreDataStore API client."""
         self.base_url = "https://api.coredatastore.com"
         self.api_key = settings.COREDATASTORE_API_KEY
-        self.headers = {}
+        self.headers: dict[str, str] = {}
 
         # Set up authorization header if API key is provided
         if self.api_key:
@@ -41,7 +41,7 @@ class CoreDataStoreAPI:
         endpoint: str,
         params: Optional[Dict[str, Any]] = None,
         json_data: Optional[Dict[str, Any]] = None,
-    ) -> Union[Dict[str, Any], List[Any]]:
+    ) -> Union[Dict[str, Any], List[Dict[str, Any]], List[str]]:
         """Make a request to the CoreDataStore API.
 
         Args:
@@ -233,6 +233,19 @@ class CoreDataStoreAPI:
             endpoint = "/api/LpcReport"
             response = self._make_request("GET", endpoint, params=params)
 
+            # Ensure the response is a dictionary before validation
+            if not isinstance(response, dict):
+                logger.error(
+                    f"API response for LPC reports was not a dictionary. Got: {type(response)}"
+                )
+                # Create a default error response or raise a more specific error
+                # For now, let's mimic what _validate_lpc_report_response would do with an empty dict
+                # or raise a TypeError directly.
+                # This path indicates a problem with the API or the _make_request handling.
+                raise TypeError(
+                    f"Expected dictionary response from API but got {type(response).__name__}"
+                )
+
             return self._validate_lpc_report_response(response)
 
         except Exception as e:
@@ -283,26 +296,118 @@ class CoreDataStoreAPI:
 
         return params
 
-    def _validate_lpc_report_response(self, response: Any) -> LpcReportResponse:
-        """Validate the API response and convert to a LpcReportResponse.
+    def _ensure_pagination_fields(self, mapped_response: Dict[str, Any]) -> None:
+        """Ensure essential pagination fields (limit, page, total) are present and valid."""
+        current_results = mapped_response.get("results", [])
+        num_results = len(current_results) if isinstance(current_results, list) else 0
 
-        Args:
-            response: The raw API response
+        # Limit
+        limit_val = mapped_response.get("limit")
+        if not isinstance(limit_val, int) or limit_val < 0:
+            mapped_response["limit"] = num_results
 
-        Returns:
-            LpcReportResponse: Validated response model
+        # Page
+        page_val = mapped_response.get("page")
+        if not isinstance(page_val, int) or page_val <= 0:
+            mapped_response["page"] = 1
 
-        Raises:
-            TypeError: If response is not a dictionary
-        """
-        # Ensure response is a dictionary
-        if not isinstance(response, dict):
-            raise TypeError(
-                f"Expected dictionary response but got {type(response).__name__}"
+        # Total
+        total_val = mapped_response.get("total")
+        if not isinstance(total_val, int) or total_val < 0:
+            mapped_response["total"] = num_results
+
+    def _calculate_from_field(self, mapped_response: Dict[str, Any]) -> None:
+        """Calculate the 'from_' field if missing or invalid."""
+        from_val = mapped_response.get("from_")
+        current_page_for_from = mapped_response.get("page", 1)
+        current_limit_for_from = mapped_response.get("limit", 0)
+
+        if not isinstance(from_val, int) or from_val <= 0:
+            page_to_calc = (
+                current_page_for_from
+                if isinstance(current_page_for_from, int) and current_page_for_from > 0
+                else 1
+            )
+            limit_to_calc = (
+                current_limit_for_from
+                if isinstance(current_limit_for_from, int)
+                and current_limit_for_from >= 0
+                else 0
+            )
+            mapped_response["from_"] = (page_to_calc - 1) * limit_to_calc + 1
+
+    def _calculate_to_field(self, mapped_response: Dict[str, Any]) -> None:
+        """Calculate the 'to' field if missing or invalid."""
+        to_val = mapped_response.get("to")
+        current_from_for_to = mapped_response.get("from_", 1)
+        current_limit_for_to = mapped_response.get("limit", 0)
+        current_total_for_to = mapped_response.get("total", 0)
+
+        if not isinstance(to_val, int) or to_val < 0:
+            from_to_calc = (
+                current_from_for_to
+                if isinstance(current_from_for_to, int) and current_from_for_to > 0
+                else 1
+            )
+            limit_to_calc = (
+                current_limit_for_to
+                if isinstance(current_limit_for_to, int) and current_limit_for_to >= 0
+                else 0
+            )
+            total_to_calc = (
+                current_total_for_to
+                if isinstance(current_total_for_to, int) and current_total_for_to >= 0
+                else 0
             )
 
-        # Validate the response with our Pydantic models
-        validated_response = LpcReportResponse(**response)
+            calculated_to = from_to_calc + limit_to_calc - 1
+            final_to = min(calculated_to, total_to_calc)
+            mapped_response["to"] = max(final_to, from_to_calc - 1)
+
+    def _validate_lpc_report_response(
+        self, response: dict[str, Any]
+    ) -> LpcReportResponse:
+        """Validate the API response and convert to a LpcReportResponse."""
+        mapped_response = dict(response)  # Create a new mutable dict
+
+        # Map API keys to model field names
+        if "totalCount" in mapped_response:
+            mapped_response["total"] = mapped_response.pop("totalCount")
+
+        mapped_response.pop("pageCount", None)  # Not used by LpcReportResponse model
+
+        if "from" in mapped_response:
+            if "from_" not in mapped_response:
+                mapped_response["from_"] = mapped_response.pop("from")
+            else:
+                mapped_response.pop("from")
+
+        # Ensure 'results' is a list of dicts.
+        raw_results = mapped_response.get("results")
+        if not isinstance(raw_results, list):
+            logger.warning(
+                f"API 'results' field was not a list or was missing, got {type(raw_results)}. "
+                f"Defaulting to empty list."
+            )
+            mapped_response["results"] = []
+        else:
+            mapped_response["results"] = [
+                item if isinstance(item, dict) else {} for item in raw_results
+            ]
+
+        # Ensure and calculate pagination fields
+        self._ensure_pagination_fields(mapped_response)
+        self._calculate_from_field(mapped_response)
+        self._calculate_to_field(mapped_response)
+
+        try:
+            validated_response = LpcReportResponse(**mapped_response)
+        except Exception as e:
+            logger.error(
+                f"Pydantic validation error in _validate_lpc_report_response. "
+                f"Input data to model: {mapped_response}. Error: {e}"
+            )
+            raise
         return validated_response
 
     def get_lpc_reports_with_mcp(
@@ -733,72 +838,112 @@ class CoreDataStoreAPI:
                 lpc_id = landmark_id
 
             # Make the API request
-            response = self._make_request("GET", f"/api/WebContent/{lpc_id}")
+            response_content = self._make_request("GET", f"/api/WebContent/{lpc_id}")
 
-            # Process the response
-            articles = []
-            if response and isinstance(response, list):
-                for item in response:
-                    # Filter for Wikipedia articles only
-                    if item.get("recordType") == "Wikipedia":
-                        try:
-                            # Validate with Pydantic model
-                            article = WikipediaArticleModel(**item)
-                            articles.append(article)
-                        except Exception as e:
-                            logger.warning(f"Error validating Wikipedia article: {e}")
-                            continue
+            articles = self._process_wikipedia_response(response_content, lpc_id)
 
             if not articles:
                 logger.info(f"No Wikipedia articles found for landmark: {landmark_id}")
-            else:
-                logger.info(
-                    f"Found {len(articles)} Wikipedia articles for landmark: {landmark_id}"
-                )
 
             return articles
 
         except Exception as e:
-            logger.error(
-                f"Error getting Wikipedia articles for landmark {landmark_id}: {e}"
-            )
+            logger.error(f"Error getting Wikipedia articles for landmark: {e}")
             return []
+
+    def _process_wikipedia_response(
+        self, api_response_content: Any, lpc_id: str
+    ) -> List[WikipediaArticleModel]:
+        """Helper function to process the response from /api/WebContent for Wikipedia articles."""
+        articles: List[WikipediaArticleModel] = []
+        if not isinstance(api_response_content, list):
+            # If the response is not a list (e.g., None, dict, or error string),
+            # log if appropriate or simply return empty list.
+            # Assuming _make_request might return non-list for errors or empty valid responses.
+            if (
+                api_response_content is not None
+            ):  # Avoid logging None as an "unexpected type"
+                logger.debug(
+                    f"Received non-list response type ({type(api_response_content)}) for Wikipedia content for {lpc_id}, expected list."
+                )
+            return articles
+
+        # Now api_response_content is known to be a list
+        for item in api_response_content:
+            if not isinstance(item, dict):
+                logger.warning(
+                    f"Skipping non-dictionary item in Wikipedia articles response for landmark {lpc_id}: {type(item).__name__} - {str(item)[:100]}"
+                )
+                continue  # Skip to the next item
+
+            if item.get("recordType") == "Wikipedia":
+                try:
+                    # Validate with Pydantic model
+                    article = WikipediaArticleModel(**item)
+                    articles.append(article)
+                except Exception as e:
+                    # Log carefully, ensuring item is representable
+                    item_str_representation = str(item)
+                    logger.warning(
+                        f"Error validating Wikipedia article data for landmark {lpc_id} (item: {item_str_representation[:100]}): {e}"
+                    )
+                    continue  # Continue to next item if validation fails
+        return articles
 
     def get_all_landmarks_with_wikipedia(
         self, limit: Optional[int] = None
-    ) -> Dict[str, List[WikipediaArticleModel]]:
-        """Get all landmarks with their associated Wikipedia articles.
-
-        This method queries all landmarks and checks each for Wikipedia articles,
-        building a dictionary mapping landmark IDs to their Wikipedia articles.
+    ) -> List[Dict[str, Any]]:
+        """Get all landmarks with associated Wikipedia articles.
 
         Args:
-            limit: Maximum number of landmarks to check (optional)
+            limit: Maximum number of landmarks to return (optional)
 
         Returns:
-            Dictionary mapping landmark IDs to lists of WikipediaArticleModel objects
+            List of dictionaries containing landmark information and Wikipedia articles
         """
         try:
-            # Get all landmarks
-            landmarks = self.get_all_landmarks(limit)
-            result = {}
+            # Set default limit if not provided
+            page_limit = min(limit or 100, 100)
+            page = 1
 
-            # Process each landmark to check for Wikipedia articles
-            for landmark in landmarks:
+            # Make API request
+            response = self._make_request("GET", f"/api/LpcReport/{page_limit}/{page}")
+
+            results = []
+            if isinstance(response, dict) and "results" in response:
+                # Convert the results to the format expected by the application
+                for item in response["results"]:
+                    if not isinstance(item, dict):
+                        continue
+                    landmark = {
+                        "id": item.get("lpNumber", ""),
+                        "name": item.get("name", ""),
+                        "location": item.get("street", ""),
+                        "borough": item.get("borough", ""),
+                        "type": item.get("objectType", ""),
+                        "designation_date": item.get("dateDesignated", ""),
+                        "description": "",  # API doesn't seem to provide a description field
+                        "architect": item.get("architect", ""),
+                        "style": item.get("style", ""),
+                        "neighborhood": item.get("neighborhood", ""),
+                        "pdfReportUrl": item.get("pdfReportUrl", ""),
+                        "photoUrl": item.get("photoUrl", ""),
+                    }
+                    results.append(landmark)
+
+            # If a specific limit was provided and it's less than what we got, truncate
+            if limit and len(results) > limit:
+                results = results[:limit]
+
+            # Enrich with Wikipedia articles
+            for landmark in results:
                 landmark_id = landmark.get("id", "")
-                if not landmark_id:
-                    continue
+                if landmark_id:
+                    articles = self.get_wikipedia_articles(landmark_id)
+                    landmark["wikipedia_articles"] = articles
 
-                # Get Wikipedia articles for this landmark
-                articles = self.get_wikipedia_articles(landmark_id)
-                if articles:
-                    result[landmark_id] = articles
-
-            logger.info(
-                f"Found {len(result)} landmarks with Wikipedia articles out of {len(landmarks)} total"
-            )
-            return result
+            return results
 
         except Exception as e:
-            logger.error(f"Error getting landmarks with Wikipedia articles: {e}")
-            return {}
+            logger.error(f"Error getting all landmarks with Wikipedia articles: {e}")
+            return []

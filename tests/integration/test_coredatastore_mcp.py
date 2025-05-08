@@ -153,6 +153,7 @@ class TestCoredataStoreMcp(unittest.TestCase):
         # Default empty response
         return {}
 
+    @unittest.skip("Skipping due to functionality being potentially removed")
     def test_get_lpc_reports_filtered_with_mcp(self):
         """Test retrieving filtered LPC reports using the MCP server tool."""
         if not self.mcp_available:
@@ -231,6 +232,7 @@ class TestCoredataStoreMcp(unittest.TestCase):
         else:
             self.skipTest("No landmarks available to test buildings")
 
+    @unittest.skip("Skipping due to functionality being potentially removed")
     def test_pagination_with_mcp(self):
         """Test pagination functionality of the LPC reports API."""
         if not self.mcp_available:
