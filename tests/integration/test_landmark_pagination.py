@@ -159,6 +159,59 @@ class TestLandmarkPagination:
             ), f"Got too many results with page size {page_size}"
 
     @pytest.mark.integration
+    def test_api_url_format(self):
+        """Test that the API uses the correct URL format for pagination."""
+        # Create fetcher instance
+        fetcher = LandmarkReportFetcher()
+
+        # Mock the _make_request method to capture the URL
+        original_make_request = fetcher.api_client._make_request
+
+        # Keep track of calls to _make_request
+        call_args = []
+
+        def mock_make_request(method, endpoint, params=None, json_data=None):
+            # Record the call arguments
+            call_args.append((method, endpoint, params, json_data))
+            # Call the original method
+            return original_make_request(method, endpoint, params, json_data)
+
+        # Replace the method with our mock
+        fetcher.api_client._make_request = mock_make_request
+
+        try:
+            # Make a call to get_lpc_reports
+            page_size = 20
+            page = 2
+            fetcher.get_lpc_reports(page_size=page_size, page=page)
+
+            # Check that the endpoint was formatted correctly
+            assert len(call_args) > 0, "No API calls were made"
+            method, endpoint, params, _ = call_args[0]
+
+            # The endpoint should use path parameters for pagination
+            expected_endpoint = f"/api/LpcReport/{page_size}/{page}"
+            assert (
+                endpoint == expected_endpoint
+            ), f"Expected endpoint {expected_endpoint}, got {endpoint}"
+
+            # Pagination parameters should not be in the query string
+            if params is not None:
+                assert (
+                    "page" not in params
+                ), "Page parameter should not be in query string"
+                assert (
+                    "limit" not in params
+                ), "Limit parameter should not be in query string"
+            else:
+                # If params is None, there are no query parameters, which is what we want
+                pass
+
+        finally:
+            # Restore the original method
+            fetcher.api_client._make_request = original_make_request
+
+    @pytest.mark.integration
     def test_last_page_handling(self):
         """Test handling of the last page of results."""
         # Create fetcher instance

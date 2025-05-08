@@ -447,21 +447,19 @@ def test_landmark_fixed_ids(
         summary["landmarks_with_vectors"] == summary["total_landmarks_checked"]
     ), "Some landmarks don't have vectors"
 
-    # TEMPORARY: Skip the ID format check since we know LP-00001 has mixed formats
-    # TODO: After regenerating the index with consistent IDs, re-enable this check
-    # assert (
-    #     summary["correct_id_format"] == summary["total_landmarks_checked"]
-    # ), "Some vectors have incorrect ID format"
+    # Check that all vectors have the correct ID format
+    assert (
+        summary["correct_id_format"] == summary["total_landmarks_checked"]
+    ), "Some vectors have incorrect ID format"
 
-    # Still check metadata consistency
+    # Check metadata consistency
     assert (
         summary["consistent_metadata"] == summary["total_landmarks_checked"]
     ), "Some vectors have inconsistent metadata"
 
-    # Log note about the ID format issue
-    logger.warning(
-        "NOTE: Some landmarks (LP-00001) have inconsistent vector ID formats. "
-        "This is expected until the index is regenerated with standardized formats."
+    # Log confirmation that all IDs are standardized
+    logger.info(
+        "All landmark vectors have standardized ID formats after index regeneration."
     )
 
 

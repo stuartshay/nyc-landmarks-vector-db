@@ -85,6 +85,55 @@ class CoreDataStoreAPI:
             logger.error(f"API request error: {e}")
             raise Exception(f"Error making API request: {e}")
 
+    def _standardize_landmark_id(self, landmark_id: str) -> List[str]:
+        """Standardize landmark ID to handle various formats and suffix variations.
+
+        This method creates multiple potential formats for a landmark ID to handle variations
+        like LP-02118A, ensuring we can find landmarks even with non-standard IDs.
+
+        Args:
+            landmark_id: The landmark ID in any format (with or without LP prefix)
+
+        Returns:
+            A list of possible standardized formats to try
+        """
+        # Start with an empty list of variations to try
+        variations = []
+
+        # Ensure we have the basic LP format
+        base_id = landmark_id
+        if not landmark_id.startswith("LP-"):
+            # Format without the LP prefix - add it and zero-pad
+            base_id = f"LP-{landmark_id.lstrip('0').zfill(5)}"
+
+        # Add the base ID as the primary version to try
+        variations.append(base_id)
+
+        # Check if we have a suffix (like 'A' in LP-02118A)
+        if any(c.isalpha() for c in base_id[3:]):
+            # Extract the numeric part and any suffix
+            prefix = "LP-"
+            suffix = ""
+            number_part = ""
+
+            for char in base_id[3:]:
+                if char.isdigit():
+                    number_part += char
+                elif char.isalpha():
+                    suffix += char
+
+            # Add variation without the suffix
+            if suffix:
+                variations.append(f"{prefix}{number_part.zfill(5)}")
+
+            # Add variation with the base numeric ID
+            clean_numeric = "".join(filter(str.isdigit, base_id))
+            if clean_numeric:
+                variations.append(f"LP-{clean_numeric.zfill(5)}")
+
+        # Remove duplicates while preserving order
+        return list(dict.fromkeys(variations))
+
     def get_landmark_by_id(self, landmark_id: str) -> Optional[Dict[str, Any]]:
         """Get landmark information by ID.
 
@@ -95,14 +144,21 @@ class CoreDataStoreAPI:
             Dictionary containing landmark information, or None if not found
         """
         try:
-            # Ensure landmark_id is properly formatted with LP prefix
-            if not landmark_id.startswith("LP-"):
-                lpc_id = f"LP-{landmark_id.zfill(5)}"
-            else:
-                lpc_id = landmark_id
+            # Get potential ID variations to try
+            id_variations = self._standardize_landmark_id(landmark_id)
+            response = None
 
-            # Get the LPC report using the API
-            response = self._make_request("GET", f"/api/LpcReport/{lpc_id}")
+            # Try each variation until we find a match
+            for lpc_id in id_variations:
+                try:
+                    # Get the LPC report using the API
+                    response = self._make_request("GET", f"/api/LpcReport/{lpc_id}")
+                    if response:
+                        logger.debug(f"Found landmark with ID variation: {lpc_id}")
+                        break
+                except Exception as e:
+                    logger.debug(f"Attempted ID {lpc_id} resulted in error: {e}")
+                    continue
 
             if not response:
                 logger.warning(f"Landmark not found with ID: {landmark_id}")
@@ -196,7 +252,8 @@ class CoreDataStoreAPI:
         """Get paginated list of LPC reports with optional filtering using Pydantic models.
 
         This method directly maps to the GetLpcReports MCP tool functionality and uses
-        Pydantic models for data validation.
+        Pydantic models for data validation. It includes improved handling for pagination
+        edge cases, particularly for 404 errors when reaching beyond available pages.
 
         Args:
             page: Page number (starting from 1)
@@ -213,24 +270,26 @@ class CoreDataStoreAPI:
             LpcReportResponse object containing results and pagination info
 
         Raises:
-            Exception: If there is an error making the API request
+            Exception: If there is an error making the API request that is not a pagination boundary issue
         """
-        try:
-            # Build the query parameters and make the request
-            params = self._build_lpc_report_params(
-                page=page,
-                limit=limit,
-                borough=borough,
-                object_type=object_type,
-                neighborhood=neighborhood,
-                search_text=search_text,
-                parent_style_list=parent_style_list,
-                sort_column=sort_column,
-                sort_order=sort_order,
-            )
+        # Build the query parameters for filters only (not pagination)
+        params = self._build_lpc_report_params(
+            page=None,  # Don't include pagination in query params
+            limit=None,  # Don't include pagination in query params
+            borough=borough,
+            object_type=object_type,
+            neighborhood=neighborhood,
+            search_text=search_text,
+            parent_style_list=parent_style_list,
+            sort_column=sort_column,
+            sort_order=sort_order,
+        )
 
+        # Use path parameters for pagination, following CoreDataStore API format
+        endpoint = f"/api/LpcReport/{limit}/{page}"
+
+        try:
             # Make the API request
-            endpoint = "/api/LpcReport"
             response = self._make_request("GET", endpoint, params=params)
 
             # Ensure the response is a dictionary before validation
@@ -248,14 +307,38 @@ class CoreDataStoreAPI:
 
             return self._validate_lpc_report_response(response)
 
+        except requests.exceptions.HTTPError as e:
+            # Check if this is a 404 error, which could indicate we've reached the end of available pages
+            if hasattr(e, "response") and e.response and e.response.status_code == 404:
+                logger.info(
+                    f"Reached pagination boundary at page {page} with limit {limit}. "
+                    f"This may indicate no more data is available."
+                )
+
+                # Create an empty response with appropriate pagination info
+                empty_response = {
+                    "results": [],
+                    "page": page,
+                    "limit": limit,
+                    "total": (page - 1) * limit,  # Estimate total based on current page
+                    "from_": ((page - 1) * limit) + 1,
+                    "to": (page - 1) * limit,
+                }
+
+                return self._validate_lpc_report_response(empty_response)
+            else:
+                # For other HTTP errors, log and re-raise
+                logger.error(f"HTTP error getting LPC reports: {e}")
+                raise Exception(f"Error getting LPC reports: {e}")
         except Exception as e:
+            # For any other type of error
             logger.error(f"Error getting LPC reports: {e}")
             raise Exception(f"Error getting LPC reports: {e}")
 
     def _build_lpc_report_params(
         self,
-        page: int = 1,
-        limit: int = 10,
+        page: Optional[int] = 1,
+        limit: Optional[int] = 10,
         borough: Optional[str] = None,
         object_type: Optional[str] = None,
         neighborhood: Optional[str] = None,
@@ -272,11 +355,15 @@ class CoreDataStoreAPI:
         Returns:
             Dict of query parameters to send to the API
         """
-        # Build the required query parameters
-        params: Dict[str, Any] = {
-            "limit": limit,
-            "page": page,
-        }
+        # Build the query parameters
+        params: Dict[str, Any] = {}
+
+        # Only add pagination to query params if explicitly requested
+        # (now these will normally be passed as path parameters)
+        if limit is not None:
+            params["limit"] = limit
+        if page is not None:
+            params["page"] = page
 
         # Add optional filters if provided
         if borough:

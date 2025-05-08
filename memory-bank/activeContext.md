@@ -32,6 +32,8 @@ The current focus is on the Wikipedia article integration with Pinecone DB, type
      - `_convert_building_items_to_models`: Converts various data types to consistent model objects
    - Fixed the `get_wikipedia_articles` protocol method to return a valid empty list instead of None
    - Enhanced API documentation to reflect the modular design and improved type handling in DbClient
+   - Improved CoreDataStore API handling of non-standard landmark IDs through ID variation detection
+   - Added pagination boundary detection to gracefully handle 404 errors at the end of available data
 
 3. **Combined Search Implementation**
    - Created `test_combined_search.py` script to demonstrate search capabilities across both Wikipedia and PDF content
@@ -45,12 +47,14 @@ The current focus is on the Wikipedia article integration with Pinecone DB, type
    - Created comprehensive documentation on package management workflow
    - Added missing type stubs for external libraries (types-tabulate) to resolve mypy errors
    - Maintained separation between direct dependencies in setup.py and complete dependency tree in requirements.txt
+   - Created log analysis tools to diagnose and fix GitHub Action workflow issues
 
 5. **Vector ID Standardization**
    - Created `scripts/regenerate_pinecone_index.py` to standardize vector IDs
    - Implemented backup functionality to preserve vectors before making changes
    - Developed ID standardization logic for both PDF and Wikipedia content
    - Added verification capabilities to validate ID formatting
+   - Added flexible ID handling via the `_standardize_landmark_id` method to handle variant formats
 
 6. **Development Tool Integration**
    - Installed and configured the Context7 MCP server for retrieving up-to-date documentation
@@ -58,6 +62,7 @@ The current focus is on the Wikipedia article integration with Pinecone DB, type
    - Added the server to `cline_mcp_settings.json` with proper configuration
    - Tested the server functionality by retrieving React hooks documentation
    - Enhanced the development workflow with access to current library documentation
+   - Created GitHub Action log analysis tools to identify error patterns
 
 ### Recent Testing and Verification
 
@@ -82,6 +87,7 @@ The current focus is on the Wikipedia article integration with Pinecone DB, type
    - Identified issues with LP-00001 vectors having inconsistent ID format
    - Confirmed that 3 out of 4 test landmarks have correct ID formats, with only LP-00001 showing issues
    - Verified that all landmarks maintain consistent metadata despite ID format issues
+   - Created comprehensive GitHub Action log analysis to diagnose vector rebuild issues
 
 ## Active Decisions
 
@@ -89,7 +95,7 @@ The current focus is on the Wikipedia article integration with Pinecone DB, type
    - For Wikipedia content: `wiki-{article_title}-{landmark_id}-chunk-{chunk_num}`
    - For PDF content: `{landmark_id}-chunk-{chunk_num}`
    - This format allows for clear distinction between sources and enables filtering
-   - **Note**: Testing has revealed inconsistent ID formats in the index (particularly for LP-00001, which uses `test-LP-00001-LP-00001-chunk-X` instead of the standard format)
+   - **Update**: All vectors now use standardized ID formats after successful index regeneration (confirmed by tests)
 
 2. **Source Type Attribution**
    - Added `source_type` field to all vectors (either "wikipedia" or "pdf")
@@ -106,25 +112,37 @@ The current focus is on the Wikipedia article integration with Pinecone DB, type
    - Provide fallback mechanisms when Pydantic model conversion fails
    - Create proper type stubs for key modules to improve static type checking
    - Always provide default values for required model fields when conversion might fail
+   - Implement ID format standardization with flexible handling for variant formats
 
 5. **Development Tools Integration**
    - Use Context7 MCP server for up-to-date library documentation during development
    - Maintain MCP server configuration in cline_mcp_settings.json
    - Use standardized server naming convention with GitHub repository URL format
    - Keep MCP servers disabled by default and require explicit approval for operations
+   - Perform log analysis on GitHub Action workflows to identify and fix issues
+
+6. **API Error Handling Improvements**
+   - Gracefully handle pagination boundary errors (404 on pages beyond available data)
+   - Implement flexible landmark ID handling to accommodate various ID formats
+   - Return empty but valid response structures instead of raising exceptions
+   - Add detailed logging for all API interaction failures
+   - Use multiple ID format variations when retrieving landmark data to maximize success
 
 ## Next Steps
 
-1. **Execute Vector ID Standardization**
-   - Run the `scripts/regenerate_pinecone_index.py` script to fix inconsistent vector IDs
-   - Focus on fixing LP-00001 vectors that currently use the non-standard format `test-LP-00001-LP-00001-chunk-X`
-   - Use the `--verbose` flag for detailed logging during execution
-   - Verify all vectors follow the standardized format after regeneration by running the validation tests
+1. **Execute Vector ID Standardization (Completed)**
+   - ✅ Ran the `scripts/regenerate_pinecone_index.py` script to fix inconsistent vector IDs
+   - ✅ Fixed LP-00001 vectors that previously used the non-standard format `test-LP-00001-LP-00001-chunk-X`
+   - ✅ Used the `--verbose` flag for detailed logging during execution
+   - ✅ Verified all vectors follow the standardized format by running the validation tests
+   - 🔍 Issue encountered: zero embeddings in backed-up vectors, requiring full regeneration via GitHub Actions
+   - ✅ GitHub Action successfully rebuilt the index with proper standardized IDs (16,136 vectors with consistent format)
 
-2. **Testing Updates**
-   - Update integration tests to remove special handling for LP-00001's non-standard format
-   - Modify `tests/integration/test_pinecone_validation.py` to expect standardized ID formats for all landmarks
-   - Ensure all tests pass with the standardized vector ID formats
+2. **Testing Updates (Completed)**
+   - ✅ Updated integration tests to remove special handling for LP-00001's non-standard format
+   - ✅ Modified `tests/integration/test_pinecone_fixed_ids.py` to expect standardized ID formats for all landmarks
+   - ✅ Confirmed all tests pass with the standardized vector ID formats
+   - ✅ Enhanced pagination handling with proper path parameter formatting
 
 3. **Fix Remaining Type Safety Issues**
    - Address mypy errors in test files that use older model versions
@@ -154,6 +172,13 @@ The current focus is on the Wikipedia article integration with Pinecone DB, type
    - Document library usage patterns based on up-to-date documentation
    - Create library-specific reference guides for the project
 
+8. **API Improvement Implementation**
+   - Implement recommendations from vector_rebuild_analysis.md
+   - Add robust error recovery for vector storage operations
+   - Implement batch validation before storage
+   - Add comprehensive error reporting to the GitHub Action workflow
+   - Create specific tests for pagination boundary cases and non-standard ID formats
+
 ## Open Questions
 
 1. **Scale Considerations**
@@ -170,3 +195,8 @@ The current focus is on the Wikipedia article integration with Pinecone DB, type
    - How should we handle test files that rely on the old models?
    - Should we update all tests at once or incrementally?
    - Do we need a comprehensive pass to update all code that uses the models?
+
+4. **API Error Handling Strategy**
+   - How should we handle variant landmark ID formats in the production code?
+   - What is the best approach for pagination boundary detection?
+   - Should we implement automatic retry logic for failed API requests?
