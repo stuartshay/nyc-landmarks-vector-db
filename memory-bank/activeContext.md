@@ -2,7 +2,7 @@ NYC Landmarks Vector Database - Active Context
 
 ## Current Focus
 
-The current focus is on the Wikipedia article integration with Pinecone DB and type safety improvements. We have successfully implemented the core functionality to fetch, process, and store Wikipedia content in the vector database alongside existing PDF content, and have begun improving type safety across the codebase.
+The current focus is on the Wikipedia article integration with Pinecone DB, type safety improvements, and tool integration. We have successfully implemented the core functionality to fetch, process, and store Wikipedia content in the vector database alongside existing PDF content, have begun improving type safety across the codebase, and have integrated additional development tools to enhance productivity.
 
 ### Recent Implementation
 
@@ -52,6 +52,13 @@ The current focus is on the Wikipedia article integration with Pinecone DB and t
    - Developed ID standardization logic for both PDF and Wikipedia content
    - Added verification capabilities to validate ID formatting
 
+6. **Development Tool Integration**
+   - Installed and configured the Context7 MCP server for retrieving up-to-date documentation
+   - Set up the MCP configuration to use the npm package `@upstash/context7-mcp`
+   - Added the server to `cline_mcp_settings.json` with proper configuration
+   - Tested the server functionality by retrieving React hooks documentation
+   - Enhanced the development workflow with access to current library documentation
+
 ### Recent Testing and Verification
 
 1. **Wikipedia Import Testing**
@@ -100,6 +107,12 @@ The current focus is on the Wikipedia article integration with Pinecone DB and t
    - Create proper type stubs for key modules to improve static type checking
    - Always provide default values for required model fields when conversion might fail
 
+5. **Development Tools Integration**
+   - Use Context7 MCP server for up-to-date library documentation during development
+   - Maintain MCP server configuration in cline_mcp_settings.json
+   - Use standardized server naming convention with GitHub repository URL format
+   - Keep MCP servers disabled by default and require explicit approval for operations
+
 ## Next Steps
 
 1. **Execute Vector ID Standardization**
@@ -134,6 +147,12 @@ The current focus is on the Wikipedia article integration with Pinecone DB and t
    - Update to leverage both Wikipedia and PDF content
    - Add source attribution to responses
    - Test using both content sources in chat generation
+
+7. **Development Tools Expansion**
+   - Leverage Context7 MCP for Pinecone, Pydantic, and other library documentation
+   - Explore additional MCP servers for specialized functionality
+   - Document library usage patterns based on up-to-date documentation
+   - Create library-specific reference guides for the project
 
 ## Open Questions
 
