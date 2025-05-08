@@ -11,9 +11,10 @@ import re
 import sys
 from collections import Counter, defaultdict
 from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 
 
-def parse_log_file(log_file):
+def parse_log_file(log_file: str) -> Optional[Dict[str, Any]]:
     """Parse the GitHub Action log file and extract warnings and errors."""
 
     if not os.path.exists(log_file):
@@ -24,14 +25,14 @@ def parse_log_file(log_file):
         f"Analyzing log file: {log_file} ({os.path.getsize(log_file) / 1024 / 1024:.2f} MB)"
     )
     print("-" * 80)
-
     # Initialize counters and collections
     error_count = 0
     warning_count = 0
-    api_errors = []
-    pinecone_errors = []
-    zero_vector_errors = []
-    other_errors = []
+    api_errors: List[Tuple[int, str]] = []
+    pinecone_errors: List[Tuple[int, str]] = []
+    zero_vector_errors: List[Tuple[int, str]] = []
+    other_errors: List[Tuple[int, str]] = []
+    errors_by_module: Dict[str, List[Tuple[int, str]]] = defaultdict(list)
     errors_by_module = defaultdict(list)
 
     # Regular expressions to match different patterns
@@ -85,15 +86,14 @@ def parse_log_file(log_file):
 
     # Print error categories
     print("\n=== API Errors ===")
-    print(f"Found {len(api_errors)} API errors")
     api_error_summary = Counter(
         [
             (
-                re.search(r"url: ([^\s]+)", err[1]).group(1)
-                if re.search(r"url: ([^\s]+)", err[1])
+                search_result.group(1)
+                if (search_result := re.search(r"url: ([^\s]+)", err[1])) is not None
                 else err[1]
             )
-            for _, err in enumerate(api_errors)
+            for err in api_errors
         ]
     )
     for url, count in api_error_summary.most_common():
@@ -102,30 +102,27 @@ def parse_log_file(log_file):
     print("\n=== Pinecone Vector Errors ===")
     print(f"Found {len(pinecone_errors)} Pinecone errors")
     if pinecone_errors:
-        print("Sample errors:")
-        for i, (line_num, error) in enumerate(pinecone_errors[:5]):
+        for line_num, error_text in pinecone_errors[:5]:
             print(
-                f"  Line {line_num}: {error[:100]}..."
-                if len(error) > 100
-                else f"  Line {line_num}: {error}"
+                f"  Line {line_num}: {error_text[:100]}..."
+                if len(error_text) > 100
+                else f"  Line {line_num}: {error_text}"
             )
         if len(pinecone_errors) > 5:
             print(f"  ... and {len(pinecone_errors) - 5} more")
 
     print("\n=== Zero Vector Errors ===")
-    print(f"Found {len(zero_vector_errors)} zero vector errors")
     if zero_vector_errors:
         # Extract vector IDs with format problems
-        vector_ids = []
-        for _, error in zero_vector_errors:
-            match = re.search(r"Vector ID '([^']+)'", error)
+        vector_ids: List[str] = []
+        for _, error_text in zero_vector_errors:
+            match = re.search(r"Vector ID '([^']+)'", error_text)
             if match:
                 vector_ids.append(match.group(1))
 
         # Print unique vector IDs with problems
         unique_ids = set(vector_ids)
-        print(f"  {len(unique_ids)} unique problematic vector IDs")
-        for i, vid in enumerate(list(unique_ids)[:10]):
+        for vid in list(unique_ids)[:10]:
             print(f"  {vid}")
         if len(unique_ids) > 10:
             print(f"  ... and {len(unique_ids) - 10} more")
@@ -138,11 +135,11 @@ def parse_log_file(log_file):
 
     print("\n=== Other Errors ===")
     if other_errors:
-        for i, (line_num, error) in enumerate(other_errors[:10]):
+        for line_num, error_text in other_errors[:10]:
             print(
-                f"  Line {line_num}: {error[:100]}..."
-                if len(error) > 100
-                else f"  Line {line_num}: {error}"
+                f"  Line {line_num}: {error_text[:100]}..."
+                if len(error_text) > 100
+                else f"  Line {line_num}: {error_text}"
             )
         if len(other_errors) > 10:
             print(f"  ... and {len(other_errors) - 10} more")
@@ -168,11 +165,92 @@ def main():
     log_file = sys.argv[1]
     results = parse_log_file(log_file)
 
-    # Save results to a summary file
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    summary_file = f"github_log_analysis_{timestamp}.txt"
+    if results:
+        # Save results to a summary file
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        summary_file = f"github_log_analysis_{timestamp}.txt"
 
-    print(f"\nSummary saved to {summary_file}")
+        with open(summary_file, "w", encoding="utf-8") as f:
+            f.write(f"Log File: {log_file}\\n")
+            f.write(f"Analysis Timestamp: {timestamp}\\n")
+            f.write("-" * 80 + "\\n")
+            f.write(f"Total errors: {results['error_count']}\\n")
+            f.write(f"Total warnings: {results['warning_count']}\\n")
+            f.write("-" * 80 + "\\n")
+
+            f.write("\\n=== API Errors ===\\n")
+            if results["api_errors"]:
+                for line_num, err_text in results["api_errors"][:10]:
+                    f.write(f"  Line {line_num}: {err_text}\\n")
+                if len(results["api_errors"]) > 10:
+                    f.write(f"  ... and {len(results['api_errors']) - 10} more\\n")
+            else:
+                f.write("  No API errors found.\\n")
+
+            f.write("\\n=== Pinecone Vector Errors ===\\n")
+            if results["pinecone_errors"]:
+                for line_num, err_text in results["pinecone_errors"][:10]:
+                    f.write(f"  Line {line_num}: {err_text}\\n")
+                if len(results["pinecone_errors"]) > 10:
+                    f.write(f"  ... and {len(results['pinecone_errors']) - 10} more\\n")
+            else:
+                f.write("  No Pinecone errors found.\\n")
+
+            f.write("\\n=== Zero Vector Errors ===\\n")
+            if results["zero_vector_errors"]:
+                temp_vector_ids: List[str] = []
+                for _, err_text in results["zero_vector_errors"]:
+                    match = re.search(r"Vector ID '([^']+)'", err_text)
+                    if match:
+                        temp_vector_ids.append(match.group(1))
+                unique_ids_summary = set(temp_vector_ids)
+                for vid_summary in list(unique_ids_summary)[:10]:
+                    f.write(f"  Vector ID: {vid_summary}\\n")
+                if len(unique_ids_summary) > 10:
+                    f.write(
+                        f"  ... and {len(unique_ids_summary) - 10} more unique vector IDs\\n"
+                    )
+            else:
+                f.write("  No zero vector errors found.\\n")
+
+            f.write("\\n=== Errors by Module ===\\n")
+            if results["errors_by_module"]:
+                for module, errors_list in sorted(
+                    results["errors_by_module"].items(),
+                    key=lambda x: len(x[1]),
+                    reverse=True,
+                ):
+                    f.write(f"{module}: {len(errors_list)} errors\\n")
+                    for line_num, err_text in errors_list[
+                        :5
+                    ]:  # Print first 5 errors per module
+                        f.write(
+                            f"  Line {line_num}: {err_text[:100]}...\\n"
+                            if len(err_text) > 100
+                            else f"  Line {line_num}: {err_text}\\n"
+                        )
+                    if len(errors_list) > 5:
+                        f.write(
+                            f"  ... and {len(errors_list) - 5} more in this module\\n"
+                        )
+            else:
+                f.write("  No module-specific errors categorized.\\n")
+
+            f.write("\\n=== Other Errors ===\\n")
+            if results["other_errors"]:
+                for line_num, err_text in results["other_errors"][:10]:
+                    f.write(f"  Line {line_num}: {err_text}\\n")
+                if len(results["other_errors"]) > 10:
+                    f.write(f"  ... and {len(results['other_errors']) - 10} more\\n")
+            else:
+                f.write("  No other errors found.\\n")
+
+        print(f"\\nSummary saved to {summary_file}")
+    elif results is None and os.path.exists(log_file):
+        # This case implies parse_log_file returned None due to an internal issue
+        # but the file itself exists. The function already prints an error.
+        print("\\nCould not generate summary report due to parsing issues.")
+    # If results is None because file doesn't exist, parse_log_file handles the print.
 
 
 if __name__ == "__main__":

@@ -75,7 +75,13 @@ def fetch_all_landmarks(page_limit: Optional[int] = None) -> List[str]:
 
             # Process landmark IDs
             for landmark in landmarks:
-                landmark_id = landmark.get("id", "") or landmark.get("lpNumber", "")
+                # Handle both dictionary and Pydantic model objects
+                if isinstance(landmark, dict):
+                    landmark_id = landmark.get("id", "") or landmark.get("lpNumber", "")
+                else:
+                    # Handle Pydantic model
+                    landmark_id = getattr(landmark, "lpNumber", "")
+
                 if landmark_id:
                     all_landmark_ids.append(landmark_id)
 

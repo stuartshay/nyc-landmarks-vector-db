@@ -192,7 +192,11 @@ def _get_context_from_vector_db(
         ):  # Ensure landmark_id is not None before passing to get_landmark_by_id
             landmark = db_client.get_landmark_by_id(landmark_id)
             if landmark:
-                landmark_name = landmark.get("name")
+                # Handle both dict and Pydantic model objects
+                if isinstance(landmark, dict):
+                    landmark_name = landmark.get("name")
+                else:
+                    landmark_name = getattr(landmark, "name", None)
 
         # Add to sources
         source = {

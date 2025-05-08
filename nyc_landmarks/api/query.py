@@ -146,7 +146,11 @@ async def search_text(
             landmark_name = None
             landmark = db_client.get_landmark_by_id(landmark_id)
             if landmark:
-                landmark_name = landmark.get("name")
+                # Handle both dict and Pydantic model objects
+                if isinstance(landmark, dict):
+                    landmark_name = landmark.get("name")
+                else:
+                    landmark_name = getattr(landmark, "name", None)
 
             # Create SearchResult
             result = SearchResult(
@@ -194,15 +198,27 @@ async def get_landmarks(
         # Convert to LandmarkInfo objects
         landmarks = []
         for landmark_data in landmarks_data:
-            landmark = LandmarkInfo(
-                id=landmark_data.get("id", ""),
-                name=landmark_data.get("name", ""),
-                location=landmark_data.get("location"),
-                borough=landmark_data.get("borough"),
-                type=landmark_data.get("type"),
-                designation_date=str(landmark_data.get("designation_date", "")),
-                description=landmark_data.get("description"),
-            )
+            if isinstance(landmark_data, dict):
+                landmark = LandmarkInfo(
+                    id=landmark_data.get("id", ""),
+                    name=landmark_data.get("name", ""),
+                    location=landmark_data.get("location"),
+                    borough=landmark_data.get("borough"),
+                    type=landmark_data.get("type"),
+                    designation_date=str(landmark_data.get("designation_date", "")),
+                    description=landmark_data.get("description"),
+                )
+            else:
+                # Handle Pydantic model
+                landmark = LandmarkInfo(
+                    id=getattr(landmark_data, "lpNumber", ""),
+                    name=getattr(landmark_data, "name", ""),
+                    location=getattr(landmark_data, "street", None),
+                    borough=getattr(landmark_data, "borough", None),
+                    type=getattr(landmark_data, "objectType", None),
+                    designation_date=str(getattr(landmark_data, "dateDesignated", "")),
+                    description=None,  # Description might not be directly available
+                )
             landmarks.append(landmark)
 
         # Create and return response
@@ -239,15 +255,27 @@ async def get_landmark(
             )
 
         # Convert to LandmarkInfo
-        landmark = LandmarkInfo(
-            id=landmark_data.get("id", ""),
-            name=landmark_data.get("name", ""),
-            location=landmark_data.get("location"),
-            borough=landmark_data.get("borough"),
-            type=landmark_data.get("type"),
-            designation_date=str(landmark_data.get("designation_date", "")),
-            description=landmark_data.get("description"),
-        )
+        if isinstance(landmark_data, dict):
+            landmark = LandmarkInfo(
+                id=landmark_data.get("id", ""),
+                name=landmark_data.get("name", ""),
+                location=landmark_data.get("location"),
+                borough=landmark_data.get("borough"),
+                type=landmark_data.get("type"),
+                designation_date=str(landmark_data.get("designation_date", "")),
+                description=landmark_data.get("description"),
+            )
+        else:
+            # Handle Pydantic model
+            landmark = LandmarkInfo(
+                id=getattr(landmark_data, "lpNumber", ""),
+                name=getattr(landmark_data, "name", ""),
+                location=getattr(landmark_data, "street", None),
+                borough=getattr(landmark_data, "borough", None),
+                type=getattr(landmark_data, "objectType", None),
+                designation_date=str(getattr(landmark_data, "dateDesignated", "")),
+                description=None,  # Description might not be directly available
+            )
 
         return landmark
     except HTTPException:
@@ -285,15 +313,27 @@ async def search_landmarks_text(
         # Convert to LandmarkInfo objects
         landmarks = []
         for landmark_data in landmarks_data:
-            landmark = LandmarkInfo(
-                id=landmark_data.get("id", ""),
-                name=landmark_data.get("name", ""),
-                location=landmark_data.get("location"),
-                borough=landmark_data.get("borough"),
-                type=landmark_data.get("type"),
-                designation_date=str(landmark_data.get("designation_date", "")),
-                description=landmark_data.get("description"),
-            )
+            if isinstance(landmark_data, dict):
+                landmark = LandmarkInfo(
+                    id=landmark_data.get("id", ""),
+                    name=landmark_data.get("name", ""),
+                    location=landmark_data.get("location"),
+                    borough=landmark_data.get("borough"),
+                    type=landmark_data.get("type"),
+                    designation_date=str(landmark_data.get("designation_date", "")),
+                    description=landmark_data.get("description"),
+                )
+            else:
+                # Handle Pydantic model
+                landmark = LandmarkInfo(
+                    id=getattr(landmark_data, "lpNumber", ""),
+                    name=getattr(landmark_data, "name", ""),
+                    location=getattr(landmark_data, "street", None),
+                    borough=getattr(landmark_data, "borough", None),
+                    type=getattr(landmark_data, "objectType", None),
+                    designation_date=str(getattr(landmark_data, "dateDesignated", "")),
+                    description=None,  # Description might not be directly available
+                )
             landmarks.append(landmark)
 
         # Create and return response

@@ -55,7 +55,13 @@ def fetch_sample_landmarks(limit: int = 100) -> list[str]:
 
     landmark_ids: list[str] = []
     for landmark in landmarks:
-        landmark_id = landmark.get("id", "") or landmark.get("lpNumber", "")
+        # Handle both dictionary and Pydantic model objects
+        if isinstance(landmark, dict):
+            landmark_id = landmark.get("id", "") or landmark.get("lpNumber", "")
+        else:
+            # Handle Pydantic model
+            landmark_id = getattr(landmark, "lpNumber", "")
+
         if landmark_id:
             landmark_ids.append(landmark_id)
 
