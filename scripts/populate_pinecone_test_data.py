@@ -22,7 +22,7 @@ from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 logger = get_logger("populate_pinecone_test_data")
 
 
-def create_test_landmark_data():
+def create_test_landmark_data() -> List[Dict[str, str]]:
     """Create test landmark metadata for sample landmarks."""
 
     # List of sample landmarks that are tested in test_pinecone_validation.py
@@ -36,7 +36,7 @@ def create_test_landmark_data():
             "designation_date": "1981-05-19",
             "type": "Individual Landmark",
             "architect": "Shreve, Lamb & Harmon",
-            "description": "This is a test description for the Empire State Building. It was completed in 1931 and was the world's tallest building for nearly 40 years."
+            "description": "This is a test description for the Empire State Building. It was completed in 1931 and was the world's tallest building for nearly 40 years.",
         },
         {
             "landmark_id": "LP-00009",
@@ -47,7 +47,7 @@ def create_test_landmark_data():
             "designation_date": "1978-12-08",
             "type": "Individual Landmark",
             "architect": "William Van Alen",
-            "description": "This is a test description for the Chrysler Building. It was built between 1928 and 1930 and is known for its distinctive crown."
+            "description": "This is a test description for the Chrysler Building. It was built between 1928 and 1930 and is known for its distinctive crown.",
         },
         {
             "landmark_id": "LP-00042",
@@ -58,7 +58,7 @@ def create_test_landmark_data():
             "designation_date": "1966-09-20",
             "type": "Individual Landmark",
             "architect": "Daniel Burnham",
-            "description": "This is a test description for the Flatiron Building. It was completed in 1902 and is known for its triangular shape."
+            "description": "This is a test description for the Flatiron Building. It was completed in 1902 and is known for its triangular shape.",
         },
         {
             "landmark_id": "LP-00066",
@@ -69,15 +69,16 @@ def create_test_landmark_data():
             "designation_date": "1983-04-12",
             "type": "Individual Landmark",
             "architect": "Cass Gilbert",
-            "description": "This is a test description for the Woolworth Building. It was completed in 1913 and was once known as the Cathedral of Commerce."
-        }
+            "description": "This is a test description for the Woolworth Building. It was completed in 1913 and was once known as the Cathedral of Commerce.",
+        },
     ]
 
     return landmarks
 
 
-def generate_test_vectors(landmarks_data: List[Dict[str, Any]],
-                         chunks_per_landmark: int = 3) -> List[Dict[str, Any]]:
+def generate_test_vectors(
+    landmarks_data: List[Dict[str, Any]], chunks_per_landmark: int = 3
+) -> List[Dict[str, Any]]:
     """
     Generate test vectors for each landmark with proper IDs and metadata.
 
@@ -110,14 +111,12 @@ def generate_test_vectors(landmarks_data: List[Dict[str, Any]],
                 "chunk_index": chunk_index,
                 "total_chunks": chunks_per_landmark,
                 "source_type": "test",
-                "test_data": True
+                "test_data": True,
             }
 
-            vectors.append({
-                "id": vector_id,
-                "values": vector_data,
-                "metadata": metadata
-            })
+            vectors.append(
+                {"id": vector_id, "values": vector_data, "metadata": metadata}
+            )
 
     return vectors
 
@@ -138,13 +137,9 @@ def upload_vectors(pinecone_db: PineconeDB, vectors: List[Dict[str, Any]]) -> in
     total_uploaded = 0
 
     for i in range(0, len(vectors), batch_size):
-        batch = vectors[i:i+batch_size]
+        batch = vectors[i : i + batch_size]
         vector_batch = [
-            {
-                "id": v["id"],
-                "values": v["values"],
-                "metadata": v["metadata"]
-            }
+            {"id": v["id"], "values": v["values"], "metadata": v["metadata"]}
             for v in batch
         ]
 
@@ -158,13 +153,15 @@ def upload_vectors(pinecone_db: PineconeDB, vectors: List[Dict[str, Any]]) -> in
     return total_uploaded
 
 
-def main():
+def main() -> None:
     """Run the main script."""
     logger.info("Initializing PineconeDB client...")
     pinecone_db = PineconeDB()
 
     if not pinecone_db.index:
-        logger.error("Pinecone index not initialized. Check your API key and environment settings.")
+        logger.error(
+            "Pinecone index not initialized. Check your API key and environment settings."
+        )
         return
 
     # Get current stats

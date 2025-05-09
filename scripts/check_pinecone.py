@@ -17,7 +17,8 @@ from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 # Set up logger
 logger = get_logger("check_pinecone")
 
-def main():
+
+def main() -> None:
     """Check if vectors are in Pinecone."""
     logger.info("Initializing PineconeDB client...")
     pinecone_db = PineconeDB()
@@ -50,9 +51,7 @@ def main():
         try:
             # Query vectors
             vectors = pinecone_db.query_vectors(
-                query_vector=query_vector,
-                top_k=10,
-                filter_dict=filter_dict
+                query_vector=query_vector, top_k=10, filter_dict=filter_dict
             )
 
             if vectors:
@@ -72,13 +71,14 @@ def main():
         all_vectors = pinecone_db.query_vectors(
             query_vector=query_vector,
             top_k=100,  # Get up to 100 vectors
-            filter_dict={}  # No filter, get all vectors
+            filter_dict={},  # No filter, get all vectors
         )
         logger.info(f"Found {len(all_vectors)} total vectors")
-        vector_ids = [v.get('id') for v in all_vectors]
+        vector_ids = [v.get("id") for v in all_vectors]
         logger.info(f"Vector IDs: {vector_ids}")
     except Exception as e:
         logger.error(f"Error fetching all vectors: {e}")
+
 
 if __name__ == "__main__":
     main()

@@ -4,9 +4,8 @@ PineconeDB class that handles vector operations in Pinecone.
 
 import os
 import uuid
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional
 
-import pinecone
 from pinecone import Pinecone
 
 from nyc_landmarks.config.settings import settings
