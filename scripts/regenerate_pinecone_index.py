@@ -194,6 +194,29 @@ def backup_vectors(
     return exported_count, landmark_ids
 
 
+def is_test_vector(vector_id: str, metadata: Dict[str, Any]) -> bool:
+    """
+    Determine if a vector is a test vector based on ID patterns or metadata.
+
+    Args:
+        vector_id: Vector ID to check
+        metadata: Vector metadata
+
+    Returns:
+        True if it's a test vector, False otherwise
+    """
+    # Check if ID contains test patterns
+    if "test" in vector_id.lower():
+        return True
+
+    # Check if landmark_id has test patterns
+    landmark_id = metadata.get("landmark_id", "")
+    if "test" in landmark_id.lower():
+        return True
+
+    return False
+
+
 def standardize_ids(
     vectors: List[Dict[str, Any]], source_type: str
 ) -> List[Dict[str, Any]]:
@@ -221,6 +244,16 @@ def standardize_ids(
         # Get key metadata fields
         landmark_id = metadata.get("landmark_id", "unknown")
         chunk_index = metadata.get("chunk_index", 0)
+
+        # Check if this is a test vector
+        if is_test_vector(vector_id, metadata):
+            # Use LP-99999 format for test vectors
+            test_id = "LP-99999"
+            # Update metadata to reflect the new test ID convention
+            metadata["landmark_id"] = test_id
+            landmark_id = test_id
+            metadata["is_test"] = True
+            logger.info(f"Identified test vector: {vector_id} -> using {test_id}")
 
         # Create standardized ID based on source type
         if source_type == "wikipedia":
@@ -357,6 +390,7 @@ def verify_standardized_ids(pinecone_db: PineconeDB) -> Tuple[int, int, int]:
     total_checked = 0
     correct_format = 0
     incorrect_format = 0
+    test_vectors = 0
 
     # Process in batches
     batch_size = 100
@@ -383,6 +417,27 @@ def verify_standardized_ids(pinecone_db: PineconeDB) -> Tuple[int, int, int]:
                 continue
 
             total_checked += 1
+
+            # Check if this is a test vector using LP-99999 format
+            if landmark_id == "LP-99999" or metadata.get("is_test", False):
+                test_vectors += 1
+                logger.info(f"Found test vector with ID: {vector_id}")
+                # Test vectors should still follow the standard format
+                if (
+                    source_type == "wikipedia"
+                    and vector_id.startswith("wiki-")
+                    and "LP-99999" in vector_id
+                    and "-chunk-" in vector_id
+                ) or (
+                    source_type != "wikipedia"
+                    and vector_id.startswith("LP-99999")
+                    and "-chunk-" in vector_id
+                ):
+                    correct_format += 1
+                else:
+                    incorrect_format += 1
+                    logger.warning(f"Incorrect test vector ID format: {vector_id}")
+                continue
 
             # Check format based on source type
             is_valid_format = False
@@ -412,6 +467,7 @@ def verify_standardized_ids(pinecone_db: PineconeDB) -> Tuple[int, int, int]:
     logger.info(f"Total vectors checked: {total_checked}")
     logger.info(f"Vectors with correct format: {correct_format}")
     logger.info(f"Vectors with incorrect format: {incorrect_format}")
+    logger.info(f"Test vectors found (LP-99999): {test_vectors}")
 
     return total_checked, correct_format, incorrect_format
 
@@ -473,7 +529,9 @@ def main() -> None:
     # Verify only mode
     if args.verify_only:
         logger.info("Running in verify-only mode")
-        total_checked, _, incorrect_format = verify_standardized_ids(pinecone_db)
+        total_checked, correct_format, incorrect_format = verify_standardized_ids(
+            pinecone_db
+        )
         if incorrect_format > 0:
             logger.warning(
                 f"Found {incorrect_format} vectors with non-standard ID format "
@@ -512,7 +570,9 @@ def main() -> None:
 
     # Verify the results
     logger.info("Verifying standardized ID formats")
-    total_checked, _, incorrect_format = verify_standardized_ids(pinecone_db)
+    total_checked, correct_format, incorrect_format = verify_standardized_ids(
+        pinecone_db
+    )
     if incorrect_format > 0:
         logger.warning(
             f"Found {incorrect_format} vectors with non-standard ID format "

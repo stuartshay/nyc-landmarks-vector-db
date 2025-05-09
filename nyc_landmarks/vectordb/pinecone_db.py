@@ -1,240 +1,52 @@
 """
-Pinecone vector database module for NYC Landmarks Vector Database.
-
-This module handles interactions with the Pinecone vector database service,
-including storing and retrieving embeddings.
+PineconeDB class that handles vector operations in Pinecone.
 """
 
-import logging
-import time
+import os
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
-import numpy as np
-
-# Import for Pinecone SDK v6.x
 import pinecone
+from pinecone import Pinecone
 
 from nyc_landmarks.config.settings import settings
-from nyc_landmarks.vectordb.enhanced_metadata import get_metadata_collector
+from nyc_landmarks.utils.logger import get_logger
+from nyc_landmarks.vectordb.enhanced_metadata import EnhancedMetadataCollector
 
-# Configure logging
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=settings.LOG_LEVEL.value)
+logger = get_logger(__name__)
 
 
 class PineconeDB:
     """
-    Pinecone vector database operations.
-
-    This class provides methods to interact with Pinecone vector database,
-    including initializing connections, storing vectors, querying for similar vectors,
-    and managing indexes.
-
-    Attributes:
-        api_key (str): Pinecone API key from settings
-        index_name (str): Name of the Pinecone index to use
-        namespace (str): Namespace within the index for vector storage
-        dimensions (int): Dimensionality of vectors to store
-        metric (str): Distance metric for vector similarity (e.g., "cosine")
-        pc: Pinecone client instance
-        index: Pinecone index instance for operations
-        metadata_collector: Collector for enhanced metadata
+    Class to handle vector operations in Pinecone.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, index_name: Optional[str] = None):
         """
-        Initialize the Pinecone database with credentials.
+        Initialize PineconeDB with connection to Pinecone index.
 
-        Sets up the Pinecone client using API key from the application configuration.
-        If credentials are available, it will attempt to connect to the specified index.
-
-        Raises:
-            Various exceptions from the Pinecone library may be caught and logged.
+        Args:
+            index_name: Name of the index (optional, uses settings if not provided)
         """
-        self.api_key = settings.PINECONE_API_KEY
-        self.index_name = settings.PINECONE_INDEX_NAME
-        self.namespace = settings.PINECONE_NAMESPACE
-        self.dimensions = settings.PINECONE_DIMENSIONS
-        self.metric = settings.PINECONE_METRIC
-        self.pc = None
-        self.index = None
-        self.metadata_collector = get_metadata_collector()
+        self.api_key = os.environ.get("PINECONE_API_KEY", settings.PINECONE_API_KEY)
+        self.environment = os.environ.get(
+            "PINECONE_ENVIRONMENT", settings.PINECONE_ENVIRONMENT
+        )
+        self.index_name = index_name or os.environ.get(
+            "PINECONE_INDEX_NAME", settings.PINECONE_INDEX_NAME
+        )
 
-        # Initialize Pinecone client if API key is provided
-        if self.api_key:
-            try:
-                # Initialize Pinecone with SDK v6.x API
-                self.pc = pinecone.Pinecone(api_key=self.api_key)
-                logger.info("Initialized Pinecone client")
+        # Initialize Pinecone
+        logger.info("Initialized Pinecone client")
+        self.pc = Pinecone(api_key=self.api_key)
 
-                # Connect to index
-                self._connect_to_index()
-            except Exception as e:
-                logger.error(f"Error initializing Pinecone: {e}")
-        else:
-            logger.warning("Pinecone API key not provided")
-
-    def _connect_to_index(self) -> None:
-        """
-        Connect to the Pinecone index without recreating it.
-        """
-        if self.pc is None:
-            logger.error("Pinecone client is not initialized.")
-            raise RuntimeError("Pinecone client is not initialized.")
+        # Connect to index
         try:
-            # Get list of indexes with v6.x API
-            indexes = self.pc.list_indexes()
-
-            # Check if the index name exists in the list of available indexes
-            index_names = [index.name for index in indexes]
-            if self.index_name not in index_names:
-                logger.warning(
-                    f"Index '{self.index_name}' does not exist in available indexes: {index_names}. "
-                    f"This should be pre-created in the Pinecone dashboard."
-                )
-                logger.info(
-                    "Attempting to connect anyway in case of list_indexes inconsistency..."
-                )
-
-            # Connect to index with v6.x API
-            # Using type: ignore to handle potential differences in Pinecone SDK versions
-            self.index = self.pc.Index(self.index_name)  # type: ignore
+            self.index = self.pc.Index(self.index_name)
             logger.info(f"Connected to Pinecone index: {self.index_name}")
         except Exception as e:
-            logger.error(f"Error connecting to Pinecone index: {e}")
+            logger.error(f"Failed to connect to Pinecone index: {e}")
             raise
-
-    def get_index_stats(self) -> Dict[str, Any]:
-        """
-        Get statistics about the index.
-        """
-        if self.index is None:
-            logger.error("Pinecone index not initialized")
-            return {"error": "Index not initialized"}
-        try:
-            # Call describe_index_stats on the index object instance
-            stats_response = self.index.describe_index_stats()
-
-            # Check if the response is None *before* trying to convert it
-            if stats_response is None:
-                logger.error(
-                    f"Received None response from self.index.describe_index_stats for index '{self.index_name}'"
-                )
-                return {"error": "Received no stats from Pinecone (None response)"}
-
-            # Proceed if the response is not None
-            logger.debug(
-                f"describe_index_stats response type: {type(stats_response)}, value: {stats_response}"
-            )
-
-            # Build dictionary from the response
-            try:
-                # Base stats dictionary
-                stats_dict = self._extract_dimension_and_fullness(stats_response)
-
-                # Add namespaces
-                stats_dict["namespaces"] = self._extract_namespaces(stats_response)
-
-                # Add total vector count
-                stats_dict["total_vector_count"] = self._extract_vector_count(
-                    stats_response
-                )
-
-                logger.debug(
-                    f"Successfully retrieved and built index stats dict: {stats_dict}"
-                )
-                return stats_dict
-            except Exception as build_e:
-                logger.exception(
-                    f"Error building dictionary from stats_response: {build_e}",
-                    exc_info=True,
-                )
-                return {"error": f"Error processing stats response: {str(build_e)}"}
-
-        except Exception as e:
-            error_message = "Unknown error"
-            try:
-                # Try to get a string representation safely
-                error_message = str(e)
-            except Exception as str_e:
-                logger.error(f"Could not convert exception to string: {str_e}")
-
-            logger.exception(
-                f"Unexpected error getting index stats: {error_message}", exc_info=True
-            )  # Log full traceback
-            return {"error": f"Unexpected error getting stats: {error_message}"}
-
-    def store_vector(
-        self, vector_id: str, vector: List[float], metadata: Dict[str, Any]
-    ) -> bool:
-        """
-        Store a single vector in the index.
-
-        Adds or updates a single vector with associated metadata in the Pinecone index.
-
-        Args:
-            vector_id (str): Unique identifier for the vector
-            vector (List[float]): Embedding vector as a list of floats
-            metadata (Dict[str, Any]): Metadata to store with the vector
-
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        if not self.index:
-            logger.error("Pinecone index not initialized")
-            return False
-
-        try:
-            # Upsert the vector using new API
-            self.index.upsert(
-                vectors=[{"id": vector_id, "values": vector, "metadata": metadata}],
-                namespace=self.namespace,
-            )
-            logger.debug(f"Stored vector with ID: {vector_id}")
-            return True
-        except Exception as e:
-            logger.error(f"Error storing vector: {e}")
-            return False
-
-    def store_vectors_batch(
-        self, vectors: List[Tuple[str, List[float], Dict[str, Any]]]
-    ) -> bool:
-        """
-        Store a batch of vectors in the index.
-
-        Efficiently uploads multiple vectors with their metadata in a single operation
-        to minimize API calls and improve performance.
-
-        Args:
-            vectors (List[Tuple[str, List[float], Dict[str, Any]]]): List of tuples
-                containing (vector_id, vector_values, metadata) for each vector to store
-
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        if not self.index:
-            logger.error("Pinecone index not initialized")
-            return False
-
-        if not vectors:
-            logger.warning("Attempted to store empty vectors list")
-            return True
-
-        try:
-            # Convert tuples to the format expected by the new API
-            formatted_vectors = [
-                {"id": id, "values": values, "metadata": metadata}
-                for id, values, metadata in vectors
-            ]
-
-            # Upsert the vectors using new API
-            self.index.upsert(vectors=formatted_vectors, namespace=self.namespace)
-            logger.info(f"Stored {len(vectors)} vectors")
-            return True
-        except Exception as e:
-            logger.error(f"Error storing vectors: {e}")
-            return False
 
     def store_chunks(
         self,
@@ -242,174 +54,113 @@ class PineconeDB:
         id_prefix: str = "",
         landmark_id: Optional[str] = None,
         use_fixed_ids: bool = True,
-        delete_existing: bool = True,
+        delete_existing: bool = False,
     ) -> List[str]:
         """
-        Store text chunks with embeddings in the index.
-
-        Processes a list of text chunks with their embeddings and metadata,
-        optionally enhances the metadata with landmark-specific information,
-        and stores them in the Pinecone index.
+        Store chunks in Pinecone index.
 
         Args:
-            chunks (List[Dict[str, Any]]): List of chunk dictionaries, each containing
-                'text', 'metadata', and 'embedding' keys
-            id_prefix (str, optional): Prefix for generated vector IDs. Defaults to "".
-            landmark_id (Optional[str], optional): Landmark ID to fetch enhanced metadata.
-                Defaults to None.
-            use_fixed_ids (bool, optional): Whether to use deterministic IDs (True) or random UUIDs (False).
-                Defaults to True.
-            delete_existing (bool, optional): Whether to delete existing vectors for the landmark.
-                Defaults to True.
+            chunks: List of chunks to store, each with text and embedding
+            id_prefix: Prefix for vector IDs (optional)
+            landmark_id: ID of the landmark for metadata and filtering
+            use_fixed_ids: Create deterministic IDs for vectors based on content and landmark
+            delete_existing: Delete existing vectors for the landmark before storing new ones
 
         Returns:
-            List[str]: List of stored vector IDs, empty if operation failed
+            List of vector IDs stored in Pinecone
         """
-        # If using fixed IDs and landmark_id is provided, use store_chunks_with_fixed_ids
-        if use_fixed_ids and landmark_id:
-            return self.store_chunks_with_fixed_ids(
-                chunks=chunks,
-                landmark_id=landmark_id,
-                delete_existing=delete_existing,
-                id_prefix=id_prefix,
-            )
-
-        # Otherwise, use the original implementation with random UUIDs
         if not chunks:
-            logger.warning("Attempted to store empty chunks list")
+            logger.warning("No chunks to store")
             return []
 
         # Delete existing vectors if requested
         if delete_existing and landmark_id:
-            self._delete_existing_vectors_for_landmark(landmark_id)
+            logger.info(f"Deleting existing vectors for landmark: {landmark_id}")
+            filter_dict = {"landmark_id": landmark_id}
+            if id_prefix.startswith("wiki-"):
+                filter_dict["source_type"] = "wikipedia"
+            elif id_prefix.startswith("test-"):
+                filter_dict["source_type"] = "test"
+            else:
+                filter_dict["source_type"] = "pdf"
 
-        # Get enhanced metadata if landmark_id is provided
-        enhanced_metadata = self._get_enhanced_metadata(landmark_id)
+            self.delete_vectors_by_filter(filter_dict)
 
-        # Prepare vectors for batch storage
-        vectors, vector_ids = self._prepare_vectors_for_storage(
-            chunks, enhanced_metadata, id_prefix
-        )
-
-        # Store the vectors
-        success = self.store_vectors_batch(vectors)
-
-        if success:
-            return vector_ids
-        return []
-
-    def _delete_existing_vectors_for_landmark(self, landmark_id: str) -> bool:
-        """Delete existing vectors for a landmark.
-
-        Args:
-            landmark_id (str): The landmark ID
-
-        Returns:
-            bool: True if deletion was successful, False otherwise
-        """
-        try:
-            deleted = self.delete_vectors_by_landmark_id(landmark_id)
-            if not deleted:
-                logger.warning(f"Failed to delete existing vectors for {landmark_id}")
-            return deleted
-        except Exception as e:
-            logger.error(f"Error deleting existing vectors: {e}")
-            return False
-
-    def _get_enhanced_metadata(self, landmark_id: Optional[str]) -> Dict[str, Any]:
-        """Get enhanced metadata for a landmark.
-
-        Args:
-            landmark_id (Optional[str]): The landmark ID
-
-        Returns:
-            Dict[str, Any]: Enhanced metadata or empty dict if landmark_id is None
-        """
-        enhanced_metadata = {}
-        if landmark_id:
-            enhanced_metadata = self.metadata_collector.collect_landmark_metadata(
-                landmark_id
-            )
-            logger.info(f"Retrieved enhanced metadata for landmark: {landmark_id}")
-        return enhanced_metadata
-
-    def _prepare_vectors_for_storage(
-        self,
-        chunks: List[Dict[str, Any]],
-        enhanced_metadata: Dict[str, Any],
-        id_prefix: str = "",
-    ) -> Tuple[List[Tuple[str, List[float], Dict[str, Any]]], List[str]]:
-        """Prepare vectors for batch storage in Pinecone.
-
-        Args:
-            chunks (List[Dict[str, Any]]): List of chunks to convert to vectors
-            enhanced_metadata (Dict[str, Any]): Enhanced metadata to add to each vector
-            id_prefix (str, optional): Prefix for vector IDs
-
-        Returns:
-            Tuple containing:
-            - List of tuples (vector_id, embedding, metadata) ready for storage
-            - List of vector IDs
-        """
         vectors = []
         vector_ids = []
 
-        for chunk in chunks:
-            # Check if chunk has required fields
-            if "embedding" not in chunk or "metadata" not in chunk:
-                logger.warning(f"Chunk missing required fields: {chunk.keys()}")
-                continue
+        # Get enhanced metadata for the landmark if ID is provided
+        enhanced_metadata = {}
+        if landmark_id:
+            try:
+                collector = EnhancedMetadataCollector()
+                enhanced_metadata = collector.collect_landmark_metadata(landmark_id)
+                logger.info(f"Retrieved enhanced metadata for landmark: {landmark_id}")
+            except Exception as e:
+                logger.warning(f"Could not retrieve enhanced metadata: {e}")
+                enhanced_metadata = {}
 
-            # Generate a vector ID
-            vector_id = f"{id_prefix}{str(uuid.uuid4())}"
+        # Prepare vectors
+        for i, chunk in enumerate(chunks):
+            # Generate vector ID
+            if use_fixed_ids:
+                # Use deterministic ID based on landmark and chunk index
+                vector_id = f"{id_prefix}{landmark_id}-chunk-{i}"
+            else:
+                # Generate random UUID for the vector
+                vector_id = f"{id_prefix}{uuid.uuid4()}"
+
+            # Extract embedding and metadata
+            embedding = chunk.get("embedding")
+
+            # Determine source type based on prefix
+            source_type = "pdf"  # Default
+            if id_prefix.startswith("wiki-"):
+                source_type = "wikipedia"
+            elif id_prefix.startswith("test-"):
+                source_type = "test"
+
+            # Basic metadata
+            metadata = {
+                "text": chunk.get("text", ""),
+                "source_type": source_type,
+                "chunk_index": i,
+            }
+
+            # Add landmark ID if provided
+            if landmark_id:
+                metadata["landmark_id"] = landmark_id
+
+            # Add enhanced metadata
+            metadata.update(enhanced_metadata)
+
+            # Add Wikipedia-specific metadata
+            if source_type == "wikipedia" and "article_metadata" in chunk:
+                article_meta = chunk.get("article_metadata", {})
+                metadata.update(
+                    {
+                        "article_title": article_meta.get("title", ""),
+                        "article_url": article_meta.get("url", ""),
+                    }
+                )
+
+            # Create vector
+            vector = {"id": vector_id, "values": embedding, "metadata": metadata}
+
+            vectors.append(vector)
             vector_ids.append(vector_id)
 
-            # Get the embedding and prepare metadata
-            embedding = chunk["embedding"]
-            metadata = self._prepare_chunk_metadata(chunk, enhanced_metadata)
+        # Store in batches of 100
+        batch_size = 100
+        for i in range(0, len(vectors), batch_size):
+            batch = vectors[i : i + batch_size]
+            try:
+                self.index.upsert(vectors=batch)
+            except Exception as e:
+                logger.error(f"Failed to store chunk batch {i//batch_size}: {e}")
 
-            # Add to vectors list
-            vectors.append((vector_id, embedding, metadata))
-
-        return vectors, vector_ids
-
-    def _prepare_chunk_metadata(
-        self, chunk: Dict[str, Any], enhanced_metadata: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """Prepare metadata for a chunk by merging with enhanced metadata.
-
-        Args:
-            chunk (Dict[str, Any]): The chunk containing text, metadata, etc.
-            enhanced_metadata (Dict[str, Any]): Enhanced metadata from landmark
-
-        Returns:
-            Dict[str, Any]: Combined metadata for the chunk
-        """
-        # Get the metadata and add the text for retrieval
-        metadata: Dict[str, Any] = dict(chunk["metadata"].copy())
-
-        # Include the text in metadata for retrieval
-        metadata["text"] = chunk["text"]
-
-        # Add today's processing date
-        metadata["processing_date"] = time.strftime("%Y-%m-%d")
-
-        # Merge with enhanced metadata if available
-        if enhanced_metadata:
-            # Keep only metadata fields that won't conflict with chunk-specific metadata
-            for key, value in enhanced_metadata.items():
-                # Skip keys that already exist or text fields
-                if key not in metadata and key != "text":
-                    metadata[key] = value
-
-        # Add chunk position information if available
-        if "chunk_index" in chunk:
-            metadata["chunk_index"] = chunk["chunk_index"]
-
-        if "total_chunks" in chunk:
-            metadata["total_chunks"] = chunk["total_chunks"]
-
-        return metadata
+        logger.info(f"Stored {len(vector_ids)} vectors")
+        return vector_ids
 
     def query_vectors(
         self,
@@ -418,433 +169,177 @@ class PineconeDB:
         filter_dict: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """
-        Query the index for similar vectors.
-
-        Searches the Pinecone index for vectors similar to the provided query vector,
-        optionally filtering results based on metadata values.
+        Query vectors from Pinecone index.
 
         Args:
-            query_vector (List[float]): Query embedding vector to find similar vectors for
-            top_k (int, optional): Number of results to return. Defaults to 5.
-            filter_dict (Optional[Dict[str, Any]], optional): Metadata filter to apply to the query.
-                Defaults to None.
+            query_vector: Embedding of the query text
+            top_k: Number of results to return
+            filter_dict: Dictionary of metadata filters
 
         Returns:
-            List[Dict[str, Any]]: List of matched vectors with their metadata and similarity scores
+            List of matching vectors with metadata
         """
-        if not self.index:
-            logger.error("Pinecone index not initialized")
-            return []
-
         try:
-            # Query the index using new API
-            results = self.index.query(
+            response = self.index.query(
                 vector=query_vector,
                 top_k=top_k,
                 include_metadata=True,
-                namespace=self.namespace,
                 filter=filter_dict,
             )
 
-            # Process results
-            matches = results.matches
-            logger.info(f"Query returned {len(matches)} matches")
-
-            # Convert pinecone match objects to dictionaries safely
+            # Convert response to dict format
+            matches = response.get("matches", [])
+            # Ensure matches is a list of dicts
             result_list = []
             for match in matches:
-                # Create a dictionary containing the match properties
-                match_dict = {
-                    "id": match.id if hasattr(match, "id") else None,
-                    "score": match.score if hasattr(match, "score") else None,
-                }
-
-                # Add metadata if available
-                if hasattr(match, "metadata") and match.metadata:
-                    match_dict["metadata"] = match.metadata
+                if isinstance(match, dict):
+                    result_list.append(match)
                 else:
-                    match_dict["metadata"] = {}
-
-                result_list.append(match_dict)
+                    # Convert object to dict if needed
+                    match_dict = {
+                        "id": match.id if hasattr(match, "id") else "",
+                        "score": match.score if hasattr(match, "score") else 0.0,
+                        "metadata": (
+                            match.metadata if hasattr(match, "metadata") else {}
+                        ),
+                    }
+                    result_list.append(match_dict)
 
             return result_list
+
         except Exception as e:
-            logger.error(f"Error querying vectors: {e}")
+            logger.error(f"Failed to query vectors: {e}")
             return []
 
-    def delete_vectors(self, vector_ids: List[str]) -> bool:
+    def delete_vectors(self, vector_ids: List[str]) -> int:
         """
-        Delete vectors from the index.
-
-        Removes vectors with the specified IDs from the Pinecone index.
+        Delete vectors from Pinecone index.
 
         Args:
-            vector_ids (List[str]): List of vector IDs to delete
+            vector_ids: List of vector IDs to delete
 
         Returns:
-            bool: True if successful, False otherwise
+            Number of vectors deleted
         """
-        if not self.index:
-            logger.error("Pinecone index not initialized")
-            return False
-
         if not vector_ids:
-            logger.warning("Attempted to delete empty vector IDs list")
-            return True
+            return 0
 
         try:
-            # Delete the vectors
-            self.index.delete(ids=vector_ids, namespace=self.namespace)
-            logger.info(f"Deleted {len(vector_ids)} vectors")
-            return True
+            # Delete in batches of 100
+            batch_size = 100
+            deleted_count = 0
+
+            for i in range(0, len(vector_ids), batch_size):
+                batch = vector_ids[i : i + batch_size]
+                self.index.delete(ids=batch)
+                deleted_count += len(batch)
+
+            return deleted_count
+
         except Exception as e:
-            logger.error(f"Error deleting vectors: {e}")
-            return False
+            logger.error(f"Failed to delete vectors: {e}")
+            return 0
 
-    def delete_by_metadata(self, filter_dict: Dict[str, Any]) -> bool:
+    def delete_vectors_by_filter(self, filter_dict: Dict[str, Any]) -> int:
         """
-        Delete vectors matching metadata filter.
-
-        Removes vectors that match the specified metadata filter criteria from the Pinecone index.
-        This is useful for batch deletion of vectors based on their metadata attributes.
+        Delete vectors by metadata filter.
 
         Args:
-            filter_dict (Dict[str, Any]): Metadata filter criteria to match vectors for deletion
+            filter_dict: Dictionary of metadata filters
 
         Returns:
-            bool: True if successful, False otherwise
+            Number of vectors deleted (approximate)
         """
-        if not self.index:
-            logger.error("Pinecone index not initialized")
-            return False
-
         try:
-            # Delete vectors by metadata filter
-            self.index.delete(filter=filter_dict, namespace=self.namespace)
+            # Count vectors matching filter
+            stats_response = self.index.query(
+                vector=[0.0] * 1536,  # Dummy vector
+                top_k=1,
+                filter=filter_dict,
+                include_metadata=False,
+            )
+
+            # Delete by filter
+            delete_response = self.index.delete(filter=filter_dict)
+
             logger.info(f"Deleted vectors matching filter: {filter_dict}")
-            return True
+            return 1  # No way to know exact count from delete response
+
         except Exception as e:
-            logger.error(f"Error deleting vectors by metadata: {e}")
-            return False
+            logger.error(f"Failed to delete vectors by filter: {e}")
+            return 0
 
-    def delete_index(self) -> bool:
+    def list_vectors_by_source(
+        self, source_type: str, limit: int = 1000, landmark_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
-        Delete the entire Pinecone index.
-
-        Removes the entire Pinecone index, which deletes all vectors and
-        associated metadata. Use with caution as this operation cannot be undone.
-
-        Returns:
-            bool: True if successful or if index didn't exist, False on error
-        """
-        if not self.pc:
-            logger.error("Pinecone client not initialized")
-            return False
-
-        try:
-            # Check if index exists using new API
-            indexes = self.pc.list_indexes()
-            # Handle different Pinecone SDK versions that return different types
-            index_names = (
-                [idx.name for idx in indexes]
-                if hasattr(indexes, "__iter__")
-                else getattr(indexes, "names", [])
-            )
-            if self.index_name in index_names:
-                # Delete the index using new API
-                self.pc.delete_index(self.index_name)
-                logger.info(f"Successfully deleted index: {self.index_name}")
-
-                # Reset the index reference
-                self.index = None
-                return True
-
-            logger.warning(f"Index {self.index_name} does not exist, nothing to delete")
-            return True
-        except Exception as e:
-            logger.error(f"Error deleting index: {e}")
-            return False
-
-    def delete_vectors_by_landmark_id(self, landmark_id: str) -> bool:
-        """
-        Delete all vectors for a specific landmark.
-
-        This method finds all vectors with a matching landmark_id in metadata
-        and deletes them from the index.
+        List vectors by source type.
 
         Args:
-            landmark_id (str): The landmark ID to match in metadata
+            source_type: Source type to filter by ("wikipedia", "pdf", or "test")
+            limit: Maximum number of vectors to return
+            landmark_id: Optional landmark ID to filter by
 
         Returns:
-            bool: True if successful, False otherwise
-        """
-        if not self.index:
-            logger.error("Pinecone index not initialized")
-            return False
-
-        try:
-            # First find all vectors with this landmark_id
-            random_vector = np.random.rand(self.dimensions).tolist()
-            filter_dict = {"landmark_id": landmark_id}
-            results = self.query_vectors(
-                query_vector=random_vector,
-                top_k=100,  # Set high to get potentially all chunks
-                filter_dict=filter_dict,
-            )
-
-            if not results:
-                logger.info(f"No vectors found for landmark_id: {landmark_id}")
-                return True
-
-            # Extract IDs and delete
-            vector_ids = [r.get("id") for r in results]
-            success = self.delete_vectors(vector_ids)
-
-            if success:
-                logger.info(
-                    f"Deleted {len(vector_ids)} vectors for landmark_id: {landmark_id}"
-                )
-
-            return success
-        except Exception as e:
-            logger.error(f"Error deleting vectors for landmark_id {landmark_id}: {e}")
-            return False
-
-    def store_chunks_with_fixed_ids(
-        self,
-        chunks: List[Dict[str, Any]],
-        landmark_id: str,
-        delete_existing: bool = True,
-        id_prefix: str = "",
-    ) -> List[str]:
-        """
-        Store text chunks with embeddings in the index using deterministic IDs.
-
-        This modified version creates fixed IDs based on landmark_id and chunk_index,
-        allowing the same chunks to be processed multiple times without duplication.
-
-        Args:
-            chunks (List[Dict[str, Any]]): List of chunk dictionaries with 'text', 'metadata', and 'embedding'
-            landmark_id (str): The landmark ID
-            delete_existing (bool): Whether to delete existing vectors for this landmark
-            id_prefix (str): Optional prefix for vector IDs (e.g., "wiki-" for Wikipedia content)
-
-        Returns:
-            List[str]: List of vector IDs
-        """
-        if not chunks:
-            logger.warning("Attempted to store empty chunks list")
-            return []
-
-        # First delete all existing vectors for this landmark if requested
-        if delete_existing:
-            self._delete_existing_vectors_for_landmark(landmark_id)
-
-        # Get enhanced metadata
-        enhanced_metadata = self.metadata_collector.collect_landmark_metadata(
-            landmark_id
-        )
-        logger.info(f"Retrieved enhanced metadata for landmark: {landmark_id}")
-
-        # Prepare vectors with fixed IDs for batch storage
-        vectors, vector_ids = self._prepare_vectors_with_fixed_ids(
-            chunks, landmark_id, enhanced_metadata, id_prefix
-        )
-
-        # Store the vectors
-        success = self.store_vectors_batch(vectors)
-
-        if success:
-            return vector_ids
-        return []
-
-    def _prepare_vectors_with_fixed_ids(
-        self,
-        chunks: List[Dict[str, Any]],
-        landmark_id: str,
-        enhanced_metadata: Dict[str, Any],
-        id_prefix: str = "",
-    ) -> Tuple[List[Tuple[str, List[float], Dict[str, Any]]], List[str]]:
-        """Prepare vectors with fixed IDs based on landmark_id and chunk_index.
-
-        Args:
-            chunks: List of chunk dictionaries
-            landmark_id: The landmark ID for creating deterministic IDs
-            enhanced_metadata: Enhanced metadata to merge with chunk metadata
-            id_prefix: Optional prefix for vector IDs (e.g., "wiki-" for Wikipedia content)
-
-        Returns:
-            Tuple containing:
-            - List of tuples (vector_id, embedding, metadata) ready for storage
-            - List of vector IDs
-        """
-        vectors = []
-        vector_ids = []
-
-        for chunk in chunks:
-            # Check if chunk has required fields
-            if "embedding" not in chunk or "metadata" not in chunk:
-                logger.warning(f"Chunk missing required fields: {chunk.keys()}")
-                continue
-
-            # Generate a deterministic vector ID based on landmark_id and chunk_index
-            chunk_index = chunk.get("chunk_index", 0)
-            # Format with optional prefix: wiki-LP-00009-chunk-0, LP-00009-chunk-1, etc.
-            vector_id = f"{id_prefix}{landmark_id}-chunk-{chunk_index}"
-            vector_ids.append(vector_id)
-
-            # Get the embedding
-            embedding = chunk["embedding"]
-
-            # Prepare metadata for the chunk
-            metadata = self._prepare_chunk_metadata(chunk, enhanced_metadata)
-
-            # Add to vectors list
-            vectors.append((vector_id, embedding, metadata))
-
-        return vectors, vector_ids
-
-    def recreate_index(self) -> bool:
-        """
-        Delete and recreate the Pinecone index.
-
-        Completely rebuilds the Pinecone index by first deleting the existing one
-        and then creating a new one with the configured dimensions and metric.
-        This operation is destructive and will result in the loss of all vectors
-        and metadata stored in the index.
-
-        Note:
-            This operation may be restricted by Pinecone service tier limitations.
-            The method includes a waiting period to allow the new index to initialize.
-
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        if not self.pc:
-            logger.error("Pinecone client not initialized")
-            return False
-
-        # Delete existing index if it exists
-        deleted = self.delete_index()
-        if not deleted:
-            return False
-
-        # Create new index
-        try:
-            # Create index with new API
-            self.pc.create_index(
-                name=self.index_name, dimension=self.dimensions, metric=self.metric
-            )
-            logger.warning(
-                "Note: GCP starter tier may not allow creating new indexes. "
-                "If this fails, try using AWS region."
-            )
-
-            # Wait for index to be ready
-            logger.info("Waiting for index to initialize...")
-            time.sleep(30)
-
-            # Connect to the new index
-            self.index = self.pc.Index(self.index_name)  # type: ignore
-            logger.info(f"Successfully recreated index: {self.index_name}")
-            return True
-        except Exception as e:
-            logger.error(f"Error recreating index: {e}")
-            return False
-
-    def _extract_dimension_and_fullness(self, stats_response: Any) -> Dict[str, Any]:
-        """Extract dimension and index_fullness from stats response.
-
-        Args:
-            stats_response: Response from describe_index_stats
-
-        Returns:
-            Dictionary containing dimension and index_fullness
-        """
-        stats_dict = {}
-
-        # Extract dimension if available
-        if hasattr(stats_response, "dimension"):
-            stats_dict["dimension"] = stats_response.dimension
-
-        # Extract index_fullness if available
-        if hasattr(stats_response, "index_fullness"):
-            stats_dict["index_fullness"] = stats_response.index_fullness
-
-        return stats_dict
-
-    def _extract_namespaces(self, stats_response: Any) -> Dict[str, Any]:
-        """Extract namespaces information from stats response.
-
-        Args:
-            stats_response: Response from describe_index_stats
-
-        Returns:
-            Dictionary containing namespaces data
-        """
-        namespaces_dict = {}
-
-        if hasattr(stats_response, "namespaces"):
-            for ns_name, ns_data in stats_response.namespaces.items():
-                # Handle the case when ns_data might be None or not dict-compatible
-                if ns_data is not None:
-                    try:
-                        # Try to convert to dict if it has dict-like behavior
-                        if hasattr(ns_data, "items"):
-                            namespaces_dict[ns_name] = dict(ns_data)
-                        else:
-                            # If it's already a dict or similar
-                            namespaces_dict[ns_name] = ns_data
-                    except Exception as ns_e:
-                        logger.warning(
-                            f"Could not process namespace data for {ns_name}: {ns_e}"
-                        )
-                        namespaces_dict[ns_name] = {"error": "Could not process data"}
-
-        return namespaces_dict
-
-    def _extract_vector_count(self, stats_response: Any) -> int:
-        """Extract total vector count from stats response.
-
-        Args:
-            stats_response: Response from describe_index_stats
-
-        Returns:
-            Total vector count
-        """
-        if hasattr(stats_response, "total_vector_count"):
-            count: int = stats_response.total_vector_count
-            return count
-        return 0
-
-    def _process_stats_response(self, stats_response: Any) -> Dict[str, Any]:
-        """Process the stats response into a dictionary.
-
-        Args:
-            stats_response: Response from describe_index_stats
-
-        Returns:
-            Processed stats dictionary
+            Dictionary with matches containing vectors and metadata
         """
         try:
-            # Base stats dictionary
-            stats_dict = self._extract_dimension_and_fullness(stats_response)
+            # Create filter dictionary
+            filter_dict = {"source_type": source_type}
+            if landmark_id:
+                filter_dict["landmark_id"] = landmark_id
 
-            # Add namespaces
-            stats_dict["namespaces"] = self._extract_namespaces(stats_response)
-
-            # Add total vector count
-            stats_dict["total_vector_count"] = self._extract_vector_count(
-                stats_response
+            # Query with dummy vector to get metadata
+            response = self.index.query(
+                vector=[0.0] * 1536,  # Dummy vector
+                top_k=limit,
+                filter=filter_dict,
+                include_metadata=True,
             )
 
-            logger.debug(
-                f"Successfully retrieved and built index stats dict: {stats_dict}"
-            )
-            return stats_dict
-        except Exception as build_e:
-            logger.exception(
-                f"Error building dictionary from stats_response: {build_e}",
-                exc_info=True,
-            )
-            return {"error": f"Error processing stats response: {str(build_e)}"}
+            # Check if response is already a dictionary
+            if isinstance(response, dict):
+                return response
+
+            # Convert to dict for consistent return type
+            try:
+                return dict(response)
+            except Exception:
+                # Handle case where response can't be converted to dict
+                if hasattr(response, "matches"):
+                    matches = []
+                    for match in response.matches:
+                        match_dict = {
+                            "id": getattr(match, "id", ""),
+                            "score": getattr(match, "score", 0.0),
+                            "metadata": getattr(match, "metadata", {}),
+                        }
+                        matches.append(match_dict)
+                    return {"matches": matches}
+                return {"matches": []}
+
+        except Exception as e:
+            logger.error(f"Failed to list vectors by source: {e}")
+            return {"matches": []}
+
+    def get_index_stats(self) -> Dict[str, Any]:
+        """
+        Get statistics about the Pinecone index.
+
+        Returns:
+            Dictionary with index statistics
+        """
+        try:
+            stats = self.index.describe_index_stats()
+            # Convert to dict for consistent return type
+            if isinstance(stats, dict):
+                return stats
+            return {
+                "namespaces": {},
+                "dimension": 0,
+                "index_fullness": 0.0,
+                "total_vector_count": 0,
+            }
+        except Exception as e:
+            logger.error(f"Failed to get index stats: {e}")
+            return {}

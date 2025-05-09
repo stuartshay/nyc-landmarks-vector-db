@@ -31,7 +31,7 @@ logging.basicConfig(level=settings.LOG_LEVEL.value)
 
 
 @pytest.fixture
-def temp_dirs() -> Generator[dict, None, None]:
+def temp_dirs() -> Generator[dict[str, str | Path], None, None]:
     """Create temporary directories for test artifacts."""
     base_dir = tempfile.mkdtemp()
     pdfs_dir = Path(base_dir) / "pdfs"

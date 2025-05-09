@@ -87,7 +87,13 @@ Each step includes robust error handling and logging to ensure the pipeline can 
 
 ## CoreDataStore API Schema
 
-The NYC Landmarks Vector Database interacts with the CoreDataStore API to retrieve landmark data. Below is the documentation for the key endpoints used in the pipeline.
+The NYC Landmarks Vector Database interacts with the CoreDataStore API to retrieve landmark data. The complete API schema is available at:
+
+```
+https://api.coredatastore.com/swagger/v1/swagger.json
+```
+
+This Swagger documentation should be considered the definitive reference for API interactions. Below is the documentation for the key endpoints used in the pipeline.
 
 ### 1. Landmark Reports API
 
@@ -506,3 +512,76 @@ The process_landmarks GitHub Action can be configured with various parameters to
 - `PINECONE_NAMESPACE`: Namespace within the Pinecone index (optional)
 - `CHUNK_SIZE`: Size of text chunks in tokens (default: 500)
 - `CHUNK_OVERLAP`: Overlap between text chunks in tokens (default: 50)
+
+## API Client Implementation Notes
+
+The NYC Landmarks project uses a central `DbClient` class that serves as an abstraction layer over the CoreDataStore API. This class provides robust type handling through Pydantic models that match the API response schemas.
+
+### Key Features of the DB Client
+
+1. **Type Safety**: Uses Pydantic models (`LpcReportModel`, `LpcReportResponse`, `LpcReportDetailResponse`) for consistent data parsing and validation with comprehensive handling of Union types.
+
+2. **Error Handling**: Contains comprehensive error handling with fallback mechanisms and proper logging, ensuring reliable API interactions even when response formats vary.
+
+3. **Flexible Response Handling**: Can return both Pydantic model objects or raw dictionaries depending on the needs of the caller.
+
+4. **Pagination Support**: Built-in pagination for large result sets with flexible page size control.
+
+5. **Modular Design**: Key methods are broken down into smaller, focused helper methods to improve maintainability and testability:
+   - `_standardize_lp_number`: Ensures consistent landmark ID formatting
+   - `_fetch_buildings_from_client`: Retrieves building data from the client API
+   - `_fetch_buildings_from_landmark_detail`: Falls back to landmark details when direct building fetch fails
+   - `_convert_building_items_to_models`: Converts various data types to consistent model objects
+   - `_convert_item_to_lpc_report_model`: Handles type conversion for individual items
+
+6. **API Method Coverage**: Provides methods for all key CoreDataStore endpoints:
+   - `get_landmark_by_id`
+   - `get_all_landmarks`
+   - `get_landmarks_page`
+   - `search_landmarks`
+   - `get_landmark_metadata`
+   - `get_lpc_reports`
+   - `get_landmark_pdf_url`
+   - `get_landmark_buildings`
+   - `get_wikipedia_articles`
+   - `get_landmark_pluto_data`
+   - `get_total_record_count`
+
+### Usage Example
+
+```python
+from nyc_landmarks.db.db_client import get_db_client
+
+# Get a client instance
+client = get_db_client()
+
+# Get paginated landmarks
+landmarks = client.get_lpc_reports(
+    page=1,
+    limit=10,
+    borough="Manhattan",
+    object_type="Individual Landmark"
+)
+
+# Access results as Pydantic models
+for landmark in landmarks.results:
+    print(f"Name: {landmark.name}")
+    print(f"LP Number: {landmark.lpNumber}")
+    print(f"PDF URL: {landmark.pdfReportUrl}")
+
+# Get detailed information for a specific landmark
+detail = client.get_landmark_by_id("LP-00001")
+if detail and hasattr(detail, "map"):
+    print(f"Latitude: {detail.map.centerPoint.latitude}")
+    print(f"Longitude: {detail.map.centerPoint.longitude}")
+
+# Get buildings associated with a landmark
+buildings = client.get_landmark_buildings("LP-00099")
+for building in buildings:
+    print(f"Building Name: {building.name}")
+    print(f"Address: {building.street}")
+```
+
+### Client Implementation
+
+The `DbClient` class is designed with type safety in mind, using Pydantic models that match the CoreDataStore API response schemas. It provides a consistent interface for interacting with the API and handles error cases gracefully.

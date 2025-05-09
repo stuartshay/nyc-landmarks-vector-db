@@ -9,6 +9,7 @@ import logging
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pytest
@@ -25,7 +26,7 @@ logging.basicConfig(level=settings.LOG_LEVEL.value)
 
 def get_vector_count(
     pinecone_db: PineconeDB, landmark_id: str
-) -> tuple[int, list[dict[str, any]]]:
+) -> tuple[int, list[dict[str, Any]]]:
     """Get the number of vectors for a landmark."""
     # Create random vector for query
     random_vector = np.random.rand(settings.PINECONE_DIMENSIONS).tolist()

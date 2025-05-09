@@ -75,7 +75,7 @@ class Settings(BaseSettings):
     )  # Set API as the default data source
 
     # Application settings
-    APP_HOST: str = Field(default="0.0.0.0")
+    APP_HOST: str = Field(default="0.0.0.0")  # nosec
     APP_PORT: int = Field(default=8000)
 
     # PDF processing settings
@@ -87,7 +87,7 @@ class Settings(BaseSettings):
         default=3600
     )  # Time to live for conversation history in seconds
 
-    @field_validator("PINECONE_DIMENSIONS", mode="before")
+    @field_validator("PINECONE_DIMENSIONS", mode="before")  # type: ignore[misc]
     @classmethod
     def match_embedding_dimensions(cls, v: int, info: ValidationInfo) -> int:
         """Ensure Pinecone dimensions match OpenAI embedding dimensions."""

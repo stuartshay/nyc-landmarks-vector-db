@@ -44,7 +44,7 @@ class EmbeddingGenerator:
         else:
             logger.warning("OpenAI API key not provided")
 
-    @retry(
+    @retry(  # type: ignore[misc]
         retry=retry_if_exception_type(
             (openai.RateLimitError, openai.APITimeoutError, openai.APIConnectionError)
         ),

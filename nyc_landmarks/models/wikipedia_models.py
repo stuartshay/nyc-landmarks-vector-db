@@ -30,7 +30,7 @@ class WikipediaArticleModel(BaseModel):
     title: str = Field(..., description="Title of the Wikipedia article")
     recordType: str = Field("Wikipedia", description="Type of record")
 
-    @field_validator("url")
+    @field_validator("url", mode="after")  # type: ignore[misc]
     @classmethod
     def validate_url(cls, v: str) -> str:
         """Validate that URL is properly formatted."""
@@ -59,7 +59,7 @@ class WikipediaContentModel(BaseModel):
         None, description="Processed text chunks for embedding"
     )
 
-    @field_validator("url")
+    @field_validator("url", mode="after")  # type: ignore[misc]
     @classmethod
     def validate_url(cls, v: str) -> str:
         """Validate that URL is properly formatted."""
