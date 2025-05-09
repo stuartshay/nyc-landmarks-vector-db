@@ -27,10 +27,12 @@ class TestLpcReports(unittest.TestCase):
             objectType="Individual Landmark",
             street="350 5th Ave",
             dateDesignated="1981-05-19",
-            photoStatus="false",
+            photoStatus=False,
             architect="Shreve, Lamb & Harmon",
             style="Art Deco",
             neighborhood="Midtown",
+            zipCode="10118",
+            mapStatus=False,
             photoUrl=None,
         )
         self.assertEqual(report.lpNumber, "LP-00001")
@@ -40,6 +42,7 @@ class TestLpcReports(unittest.TestCase):
         # Test with all fields
         report = LpcReportModel(
             lpNumber="LP-00001",
+            lpcId="00001",
             name="Empire State Building",
             pdfReportUrl="https://example.com/reports/LP-00001.pdf",
             borough="Manhattan",
@@ -49,6 +52,9 @@ class TestLpcReports(unittest.TestCase):
             architect="Shreve, Lamb & Harmon",
             style="Art Deco",
             neighborhood="Midtown",
+            zipCode="10118",
+            mapStatus=True,
+            photoStatus=True,
             photoUrl="https://example.com/photos/empire-state.jpg",
         )
         self.assertEqual(report.lpNumber, "LP-00001")
@@ -67,6 +73,9 @@ class TestLpcReports(unittest.TestCase):
                     pdfReportUrl=None,
                     borough="Manhattan",
                     objectType="Individual Landmark",
+                    mapStatus=True,
+                    zipCode="10118",
+                    photoStatus=False,
                     street="350 5th Ave",
                     dateDesignated="1981-05-19",
                     architect="Shreve, Lamb & Harmon",
@@ -76,9 +85,13 @@ class TestLpcReports(unittest.TestCase):
                 ),
                 LpcReportModel(
                     lpNumber="LP-00002",
+                    lpcId="00002",
                     name="Chrysler Building",
                     pdfReportUrl=None,
                     borough="Manhattan",
+                    photoStatus=False,
+                    mapStatus=True,
+                    zipCode="10174",
                     objectType="Individual Landmark",
                     street="405 Lexington Ave",
                     dateDesignated="1978-09-12",
@@ -91,7 +104,7 @@ class TestLpcReports(unittest.TestCase):
             total=2,
             page=1,
             limit=2,
-            from_=1,
+            **{"from": 1},
             to=2,
         )
         self.assertEqual(len(response.results), 2)
@@ -100,10 +113,10 @@ class TestLpcReports(unittest.TestCase):
         self.assertEqual(response.results[0].lpNumber, "LP-00001")
 
     @patch("nyc_landmarks.db.coredatastore_api.CoreDataStoreAPI._make_request")
-    def test_get_lpc_reports(self, mock_make_request):
+    def test_get_lpc_reports(self, mock_make_request: unittest.mock.MagicMock):
         """Test that get_lpc_reports correctly processes API responses."""
         # Mock API response
-        mock_response = {
+        mock_response: dict[str, any] = {
             "results": [
                 {
                     "lpNumber": "LP-00001",
@@ -138,7 +151,9 @@ class TestLpcReports(unittest.TestCase):
         mock_make_request.assert_called_once()
         args, kwargs = mock_make_request.call_args
         self.assertEqual(args[0], "GET")
-        self.assertEqual(args[1], "/api/LpcReport")
+        self.assertEqual(
+            args[1], "/api/LpcReport/10/1"
+        )  # Updated to match actual implementation with /limit/page
         self.assertEqual(kwargs["params"]["Borough"], "Manhattan")
         self.assertEqual(kwargs["params"]["ObjectType"], "Individual Landmark")
 

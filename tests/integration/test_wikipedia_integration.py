@@ -5,8 +5,10 @@ These tests validate the complete Wikipedia processing workflow from
 fetching articles from the CoreDataStore API to storing vectors in Pinecone.
 """
 
-import pytest
 import logging
+
+import pytest
+
 from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
 from nyc_landmarks.db.wikipedia_fetcher import WikipediaFetcher
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
@@ -24,7 +26,9 @@ def test_end_to_end_wikipedia_pipeline():
     # Step 1: Retrieve Wikipedia articles from CoreDataStore API
     api_client = CoreDataStoreAPI()
     articles = api_client.get_wikipedia_articles(TEST_LANDMARK_ID)
-    assert articles, f"Should retrieve at least one Wikipedia article for {TEST_LANDMARK_ID}"
+    assert (
+        articles
+    ), f"Should retrieve at least one Wikipedia article for {TEST_LANDMARK_ID}"
 
     # Log the articles found
     logger.info(f"Found {len(articles)} Wikipedia articles for {TEST_LANDMARK_ID}")
@@ -40,7 +44,9 @@ def test_end_to_end_wikipedia_pipeline():
     assert content_model.chunks, "Should generate chunks from article content"
 
     # Log chunk information
-    logger.info(f"Generated {len(content_model.chunks)} chunks from article '{article.title}'")
+    logger.info(
+        f"Generated {len(content_model.chunks)} chunks from article '{article.title}'"
+    )
 
     # Step 3: Generate embeddings for the chunks
     embedding_generator = EmbeddingGenerator()
@@ -72,7 +78,7 @@ def test_end_to_end_wikipedia_pipeline():
     results = pinecone_db.query_vectors(
         query_vector=test_embedding,
         top_k=5,
-        filter_dict={"landmark_id": TEST_LANDMARK_ID, "source_type": "wikipedia"}
+        filter_dict={"landmark_id": TEST_LANDMARK_ID, "source_type": "wikipedia"},
     )
 
     assert results, "Should retrieve vectors with Wikipedia source_type"
@@ -80,5 +86,7 @@ def test_end_to_end_wikipedia_pipeline():
 
     # Step 6: Clean up test vectors
     deleted_count = pinecone_db.delete_vectors(vector_ids)
-    assert deleted_count == len(vector_ids), f"Should delete all {len(vector_ids)} test vectors"
+    assert deleted_count == len(
+        vector_ids
+    ), f"Should delete all {len(vector_ids)} test vectors"
     logger.info(f"Cleaned up {deleted_count} test vectors")

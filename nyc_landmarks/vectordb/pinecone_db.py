@@ -35,6 +35,10 @@ class PineconeDB:
         self.index_name = index_name or os.environ.get(
             "PINECONE_INDEX_NAME", settings.PINECONE_INDEX_NAME
         )
+        self.namespace = os.environ.get(
+            "PINECONE_NAMESPACE", settings.PINECONE_NAMESPACE
+        )
+        self.dimensions = settings.PINECONE_DIMENSIONS
 
         # Initialize Pinecone
         logger.info("Initialized Pinecone client")
@@ -131,6 +135,16 @@ class PineconeDB:
             if landmark_id:
                 metadata["landmark_id"] = landmark_id
 
+            # Add processing_date if present in chunk
+            if chunk.get("processing_date"):
+                metadata["processing_date"] = chunk.get("processing_date")
+
+            # Add processing_date from chunk metadata if available
+            if chunk.get("metadata", {}).get("processing_date"):
+                metadata["processing_date"] = chunk.get("metadata", {}).get(
+                    "processing_date"
+                )
+
             # Add enhanced metadata
             metadata.update(enhanced_metadata)
 
@@ -161,6 +175,28 @@ class PineconeDB:
 
         logger.info(f"Stored {len(vector_ids)} vectors")
         return vector_ids
+
+    def store_chunks_with_fixed_ids(
+        self, chunks: List[Dict[str, Any]], landmark_id: str
+    ) -> List[str]:
+        """
+        Store chunks with fixed IDs based on landmark ID and chunk index.
+        This is a convenience wrapper around store_chunks.
+
+        Args:
+            chunks: List of chunks to store, each with text and embedding
+            landmark_id: ID of the landmark for fixed ID generation and metadata
+
+        Returns:
+            List of vector IDs stored in Pinecone
+        """
+        return self.store_chunks(
+            chunks=chunks,
+            landmark_id=landmark_id,
+            id_prefix="",
+            use_fixed_ids=True,
+            delete_existing=True,
+        )
 
     def query_vectors(
         self,
