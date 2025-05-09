@@ -97,7 +97,7 @@ def test_common_landmarks_have_vectors(
             # Special handling for LP-00001 which might have non-standard formats
             if landmark_id == "LP-00001" and (
                 vector_id.startswith(f"test-{landmark_id}-")
-                or vector_id.startswith(f"wiki-")
+                or vector_id.startswith("wiki-")
                 or "wiki" in vector_id
             ):
                 # This is a known inconsistent format, so we accept it for now
@@ -139,7 +139,7 @@ def test_deterministic_ids_consistency(
             # Special handling for LP-00001 which might have non-standard formats
             if landmark_id == "LP-00001" and (
                 vid.startswith(f"test-{landmark_id}-")
-                or vid.startswith(f"wiki-")
+                or vid.startswith("wiki-")
                 or "wiki" in vid
             ):
                 logger.warning(
