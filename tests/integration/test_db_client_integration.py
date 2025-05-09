@@ -103,12 +103,25 @@ class TestDbClientIntegration:
         assert third_page, "Third page should have landmarks"
 
         # Check that different pages have different records
-        first_page_ids = {
-            lm.get("id", "") or lm.get("lpNumber", "") for lm in first_page if lm
-        }
-        second_page_ids = {
-            lm.get("id", "") or lm.get("lpNumber", "") for lm in second_page if lm
-        }
+        first_page_ids = set()
+        for lm in first_page:
+            if lm:
+                # Handle both dictionary and Pydantic model cases
+                if hasattr(lm, "get"):  # Dictionary
+                    landmark_id = lm.get("id", "") or lm.get("lpNumber", "")
+                else:  # Pydantic model
+                    landmark_id = getattr(lm, "id", None) or getattr(lm, "lpNumber", "")
+                first_page_ids.add(landmark_id)
+
+        second_page_ids = set()
+        for lm in second_page:
+            if lm:
+                # Handle both dictionary and Pydantic model cases
+                if hasattr(lm, "get"):  # Dictionary
+                    landmark_id = lm.get("id", "") or lm.get("lpNumber", "")
+                else:  # Pydantic model
+                    landmark_id = getattr(lm, "id", None) or getattr(lm, "lpNumber", "")
+                second_page_ids.add(landmark_id)
 
         assert first_page_ids.isdisjoint(
             second_page_ids

@@ -110,8 +110,14 @@ def test_fixed_id_upsert_behavior():
         # Process second time with the same chunks
         logger.info(f"Processing {test_landmark_id} second time with fixed IDs")
         # Update the processing date to identify the second run
+        today = time.strftime("%Y-%m-%d")
         for chunk in test_chunks:
-            chunk["metadata"]["processing_date"] = time.strftime("%Y-%m-%d")
+            # Update at both the chunk level and metadata level to ensure it's captured
+            chunk["processing_date"] = today
+            if "metadata" in chunk:
+                chunk["metadata"]["processing_date"] = today
+            else:
+                chunk["metadata"] = {"processing_date": today}
 
         second_vector_ids = pinecone_db.store_chunks(
             chunks=test_chunks,

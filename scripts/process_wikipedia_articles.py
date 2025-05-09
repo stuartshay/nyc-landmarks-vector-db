@@ -15,7 +15,7 @@ import concurrent.futures
 import logging
 import sys
 import time
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from tqdm import tqdm
 
@@ -25,10 +25,6 @@ from nyc_landmarks.db.db_client import DbClient
 from nyc_landmarks.db.wikipedia_fetcher import WikipediaFetcher
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.models.landmark_models import LpcReportModel
-from nyc_landmarks.models.wikipedia_models import (
-    WikipediaArticleModel,
-    WikipediaProcessingResult,
-)
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 

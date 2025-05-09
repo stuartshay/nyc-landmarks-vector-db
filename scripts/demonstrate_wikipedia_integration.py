@@ -28,6 +28,7 @@ from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 # Configure logging
 logger = get_logger(__name__)
 
+
 def fetch_and_display_wikipedia_articles(landmark_id: str) -> None:
     """
     Fetch and display Wikipedia articles for a landmark.
@@ -83,7 +84,10 @@ def fetch_and_display_wikipedia_articles(landmark_id: str) -> None:
         print(f"Extract: {content[:200]}..." if content else "No extract available")
         print()
 
-def process_wikipedia_article(landmark_id: str, chunk_size: int = 1000, chunk_overlap: int = 200) -> bool:
+
+def process_wikipedia_article(
+    landmark_id: str, chunk_size: int = 1000, chunk_overlap: int = 200
+) -> bool:
     """
     Process Wikipedia articles for a landmark.
 
@@ -138,7 +142,9 @@ def process_wikipedia_article(landmark_id: str, chunk_size: int = 1000, chunk_ov
                 print(f"No chunks to process for article: {article.title}")
                 continue
 
-            print(f"Generating embeddings for {len(article.chunks)} chunks from article: {article.title}")
+            print(
+                f"Generating embeddings for {len(article.chunks)} chunks from article: {article.title}"
+            )
             chunks_with_embeddings = embedding_generator.process_chunks(article.chunks)
 
             print(f"Storing {len(chunks_with_embeddings)} vectors in Pinecone")
@@ -160,11 +166,9 @@ def process_wikipedia_article(landmark_id: str, chunk_size: int = 1000, chunk_ov
         print(f"Error processing Wikipedia articles: {e}")
         return False
 
+
 def search_landmark_content(
-    landmark_id: str,
-    query: str,
-    top_k: int = 5,
-    source_type: Optional[str] = None
+    landmark_id: str, query: str, top_k: int = 5, source_type: Optional[str] = None
 ) -> None:
     """
     Search landmark content from Wikipedia and PDF sources.
@@ -212,7 +216,7 @@ def search_landmark_content(
                 query_text=query,
                 landmark_id=landmark_id,
                 source_type=source_type,
-                top_k=top_k
+                top_k=top_k,
             )
 
             if not results:
@@ -228,9 +232,7 @@ def search_landmark_content(
 
             # Get comparison results
             comparison = compare_source_results(
-                query_text=query,
-                landmark_id=landmark_id,
-                top_k=top_k
+                query_text=query, landmark_id=landmark_id, top_k=top_k
             )
 
             # Display Wikipedia results
@@ -253,6 +255,7 @@ def search_landmark_content(
 
     except Exception as e:
         print(f"Error searching landmark content: {e}")
+
 
 def display_search_results(results: Dict[str, Any], source_label: str) -> None:
     """
@@ -295,18 +298,25 @@ def display_search_results(results: Dict[str, Any], source_label: str) -> None:
             metadata.get("landmark_id", "Unknown"),
             metadata.get("chunk_index", "?"),
             text,
-            source_info
+            source_info,
         ]
         rows.append(row)
 
     # Create a DataFrame for nicer display
     df = pd.DataFrame(
-        rows,
-        columns=["#", "Score", "Landmark ID", "Chunk", "Text", "Source Info"]
+        rows, columns=["#", "Score", "Landmark ID", "Chunk", "Text", "Source Info"]
     )
 
     # Display as a table - convert DataFrame to list for tabulate
-    print(tabulate(df.values.tolist(), headers=list(df.columns), tablefmt="psql", showindex=False))
+    print(
+        tabulate(
+            df.values.tolist(),
+            headers=list(df.columns),
+            tablefmt="psql",
+            showindex=False,
+        )
+    )
+
 
 def main() -> None:
     """Main entry point for the script."""
@@ -354,7 +364,8 @@ def main() -> None:
         help="Number of characters to overlap between chunks",
     )
     parser.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Enable verbose logging",
     )
@@ -373,21 +384,19 @@ def main() -> None:
     # Optionally process the articles
     if args.process:
         success = process_wikipedia_article(
-            args.landmark_id,
-            args.chunk_size,
-            args.chunk_overlap
+            args.landmark_id, args.chunk_size, args.chunk_overlap
         )
         if not success:
-            print("Failed to process Wikipedia articles. Search results may be incomplete.")
+            print(
+                "Failed to process Wikipedia articles. Search results may be incomplete."
+            )
 
     # Search if a query was provided
     if args.query:
         search_landmark_content(
-            args.landmark_id,
-            args.query,
-            args.top_k,
-            args.source_type
+            args.landmark_id, args.query, args.top_k, args.source_type
         )
+
 
 if __name__ == "__main__":
     main()

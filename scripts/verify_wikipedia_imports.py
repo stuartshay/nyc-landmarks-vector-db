@@ -10,16 +10,14 @@ This script:
 """
 
 import argparse
-import json
 import logging
 import sys
 from collections import Counter, defaultdict
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, Tuple
 
 import pandas as pd
 from tabulate import tabulate
 
-from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
 from nyc_landmarks.db.db_client import DbClient
 from nyc_landmarks.utils.logger import get_logger
