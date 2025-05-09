@@ -74,6 +74,9 @@ class ChatResponse(BaseModel):
     sources: List[Dict[str, Any]] = Field(
         [], description="Sources of information used in the response"
     )
+    source_types: List[str] = Field(
+        [], description="Types of sources used (wikipedia, pdf)"
+    )
 
 
 # --- Dependency injection functions ---
@@ -151,13 +154,18 @@ def _get_context_from_vector_db(
     # Generate embedding for the query
     query_embedding = embedding_generator.generate_embedding(query)
 
-    # Prepare filter if landmark_id is provided
-    filter_dict = None
+    # Prepare filter dictionary
+    filter_dict = {}
     if landmark_id:
-        filter_dict = {"landmark_id": landmark_id}
+        filter_dict["landmark_id"] = landmark_id
 
-    # Query the vector database
-    matches = vector_db.query_vectors(query_embedding, top_k=3, filter_dict=filter_dict)
+    # Only pass filter_dict if it has values
+    filter_to_use = filter_dict if filter_dict else None
+
+    # Query the vector database to get combined results from both Wikipedia and PDF sources
+    matches = vector_db.query_vectors(
+        query_embedding, top_k=5, filter_dict=filter_to_use
+    )
 
     # Process matches to create context
     for i, match in enumerate(matches):
@@ -177,19 +185,31 @@ def _get_context_from_vector_db(
 
         text = metadata.get("text", "")
         landmark_id = metadata.get("landmark_id", "")
+        source_type = metadata.get(
+            "source_type", "pdf"
+        )  # Default to pdf if not specified
 
         # Only use matches with a reasonable similarity score
         if score < 0.7:  # This threshold can be adjusted
             continue
 
+        # Format source attribution based on source type
+        source_info = ""
+        if source_type == "wikipedia":
+            article_title = metadata.get("article_title", "Unknown Wikipedia Article")
+            source_info = f"[Source: Wikipedia article '{article_title}']"
+        else:
+            document_name = metadata.get(
+                "document_name", metadata.get("file_name", "Unknown Document")
+            )
+            source_info = f"[Source: LPC Report '{document_name}']"
+
         # Add to context text
-        context_text += f"\nContext {i + 1}:\n{text}\n"
+        context_text += f"\nContext {i + 1} {source_info}:\n{text}\n"
 
         # Get landmark name from database if available
         landmark_name = None
-        if (
-            landmark_id is not None
-        ):  # Ensure landmark_id is not None before passing to get_landmark_by_id
+        if landmark_id:
             landmark = db_client.get_landmark_by_id(landmark_id)
             if landmark:
                 # Handle both dict and Pydantic model objects
@@ -198,12 +218,22 @@ def _get_context_from_vector_db(
                 else:
                     landmark_name = getattr(landmark, "name", None)
 
+        # Create source URL if available
+        source_url = None
+        if source_type == "wikipedia":
+            source_url = metadata.get("article_url", "")
+        else:
+            source_url = metadata.get("document_url", "")
+
         # Add to sources
         source = {
             "text": text[:200] + "..." if len(text) > 200 else text,
             "landmark_id": landmark_id,
             "landmark_name": landmark_name,
             "score": score,
+            "source_type": source_type,
+            "source": source_info,
+            "source_url": source_url,
         }
         sources.append(source)
 
@@ -228,9 +258,10 @@ def _prepare_chat_messages(
     if context_text:
         system_context = (
             "You are a knowledgeable assistant that specializes in New York City landmarks. "
-            "Use the following information from landmark reports to inform your response. "
+            "Use the following information from landmark reports and Wikipedia articles to inform your response. "
             f"{context_text}\n\n"
             "Based on the above context, provide a helpful, accurate response about NYC landmarks. "
+            "When using information from Wikipedia, acknowledge it appropriately. "
             "If the context doesn't contain relevant information to answer the question, "
             "say that you don't have specific information about that and provide general "
             "information about NYC landmarks if possible."
@@ -330,6 +361,9 @@ async def chat_message(
         # Convert conversation messages to ChatMessage objects
         chat_messages = _convert_to_chat_messages(conversation)
 
+        # Extract source types for the response
+        source_types = list(set(source.get("source_type", "pdf") for source in sources))
+
         # Create and return response
         return ChatResponse(
             conversation_id=conversation.conversation_id,
@@ -337,6 +371,7 @@ async def chat_message(
             messages=chat_messages,
             landmark_id=request.landmark_id,
             sources=sources,
+            source_types=source_types,
         )
     except Exception as e:
         logger.error(f"Error processing chat message: {e}")

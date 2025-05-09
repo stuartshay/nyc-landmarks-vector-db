@@ -2,7 +2,7 @@ NYC Landmarks Vector Database - Active Context
 
 ## Current Focus
 
-The current focus is on the Wikipedia article integration with Pinecone DB, type safety improvements, and tool integration. We have successfully implemented the core functionality to fetch, process, and store Wikipedia content in the vector database alongside existing PDF content, have begun improving type safety across the codebase, and have integrated additional development tools to enhance productivity.
+The current focus is on the Wikipedia integration with Pinecone DB, type safety improvements, and tool integration. We have successfully implemented the core functionality to fetch, process, and store Wikipedia content in the vector database alongside existing PDF content, have begun improving type safety across the codebase, and have integrated additional development tools to enhance productivity.
 
 ### Recent Implementation
 
@@ -18,6 +18,8 @@ The current focus is on the Wikipedia article integration with Pinecone DB, type
    - Added reference to definitive Swagger JSON schema at `https://api.coredatastore.com/swagger/v1/swagger.json`
    - Updated `LpcReportModel` and `LpcReportResponse` Pydantic models to match actual API schema
    - Created new Pydantic models (`LpcReportDetailResponse`, `MapData`, etc.) for detailed landmark endpoint
+   - Fixed Pinecone response handling to properly process different response formats
+   - Improved article metadata handling by using a centralized metadata dictionary
 
 2. **Type Safety Improvements**
    - Fixed DbClient implementations to properly use type annotations and avoid mypy errors
@@ -70,6 +72,8 @@ The current focus is on the Wikipedia article integration with Pinecone DB, type
    - Verified successful import of Wikipedia articles for test landmarks (LP-00001, LP-00003, LP-00004)
    - Confirmed proper vector ID format and metadata for Wikipedia content
    - Validated that Wikipedia content can be retrieved alongside PDF content
+   - Fixed metadata handling to ensure article_title and article_url are properly stored
+   - Successfully processed and validated Wikipedia article for LP-00001 (Wyckoff House)
 
 2. **Search Functionality Testing**
    - Tested combined search across both Wikipedia and PDF content
@@ -128,6 +132,12 @@ The current focus is on the Wikipedia article integration with Pinecone DB, type
    - Add detailed logging for all API interaction failures
    - Use multiple ID format variations when retrieving landmark data to maximize success
 
+7. **Wikipedia Metadata Handling**
+   - Create a single metadata dictionary and update it once rather than individual field assignments
+   - Ensure consistent article_title and article_url fields in all Wikipedia vectors
+   - Use centralized article_metadata in the wikipedia_fetcher module to ensure consistency
+   - Store article metadata alongside chunk metadata for complete information attribution
+
 ## Next Steps
 
 1. **Execute Vector ID Standardization (Completed)**
@@ -149,30 +159,42 @@ The current focus is on the Wikipedia article integration with Pinecone DB, type
    - Create proper type stubs for external dependencies where missing
    - Update API interaction code to consistently use the new Pydantic models
 
-4. **Wikipedia Integration Completion**
-   - Add Wikipedia processing to GitHub Actions workflow
-   - Implement verification steps in the CI/CD pipeline
-   - Create dedicated integration tests for the Wikipedia article pipeline
+4. **Wikipedia Integration Completion (Completed)**
+   - ✅ Created Wikipedia processing GitHub Actions workflow in `.github/workflows/process_wikipedia.yml`
+   - ✅ Implemented processing script `scripts/process_wikipedia_articles.py` with parallel processing
+   - ✅ Added verification capability through `scripts/verify_wikipedia_imports.py`
+   - ✅ Developed demonstration script `scripts/demonstrate_wikipedia_integration.py`
+   - ✅ Created integration test in `tests/integration/test_wikipedia_integration.py`
+   - ✅ Fixed metadata handling in wikipedia_fetcher.py to ensure proper article attribution
+   - ✅ Updated PineconeDB response handling to work with different client versions
 
-5. **Query API Enhancement**
-   - Update the Query API to leverage both Wikipedia and PDF content
-   - Add source attribution in search results
-   - Implement combined search with proper filtering capabilities
-   - Use the `landmark_query_testing.ipynb` notebook to test enhanced search features
-   - Update any code that interacts with the CoreDataStore API to use the new Pydantic models
+5. **Query API Enhancement (Completed)**
+   - ✅ Enhanced Query API to leverage both Wikipedia and PDF content
+   - ✅ Added source attribution in search results with clear identification of Wikipedia vs PDF
+   - ✅ Implemented combined search with filtering by source_type
+   - ✅ Created comparison functionality to evaluate results from different sources
+   - ✅ Used `landmark_query_testing.ipynb` to verify enhanced search capabilities
+   - ✅ Added metadata for article titles and URLs in search results
 
-6. **Chat API Enhancement**
-   - Update to leverage both Wikipedia and PDF content
-   - Add source attribution to responses
-   - Test using both content sources in chat generation
+6. **Chat API Enhancement (Completed)**
+   - ✅ Updated Chat API to leverage both Wikipedia and PDF content
+   - ✅ Added source attribution to responses using [Source: Wikipedia article 'Title'] format
+   - ✅ Added source_types field to ChatResponse model to track which sources were used
+   - ✅ Improved system prompt to properly incorporate and acknowledge Wikipedia sources
+   - ✅ Enhanced vector filtering to support both content types
 
-7. **Development Tools Expansion**
+7. **Process Additional Wikipedia Articles**
+   - Execute processing for more landmarks to increase Wikipedia coverage
+   - Update verification script to validate proper metadata for all processed landmarks
+   - Use the parallel processing feature to efficiently process multiple landmarks
+
+8. **Development Tools Expansion**
    - Leverage Context7 MCP for Pinecone, Pydantic, and other library documentation
    - Explore additional MCP servers for specialized functionality
    - Document library usage patterns based on up-to-date documentation
    - Create library-specific reference guides for the project
 
-8. **API Improvement Implementation**
+9. **API Improvement Implementation**
    - Implement recommendations from vector_rebuild_analysis.md
    - Add robust error recovery for vector storage operations
    - Implement batch validation before storage

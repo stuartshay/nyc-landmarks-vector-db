@@ -254,11 +254,15 @@ class WikipediaFetcher:
             chunks = self.chunk_wikipedia_text(content, chunk_size, chunk_overlap)
 
             # Enhance chunks with article metadata
+            article_metadata = {
+                "article_title": article.title,
+                "article_url": article.url,
+                "source_type": "wikipedia",
+                "landmark_id": article.lpNumber,
+            }
+
             for chunk in chunks:
-                chunk["metadata"]["article_title"] = article.title
-                chunk["metadata"]["article_url"] = article.url
-                chunk["metadata"]["source_type"] = "wikipedia"
-                chunk["metadata"]["landmark_id"] = article.lpNumber
+                chunk["metadata"].update(article_metadata)
 
             # Create and return the content model
             # Convert ChunkDict to Dict[str, Any] as expected by WikipediaContentModel

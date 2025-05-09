@@ -23,6 +23,7 @@
     "be5invis.toml",
     "ccrobertson.cline",
     "chrisdias.promptboost",
+    "dbcode.dbcode",
     "github.copilot",
     "github.copilot-chat",
     "github.vscode-github-actions"
