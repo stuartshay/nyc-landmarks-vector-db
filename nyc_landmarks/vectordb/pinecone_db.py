@@ -45,6 +45,10 @@ class PineconeDB:
 
         # Connect to index
         try:
+            # Ensure index_name is not None before connecting
+            if not self.index_name:
+                raise ValueError("Pinecone index name cannot be None")
+
             self.index = self.pc.Index(self.index_name)
             logger.info(f"Connected to Pinecone index: {self.index_name}")
         except Exception as e:
@@ -161,16 +165,14 @@ class PineconeDB:
             vector = {"id": vector_id, "values": embedding, "metadata": metadata}
 
             vectors.append(vector)
-            vector_ids.append(vector_id)
-
-        # Store in batches of 100
-        batch_size = 100
-        for i in range(0, len(vectors), batch_size):
-            batch = vectors[i : i + batch_size]
-            try:
-                self.index.upsert(vectors=batch)
-            except Exception as e:
-                logger.error(f"Failed to store chunk batch {i//batch_size}: {e}")
+            vector_ids.append(vector_id)  # Store in batches of 100
+            batch_size = 100
+            for i in range(0, len(vectors), batch_size):
+                batch = vectors[i : i + batch_size]
+                try:
+                    self.index.upsert(vectors=batch)
+                except Exception as e:
+                    logger.error(f"Failed to store chunk batch {i // batch_size}: {e}")
 
         logger.info(f"Stored {len(vector_ids)} vectors")
         return vector_ids
@@ -222,22 +224,28 @@ class PineconeDB:
                 filter=filter_dict,
             )
 
-            # Convert response to dict format
-            matches = response.get("matches", [])
-            # Ensure matches is a list of dicts
-            result_list = []
-            for match in matches:
-                if isinstance(match, dict):
-                    result_list.append(match)
-                else:
-                    # Convert object to dict if needed
-                    match_dict = {
-                        "id": match.id if hasattr(match, "id") else "",
-                        "score": match.score if hasattr(match, "score") else 0.0,
-                        "metadata": (
-                            match.metadata if hasattr(match, "metadata") else {}
-                        ),
-                    }
+            # Process the response to extract matches
+            result_list: List[Dict[str, Any]] = []
+
+            # Handle response.matches which can be a list or other iterable
+            if hasattr(response, "matches"):
+                matches = response.matches
+                for match in matches:
+                    # Handle match objects
+                    match_dict: Dict[str, Any] = {}
+
+                    # Extract ID if available
+                    if hasattr(match, "id"):
+                        match_dict["id"] = match.id
+
+                    # Extract score if available
+                    if hasattr(match, "score"):
+                        match_dict["score"] = match.score
+
+                    # Extract metadata if available
+                    if hasattr(match, "metadata"):
+                        match_dict["metadata"] = match.metadata
+
                     result_list.append(match_dict)
 
             return result_list
@@ -286,16 +294,8 @@ class PineconeDB:
             Number of vectors deleted (approximate)
         """
         try:
-            # Count vectors matching filter
-            stats_response = self.index.query(
-                vector=[0.0] * 1536,  # Dummy vector
-                top_k=1,
-                filter=filter_dict,
-                include_metadata=False,
-            )
-
             # Delete by filter
-            delete_response = self.index.delete(filter=filter_dict)
+            self.index.delete(filter=filter_dict)
 
             logger.info(f"Deleted vectors matching filter: {filter_dict}")
             return 1  # No way to know exact count from delete response
@@ -325,33 +325,35 @@ class PineconeDB:
                 filter_dict["landmark_id"] = landmark_id
 
             # Query with dummy vector to get metadata
+            dimension = self.dimensions
+            dummy_vector = [0.0] * dimension
             response = self.index.query(
-                vector=[0.0] * 1536,  # Dummy vector
+                vector=dummy_vector,
                 top_k=limit,
                 filter=filter_dict,
                 include_metadata=True,
             )
 
-            # Check if response is already a dictionary
-            if isinstance(response, dict):
-                return response
+            # Process the response to create a standardized return format
+            result: Dict[str, Any] = {"matches": []}
 
-            # Convert to dict for consistent return type
-            try:
-                return dict(response)
-            except Exception:
-                # Handle case where response can't be converted to dict
-                if hasattr(response, "matches"):
-                    matches = []
-                    for match in response.matches:
-                        match_dict = {
-                            "id": getattr(match, "id", ""),
-                            "score": getattr(match, "score", 0.0),
-                            "metadata": getattr(match, "metadata", {}),
-                        }
-                        matches.append(match_dict)
-                    return {"matches": matches}
-                return {"matches": []}
+            # Extract matches from the response
+            if hasattr(response, "matches"):
+                matches_list = []
+                for match in response.matches:
+                    match_dict = {
+                        "id": getattr(match, "id", ""),
+                        "score": getattr(match, "score", 0.0),
+                        "metadata": getattr(match, "metadata", {}),
+                    }
+                    matches_list.append(match_dict)
+                result["matches"] = matches_list
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Failed to list vectors by source: {e}")
+            return {"matches": []}
 
         except Exception as e:
             logger.error(f"Failed to list vectors by source: {e}")
@@ -366,15 +368,26 @@ class PineconeDB:
         """
         try:
             stats = self.index.describe_index_stats()
-            # Convert to dict for consistent return type
-            if isinstance(stats, dict):
-                return stats
-            return {
+
+            # Create a standardized stats dictionary
+            result = {
                 "namespaces": {},
                 "dimension": 0,
                 "index_fullness": 0.0,
                 "total_vector_count": 0,
             }
+
+            # Extract values from stats object if available
+            if hasattr(stats, "namespaces"):
+                result["namespaces"] = stats.namespaces
+            if hasattr(stats, "dimension"):
+                result["dimension"] = stats.dimension
+            if hasattr(stats, "index_fullness"):
+                result["index_fullness"] = stats.index_fullness
+            if hasattr(stats, "total_vector_count"):
+                result["total_vector_count"] = stats.total_vector_count
+
+            return result
         except Exception as e:
             logger.error(f"Failed to get index stats: {e}")
             return {}
