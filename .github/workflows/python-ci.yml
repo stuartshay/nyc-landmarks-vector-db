@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.11]
+        python-version: [3.12]
 
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +27,8 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install -e ".[dev]"
+          # Ensure pytest and coverage tools are installed
+          pip install pytest pytest-cov
 
       - name: Lint with flake8
         run: |
@@ -60,4 +62,4 @@ jobs:
         run: |
           # Run only unit tests in CI to avoid dependency/credential issues
           # Skip both integration and functional tests as they require API access
-          pytest --cov=nyc_landmarks -m "not integration and not functional" tests/
+          python -m pytest --cov=nyc_landmarks -m "not integration and not functional" tests/
