@@ -32,103 +32,83 @@ def download_log_from_url(log_url: str) -> Optional[str]:
         The path to the downloaded log file, or None if download fails.
     """
     print(f"Attempting to download log from URL: {log_url}")
-    # Regex to parse owner, repo, run_id, and job_id from the URL
-    # This regex makes job_id optional in capture, but we will require it.
+    parsed = _parse_github_url(log_url)
+    if parsed is None:
+        return None
+    owner, repo, run_id, job_id = parsed
+    os.makedirs(LOG_DIR, exist_ok=True)
+    output_filename = os.path.join(LOG_DIR, f"github_action_log_{job_id}.txt")
+    success = _execute_gh_log_download(owner, repo, run_id, job_id, output_filename)
+    if success:
+        print(f"Log successfully downloaded to: {output_filename}")
+        return output_filename
+    else:
+        return None
+
+
+# --- Helper functions for download_log_from_url ---
+def _parse_github_url(log_url: str) -> Optional[Tuple[str, str, str, str]]:
+    """
+    Parse a GitHub Actions job log URL and extract owner, repo, run_id, and job_id.
+    Returns a tuple (owner, repo, run_id, job_id) or None if parsing fails.
+    """
     pattern = re.compile(
-        r"https://github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)/actions/runs/(?P<run_id>\d+)(?:/job/(?P<job_id>\d+))?"
+        r"https://github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)/actions/runs/(?P<run_id>\d+)/job/(?P<job_id>\d+)"
     )
     match = pattern.match(log_url)
-
     if not match:
         print(f"Error: Invalid GitHub Action log URL format: {log_url}")
         print(
             "Expected format: https://github.com/owner/repo/actions/runs/run_id/job/job_id"
         )
         return None
+    owner = match.group("owner")
+    repo = match.group("repo")
+    run_id = match.group("run_id")
+    job_id = match.group("job_id")
+    return owner, repo, run_id, job_id
 
-    parsed_url = match.groupdict()
-    run_id_str: Optional[str] = parsed_url.get("run_id")
-    job_id_str: Optional[str] = parsed_url.get("job_id")
 
-    if (
-        not run_id_str
-    ):  # Should not happen with the current regex if match is successful
-        print("Error: Could not parse run_id from URL.")
-        return None
+def _execute_gh_log_download(
+    owner: str, repo: str, run_id: str, job_id: str, output_filename: str
+) -> bool:
+    """
+    Download the GitHub Actions job log using the gh CLI.
+    Returns True if successful, False otherwise.
 
-    # The example URL and desired filename format github_action_log_{job_id}.txt imply job_id is essential.
-    if not job_id_str:
-        print(
-            "Error: Job ID not found in the URL. Please provide a URL that includes the job ID."
-        )
-        print("Example: https://github.com/owner/repo/actions/runs/run_id/job/job_id")
-        # Re-check with a stricter pattern if job_id was initially optional but now deemed necessary
-        strict_pattern = re.compile(
-            r"https://github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)/actions/runs/(?P<run_id_strict>\d+)/job/(?P<job_id_strict>\d+)"
-        )
-        strict_match = strict_pattern.match(log_url)
-        if not strict_match:
-            # This means the URL didn't have /job/job_id part
-            print(f"Error: The provided URL does not contain a job ID: {log_url}")
-            return None
-        # If strict_match is successful, we can get job_id_strict.
-        # However, the initial regex already tries to capture job_id if present.
-        # This block is more of a safeguard or clarification.
-        # If job_id_str was None, it means the /job/ part was missing.
-        return None
-
-    os.makedirs(LOG_DIR, exist_ok=True)
-    output_filename = os.path.join(LOG_DIR, f"github_action_log_{job_id_str}.txt")
-
-    # Ensure all parts of the command are strings.
-    # run_id_str and job_id_str are already confirmed to be not None here.
-    # The type checker might complain if it can't infer that they are strings.
-    # We can assert they are strings or use a type guard if necessary,
-    # but the logic flow should ensure they are strings by this point.
-
-    # Explicitly ensure command parts are strings for type safety if there were issues.
-    # However, run_id_str and job_id_str are derived from regex groups, so they are strings.
-    # No, they are Optional[str] initially. We need to ensure they are str.
-    # The checks `if not run_id_str:` and `if not job_id_str:` handle this.
-    # So, after these checks, they are effectively str.
-
-    # Command to download the log using GitHub CLI
-    # Using `gh run view <run_id> --job <job_id> --log`
-    # The repo can be specified with --repo owner/repo if gh cannot infer it.
-    # For simplicity, assume gh is configured or running in the repo context.
-    # If explicit repo is needed:
-    # gh_command_list: List[str] = ["gh", "run", "view", run_id_str, "--job", job_id_str, "--log", "--repo", f"{parsed_url['owner']}/{parsed_url['repo']}"]
+    Args:
+        owner: GitHub repository owner
+        repo: GitHub repository name
+        run_id: GitHub workflow run ID
+        job_id: GitHub workflow job ID
+        output_filename: Path where the log file will be saved
+    """
     gh_command_list: List[str] = [
         "gh",
         "run",
         "view",
-        run_id_str,
+        run_id,
         "--job",
-        job_id_str,
+        job_id,
         "--log",
     ]
-
     print(f"Executing: {' '.join(gh_command_list)}")
     try:
-        # subprocess.run expects a list of strings for the command.
         process = subprocess.run(
             gh_command_list,
             capture_output=True,
-            text=True,  # Decodes stdout/stderr as text
-            check=False,  # We will check returncode manually
-            encoding="utf-8",  # Specify encoding for text mode
+            text=True,
+            check=False,
+            encoding="utf-8",
         )
-
         if process.returncode == 0:
             with open(output_filename, "w", encoding="utf-8") as f_out:
                 f_out.write(process.stdout)
-            print(f"Log successfully downloaded to: {output_filename}")
-            return output_filename
+            return True
         else:
             print(
                 f"Error downloading log (gh command return code: {process.returncode}):"
             )
-            # Make sure stdout and stderr are not None before stripping
             stdout_msg = process.stdout.strip() if process.stdout else ""
             stderr_msg = process.stderr.strip() if process.stderr else ""
             print(f"Stdout: {stdout_msg}")
@@ -140,17 +120,16 @@ def download_log_from_url(log_url: str) -> Optional[str]:
                 print("Installation guide: https://cli.github.com/")
             elif "Could not find job" in stderr_msg or "HTTP 404" in stderr_msg:
                 print(
-                    f"Could not find job with ID {job_id_str} for run {run_id_str}. Check the URL and permissions."
+                    f"Could not find job with ID {job_id} for run {run_id}. Check the URL and permissions."
                 )
-            return None  # Explicitly return None on failure
-
-    except FileNotFoundError:  # Raised if 'gh' command itself is not found
+            return False
+    except FileNotFoundError:
         print(
             "Error: GitHub CLI ('gh') not found. Please install it and ensure it's in your PATH."
         )
         print("Installation guide: https://cli.github.com/")
-        return None
-    except subprocess.CalledProcessError as e:  # Should not be hit if check=False
+        return False
+    except subprocess.CalledProcessError as e:
         print(f"Error executing gh command (CalledProcessError): {e}")
         stderr_val = (
             e.stderr.strip()
@@ -158,13 +137,10 @@ def download_log_from_url(log_url: str) -> Optional[str]:
             else (e.stderr.decode("utf-8").strip() if e.stderr else "")
         )
         print(f"Stderr: {stderr_val}")
-        return None
+        return False
     except Exception as e:
         print(f"An unexpected error occurred during log download: {e}")
-        return None
-    # Ensure all paths return a value if the function is expected to.
-    # The only path not returning was if an unhandled exception occurred before the final return None.
-    # Added explicit return None in more places for clarity.
+        return False
 
 
 def parse_log_file(log_file: str) -> Optional[Dict[str, Any]]:
