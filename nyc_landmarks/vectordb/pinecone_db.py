@@ -63,6 +63,159 @@ class PineconeDB:
         self.index = self.pc.Index(self.index_name)
         logger.info(f"Connected to Pinecone index: {self.index_name}")
 
+    def _get_source_type_from_prefix(self, id_prefix: str) -> str:
+        """
+        Determine source type based on ID prefix.
+
+        Args:
+            id_prefix: The prefix to analyze
+
+        Returns:
+            Source type string
+        """
+        if id_prefix.startswith("wiki-"):
+            return "wikipedia"
+        elif id_prefix.startswith("test-"):
+            return "test"
+        else:
+            return "pdf"  # Default
+
+    def _get_filter_dict_for_deletion(
+        self, landmark_id: str, id_prefix: str
+    ) -> Dict[str, str]:
+        """
+        Create filter dictionary for deleting existing vectors.
+
+        Args:
+            landmark_id: ID of the landmark
+            id_prefix: Prefix for vector IDs
+
+        Returns:
+            Filter dictionary
+        """
+        filter_dict = {"landmark_id": landmark_id}
+        filter_dict["source_type"] = self._get_source_type_from_prefix(id_prefix)
+        return filter_dict
+
+    def _get_enhanced_metadata(self, landmark_id: str) -> Dict[str, Any]:
+        """
+        Get enhanced metadata for a landmark.
+
+        Args:
+            landmark_id: ID of the landmark
+
+        Returns:
+            Enhanced metadata dictionary
+        """
+        enhanced_metadata = {}
+        try:
+            collector = EnhancedMetadataCollector()
+            enhanced_metadata = collector.collect_landmark_metadata(landmark_id)
+            logger.info(f"Retrieved enhanced metadata for landmark: {landmark_id}")
+        except Exception as e:
+            logger.warning(f"Could not retrieve enhanced metadata: {e}")
+        return enhanced_metadata
+
+    def _generate_vector_id(
+        self,
+        id_prefix: str,
+        landmark_id: Optional[str],
+        index: int,
+        use_fixed_ids: bool,
+    ) -> str:
+        """
+        Generate vector ID.
+
+        Args:
+            id_prefix: Prefix for vector ID
+            landmark_id: ID of the landmark
+            index: Index of the chunk
+            use_fixed_ids: Whether to use fixed IDs
+
+        Returns:
+            Generated vector ID
+        """
+        if use_fixed_ids and landmark_id:
+            # Use deterministic ID based on landmark and chunk index
+            return f"{id_prefix}{landmark_id}-chunk-{index}"
+        else:
+            # Generate random UUID for the vector
+            return f"{id_prefix}{uuid.uuid4()}"
+
+    def _create_metadata_for_chunk(
+        self,
+        chunk: Dict[str, Any],
+        source_type: str,
+        chunk_index: int,
+        landmark_id: Optional[str],
+        enhanced_metadata: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Create metadata dictionary for a chunk.
+
+        Args:
+            chunk: The chunk dictionary
+            source_type: Source type string
+            chunk_index: Index of the chunk
+            landmark_id: ID of the landmark
+            enhanced_metadata: Enhanced metadata dictionary
+
+        Returns:
+            Metadata dictionary
+        """
+        # Basic metadata
+        metadata = {
+            "text": chunk.get("text", ""),
+            "source_type": source_type,
+            "chunk_index": chunk_index,
+        }
+
+        # Add landmark ID if provided
+        if landmark_id:
+            metadata["landmark_id"] = landmark_id
+
+        # Add processing_date if present in chunk
+        if chunk.get("processing_date"):
+            metadata["processing_date"] = chunk.get("processing_date")
+
+        # Add processing_date from chunk metadata if available
+        if chunk.get("metadata", {}).get("processing_date"):
+            metadata["processing_date"] = chunk.get("metadata", {}).get(
+                "processing_date"
+            )
+
+        # Add enhanced metadata
+        metadata.update(enhanced_metadata)
+
+        # Add Wikipedia-specific metadata
+        if source_type == "wikipedia" and "article_metadata" in chunk:
+            article_meta = chunk.get("article_metadata", {})
+            metadata.update(
+                {
+                    "article_title": article_meta.get("title", ""),
+                    "article_url": article_meta.get("url", ""),
+                }
+            )
+
+        return metadata
+
+    def _upsert_vectors_in_batches(
+        self, vectors: List[Dict[str, Any]], batch_size: int = 100
+    ) -> None:
+        """
+        Upsert vectors in batches.
+
+        Args:
+            vectors: List of vectors to upsert
+            batch_size: Size of each batch
+        """
+        for i in range(0, len(vectors), batch_size):
+            batch = vectors[i : i + batch_size]
+            try:
+                self.index.upsert(vectors=batch)
+            except Exception as e:
+                logger.error(f"Failed to store chunk batch {i // batch_size}: {e}")
+
     def store_chunks(
         self,
         chunks: List[Dict[str, Any]],
@@ -91,14 +244,7 @@ class PineconeDB:
         # Delete existing vectors if requested
         if delete_existing and landmark_id:
             logger.info(f"Deleting existing vectors for landmark: {landmark_id}")
-            filter_dict = {"landmark_id": landmark_id}
-            if id_prefix.startswith("wiki-"):
-                filter_dict["source_type"] = "wikipedia"
-            elif id_prefix.startswith("test-"):
-                filter_dict["source_type"] = "test"
-            else:
-                filter_dict["source_type"] = "pdf"
-
+            filter_dict = self._get_filter_dict_for_deletion(landmark_id, id_prefix)
             self.delete_vectors_by_filter(filter_dict)
 
         vectors = []
@@ -107,80 +253,34 @@ class PineconeDB:
         # Get enhanced metadata for the landmark if ID is provided
         enhanced_metadata = {}
         if landmark_id:
-            try:
-                collector = EnhancedMetadataCollector()
-                enhanced_metadata = collector.collect_landmark_metadata(landmark_id)
-                logger.info(f"Retrieved enhanced metadata for landmark: {landmark_id}")
-            except Exception as e:
-                logger.warning(f"Could not retrieve enhanced metadata: {e}")
-                enhanced_metadata = {}
+            enhanced_metadata = self._get_enhanced_metadata(landmark_id)
+
+        # Determine source type based on prefix
+        source_type = self._get_source_type_from_prefix(id_prefix)
 
         # Prepare vectors
         for i, chunk in enumerate(chunks):
             # Generate vector ID
-            if use_fixed_ids:
-                # Use deterministic ID based on landmark and chunk index
-                vector_id = f"{id_prefix}{landmark_id}-chunk-{i}"
-            else:
-                # Generate random UUID for the vector
-                vector_id = f"{id_prefix}{uuid.uuid4()}"
+            vector_id = self._generate_vector_id(
+                id_prefix, landmark_id, i, use_fixed_ids
+            )
 
-            # Extract embedding and metadata
+            # Extract embedding
             embedding = chunk.get("embedding")
 
-            # Determine source type based on prefix
-            source_type = "pdf"  # Default
-            if id_prefix.startswith("wiki-"):
-                source_type = "wikipedia"
-            elif id_prefix.startswith("test-"):
-                source_type = "test"
-
-            # Basic metadata
-            metadata = {
-                "text": chunk.get("text", ""),
-                "source_type": source_type,
-                "chunk_index": i,
-            }
-
-            # Add landmark ID if provided
-            if landmark_id:
-                metadata["landmark_id"] = landmark_id
-
-            # Add processing_date if present in chunk
-            if chunk.get("processing_date"):
-                metadata["processing_date"] = chunk.get("processing_date")
-
-            # Add processing_date from chunk metadata if available
-            if chunk.get("metadata", {}).get("processing_date"):
-                metadata["processing_date"] = chunk.get("metadata", {}).get(
-                    "processing_date"
-                )
-
-            # Add enhanced metadata
-            metadata.update(enhanced_metadata)
-
-            # Add Wikipedia-specific metadata
-            if source_type == "wikipedia" and "article_metadata" in chunk:
-                article_meta = chunk.get("article_metadata", {})
-                metadata.update(
-                    {
-                        "article_title": article_meta.get("title", ""),
-                        "article_url": article_meta.get("url", ""),
-                    }
-                )
+            # Create metadata
+            metadata = self._create_metadata_for_chunk(
+                chunk, source_type, i, landmark_id, enhanced_metadata
+            )
 
             # Create vector
             vector = {"id": vector_id, "values": embedding, "metadata": metadata}
 
             vectors.append(vector)
-            vector_ids.append(vector_id)  # Store in batches of 100
-            batch_size = 100
-            for i in range(0, len(vectors), batch_size):
-                batch = vectors[i : i + batch_size]
-                try:
-                    self.index.upsert(vectors=batch)
-                except Exception as e:
-                    logger.error(f"Failed to store chunk batch {i // batch_size}: {e}")
+            vector_ids.append(vector_id)
+
+        # Store vectors in batches
+        self._upsert_vectors_in_batches(vectors)
 
         logger.info(f"Stored {len(vector_ids)} vectors")
         return vector_ids
