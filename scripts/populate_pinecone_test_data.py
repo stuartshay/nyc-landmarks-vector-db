@@ -146,9 +146,9 @@ def upload_vectors(pinecone_db: PineconeDB, vectors: List[Dict[str, Any]]) -> in
         try:
             pinecone_db.index.upsert(vectors=vector_batch)
             total_uploaded += len(batch)
-            logger.info(f"Uploaded batch {i//batch_size + 1}, {len(batch)} vectors")
+            logger.info(f"Uploaded batch {i // batch_size + 1}, {len(batch)} vectors")
         except Exception as e:
-            logger.error(f"Error uploading batch {i//batch_size + 1}: {e}")
+            logger.error(f"Error uploading batch {i // batch_size + 1}: {e}")
 
     return total_uploaded
 
