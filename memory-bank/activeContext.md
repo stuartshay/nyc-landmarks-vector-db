@@ -66,6 +66,15 @@ The current focus is on the Wikipedia integration with Pinecone DB, type safety 
    - Enhanced the development workflow with access to current library documentation
    - Created GitHub Action log analysis tools to identify error patterns
 
+7. **Test Isolation Strategy Implementation**
+   - Created dedicated Pinecone test index (`nyc-landmarks-test`) for integration tests
+   - Implemented `tests/utils/pinecone_test_utils.py` with functions to create, delete, and manage the test index
+   - Added `pinecone_test_db` fixture in `tests/integration/conftest.py` for session-scoped test index management
+   - Updated integration tests to use the test index instead of the production index
+   - Created `scripts/manage_test_index.py` utility script to create/reset/delete/check the test index
+   - Updated test documentation in `tests/README.md` to explain the new testing strategy
+   - Modified `test_pinecone_fixed_ids.py`, `test_pinecone_upsert.py`, and `test_wikipedia_integration.py` to use the test index
+
 ### Recent Testing and Verification
 
 1. **Wikipedia Import Testing**
@@ -125,6 +134,18 @@ The current focus is on the Wikipedia integration with Pinecone DB, type safety 
    - Keep MCP servers disabled by default and require explicit approval for operations
    - Perform log analysis on GitHub Action workflows to identify and fix issues
 
+6. **Test Isolation Approach**
+   - Use session-specific Pinecone test indices with unique names (`nyc-landmarks-test-{timestamp}-{random}`)
+   - Each test session gets its own dedicated index to allow parallel test execution without conflicts
+   - Manage test index lifecycle with session-scoped pytest fixtures
+   - Provide enhanced command-line tools for index management including:
+     - Creating, resetting, and deleting test indices
+     - Listing all existing test indices
+     - Cleaning up old test indices based on age
+   - Document testing approach in README for future contributors
+   - Completely separate test data from production data to prevent contamination
+   - Use increased wait times (5 seconds instead of 2) for Pinecone operations to prevent timing-related test failures
+
 6. **API Error Handling Improvements**
    - Gracefully handle pagination boundary errors (404 on pages beyond available data)
    - Implement flexible landmark ID handling to accommodate various ID formats
@@ -158,6 +179,7 @@ The current focus is on the Wikipedia integration with Pinecone DB, type safety 
    - Address mypy errors in test files that use older model versions
    - Create proper type stubs for external dependencies where missing
    - Update API interaction code to consistently use the new Pydantic models
+   - Improve type annotations in test fixtures and utility functions
 
 4. **Wikipedia Integration Completion (Completed)**
    - ✅ Created Wikipedia processing GitHub Actions workflow in `.github/workflows/process_wikipedia.yml`

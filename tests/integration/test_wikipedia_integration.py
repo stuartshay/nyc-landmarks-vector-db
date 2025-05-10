@@ -26,7 +26,7 @@ TEST_LANDMARK_ID = "LP-00001"  # Wyckoff House (known to have Wikipedia articles
     os.environ.get("CI") == "true",
     reason="Skipping Wikipedia integration test in CI environment",
 )
-def test_end_to_end_wikipedia_pipeline():
+def test_end_to_end_wikipedia_pipeline(pinecone_test_db):
     """Test the complete Wikipedia processing pipeline from API to vector storage."""
     # Skip imports when in CI to prevent module import errors
     if os.environ.get("CI") == "true":
@@ -37,7 +37,6 @@ def test_end_to_end_wikipedia_pipeline():
     from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
     from nyc_landmarks.db.wikipedia_fetcher import WikipediaFetcher
     from nyc_landmarks.embeddings.generator import EmbeddingGenerator
-    from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
     # Step 1: Retrieve Wikipedia articles from CoreDataStore API
     api_client = CoreDataStoreAPI()
@@ -72,8 +71,8 @@ def test_end_to_end_wikipedia_pipeline():
     # Log embedding information
     logger.info(f"Generated embeddings for {len(chunks_with_embeddings)} chunks")
 
-    # Step 4: Store vectors with test prefix to avoid affecting production data
-    pinecone_db = PineconeDB()
+    # Step 4: Store vectors with test prefix
+    pinecone_db = pinecone_test_db
     test_id_prefix = f"test-wiki-{article.title.replace(' ', '_')}-{TEST_LANDMARK_ID}-"
 
     vector_ids = pinecone_db.store_chunks(

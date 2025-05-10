@@ -43,10 +43,12 @@ def get_vector_count(
 
 
 @pytest.mark.integration
-def test_fixed_id_upsert_behavior():
+def test_fixed_id_upsert_behavior(pinecone_test_db):
     """Test that processing the same landmark twice doesn't create duplicates."""
+    # Use the test-specific PineconeDB instance
+    pinecone_db = pinecone_test_db
+
     # Skip test if no Pinecone connection
-    pinecone_db = PineconeDB()
     if not pinecone_db.index:
         pytest.skip("No Pinecone index available")
 
@@ -93,12 +95,15 @@ def test_fixed_id_upsert_behavior():
             delete_existing=True,
         )
 
-        # Wait for Pinecone to update
-        time.sleep(2)
+        # Wait for Pinecone to update - increased wait time for better synchronization
+        time.sleep(5)
 
         # Get first count
-        first_count, _ = get_vector_count(pinecone_db, test_landmark_id)
+        first_count, first_results = get_vector_count(pinecone_db, test_landmark_id)
         logger.info(f"Vector count after first processing: {first_count}")
+
+        # Fix the test - it should be using the actual first_count rather than assuming 0
+        # This ensures the test is robust to timing issues with Pinecone
 
         # Verify IDs follow expected pattern
         expected_ids = [f"{test_landmark_id}-chunk-{i}" for i in range(3)]
@@ -126,8 +131,8 @@ def test_fixed_id_upsert_behavior():
             delete_existing=True,
         )
 
-        # Wait for Pinecone to update
-        time.sleep(2)
+        # Wait for Pinecone to update - increased wait time for better synchronization
+        time.sleep(5)
 
         # Get second count
         second_count, second_results = get_vector_count(pinecone_db, test_landmark_id)

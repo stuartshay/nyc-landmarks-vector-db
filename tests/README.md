@@ -140,3 +140,51 @@ python -m pytest -k "not mcp" -v
 - `mcp`: Tests that use Model Context Protocol (MCP)
 
 Test markers are automatically applied based on the test location in the directory structure.
+
+## Pinecone Testing Strategy
+
+The integration tests that interact with Pinecone use session-specific test indices to avoid polluting the production vector database and support parallel test execution.
+
+### Test Index Architecture
+
+```
+┌─────────────────┐     ┌───────────────────────────────────┐
+│ Production Index │     │ Session-Specific Test Indices     │
+│ (landmarks)      │     │ (nyc-landmarks-test-{session_id}) │
+└─────────────────┘     └───────────────────────────────────┘
+        │                          │
+        ▼                          ▼
+┌─────────────────┐     ┌───────────────────────────────────┐
+│ Production Data  │     │ Temporary Test Data               │
+│ Used by the app  │     │ Each test session gets its own    │
+└─────────────────┘     │ isolated index with unique name    │
+                        └───────────────────────────────────┘
+```
+
+### Test Index Management
+
+We have several utilities to manage the test indices:
+
+1. **Session-Specific Indices**: Each test session automatically gets its own unique index name with timestamp and random identifier (e.g., `nyc-landmarks-test-20250510-221500-a7b3c9`), allowing parallel test execution without conflicts.
+
+2. **Test Fixtures**: `pinecone_test_db` fixture in `tests/integration/conftest.py` automatically creates a session-specific test index at the beginning of a test session and cleans it up at the end.
+
+3. **Management Script**: Use `scripts/manage_test_index.py` to:
+   - Create a test index: `python scripts/manage_test_index.py create`
+   - Reset the test index: `python scripts/manage_test_index.py reset`
+   - Delete the test index: `python scripts/manage_test_index.py delete`
+   - Check test index status: `python scripts/manage_test_index.py status`
+   - List all test indices: `python scripts/manage_test_index.py list`
+   - Clean up old test indices: `python scripts/manage_test_index.py cleanup --age 24`
+
+4. **Utility Module**: For programmatic management of test indices, use the functions in `tests/utils/pinecone_test_utils.py`.
+
+### Benefits of the Session-Specific Test Index Approach
+
+- Complete isolation from production data
+- Prevents accidental contamination of the production index
+- Clean test environment for each test run
+- Support for parallel test execution without conflicts
+- Each test session gets a dedicated index with unique naming
+- Automatic cleanup of old test indices to prevent resource exhaustion
+- Ability to freely modify, delete, or recreate test indices without affecting production or other test sessions
