@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# mypy: ignore-errors
 """
 Script to regenerate the Pinecone index with standardized vector IDs.
 

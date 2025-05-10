@@ -3,8 +3,9 @@ PineconeDB class that handles vector operations in Pinecone.
 """
 
 import os
+import time
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from pinecone import Pinecone
 
@@ -45,15 +46,22 @@ class PineconeDB:
 
         # Connect to index
         try:
-            # Ensure index_name is not None before connecting
-            if not self.index_name:
-                raise ValueError("Pinecone index name cannot be None")
-
-            self.index = self.pc.Index(self.index_name)
-            logger.info(f"Connected to Pinecone index: {self.index_name}")
+            self._connect_to_index()
         except Exception as e:
             logger.error(f"Failed to connect to Pinecone index: {e}")
             raise
+
+    def _connect_to_index(self) -> None:
+        """
+        Internal method to connect to Pinecone index.
+        Used for initial connection and reconnection after index recreation.
+        """
+        # Ensure index_name is not None before connecting
+        if not self.index_name:
+            raise ValueError("Pinecone index name cannot be None")
+
+        self.index = self.pc.Index(self.index_name)
+        logger.info(f"Connected to Pinecone index: {self.index_name}")
 
     def store_chunks(
         self,
@@ -391,3 +399,114 @@ class PineconeDB:
         except Exception as e:
             logger.error(f"Failed to get index stats: {e}")
             return {}
+
+    def recreate_index(self) -> bool:
+        """
+        Recreate the Pinecone index by deleting and creating it again.
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if not self.index_name:
+            logger.error("Index name is not set, cannot recreate index")
+            return False
+
+        try:
+            # Initialize direct Pinecone client for index operations
+            from pinecone import Pinecone
+
+            pc = Pinecone(api_key=self.api_key)
+
+            # Delete the existing index if it exists
+            try:
+                pc.delete_index(self.index_name)
+                logger.info(f"Deleted existing index: {self.index_name}")
+            except Exception as e:
+                logger.warning(f"Index deletion warning (may not exist yet): {e}")
+
+            # Create the new index
+            try:
+                # Using standard OpenAI embedding dimensions
+                pc.create_index(
+                    name=self.index_name,
+                    dimension=1536,  # OpenAI embedding dimension
+                    metric="cosine",
+                )
+                logger.info(f"Created new index: {self.index_name}")
+
+                # Wait for the index to be ready and reconnect
+                logger.info("Waiting for index to be ready...")
+                time.sleep(30)
+
+                # Reinitialize connection to the new index
+                self._connect_to_index()
+
+                return True
+            except Exception as e:
+                logger.error(f"Failed to create index: {e}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Failed to recreate index: {e}")
+            return False
+
+    def store_vectors_batch(
+        self, vectors: List[Tuple[str, List[float], Dict[str, Any]]]
+    ) -> bool:
+        """
+        Store a batch of vectors in Pinecone using the low-level API.
+
+        Args:
+            vectors: List of tuples containing (id, embedding, metadata)
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if not self.index:
+            logger.error("Index not initialized")
+            return False
+
+        try:
+            # Convert to format expected by upsert
+            pinecone_vectors = []
+            for vector_id, embedding, metadata in vectors:
+                pinecone_vectors.append(
+                    {"id": vector_id, "values": embedding, "metadata": metadata}
+                )
+
+            # Use batch size of 100 as recommended by Pinecone
+            batch_size = 100
+            for i in range(0, len(pinecone_vectors), batch_size):
+                batch = pinecone_vectors[i : i + batch_size]
+                self.index.upsert(vectors=batch)
+
+            logger.info(f"Successfully stored {len(pinecone_vectors)} vectors")
+            return True
+        except Exception as e:
+            logger.error(f"Error storing vectors batch: {e}")
+            return False
+
+    def delete_index(self) -> bool:
+        """
+        Delete the Pinecone index.
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if not self.index_name:
+            logger.error("Index name is not set, cannot delete index")
+            return False
+
+        try:
+            # Initialize direct Pinecone client for index operations
+            from pinecone import Pinecone
+
+            pc = Pinecone(api_key=self.api_key)
+
+            # Delete the index
+            pc.delete_index(self.index_name)
+            logger.info(f"Deleted index: {self.index_name}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to delete index: {e}")
+            return False
