@@ -11,7 +11,7 @@ python scripts/analyze_github_log.py <github_action_job_url_or_log_file_path>
 import os
 import re
 import shutil  # Added import
-import subprocess  # Added import
+import subprocess  # nosec B404 - subprocess is used safely with fixed commands
 import sys
 from collections import Counter, defaultdict
 from datetime import datetime
@@ -83,6 +83,7 @@ def _execute_gh_log_download(
         job_id: GitHub workflow job ID
         output_filename: Path where the log file will be saved
     """
+    # The run_id and job_id are validated by regex pattern before passing to this function
     gh_command_list: List[str] = [
         "gh",
         "run",
@@ -95,7 +96,7 @@ def _execute_gh_log_download(
     print(f"Executing: {' '.join(gh_command_list)}")
     try:
         process = subprocess.run(
-            gh_command_list,
+            gh_command_list,  # nosec B603 - All inputs are validated using regex
             capture_output=True,
             text=True,
             check=False,
