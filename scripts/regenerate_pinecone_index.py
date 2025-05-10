@@ -366,6 +366,108 @@ def restore_vectors(
     return imported_count
 
 
+def is_valid_test_vector_id(vector_id: str, source_type: str) -> bool:
+    """
+    Check if a test vector ID follows the standardized format.
+
+    Args:
+        vector_id: The vector ID to check
+        source_type: The source type of the vector
+
+    Returns:
+        True if the ID format is valid, False otherwise
+    """
+    if source_type == "wikipedia":
+        return (
+            vector_id.startswith("wiki-")
+            and "LP-99999" in vector_id
+            and "-chunk-" in vector_id
+        )
+    else:
+        return vector_id.startswith("LP-99999") and "-chunk-" in vector_id
+
+
+def is_valid_standard_vector_id(
+    vector_id: str, source_type: str, landmark_id: str
+) -> bool:
+    """
+    Check if a vector ID follows the standardized format.
+
+    Args:
+        vector_id: The vector ID to check
+        source_type: The source type of the vector
+        landmark_id: The landmark ID associated with the vector
+
+    Returns:
+        True if the ID format is valid, False otherwise
+    """
+    if source_type == "wikipedia":
+        # Should match: wiki-{article_title}-{landmark_id}-chunk-{chunk_index}
+        return (
+            vector_id.startswith("wiki-")
+            and landmark_id in vector_id
+            and "-chunk-" in vector_id
+        )
+    else:
+        # Should match: {landmark_id}-chunk-{chunk_index}
+        return vector_id.startswith(landmark_id) and "-chunk-" in vector_id
+
+
+def process_vector_batch(vectors: List[Dict[str, Any]]) -> Tuple[int, int, int, int]:
+    """
+    Process a batch of vectors and check their ID formats.
+
+    Args:
+        vectors: List of vector objects to check
+
+    Returns:
+        Tuple containing counts of (checked, correct, incorrect, test) vectors
+    """
+    batch_checked = 0
+    batch_correct = 0
+    batch_incorrect = 0
+    batch_test = 0
+
+    for vector in vectors:
+        vector_id = vector.get("id", "")
+        metadata = vector.get("metadata", {})
+        source_type = metadata.get("source_type", "unknown")
+        landmark_id = metadata.get("landmark_id", "unknown")
+
+        # Skip if no ID
+        if not vector_id:
+            continue
+
+        batch_checked += 1
+
+        # Check if this is a test vector using LP-99999 format
+        if landmark_id == "LP-99999" or metadata.get("is_test", False):
+            batch_test += 1
+            logger.info(f"Found test vector with ID: {vector_id}")
+
+            # Test vectors should still follow the standard format
+            if is_valid_test_vector_id(vector_id, source_type):
+                batch_correct += 1
+            else:
+                batch_incorrect += 1
+                logger.warning(f"Incorrect test vector ID format: {vector_id}")
+            continue
+
+        # Check format based on source type
+        if is_valid_standard_vector_id(vector_id, source_type, landmark_id):
+            batch_correct += 1
+        else:
+            batch_incorrect += 1
+            log_message = (
+                f"Incorrect Wikipedia ID format: {vector_id}"
+                if source_type == "wikipedia"
+                else f"Incorrect PDF ID format: {vector_id}"
+            )
+            logger.warning(log_message)
+
+    return batch_checked, batch_correct, batch_incorrect, batch_test
+
+
 def verify_standardized_ids(pinecone_db: PineconeDB) -> Tuple[int, int, int]:
     """
     Verify that all vector IDs in the index follow the standardized format.
@@ -406,63 +508,19 @@ def verify_standardized_ids(pinecone_db: PineconeDB) -> Tuple[int, int, int]:
         if not results:
             break
 
-        # Check each vector ID
-        for vector in results:
-            vector_id = vector.get("id", "")
-            metadata = vector.get("metadata", {})
-            source_type = metadata.get("source_type", "unknown")
-            landmark_id = metadata.get("landmark_id", "unknown")
+        # Process this batch of vectors
+        batch_checked, batch_correct, batch_incorrect, batch_test = (
+            process_vector_batch(results)
+        )
 
-            # Skip if no ID
-            if not vector_id:
-                continue
+        # Update totals
+        total_checked += batch_checked
+        correct_format += batch_correct
+        incorrect_format += batch_incorrect
+        test_vectors += batch_test
 
-            total_checked += 1
-
-            # Check if this is a test vector using LP-99999 format
-            if landmark_id == "LP-99999" or metadata.get("is_test", False):
-                test_vectors += 1
-                logger.info(f"Found test vector with ID: {vector_id}")
-                # Test vectors should still follow the standard format
-                if (
-                    source_type == "wikipedia"
-                    and vector_id.startswith("wiki-")
-                    and "LP-99999" in vector_id
-                    and "-chunk-" in vector_id
-                ) or (
-                    source_type != "wikipedia"
-                    and vector_id.startswith("LP-99999")
-                    and "-chunk-" in vector_id
-                ):
-                    correct_format += 1
-                else:
-                    incorrect_format += 1
-                    logger.warning(f"Incorrect test vector ID format: {vector_id}")
-                continue
-
-            # Check format based on source type
-            is_valid_format = False
-            if source_type == "wikipedia":
-                # Should match: wiki-{article_title}-{landmark_id}-chunk-{chunk_index}
-                if (
-                    vector_id.startswith("wiki-")
-                    and landmark_id in vector_id
-                    and "-chunk-" in vector_id
-                ):
-                    is_valid_format = True
-                else:
-                    incorrect_format += 1
-                    logger.warning(f"Incorrect Wikipedia ID format: {vector_id}")
-            else:
-                # Should match: {landmark_id}-chunk-{chunk_index}
-                if vector_id.startswith(landmark_id) and "-chunk-" in vector_id:
-                    is_valid_format = True
-                else:
-                    incorrect_format += 1
-                    logger.warning(f"Incorrect PDF ID format: {vector_id}")
-
-            if is_valid_format:
-                correct_format += 1
+        # Increment batch index
+        batch_index += 1
 
     # Log summary
     logger.info(f"Total vectors checked: {total_checked}")
