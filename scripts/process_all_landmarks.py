@@ -272,7 +272,7 @@ def process_landmark(
 
         # Store in Pinecone with fixed IDs
         vector_ids = pinecone_db.store_chunks_with_fixed_ids(
-            chunks=processed_chunks, landmark_id=landmark_id, delete_existing=True
+            chunks=processed_chunks, landmark_id=landmark_id
         )
 
         if not vector_ids:
