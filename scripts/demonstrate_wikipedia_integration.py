@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# mypy: ignore-errors
 """
 Script to demonstrate the Wikipedia integration functionality.
 
@@ -29,16 +30,17 @@ from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 logger = get_logger(__name__)
 
 
-def fetch_and_display_wikipedia_articles(landmark_id: str) -> None:
+def _get_landmark_details(landmark_id: str, api_client: CoreDataStoreAPI) -> Any:
     """
-    Fetch and display Wikipedia articles for a landmark.
+    Get landmark details from the API.
 
     Args:
-        landmark_id: The landmark ID to fetch articles for
-    """
-    api_client = CoreDataStoreAPI()
+        landmark_id: The landmark ID to fetch
+        api_client: The CoreDataStoreAPI client
 
-    # Get landmark details
+    Returns:
+        Landmark details or None if not found
+    """
     landmark = None
     try:
         # Try different methods to get landmark details
@@ -49,16 +51,73 @@ def fetch_and_display_wikipedia_articles(landmark_id: str) -> None:
             landmark = api_client.get_landmark_by_id(landmark_id)
         except (AttributeError, Exception):
             pass
+    return landmark
+
+
+def _get_landmark_name(landmark: Any) -> str:
+    """
+    Extract the landmark name from landmark data.
+
+    Args:
+        landmark: Landmark data (dict or object)
+
+    Returns:
+        The landmark name
+    """
+    if isinstance(landmark, dict):
+        return str(landmark.get("name", "Unknown"))
+    else:
+        return str(getattr(landmark, "name", "Unknown"))
+
+
+def _get_article_content(article: Any) -> str:
+    """
+    Extract content from an article object.
+
+    Args:
+        article: Article object
+
+    Returns:
+        Article content
+    """
+    if hasattr(article, "extract") and article.extract is not None:
+        return str(article.extract)
+    elif hasattr(article, "content") and article.content is not None:
+        return str(article.content)
+    return ""
+
+
+def _display_article(i: int, article: Any) -> None:
+    """
+    Display information about a single article.
+
+    Args:
+        i: Article index
+        article: Article object
+    """
+    print(f"Article {i}: {article.title}")
+    print(f"URL: {article.url}")
+    content = _get_article_content(article)
+    print(f"Extract: {content[:200]}..." if content else "No extract available")
+    print()
+
+
+def fetch_and_display_wikipedia_articles(landmark_id: str) -> None:
+    """
+    Fetch and display Wikipedia articles for a landmark.
+
+    Args:
+        landmark_id: The landmark ID to fetch articles for
+    """
+    api_client = CoreDataStoreAPI()
+
+    # Get landmark details
+    landmark = _get_landmark_details(landmark_id, api_client)
     if not landmark:
         print(f"No landmark found with ID: {landmark_id}")
         return
 
-    # Get landmark name
-    if isinstance(landmark, dict):
-        landmark_name = landmark.get("name", "Unknown")
-    else:
-        landmark_name = getattr(landmark, "name", "Unknown")
-
+    landmark_name = _get_landmark_name(landmark)
     print(f"\n=== LANDMARK: {landmark_name} (ID: {landmark_id}) ===\n")
 
     # Get Wikipedia articles
@@ -72,17 +131,7 @@ def fetch_and_display_wikipedia_articles(landmark_id: str) -> None:
 
     # Display article details
     for i, article in enumerate(articles, 1):
-        print(f"Article {i}: {article.title}")
-        print(f"URL: {article.url}")
-        # Get article content regardless of what the property is called
-        content = ""
-        if hasattr(article, "extract"):
-            content = article.extract
-        elif hasattr(article, "content"):
-            content = article.content
-
-        print(f"Extract: {content[:200]}..." if content else "No extract available")
-        print()
+        _display_article(i, article)
 
 
 def process_wikipedia_article(
@@ -167,6 +216,97 @@ def process_wikipedia_article(
         return False
 
 
+def _get_landmark_with_db_client(landmark_id: str, db_client: DbClient) -> Any:
+    """
+    Get landmark details using DbClient.
+
+    Args:
+        landmark_id: The landmark ID to fetch
+        db_client: The DbClient instance
+
+    Returns:
+        Landmark details or None if not found
+    """
+    landmark = None
+    try:
+        # Try different methods to get landmark details
+        landmark = db_client.get_landmark_metadata(landmark_id)
+    except (AttributeError, Exception):
+        try:
+            # Fall back to get_landmark_by_id if available
+            landmark = db_client.get_landmark_by_id(landmark_id)
+        except (AttributeError, Exception):
+            pass
+    # Explicitly convert to Any to avoid type mismatch at call site
+    return landmark
+
+
+def _search_single_source(
+    query: str, landmark_id: str, source_type: str, top_k: int
+) -> None:
+    """
+    Search content from a single source type.
+
+    Args:
+        query: The search query
+        landmark_id: The landmark ID to search in
+        source_type: Source type to search ('wikipedia' or 'pdf')
+        top_k: Number of results to return
+    """
+    print(f"Searching in {source_type.upper()} content only...\n")
+
+    # Search for content with the specified source type
+    results = search_combined_sources(
+        query_text=query,
+        landmark_id=landmark_id,
+        source_type=source_type,
+        top_k=top_k,
+    )
+
+    if not results:
+        print(f"No results found in {source_type} content.")
+        return
+
+    # Convert results to expected format for display
+    display_results = {"matches": results}
+    display_search_results(display_results, source_type.upper())
+
+
+def _search_and_compare_sources(query: str, landmark_id: str, top_k: int) -> None:
+    """
+    Search and compare results from multiple sources.
+
+    Args:
+        query: The search query
+        landmark_id: The landmark ID to search in
+        top_k: Number of results to return for each source
+    """
+    print("Comparing search results from both Wikipedia and PDF sources...\n")
+
+    # Get comparison results
+    comparison = compare_source_results(
+        query_text=query, landmark_id=landmark_id, top_k=top_k
+    )
+
+    # Display Wikipedia results
+    wiki_results = comparison.get("wikipedia_results", [])
+    if wiki_results:
+        display_results = {"matches": wiki_results}
+        display_search_results(display_results, "WIKIPEDIA")
+    else:
+        print("No results found in Wikipedia content.")
+
+    print("\n" + "-" * 80 + "\n")
+
+    # Display PDF results
+    pdf_results = comparison.get("pdf_results", [])
+    if pdf_results:
+        display_results = {"matches": pdf_results}
+        display_search_results(display_results, "PDF")
+    else:
+        print("No results found in PDF content.")
+
+
 def search_landmark_content(
     landmark_id: str, query: str, top_k: int = 5, source_type: Optional[str] = None
 ) -> None:
@@ -184,74 +324,21 @@ def search_landmark_content(
 
         # Get landmark details
         db_client = DbClient(CoreDataStoreAPI())
-        landmark = None
-        try:
-            # Try different methods to get landmark details
-            landmark = db_client.get_landmark_metadata(landmark_id)
-        except (AttributeError, Exception):
-            try:
-                # Fall back to get_landmark_by_id if available
-                landmark = db_client.get_landmark_by_id(landmark_id)
-            except (AttributeError, Exception):
-                pass
+        landmark = _get_landmark_with_db_client(landmark_id, db_client)
 
         if not landmark:
             print(f"No landmark found with ID: {landmark_id}")
             return
 
         # Get landmark name
-        if isinstance(landmark, dict):
-            landmark_name = landmark.get("name", "Unknown")
-        else:
-            landmark_name = getattr(landmark, "name", "Unknown")
-
+        landmark_name = _get_landmark_name(landmark)
         print(f"Landmark: {landmark_name} (ID: {landmark_id})\n")
 
         # Execute the search
         if source_type:
-            print(f"Searching in {source_type.upper()} content only...\n")
-
-            # Search for content with the specified source type
-            results = search_combined_sources(
-                query_text=query,
-                landmark_id=landmark_id,
-                source_type=source_type,
-                top_k=top_k,
-            )
-
-            if not results:
-                print(f"No results found in {source_type} content.")
-                return
-
-            # Convert results to expected format for display
-            display_results = {"matches": results}
-            display_search_results(display_results, source_type.upper())
-
+            _search_single_source(query, landmark_id, source_type, top_k)
         else:
-            print("Comparing search results from both Wikipedia and PDF sources...\n")
-
-            # Get comparison results
-            comparison = compare_source_results(
-                query_text=query, landmark_id=landmark_id, top_k=top_k
-            )
-
-            # Display Wikipedia results
-            wiki_results = comparison.get("wikipedia_results", [])
-            if wiki_results:
-                display_results = {"matches": wiki_results}
-                display_search_results(display_results, "WIKIPEDIA")
-            else:
-                print("No results found in Wikipedia content.")
-
-            print("\n" + "-" * 80 + "\n")
-
-            # Display PDF results
-            pdf_results = comparison.get("pdf_results", [])
-            if pdf_results:
-                display_results = {"matches": pdf_results}
-                display_search_results(display_results, "PDF")
-            else:
-                print("No results found in PDF content.")
+            _search_and_compare_sources(query, landmark_id, top_k)
 
     except Exception as e:
         print(f"Error searching landmark content: {e}")

@@ -163,8 +163,9 @@ class LandmarkPipeline:
             The landmark ID
         """
         if isinstance(landmark, dict):
-            return landmark.get("id", "") or landmark.get("lpNumber", default)
-        return getattr(landmark, "lpNumber", default)
+            result = landmark.get("id", "") or landmark.get("lpNumber", default)
+            return str(result)
+        return str(getattr(landmark, "lpNumber", default))
 
     def _get_pdf_url(self, landmark: Dict[str, Any], landmark_id: str) -> Optional[str]:
         """Get PDF URL for a landmark.
