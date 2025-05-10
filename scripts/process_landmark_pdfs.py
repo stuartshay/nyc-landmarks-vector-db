@@ -76,7 +76,7 @@ def process_landmark(
         # Delete existing vectors if requested
         if delete_existing:
             logger.info(f"Deleting existing vectors for landmark: {landmark_id}")
-            vector_db.delete_by_metadata({"landmark_id": landmark_id})
+            vector_db.delete_vectors_by_filter({"landmark_id": landmark_id})
 
         # Extract text from PDF
         pdf_result = pdf_extractor.process_landmark_pdf(landmark_id)
