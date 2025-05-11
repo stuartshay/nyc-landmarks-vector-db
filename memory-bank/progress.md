@@ -1,57 +1,80 @@
 # Project Progress
 
-## Completed
+## What Works
 
-- ✅ Set up basic infrastructure (repository, framework)
-- ✅ Core modules implementation
-- ✅ PDF extraction from Azure Blob Storage
-- ✅ Initial text chunking for embedding
-- ✅ OpenAI embedding generation
-- ✅ Basic Pinecone storage implementation
-- ✅ API endpoint specification
-- ✅ Vector search implementation
-- ✅ Wikipedia article fetching and integration
-- ✅ Combined search across PDF and Wikipedia content
-- ✅ Initial GitHub Actions CI/CD pipeline
-- ✅ API endpoint for chat
-- ✅ Conversation memory for chatbot
-- ✅ Testing framework for core components
-- ✅ Basic documentation
-- ✅ Null metadata handling fix
-- ✅ Fixed landmark processing script to handle LpcReportDetailResponse objects correctly
-  - Successfully processed problematic landmarks (LP-00048, LP-00112, LP-00012)
-  - Added support for processing specific landmark IDs via command line arguments
-- ✅ Enhanced debug logging in vector verification script
+- **Core Data Store API Integration**
+  - Landmark data fetching from NYC LPC API
+  - Paginated requests with rate limiting
+  - Error handling for API failures
+  - Type-safe responses with Pydantic models
 
-## In Progress
+- **PDF Processing Pipeline**
+  - PDF downloading and text extraction
+  - Text chunking with token-based sizing
+  - Embedding generation with OpenAI API
+  - Storage in vector database
 
-- 🚧 Fixing issues with GitHub Actions and rebuilding Pinecone index
-- 🚧 Enhanced error handling and robustness
-- 🚧 Comprehensive test coverage
-- 🚧 Addressing embedding storage/retrieval issues in Pinecone vectors
-  - Current verification shows vector IDs and metadata valid, but embeddings (values) missing
-  - Need to investigate why vectors are stored without embeddings or why they aren't retrieved
+- **Vector Database Integration**
+  - Pinecone index configuration and management
+  - Vector storage with metadata
+  - Query capability with filters
+  - Vector ID management for updates
 
-## Next Up
+- **Landmark Processing**
+  - Batch processing for all NYC landmarks
+  - Incremental processing (only new/updated landmarks)
+  - Progress tracking and reporting
+  - Error handling with detailed logging
+  - Robust attribute access for both dictionary and object responses
+  - Modular code structure with focused helper functions
 
-- 📅 Performance optimization for embedding generation and storage
-- 📅 Enhanced attribution of sources in responses
-- 📅 User feedback integration
-- 📅 API usage metrics and monitoring
-- 📅 Extended documentation
-- 📅 Integration testing with frontend components
+- **Wikipedia Integration**
+  - Article fetching based on landmark names
+  - Content filtering and cleaning
+  - Embedding generation for article chunks
+  - Storage alongside PDF content
+
+## Work In Progress
+
+- **Query API Enhancement**
+  - Semantic search across landmark content
+  - Combined search with metadata filters
+  - Relevance scoring for results
+  - Response formatting for API consumers
+
+- **Chat Interface**
+  - Basic conversation management
+  - Context tracking between messages
+  - LLM integration for responses
+  - Knowledge grounding in landmark data
 
 ## Known Issues
 
-1. ⚠️ Missing embeddings in Pinecone vectors (requiring index recreation or fixing storage method)
-2. ⚠️ Some integration test failures in CI environment (working in local tests)
-3. ⚠️ Vector verification shows proper vector IDs and metadata, but 0% valid embeddings
+- Some landmarks have minimal PDF content
+- Embedding quality varies based on text content
+- Wikipedia content may not always match landmarks perfectly
+- Test coverage for edge cases needs expansion
 
-## Recent Achievements
+## Recent Completions
 
-- Successfully implemented fixes for null metadata handling and validated with integration tests
-- Added comprehensive error handling for different response types from the CoreDataStore API
-- Implemented and verified Wikipedia article integration into the vector database
-- Fixed landmark processing script to properly handle Pydantic model responses
-- Successfully processed previously problematic landmarks (LP-00048, LP-00112, LP-00012)
-- Enhanced debugging in the vector verification script to better diagnose embedding issues
+- Fixed attribute access errors in landmark processing
+  - Implemented `safe_get_attribute()` function to handle both dictionary and object access patterns
+  - Successfully processed previously problematic landmarks (LP-00048, LP-00112, LP-00012)
+  - Added improved logging for debugging and monitoring
+  - Fixed type checking issues to ensure code reliability
+
+- Improved code maintainability through refactoring
+  - Reduced complexity in key functions by breaking them down into smaller units
+  - Created specialized helper functions for common operations
+  - Made code more testable and easier to reason about
+  - Enhanced readability with focused functions that have clear responsibilities
+
+- Added Wikipedia integration
+  - Implemented article fetching and processing
+  - Created embeddings for article content
+  - Connected to landmark metadata for combined search
+
+- Improved error handling and logging
+  - Added detailed error messages for failed landmarks
+  - Implemented structured logging for pipeline stages
+  - Created result summaries for batch processing

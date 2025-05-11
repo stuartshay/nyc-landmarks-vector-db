@@ -1,47 +1,38 @@
 # Active Context
 
-This document contains the most recent updates and work in progress for the NYC Landmarks Vector Database.
-
 ## Current Focus
 
-We're addressing issues with the Pinecone vector database integration and solving critical bugs in the landmark processing pipeline.
+- Fixed issues with processing certain landmarks in `process_all_landmarks.py` script
+- Implemented a more robust attribute access mechanism using a `safe_get_attribute()` helper function
+- Resolved type checking errors and improved code reliability
+- Refactored complex functions in the landmark processing pipeline to reduce complexity
 
-### Recent Updates (May 11, 2025)
+## Recent Changes
 
-- Fixed an issue with the Pinecone index recreation process by properly adding the required `ServerlessSpec` parameter in `PineconeDB.recreate_index()` method
-- Resolved error processing specific landmark IDs (LP-00048, LP-00112, LP-00012) by improving attribute access in `process_all_landmarks.py`
-- Added additional debugging to the `verify_vectors.py` script to better diagnose issues with vector embeddings
-- Successfully processed and stored landmark data for previously problematic landmarks in the Pinecone index
-- Fixed vector embedding storage in Pinecone by adding `include_values=True` parameter to `index.query()` calls in `list_vectors_by_source()` method
+- **Bug Fix**: Fixed the "'LpcReportDetailResponse' object has no attribute 'get'" error in the landmark processing pipeline by implementing a safe attribute accessor that works with both dictionary-style objects and Pydantic models
+- Created a reusable `safe_get_attribute()` function that abstracts away the differences between dictionary-style access and attribute access
+- Fixed type annotation issues to properly handle both dictionary responses and Pydantic model objects
+- Added enhanced error logging for problematic landmark IDs (LP-00048, LP-00112, LP-00012)
+- Refactored complex functions into smaller, focused helper functions to reduce cognitive complexity:
+  - Added `extract_landmark_id()` to cleanly handle ID extraction from different object types
+  - Added `fetch_landmarks_page()` to centralize API request logic and error handling
+  - Added `get_landmark_pdf_url()` to extract PDF URLs consistently
+  - Added `create_chunk_metadata()` to standardize metadata generation
+  - Added `generate_and_validate_embedding()` to handle embedding generation and validation
+- Successfully processed previously failing landmarks with the updated code
 
-### API Issues
+## Active Decisions
 
-Recent errors were due to three main issues:
-
-1. **Pinecone API Issue**: The Pinecone client API was missing a required `spec` parameter when recreating indexes, causing failures with the error: `Pinecone.create_index() missing 1 required positional argument: 'spec'`
-
-2. **Landmark Response Type Handling**: The processing pipeline was failing to properly handle different response types from the LPC Report API, specifically there was an issue with the `'LpcReportDetailResponse' object has no attribute 'get'` error because the code was trying to use dictionary access methods on a Pydantic model
-
-3. **Missing Vector Embeddings**: The Pinecone query in `list_vectors_by_source()` was not explicitly requesting vector values (embeddings) by omitting the `include_values=True` parameter, causing stored vectors to appear as if they had no embeddings
-
-### Current Vector Storage State
-
-- The Pinecone index has been properly configured with the correct parameters
-- Successfully processed all previously problematic landmarks with proper embeddings
-- Vector verification now shows 100% valid embeddings for all vectors in the index
-- The vector retrieval system is now correctly including embedding values in query responses
-
-## In Progress Work
-
-- Enhanced error checking in the landmark processing pipeline to better handle different response types
-- More comprehensive verification of vector data quality
-- Further improvements to vector retrieval and search capabilities
+- Used a unified attribute access approach with the `safe_get_attribute()` function instead of maintaining separate code paths for different object types
+- Improved type annotations to ensure proper static type checking
+- Added better logging for debugging problematic landmark processing
+- Enhanced robustness by handling both dictionary and object attribute access patterns consistently
+- Adopted a modular approach to break down complex functions into smaller, more focused units with clear responsibilities
 
 ## Next Steps
 
-1. Continue processing remaining landmarks to populate the vector database
-2. Ensure all landmarks are properly embedding their text content
-3. Optimize the verification and quality checking of vector embeddings
-4. Update the query API to better utilize the improved vector storage
-5. Enhance error handling for both Pinecone API calls and landmark data processing
-6. Run full verification on the entire index to ensure all vectors have valid embeddings
+- Continue monitoring landmark processing to ensure no new errors occur
+- Consider applying similar robust attribute access patterns in other parts of the codebase
+- Update test cases to verify both dictionary and object attribute access works as expected
+- Consider adding additional error handling and recovery mechanisms to make processing even more robust
+- Apply similar refactoring techniques to other complex functions in the codebase to improve maintainability

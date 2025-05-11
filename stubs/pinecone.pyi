@@ -1,11 +1,16 @@
 """Type stubs for Pinecone SDK"""
 
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, Dict, List, Optional, TypedDict, Union
 
 class NamespaceStats(TypedDict):
     """TypedDict for namespace statistics."""
 
     vector_count: int
+
+class ServerlessSpec:
+    """Specification for serverless Pinecone index."""
+
+    def __init__(self, cloud: str, region: str) -> None: ...
 
 class IndexStats:
     """Statistics about a Pinecone index."""
@@ -21,6 +26,7 @@ class Match:
     id: str
     score: float
     metadata: Optional[Dict[str, Any]]
+    values: Optional[List[float]]
 
 class QueryResponse:
     """Response from a query."""
@@ -47,6 +53,7 @@ class Index:
         vector: List[float],
         top_k: int,
         include_metadata: bool = False,
+        include_values: bool = False,
         namespace: Optional[str] = None,
         filter: Optional[Dict[str, Any]] = None,
     ) -> QueryResponse: ...
@@ -63,6 +70,11 @@ class Pinecone:
     def list_indexes(self) -> List[IndexDefinition]: ...
     def Index(self, name: str) -> Index: ...
     def create_index(
-        self, name: str, dimension: int, metric: str, **kwargs: Any
+        self,
+        name: str,
+        dimension: int,
+        metric: str,
+        spec: Optional[Union[ServerlessSpec, Any]] = None,
+        **kwargs: Any,
     ) -> None: ...
     def delete_index(self, name: str) -> None: ...

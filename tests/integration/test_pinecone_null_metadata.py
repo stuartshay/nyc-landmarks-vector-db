@@ -98,7 +98,6 @@ def test_pinecone_null_metadata_handling(pinecone_test_db):
 
         # Now attempt to store the vector with the filtered metadata
         vector_id = f"{test_landmark_id}-null-test"
-        vector = {"id": vector_id, "values": embedding, "metadata": metadata}
 
         # Direct storage to verify it works end-to-end
         success = pinecone_db.store_vectors_batch([(vector_id, embedding, metadata)])
@@ -183,7 +182,6 @@ def test_wikipedia_null_metadata_handling(pinecone_test_db):
 
         # Now attempt to store the vector with the filtered metadata
         vector_id = f"wiki-{test_article_title}-{test_landmark_id}-chunk-0"
-        vector = {"id": vector_id, "values": embedding, "metadata": metadata}
 
         # Direct storage to verify it works end-to-end
         success = pinecone_db.store_vectors_batch([(vector_id, embedding, metadata)])
