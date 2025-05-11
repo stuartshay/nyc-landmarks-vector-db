@@ -127,6 +127,85 @@ class LandmarkPipeline:
         self.stats["landmarks_fetched"] = len(all_landmarks)
         return all_landmarks
 
+    def _has_pdf(self, landmark: Dict[str, Any]) -> bool:
+        """Check if a landmark has a PDF URL.
+
+        Args:
+            landmark: The landmark data
+
+        Returns:
+            True if the landmark has a PDF URL, False otherwise
+        """
+        # Check if landmark has PDF URL directly
+        if isinstance(landmark, dict) and landmark.get("pdfReportUrl"):
+            return True
+        elif hasattr(landmark, "pdfReportUrl") and landmark.pdfReportUrl:
+            return True
+
+        # Check if we can get PDF URL from DB client
+        landmark_id = (
+            landmark.get("id", "")
+            if isinstance(landmark, dict)
+            else getattr(landmark, "lpNumber", "")
+        )
+        return bool(landmark_id and self.db_client.get_landmark_pdf_url(landmark_id))
+
+    def _get_landmark_id(
+        self, landmark: Dict[str, Any], default: str = "unknown"
+    ) -> str:
+        """Extract landmark ID from landmark data.
+
+        Args:
+            landmark: The landmark data
+            default: Default value if ID cannot be extracted
+
+        Returns:
+            The landmark ID
+        """
+        if isinstance(landmark, dict):
+            result = landmark.get("id", "") or landmark.get("lpNumber", default)
+            return str(result)
+        return str(getattr(landmark, "lpNumber", default))
+
+    def _get_pdf_url(self, landmark: Dict[str, Any], landmark_id: str) -> Optional[str]:
+        """Get PDF URL for a landmark.
+
+        Args:
+            landmark: The landmark data
+            landmark_id: The landmark ID
+
+        Returns:
+            The PDF URL or None if not found
+        """
+        if isinstance(landmark, dict):
+            pdf_url = landmark.get("pdfReportUrl")
+        else:
+            pdf_url = getattr(landmark, "pdfReportUrl", None)
+
+        if not pdf_url:
+            pdf_url = self.db_client.get_landmark_pdf_url(landmark_id)
+
+        return pdf_url
+
+    def _download_pdf_file(self, pdf_url: str, filepath: Path) -> bool:
+        """Download a PDF file from URL.
+
+        Args:
+            pdf_url: URL of the PDF
+            filepath: Path where to save the file
+
+        Returns:
+            True if download successful, False otherwise
+        """
+        response = requests.get(pdf_url, stream=True, timeout=30)
+        response.raise_for_status()
+
+        with open(filepath, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+
+        return True
+
     def download_pdfs(
         self, landmarks: List[Dict[str, Any]], limit: Optional[int] = None
     ) -> List[Tuple[str, Path, Dict[str, Any]]]:
@@ -141,27 +220,10 @@ class LandmarkPipeline:
         """
         downloaded: List[Tuple[str, Path, Dict[str, Any]]] = []
 
-        # Filter landmarks that have PDF URLs - handle both dict and Pydantic models
-        landmarks_with_pdfs = []
-        for landmark in landmarks:
-            has_pdf = False
-            # Check if landmark has PDF URL directly
-            if isinstance(landmark, dict) and landmark.get("pdfReportUrl"):
-                has_pdf = True
-            elif hasattr(landmark, "pdfReportUrl") and landmark.pdfReportUrl:
-                has_pdf = True
-            else:
-                # Check if we can get PDF URL from DB client
-                landmark_id = (
-                    landmark.get("id", "")
-                    if isinstance(landmark, dict)
-                    else getattr(landmark, "lpNumber", "")
-                )
-                if landmark_id and self.db_client.get_landmark_pdf_url(landmark_id):
-                    has_pdf = True
-
-            if has_pdf:
-                landmarks_with_pdfs.append(landmark)
+        # Filter landmarks that have PDF URLs
+        landmarks_with_pdfs = [
+            landmark for landmark in landmarks if self._has_pdf(landmark)
+        ]
 
         # Apply limit if specified
         if limit is not None and limit > 0:
@@ -169,24 +231,15 @@ class LandmarkPipeline:
 
         for landmark in tqdm(landmarks_with_pdfs, desc="Downloading PDFs"):
             try:
-                # Get landmark ID - handle both dict and Pydantic models
-                if isinstance(landmark, dict):
-                    landmark_id = landmark.get("id", "") or landmark.get("lpNumber", "")
-                else:
-                    landmark_id = getattr(landmark, "lpNumber", "")
+                # Get landmark ID
+                landmark_id = self._get_landmark_id(landmark)
 
                 if not landmark_id:
                     logger.warning(f"Landmark missing ID: {landmark}")
                     continue
 
-                # Get PDF URL - either from the landmark data directly or using the client
-                if isinstance(landmark, dict):
-                    pdf_url = landmark.get("pdfReportUrl")
-                else:
-                    pdf_url = getattr(landmark, "pdfReportUrl", None)
-
-                if not pdf_url:
-                    pdf_url = self.db_client.get_landmark_pdf_url(landmark_id)
+                # Get PDF URL
+                pdf_url = self._get_pdf_url(landmark, landmark_id)
 
                 if not pdf_url:
                     logger.warning(f"No PDF URL found for landmark {landmark_id}")
@@ -204,12 +257,7 @@ class LandmarkPipeline:
 
                 # Download the PDF
                 logger.info(f"Downloading PDF for {landmark_id} from {pdf_url}")
-                response = requests.get(pdf_url, stream=True, timeout=30)
-                response.raise_for_status()
-
-                with open(filepath, "wb") as f:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        f.write(chunk)
+                self._download_pdf_file(pdf_url, filepath)
 
                 downloaded.append((landmark_id, filepath, landmark))
                 logger.info(f"Successfully downloaded {filepath}")
@@ -219,12 +267,7 @@ class LandmarkPipeline:
 
             except Exception as e:
                 # Get landmark ID safely
-                if isinstance(landmark, dict):
-                    landmark_id = landmark.get("id", "") or landmark.get(
-                        "lpNumber", "unknown"
-                    )
-                else:
-                    landmark_id = getattr(landmark, "lpNumber", "unknown")
+                landmark_id = self._get_landmark_id(landmark)
 
                 error_msg = (
                     f"Error downloading PDF for landmark {landmark_id}: {str(e)}"
@@ -876,7 +919,7 @@ class LandmarkPipeline:
 
         # Step 6: Store in vector database
         logger.info("STEP 6: Storing in vector database")
-        store_success = self.store_in_vector_db(items_with_embeddings)
+        self.store_in_vector_db(items_with_embeddings)
 
         # Calculate elapsed time
         elapsed_time = time.time() - start_time

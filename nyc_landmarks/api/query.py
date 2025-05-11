@@ -6,7 +6,7 @@ landmark information.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Query as QueryParam
@@ -326,6 +326,195 @@ async def get_landmark(
 # --- Non-API functions for combined search ---
 
 
+def _initialize_components(
+    embedding_generator: Optional[EmbeddingGenerator] = None,
+    vector_db: Optional[PineconeDB] = None,
+    db_client: Optional[DbClient] = None,
+) -> Tuple[EmbeddingGenerator, PineconeDB, DbClient]:
+    """
+    Initialize required components for search if not provided.
+
+    Args:
+        embedding_generator: Optional EmbeddingGenerator instance
+        vector_db: Optional PineconeDB instance
+        db_client: Optional DbClient instance
+
+    Returns:
+        Tuple of (EmbeddingGenerator, PineconeDB, DbClient)
+    """
+    if embedding_generator is None:
+        embedding_generator = EmbeddingGenerator()
+    if vector_db is None:
+        vector_db = PineconeDB()
+    if db_client is None:
+        from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
+
+        db_client = DbClient(CoreDataStoreAPI())
+    return embedding_generator, vector_db, db_client
+
+
+def _build_search_filter(
+    landmark_id: Optional[str] = None, source_type: Optional[str] = None
+) -> Optional[Dict[str, Any]]:
+    """
+    Build filter dictionary for vector search.
+
+    Args:
+        landmark_id: Optional landmark ID to filter results
+        source_type: Optional source type filter ('wikipedia' or 'pdf')
+
+    Returns:
+        Dictionary with filter parameters or None if no filters
+    """
+    filter_dict: Dict[str, Any] = {}
+    if landmark_id:
+        filter_dict["landmark_id"] = landmark_id
+    if source_type and source_type in ["wikipedia", "pdf"]:
+        filter_dict["source_type"] = source_type
+    return filter_dict if filter_dict else None
+
+
+def _get_landmark_name(landmark_id: str, db_client: DbClient) -> Optional[str]:
+    """
+    Get landmark name from database by ID.
+
+    Args:
+        landmark_id: The landmark ID
+        db_client: Database client
+
+    Returns:
+        Landmark name or None if not found
+    """
+    landmark = db_client.get_landmark_by_id(landmark_id)
+    if not landmark:
+        return None
+
+    # Handle both dict and Pydantic model objects
+    if isinstance(landmark, dict):
+        return landmark.get("name")
+    else:
+        return getattr(landmark, "name", None)
+
+
+def _get_source_info(metadata: Dict[str, Any]) -> Tuple[str, str]:
+    """
+    Generate source attribution information based on metadata.
+
+    Args:
+        metadata: Vector metadata dictionary
+
+    Returns:
+        Tuple of (source_description, source_url)
+    """
+    source_type = metadata.get("source_type", "pdf")
+
+    if source_type == "wikipedia":
+        source = f"Wikipedia: {metadata.get('article_title', 'Unknown Article')}"
+        source_url = metadata.get("article_url", "")
+    else:
+        source = f"LPC Report: {metadata.get('document_name', metadata.get('file_name', 'Unknown Document'))}"
+        source_url = metadata.get("document_url", "")
+
+    return source, source_url
+
+
+def _enhance_search_result(
+    match: Dict[str, Any], db_client: DbClient
+) -> Dict[str, Any]:
+    """
+    Enhance a search result with additional information.
+
+    Args:
+        match: Raw search result from vector database
+        db_client: Database client
+
+    Returns:
+        Enhanced search result
+    """
+    metadata = match["metadata"]
+    source_type_value = metadata.get("source_type", "pdf")
+
+    # Create basic result
+    enhanced_result = {
+        "id": match.get("id", ""),
+        "score": match.get("score", 0.0),
+        "text": metadata.get("text", ""),
+        "landmark_id": metadata.get("landmark_id", ""),
+        "source_type": source_type_value,
+    }
+
+    # Add landmark name if available
+    landmark_id_value = metadata.get("landmark_id", "")
+    if landmark_id_value:
+        landmark_name = _get_landmark_name(landmark_id_value, db_client)
+        if landmark_name:
+            enhanced_result["landmark_name"] = landmark_name
+
+    # Add source information
+    source, source_url = _get_source_info(metadata)
+    enhanced_result["source"] = source
+    enhanced_result["source_url"] = source_url
+
+    return enhanced_result
+
+
+def _generate_query_embedding(
+    query_text: str, embedding_generator: EmbeddingGenerator
+) -> (
+    Any
+):  # Using Any since the actual return type from embedding_generator is not strictly typed
+    """
+    Generate embedding vector for a text query.
+
+    Args:
+        query_text: The search query text
+        embedding_generator: EmbeddingGenerator instance
+
+    Returns:
+        Embedding vector values
+    """
+    return embedding_generator.generate_embedding(query_text)
+
+
+def _perform_vector_search(
+    embedding: List[float],
+    top_k: int,
+    filter_dict: Optional[Dict[str, Any]],
+    vector_db: PineconeDB,
+) -> List[Dict[str, Any]]:
+    """
+    Perform vector search in the database.
+
+    Args:
+        embedding: Query embedding vector
+        top_k: Maximum number of results to return
+        filter_dict: Optional filter dictionary
+        vector_db: PineconeDB instance
+
+    Returns:
+        List of raw vector search results
+    """
+    return vector_db.query_vectors(
+        query_vector=embedding, top_k=top_k, filter_dict=filter_dict
+    )
+
+
+def _process_search_results(
+    matches: List[Dict[str, Any]], db_client: DbClient
+) -> List[Dict[str, Any]]:
+    """
+    Process raw search results into enhanced results with additional information.
+
+    Args:
+        matches: Raw search results from vector database
+        db_client: Database client
+
+    Returns:
+        List of enhanced search results
+    """
+    return [_enhance_search_result(match, db_client) for match in matches]
+
+
 def search_combined_sources(
     query_text: str,
     landmark_id: Optional[str] = None,
@@ -353,70 +542,19 @@ def search_combined_sources(
         List of search results with metadata and source attribution
     """
     # Initialize components if not provided
-    if embedding_generator is None:
-        embedding_generator = EmbeddingGenerator()
-    if vector_db is None:
-        vector_db = PineconeDB()
-    if db_client is None:
-        from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
-
-        db_client = DbClient(CoreDataStoreAPI())
-
-    # Generate embedding for query
-    embedding = embedding_generator.generate_embedding(query_text)
-
-    # Build filter dictionary
-    filter_dict: Dict[str, Any] = {}
-    if landmark_id:
-        filter_dict["landmark_id"] = landmark_id
-    if source_type and source_type in ["wikipedia", "pdf"]:
-        filter_dict["source_type"] = source_type
-
-    # Query the vector database (only pass filter_dict if it has values)
-    filter_to_use = filter_dict if filter_dict else None
-    matches = vector_db.query_vectors(
-        query_vector=embedding, top_k=top_k, filter_dict=filter_to_use
+    embedding_generator, vector_db, db_client = _initialize_components(
+        embedding_generator, vector_db, db_client
     )
 
-    # Enhance results with source attribution
-    enhanced_results: List[Dict[str, Any]] = []
+    # Generate embedding for query
+    embedding = _generate_query_embedding(query_text, embedding_generator)
 
-    for match in matches:
-        metadata = match["metadata"]
-        source_type_value = metadata.get("source_type", "pdf")
+    # Build filter dictionary and query the vector database
+    filter_dict = _build_search_filter(landmark_id, source_type)
+    matches = _perform_vector_search(embedding, top_k, filter_dict, vector_db)
 
-        enhanced_result = {
-            "id": match.get("id", ""),
-            "score": match.get("score", 0.0),
-            "text": metadata.get("text", ""),
-            "landmark_id": metadata.get("landmark_id", ""),
-            "source_type": source_type_value,
-        }
-
-        # Get landmark name from database if available
-        landmark_id_value = metadata.get("landmark_id", "")
-        if landmark_id_value:
-            landmark = db_client.get_landmark_by_id(landmark_id_value)
-            if landmark:
-                # Handle both dict and Pydantic model objects
-                if isinstance(landmark, dict):
-                    enhanced_result["landmark_name"] = landmark.get("name")
-                else:
-                    enhanced_result["landmark_name"] = getattr(landmark, "name", None)
-
-        # Add source-specific information
-        if source_type_value == "wikipedia":
-            enhanced_result["source"] = (
-                f"Wikipedia: {metadata.get('article_title', 'Unknown Article')}"
-            )
-            enhanced_result["source_url"] = metadata.get("article_url", "")
-        else:
-            enhanced_result["source"] = (
-                f"LPC Report: {metadata.get('document_name', metadata.get('file_name', 'Unknown Document'))}"
-            )
-            enhanced_result["source_url"] = metadata.get("document_url", "")
-
-        enhanced_results.append(enhanced_result)
+    # Enhance results with source attribution and additional information
+    enhanced_results = _process_search_results(matches, db_client)
 
     return enhanced_results
 

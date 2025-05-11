@@ -129,6 +129,110 @@ def _get_or_create_conversation(conversation_id: Optional[str] = None) -> Conver
     return conversation
 
 
+def _extract_metadata_and_score(match: Any) -> Tuple[Dict[str, Any], float]:
+    """Extract metadata and score from a match result.
+
+    Args:
+        match: Match result from vector search
+
+    Returns:
+        Tuple of (metadata, score)
+    """
+    try:
+        # Try accessing as an object (Protocol definition)
+        metadata = (
+            match.metadata if hasattr(match, "metadata") else match.get("metadata", {})
+        )
+        score = match.score if hasattr(match, "score") else match.get("score", 0)
+    except (AttributeError, TypeError):
+        # Fall back to dict access (actual Pinecone response)
+        metadata = match.get("metadata", {})
+        score = match.get("score", 0)
+
+    return metadata, score
+
+
+def _format_source_info(metadata: Dict[str, Any]) -> str:
+    """Format source information based on metadata.
+
+    Args:
+        metadata: Vector metadata
+
+    Returns:
+        Formatted source information string
+    """
+    source_type = metadata.get("source_type", "pdf")
+
+    if source_type == "wikipedia":
+        article_title = metadata.get("article_title", "Unknown Wikipedia Article")
+        return f"[Source: Wikipedia article '{article_title}']"
+    else:
+        document_name = metadata.get(
+            "document_name", metadata.get("file_name", "Unknown Document")
+        )
+        return f"[Source: LPC Report '{document_name}']"
+
+
+def _get_landmark_name(landmark_id: str, db_client: DbClient) -> Optional[str]:
+    """Get landmark name from database.
+
+    Args:
+        landmark_id: Landmark ID
+        db_client: Database client
+
+    Returns:
+        Landmark name or None if not found
+    """
+    landmark = db_client.get_landmark_by_id(landmark_id)
+    if not landmark:
+        return None
+
+    # Handle both dict and Pydantic model objects
+    if isinstance(landmark, dict):
+        return landmark.get("name")
+    else:
+        return getattr(landmark, "name", None)
+
+
+def _create_source_object(
+    metadata: Dict[str, Any],
+    score: float,
+    source_info: str,
+    landmark_name: Optional[str],
+) -> Dict[str, Any]:
+    """Create a source object for response.
+
+    Args:
+        metadata: Vector metadata
+        score: Match score
+        source_info: Formatted source information
+        landmark_name: Landmark name
+
+    Returns:
+        Source object dictionary
+    """
+    text = metadata.get("text", "")
+    landmark_id = metadata.get("landmark_id", "")
+    source_type = metadata.get("source_type", "pdf")
+
+    # Create source URL if available
+    source_url = None
+    if source_type == "wikipedia":
+        source_url = metadata.get("article_url", "")
+    else:
+        source_url = metadata.get("document_url", "")
+
+    return {
+        "text": text[:200] + "..." if len(text) > 200 else text,
+        "landmark_id": landmark_id,
+        "landmark_name": landmark_name,
+        "score": score,
+        "source_type": source_type,
+        "source": source_info,
+        "source_url": source_url,
+    }
+
+
 def _get_context_from_vector_db(
     query: str,
     embedding_generator: EmbeddingGenerator,
@@ -169,72 +273,29 @@ def _get_context_from_vector_db(
 
     # Process matches to create context
     for i, match in enumerate(matches):
-        # Handle both object-style and dict-style match objects
-        try:
-            # Try accessing as an object (Protocol definition)
-            metadata = (
-                match.metadata
-                if hasattr(match, "metadata")
-                else match.get("metadata", {})
-            )
-            score = match.score if hasattr(match, "score") else match.get("score", 0)
-        except (AttributeError, TypeError):
-            # Fall back to dict access (actual Pinecone response)
-            metadata = match.get("metadata", {})
-            score = match.get("score", 0)
-
-        text = metadata.get("text", "")
-        landmark_id = metadata.get("landmark_id", "")
-        source_type = metadata.get(
-            "source_type", "pdf"
-        )  # Default to pdf if not specified
+        # Extract metadata and score
+        metadata, score = _extract_metadata_and_score(match)
 
         # Only use matches with a reasonable similarity score
         if score < 0.7:  # This threshold can be adjusted
             continue
 
-        # Format source attribution based on source type
-        source_info = ""
-        if source_type == "wikipedia":
-            article_title = metadata.get("article_title", "Unknown Wikipedia Article")
-            source_info = f"[Source: Wikipedia article '{article_title}']"
-        else:
-            document_name = metadata.get(
-                "document_name", metadata.get("file_name", "Unknown Document")
-            )
-            source_info = f"[Source: LPC Report '{document_name}']"
+        text = metadata.get("text", "")
+        landmark_id_from_metadata = metadata.get("landmark_id", "")
+
+        # Format source attribution
+        source_info = _format_source_info(metadata)
 
         # Add to context text
         context_text += f"\nContext {i + 1} {source_info}:\n{text}\n"
 
-        # Get landmark name from database if available
+        # Get landmark name
         landmark_name = None
-        if landmark_id:
-            landmark = db_client.get_landmark_by_id(landmark_id)
-            if landmark:
-                # Handle both dict and Pydantic model objects
-                if isinstance(landmark, dict):
-                    landmark_name = landmark.get("name")
-                else:
-                    landmark_name = getattr(landmark, "name", None)
+        if landmark_id_from_metadata:
+            landmark_name = _get_landmark_name(landmark_id_from_metadata, db_client)
 
-        # Create source URL if available
-        source_url = None
-        if source_type == "wikipedia":
-            source_url = metadata.get("article_url", "")
-        else:
-            source_url = metadata.get("document_url", "")
-
-        # Add to sources
-        source = {
-            "text": text[:200] + "..." if len(text) > 200 else text,
-            "landmark_id": landmark_id,
-            "landmark_name": landmark_name,
-            "score": score,
-            "source_type": source_type,
-            "source": source_info,
-            "source_url": source_url,
-        }
+        # Create and add source object
+        source = _create_source_object(metadata, score, source_info, landmark_name)
         sources.append(source)
 
     return context_text, sources
@@ -362,7 +423,7 @@ async def chat_message(
         chat_messages = _convert_to_chat_messages(conversation)
 
         # Extract source types for the response
-        source_types = list(set(source.get("source_type", "pdf") for source in sources))
+        source_types = list({source.get("source_type", "pdf") for source in sources})
 
         # Create and return response
         return ChatResponse(

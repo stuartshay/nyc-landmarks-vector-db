@@ -19,12 +19,10 @@ from typing import Dict, List, Optional, Tuple
 
 from tqdm import tqdm
 
-from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
 from nyc_landmarks.db.db_client import DbClient
 from nyc_landmarks.db.wikipedia_fetcher import WikipediaFetcher
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
-from nyc_landmarks.models.landmark_models import LpcReportModel
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 

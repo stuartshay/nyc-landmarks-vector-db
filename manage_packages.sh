@@ -112,6 +112,7 @@ update_packages() {
     "plotly"
     "seaborn"
     "tqdm"
+    "types-tqdm"
   )
 
   # Update packages directly

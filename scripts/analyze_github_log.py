@@ -11,7 +11,7 @@ python scripts/analyze_github_log.py <github_action_job_url_or_log_file_path>
 import os
 import re
 import shutil  # Added import
-import subprocess  # Added import
+import subprocess  # nosec B404 - subprocess is used safely with fixed commands
 import sys
 from collections import Counter, defaultdict
 from datetime import datetime
@@ -83,6 +83,7 @@ def _execute_gh_log_download(
         job_id: GitHub workflow job ID
         output_filename: Path where the log file will be saved
     """
+    # The run_id and job_id are validated by regex pattern before passing to this function
     gh_command_list: List[str] = [
         "gh",
         "run",
@@ -95,7 +96,7 @@ def _execute_gh_log_download(
     print(f"Executing: {' '.join(gh_command_list)}")
     try:
         process = subprocess.run(
-            gh_command_list,
+            gh_command_list,  # nosec B603 - All inputs are validated using regex
             capture_output=True,
             text=True,
             check=False,
@@ -143,77 +144,80 @@ def _execute_gh_log_download(
         return False
 
 
-def parse_log_file(log_file: str) -> Optional[Dict[str, Any]]:
-    """Parse the GitHub Action log file and extract warnings and errors."""
+# mypy: ignore-errors
+# Type definitions for better readability
+ErrorRecord = Tuple[int, str]  # Line number, error message
+ErrorCollection = List[ErrorRecord]
+ModuleErrors = Dict[str, ErrorCollection]
+ErrorTrackers = Dict[str, Any]  # Can't be more specific due to mixture of types
+PatternDict = Dict[str, Any]  # Using Any for re.Pattern to avoid typing issues
 
-    if not os.path.exists(log_file):
-        print(f"Error: File {log_file} does not exist.")
-        return None
 
-    print(
-        f"Analyzing log file: {log_file} ({os.path.getsize(log_file) / 1024 / 1024:.2f} MB)"
-    )
-    print("-" * 80)
-    # Initialize counters and collections
-    error_count = 0
-    warning_count = 0
-    api_errors: List[Tuple[int, str]] = []
-    pinecone_errors: List[Tuple[int, str]] = []
-    zero_vector_errors: List[Tuple[int, str]] = []
-    other_errors: List[Tuple[int, str]] = []
-    errors_by_module: Dict[str, List[Tuple[int, str]]] = defaultdict(list)
-    errors_by_module = defaultdict(list)
+def initialize_error_trackers() -> ErrorTrackers:
+    """Initialize counters and collections for error tracking."""
+    return {
+        "error_count": 0,
+        "warning_count": 0,
+        "api_errors": [],
+        "pinecone_errors": [],
+        "zero_vector_errors": [],
+        "other_errors": [],
+        "errors_by_module": defaultdict(list),
+    }
 
-    # Regular expressions to match different patterns
-    error_pattern = re.compile(r"ERROR:(.*)")
-    warning_pattern = re.compile(r"WARNING:(.*)")
-    api_error_pattern = re.compile(r".*Error making API request:.*")
-    pinecone_pattern = re.compile(r".*Error storing vectors:.*")
-    zero_vector_pattern = re.compile(
-        r".*Dense vectors must contain at least one non-zero value.*"
-    )
-    module_pattern = re.compile(r"ERROR:([^:]+):(.+)")
 
-    # Read and process the file
-    with open(log_file, "r", encoding="utf-8") as f:
-        for line_num, line in enumerate(f, 1):
-            line = line.strip()
+def compile_error_patterns() -> PatternDict:
+    """Compile regular expressions to match different error patterns."""
+    return {
+        "error_pattern": re.compile(r"ERROR:(.*)"),
+        "warning_pattern": re.compile(r"WARNING:(.*)"),
+        "api_error_pattern": re.compile(r".*Error making API request:.*"),
+        "pinecone_pattern": re.compile(r".*Error storing vectors:.*"),
+        "zero_vector_pattern": re.compile(
+            r".*Dense vectors must contain at least one non-zero value.*"
+        ),
+        "module_pattern": re.compile(r"ERROR:([^:]+):(.+)"),
+    }
 
-            # Check for errors
-            error_match = error_pattern.match(line)
-            if error_match or "ERROR:" in line:
-                error_count += 1
-                error_text = error_match.group(1) if error_match else line
 
-                # Categorize errors
-                if api_error_pattern.match(line):
-                    api_errors.append((line_num, error_text))
-                elif pinecone_pattern.match(line):
-                    pinecone_errors.append((line_num, error_text))
-                elif zero_vector_pattern.match(line):
-                    zero_vector_errors.append((line_num, error_text))
-                else:
-                    other_errors.append((line_num, error_text))
+def process_log_line(
+    line: str, line_num: int, trackers: ErrorTrackers, patterns: PatternDict
+) -> None:
+    """Process a single line from the log file."""
+    line = line.strip()
 
-                # Group errors by module
-                module_match = module_pattern.match(line)
-                if module_match:
-                    module_name = module_match.group(1)
-                    errors_by_module[module_name].append(
-                        (line_num, module_match.group(2))
-                    )
+    # Check for errors
+    error_match = patterns["error_pattern"].match(line)
+    if error_match or "ERROR:" in line:
+        trackers["error_count"] += 1
+        error_text = error_match.group(1) if error_match else line
 
-            # Check for warnings
-            warning_match = warning_pattern.match(line)
-            if warning_match or "WARNING:" in line:
-                warning_count += 1
+        # Categorize errors
+        if patterns["api_error_pattern"].match(line):
+            trackers["api_errors"].append((line_num, error_text))
+        elif patterns["pinecone_pattern"].match(line):
+            trackers["pinecone_errors"].append((line_num, error_text))
+        elif patterns["zero_vector_pattern"].match(line):
+            trackers["zero_vector_errors"].append((line_num, error_text))
+        else:
+            trackers["other_errors"].append((line_num, error_text))
 
-    # Print summary
-    print(f"Total errors: {error_count}")
-    print(f"Total warnings: {warning_count}")
-    print("-" * 80)
+        # Group errors by module
+        module_match = patterns["module_pattern"].match(line)
+        if module_match:
+            module_name = module_match.group(1)
+            trackers["errors_by_module"][module_name].append(
+                (line_num, module_match.group(2))
+            )
 
-    # Print error categories
+    # Check for warnings
+    warning_match = patterns["warning_pattern"].match(line)
+    if warning_match or "WARNING:" in line:
+        trackers["warning_count"] += 1
+
+
+def print_api_error_summary(api_errors: ErrorCollection) -> None:
+    """Print summary of API errors."""
     print("\n=== API Errors ===")
     api_error_summary = Counter(
         [
@@ -228,18 +232,27 @@ def parse_log_file(log_file: str) -> Optional[Dict[str, Any]]:
     for url, count in api_error_summary.most_common():
         print(f"  {url}: {count} occurrences")
 
-    print("\n=== Pinecone Vector Errors ===")
-    print(f"Found {len(pinecone_errors)} Pinecone errors")
-    if pinecone_errors:
-        for line_num, error_text in pinecone_errors[:5]:
+
+def print_error_category(
+    errors: ErrorCollection, category_name: str, limit: int = 5
+) -> None:
+    """Print a summary of errors for a specific category."""
+    print(f"\n=== {category_name} ===")
+    print(f"Found {len(errors)} {category_name}")
+
+    if errors:
+        for line_num, error_text in errors[:limit]:
             print(
                 f"  Line {line_num}: {error_text[:100]}..."
                 if len(error_text) > 100
                 else f"  Line {line_num}: {error_text}"
             )
-        if len(pinecone_errors) > 5:
-            print(f"  ... and {len(pinecone_errors) - 5} more")
+        if len(errors) > limit:
+            print(f"  ... and {len(errors) - limit} more")
 
+
+def print_zero_vector_errors(zero_vector_errors: ErrorCollection) -> None:
+    """Print summary of zero vector errors."""
     print("\n=== Zero Vector Errors ===")
     if zero_vector_errors:
         # Extract vector IDs with format problems
@@ -256,195 +269,237 @@ def parse_log_file(log_file: str) -> Optional[Dict[str, Any]]:
         if len(unique_ids) > 10:
             print(f"  ... and {len(unique_ids) - 10} more")
 
+
+def print_module_errors(errors_by_module: Dict[str, ErrorCollection]) -> None:
+    """Print errors grouped by module."""
     print("\n=== Errors by Module ===")
     for module, errors in sorted(
         errors_by_module.items(), key=lambda x: len(x[1]), reverse=True
     ):
         print(f"{module}: {len(errors)} errors")
 
-    print("\n=== Other Errors ===")
-    if other_errors:
-        for line_num, error_text in other_errors[:10]:
-            print(
-                f"  Line {line_num}: {error_text[:100]}..."
-                if len(error_text) > 100
-                else f"  Line {line_num}: {error_text}"
-            )
-        if len(other_errors) > 10:
-            print(f"  ... and {len(other_errors) - 10} more")
+
+def parse_log_file(log_file: str) -> Optional[Dict[str, Any]]:
+    """Parse the GitHub Action log file and extract warnings and errors."""
+
+    if not os.path.exists(log_file):
+        print(f"Error: File {log_file} does not exist.")
+        return None
+
+    print(
+        f"Analyzing log file: {log_file} ({os.path.getsize(log_file) / 1024 / 1024:.2f} MB)"
+    )
+    print("-" * 80)
+
+    # Initialize trackers and patterns
+    trackers = initialize_error_trackers()
+    patterns = compile_error_patterns()
+
+    # Read and process the file
+    with open(log_file, "r", encoding="utf-8") as f:
+        for line_num, line in enumerate(f, 1):
+            process_log_line(line, line_num, trackers, patterns)
+
+    # Print summaries
+    print(f"Total errors: {trackers['error_count']}")
+    print(f"Total warnings: {trackers['warning_count']}")
+    print("-" * 80)
+
+    print_api_error_summary(trackers["api_errors"])
+    print_error_category(trackers["pinecone_errors"], "Pinecone Vector Errors")
+    print_zero_vector_errors(trackers["zero_vector_errors"])
+    print_module_errors(trackers["errors_by_module"])
+    print_error_category(trackers["other_errors"], "Other Errors", limit=10)
 
     # Return findings for further processing
     return {
-        "error_count": error_count,
-        "warning_count": warning_count,
-        "api_errors": api_errors,
-        "pinecone_errors": pinecone_errors,
-        "zero_vector_errors": zero_vector_errors,
-        "other_errors": other_errors,
-        "errors_by_module": errors_by_module,
+        "error_count": trackers["error_count"],
+        "warning_count": trackers["warning_count"],
+        "api_errors": trackers["api_errors"],
+        "pinecone_errors": trackers["pinecone_errors"],
+        "zero_vector_errors": trackers["zero_vector_errors"],
+        "other_errors": trackers["other_errors"],
+        "errors_by_module": trackers["errors_by_module"],
     }
 
 
-def main() -> None:
-    """Main function to run the log analyzer."""
-    if len(sys.argv) < 2:
-        print(
-            "Usage: python analyze_github_log.py <github_action_job_url_or_log_file_path>"
-        )
-        print(
-            "Example URL: https://github.com/owner/repo/actions/runs/run_id/job/job_id"
-        )
-        print("Example File: logs/github_action_log_somenumber.txt")
-        return  # main function does not have a return type annotation, so bare return is fine.
+def print_usage_instructions() -> None:
+    """Print usage instructions for the script."""
+    print(
+        "Usage: python analyze_github_log.py <github_action_job_url_or_log_file_path>"
+    )
+    print("Example URL: https://github.com/owner/repo/actions/runs/run_id/job/job_id")
+    print("Example File: logs/github_action_log_somenumber.txt")
 
-    input_arg = sys.argv[1]
-    log_file_to_analyze: Optional[str] = None  # Ensure type consistency
 
+def get_log_file_path(input_arg: str) -> Optional[str]:
+    """
+    Determine the log file path based on the input argument.
+    Returns the path to the log file or None if it cannot be determined.
+    """
     if input_arg.startswith("https://github.com/"):
         print("Input detected as URL, attempting to download log...")
-        # Ensure LOG_DIR exists before attempting download, as download_log_from_url writes there
         os.makedirs(LOG_DIR, exist_ok=True)
         downloaded_log_path = download_log_from_url(input_arg)
         if downloaded_log_path:
-            log_file_to_analyze = downloaded_log_path
+            return downloaded_log_path
         else:
             print("Failed to download log file from URL.")
-            return  # Exit if download failed
+            return None
     elif os.path.exists(input_arg):
         print(f"Input detected as local file path: {input_arg}")
-        log_file_to_analyze = input_arg
+        return input_arg
     else:
         print(
             f"Error: Input '{input_arg}' is not a valid URL or an existing file path."
         )
-        return  # Exit if input is invalid
+        return None
 
-    if (
-        not log_file_to_analyze
-    ):  # This check might be redundant if returns are used above, but safe.
-        print("No log file available to analyze.")
-        return  # Exit if no file
 
-    # Ensure LOG_DIR exists for outputs (might be redundant if URL path taken, but good for local files)
-    os.makedirs(LOG_DIR, exist_ok=True)
-
-    # Create a timestamped copy of the complete log
+def create_log_copy(log_file_path: str) -> Tuple[str, str, str]:
+    """
+    Create a timestamped copy of the log file.
+    Returns a tuple of (timestamp, base_name_for_outputs, complete_log_copy_path)
+    """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    base_name_for_outputs = os.path.basename(log_file_to_analyze).replace(".txt", "")
+    base_name = os.path.basename(log_file_path).replace(".txt", "")
 
-    complete_log_copy_path = os.path.join(
-        LOG_DIR, f"complete_raw_log_{base_name_for_outputs}_{timestamp}.txt"
-    )
+    copy_path = os.path.join(LOG_DIR, f"complete_raw_log_{base_name}_{timestamp}.txt")
 
     try:
-        shutil.copyfile(log_file_to_analyze, complete_log_copy_path)
-        print(f"Complete log content has been copied to: {complete_log_copy_path}")
+        shutil.copyfile(log_file_path, copy_path)
+        print(f"Complete log content has been copied to: {copy_path}")
     except Exception as e:
-        print(
-            f"Warning: Could not create a timestamped copy of the complete log at {complete_log_copy_path}: {e}"
-        )
-        # Continue with analysis even if copy fails
+        print(f"Warning: Could not create a timestamped copy of the complete log: {e}")
 
-    results = parse_log_file(log_file_to_analyze)
+    return timestamp, base_name, copy_path
 
+
+def write_summary_header(
+    f: Any, log_file_path: str, timestamp: str, results: Dict[str, Any]
+) -> None:
+    """Write the header section of the summary file."""
+    f.write(f"Log File Analyzed: {log_file_path}\\n")
+    f.write(f"Analysis Timestamp: {timestamp}\\n")
+    f.write("-" * 80 + "\\n")
+    f.write(f"Total errors: {results['error_count']}\\n")
+    f.write(f"Total warnings: {results['warning_count']}\\n")
+    f.write("-" * 80 + "\\n")
+
+
+def write_error_section(
+    f: Any, errors: ErrorCollection, section_name: str, limit: int = 10
+) -> None:
+    """Write a section of errors to the summary file."""
+    f.write(f"\\n=== {section_name} ===\\n")
+    if errors:
+        for line_num, err_text in errors[:limit]:
+            f.write(f"  Line {line_num}: {err_text}\\n")
+        if len(errors) > limit:
+            f.write(f"  ... and {len(errors) - limit} more\\n")
+    else:
+        f.write(f"  No {section_name.lower()} found.\\n")
+
+
+def write_zero_vector_section(f: Any, zero_vector_errors: ErrorCollection) -> None:
+    """Write the zero vector errors section to the summary file."""
+    f.write("\\n=== Zero Vector Errors ===\\n")
+    if zero_vector_errors:
+        vector_ids: List[str] = []
+        for _, err_text in zero_vector_errors:
+            match = re.search(r"Vector ID '([^']+)'", err_text)
+            if match:
+                vector_ids.append(match.group(1))
+
+        unique_ids = set(vector_ids)
+        for vid in list(unique_ids)[:10]:
+            f.write(f"  Vector ID: {vid}\\n")
+        if len(unique_ids) > 10:
+            f.write(f"  ... and {len(unique_ids) - 10} more unique vector IDs\\n")
+    else:
+        f.write("  No zero vector errors found.\\n")
+
+
+def write_module_errors_section(
+    f: Any, errors_by_module: Dict[str, ErrorCollection]
+) -> None:
+    """Write the module errors section to the summary file."""
+    f.write("\\n=== Errors by Module ===\\n")
+    if errors_by_module:
+        for module, errors_list in sorted(
+            errors_by_module.items(),
+            key=lambda x: len(x[1]),
+            reverse=True,
+        ):
+            f.write(f"{module}: {len(errors_list)} errors\\n")
+            for line_num, err_text in errors_list[
+                :5
+            ]:  # Print first 5 errors per module
+                f.write(
+                    f"  Line {line_num}: {err_text[:100]}...\\n"
+                    if len(err_text) > 100
+                    else f"  Line {line_num}: {err_text}\\n"
+                )
+            if len(errors_list) > 5:
+                f.write(f"  ... and {len(errors_list) - 5} more in this module\\n")
+    else:
+        f.write("  No module-specific errors categorized.\\n")
+
+
+def write_summary_file(
+    results: Dict[str, Any], log_file_path: str, timestamp: str, base_name: str
+) -> str:
+    """Write analysis results to a summary file."""
+    summary_file = os.path.join(
+        LOG_DIR, f"analysis_summary_{base_name}_{timestamp}.txt"
+    )
+
+    with open(summary_file, "w", encoding="utf-8") as f:
+        write_summary_header(f, log_file_path, timestamp, results)
+        write_error_section(f, results["api_errors"], "API Errors")
+        write_error_section(f, results["pinecone_errors"], "Pinecone Vector Errors")
+        write_zero_vector_section(f, results["zero_vector_errors"])
+        write_module_errors_section(f, results["errors_by_module"])
+        write_error_section(f, results["other_errors"], "Other Errors")
+
+    print(f"\\nSummary saved to {summary_file}")
+    return summary_file
+
+
+def main() -> None:
+    """Main function to run the log analyzer."""
+    # Check for command line arguments
+    if len(sys.argv) < 2:
+        print_usage_instructions()
+        return
+
+    # Get log file path
+    input_arg = sys.argv[1]
+    log_file_path = get_log_file_path(input_arg)
+
+    if not log_file_path:
+        print("No log file available to analyze.")
+        return
+
+    # Ensure log directory exists
+    os.makedirs(LOG_DIR, exist_ok=True)
+
+    # Create a copy of the log file
+    timestamp, base_name, _ = create_log_copy(log_file_path)
+
+    # Parse the log file
+    results = parse_log_file(log_file_path)
+
+    # Generate summary file if results are available
     if results:
-        # Save results to a summary file
-        # timestamp and base_name_for_outputs are already defined
-        summary_file = os.path.join(
-            LOG_DIR, f"analysis_summary_{base_name_for_outputs}_{timestamp}.txt"
-        )
-
-        with open(summary_file, "w", encoding="utf-8") as f:
-            f.write(f"Log File Analyzed: {log_file_to_analyze}\\\\n")
-            f.write(f"Analysis Timestamp: {timestamp}\\\\n")
-            f.write("-" * 80 + "\\n")
-            f.write(f"Total errors: {results['error_count']}\\\\n")
-            f.write(f"Total warnings: {results['warning_count']}\\\\n")
-            f.write("-" * 80 + "\\n")
-
-            f.write("\\n=== API Errors ===\\n")
-            if results["api_errors"]:
-                for line_num, err_text in results["api_errors"][:10]:
-                    f.write(f"  Line {line_num}: {err_text}\\n")
-                if len(results["api_errors"]) > 10:
-                    f.write(f"  ... and {len(results['api_errors']) - 10} more\\n")
-            else:
-                f.write("  No API errors found.\\n")
-
-            f.write("\\n=== Pinecone Vector Errors ===\\n")
-            if results["pinecone_errors"]:
-                for line_num, err_text in results["pinecone_errors"][:10]:
-                    f.write(f"  Line {line_num}: {err_text}\\n")
-                if len(results["pinecone_errors"]) > 10:
-                    f.write(f"  ... and {len(results['pinecone_errors']) - 10} more\\n")
-            else:
-                f.write("  No Pinecone errors found.\\n")
-
-            f.write("\\n=== Zero Vector Errors ===\\n")
-            if results["zero_vector_errors"]:
-                temp_vector_ids: List[str] = []
-                for _, err_text in results["zero_vector_errors"]:
-                    match = re.search(r"Vector ID '([^']+)'", err_text)
-                    if match:
-                        temp_vector_ids.append(match.group(1))
-                unique_ids_summary = set(temp_vector_ids)
-                for vid_summary in list(unique_ids_summary)[:10]:
-                    f.write(f"  Vector ID: {vid_summary}\\n")
-                if len(unique_ids_summary) > 10:
-                    f.write(
-                        f"  ... and {len(unique_ids_summary) - 10} more unique vector IDs\\n"
-                    )
-            else:
-                f.write("  No zero vector errors found.\\n")
-
-            f.write("\\n=== Errors by Module ===\\n")
-            if results["errors_by_module"]:
-                for module, errors_list in sorted(
-                    results["errors_by_module"].items(),
-                    key=lambda x: len(x[1]),
-                    reverse=True,
-                ):
-                    f.write(f"{module}: {len(errors_list)} errors\\n")
-                    for line_num, err_text in errors_list[
-                        :5
-                    ]:  # Print first 5 errors per module
-                        f.write(
-                            f"  Line {line_num}: {err_text[:100]}...\\n"
-                            if len(err_text) > 100
-                            else f"  Line {line_num}: {err_text}\\n"
-                        )
-                    if len(errors_list) > 5:
-                        f.write(
-                            f"  ... and {len(errors_list) - 5} more in this module\\n"
-                        )
-            else:
-                f.write("  No module-specific errors categorized.\\n")
-
-            f.write("\\n=== Other Errors ===\\n")
-            if results["other_errors"]:
-                for line_num, err_text in results["other_errors"][:10]:
-                    f.write(f"  Line {line_num}: {err_text}\\n")
-                if len(results["other_errors"]) > 10:
-                    f.write(f"  ... and {len(results['other_errors']) - 10} more\\n")
-            else:
-                f.write("  No other errors found.\\n")
-
-        print(f"\\\\nSummary saved to {summary_file}")
-    # Check if log_file_to_analyze is not None before os.path.exists
-    elif (
-        results is None and log_file_to_analyze and os.path.exists(log_file_to_analyze)
-    ):
+        write_summary_file(results, log_file_path, timestamp, base_name)
+    elif os.path.exists(log_file_path):
         print(
-            "\\\\nCould not generate summary report due to parsing issues (parse_log_file returned None)."
+            "\\nCould not generate summary report due to parsing issues (parse_log_file returned None)."
         )
-    elif results is None and not (
-        log_file_to_analyze and os.path.exists(log_file_to_analyze)
-    ):
-        # This case means parse_log_file was called with a non-existent file,
-        # which parse_log_file itself should handle by printing an error and returning None.
-        # Or, log_file_to_analyze was None to begin with (e.g. download failed and main didn't exit early)
+    else:
         print(
-            "\\\\nCould not generate summary report because the log file was not found or could not be processed."
+            "\\nCould not generate summary report because the log file was not found or could not be processed."
         )
 
 

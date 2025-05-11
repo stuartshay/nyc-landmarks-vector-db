@@ -17,8 +17,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 # This still allows the script to run with different versions of the Pinecone SDK
 # mypy will ignore this potential import error
 # Import needed modules - update imports for the new Pinecone API
-from pinecone import ServerlessSpec  # type: ignore
-from pinecone import Pinecone
+from pinecone import Pinecone, ServerlessSpec
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.utils.logger import get_logger

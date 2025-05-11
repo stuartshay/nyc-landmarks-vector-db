@@ -22,7 +22,6 @@ from nyc_landmarks.db.db_client import get_db_client
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.pdf.extractor import PDFExtractor
 from nyc_landmarks.pdf.text_chunker import TextChunker
-from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 from tests.utils.test_mocks import get_mock_landmark
 
 # Configure logging
@@ -48,7 +47,7 @@ def temp_dirs() -> Generator[dict[str, str | Path], None, None]:
 
 @pytest.mark.integration
 @pytest.mark.functional
-def test_vector_storage_pipeline(temp_dirs: dict) -> None:
+def test_vector_storage_pipeline(temp_dirs: dict, pinecone_test_db) -> None:
     """Test the complete vector storage pipeline with one landmark."""
     logger.info("=== Testing complete vector storage pipeline ===")
 
@@ -59,7 +58,7 @@ def test_vector_storage_pipeline(temp_dirs: dict) -> None:
         chunk_size=settings.CHUNK_SIZE, chunk_overlap=settings.CHUNK_OVERLAP
     )
     embedding_generator = EmbeddingGenerator()
-    pinecone_db = PineconeDB()
+    pinecone_db = pinecone_test_db
 
     # Ensure Pinecone client is initialized
     assert pinecone_db.index is not None, "PineconeDB index not initialized"
@@ -234,12 +233,12 @@ def test_vector_storage_pipeline(temp_dirs: dict) -> None:
 
 
 @pytest.mark.functional
-def test_pinecone_connection_and_operations() -> None:
+def test_pinecone_connection_and_operations(pinecone_test_db) -> None:
     """Test basic Pinecone operations to ensure the database is accessible."""
     logger.info("=== Testing Pinecone connection and basic operations ===")
 
-    # Create Pinecone client
-    pinecone_db = PineconeDB()
+    # Use test-specific Pinecone client
+    pinecone_db = pinecone_test_db
 
     # Check if index exists
     assert pinecone_db.index is not None, "Failed to connect to Pinecone index"

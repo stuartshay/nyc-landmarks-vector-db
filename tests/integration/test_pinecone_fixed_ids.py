@@ -7,7 +7,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast  # Removed Tuple
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pytest
@@ -23,10 +23,10 @@ logger = get_logger(name="test_pinecone_fixed_ids")
 
 
 @pytest.mark.integration
-def test_fixed_ids_implementation() -> None:
+def test_fixed_ids_implementation(pinecone_test_db) -> None:
     """Test that the fixed ID implementation works as expected."""
-    # Initialize PineconeDB
-    pinecone_db = PineconeDB()
+    # Using the test-specific PineconeDB instance
+    pinecone_db = pinecone_test_db
 
     # Skip test if no Pinecone connection
     if not pinecone_db.index:
@@ -47,8 +47,8 @@ def test_fixed_ids_implementation() -> None:
             chunks=test_chunks, landmark_id=test_landmark_id
         )
 
-        # Wait for Pinecone to update
-        time.sleep(2)
+        # Wait for Pinecone to update - increased wait time for better synchronization
+        time.sleep(5)
 
         # Query to verify
         first_count: int = count_vectors(pinecone_db, test_landmark_id)
@@ -66,8 +66,8 @@ def test_fixed_ids_implementation() -> None:
             chunks=test_chunks, landmark_id=test_landmark_id
         )
 
-        # Wait for Pinecone to update
-        time.sleep(2)
+        # Wait for Pinecone to update - increased wait time for better synchronization
+        time.sleep(5)
 
         # Count again to verify no duplicates
         second_count: int = count_vectors(pinecone_db, test_landmark_id)
@@ -86,10 +86,10 @@ def test_fixed_ids_implementation() -> None:
 
 
 @pytest.mark.integration
-def test_store_chunks_with_fixed_ids_flag() -> None:
+def test_store_chunks_with_fixed_ids_flag(pinecone_test_db) -> None:
     """Test that store_chunks works with the use_fixed_ids flag."""
-    # Initialize PineconeDB
-    pinecone_db = PineconeDB()
+    # Using the test-specific PineconeDB instance
+    pinecone_db = pinecone_test_db
 
     # Skip test if no Pinecone connection
     if not pinecone_db.index:
@@ -132,10 +132,10 @@ def test_store_chunks_with_fixed_ids_flag() -> None:
 
 
 @pytest.mark.integration
-def test_store_chunks_backward_compatibility() -> None:
+def test_store_chunks_backward_compatibility(pinecone_test_db) -> None:
     """Test that store_chunks maintains backward compatibility."""
-    # Initialize PineconeDB
-    pinecone_db = PineconeDB()
+    # Using the test-specific PineconeDB instance
+    pinecone_db = pinecone_test_db
 
     # Skip test if no Pinecone connection
     if not pinecone_db.index:
@@ -413,9 +413,8 @@ def save_verification_results(
 
 
 @pytest.mark.integration
-def test_landmark_fixed_ids(
-    pinecone_db: PineconeDB, random_vector: List[float]
-) -> None:
+def test_landmark_fixed_ids(pinecone_test_db, random_vector: List[float]) -> None:
+    pinecone_db = pinecone_test_db
     """Test fixed IDs for a sample of real landmarks."""
     # Sample of landmark IDs to test
     landmark_ids = ["LP-00001", "LP-00009", "LP-00042", "LP-00066"]
@@ -485,7 +484,8 @@ def test_landmark_fixed_ids(
 
 
 @pytest.mark.integration
-def test_pinecone_index_stats(pinecone_db: PineconeDB) -> None:
+def test_pinecone_index_stats(pinecone_test_db) -> None:
+    pinecone_db = pinecone_test_db
     """Test that Pinecone index has expected statistics."""
     stats: Dict[str, Any] = pinecone_db.get_index_stats()
 
@@ -511,17 +511,4 @@ def test_pinecone_index_stats(pinecone_db: PineconeDB) -> None:
         logger.info(f"Namespace vector count: {namespace_stats.get('vector_count', 0)}")
 
 
-@pytest.fixture
-def pinecone_db() -> PineconeDB:
-    """Return a PineconeDB instance for testing."""
-    return PineconeDB()
-
-
-@pytest.fixture
-def random_vector() -> List[float]:
-    """Return a random vector for testing queries."""
-    from nyc_landmarks.config.settings import settings
-
-    dimensions = settings.PINECONE_DIMENSIONS
-    # Cast the result to ensure the correct type
-    return cast(List[float], np.random.rand(dimensions).tolist())
+# Use fixtures from conftest.py instead of local fixtures
