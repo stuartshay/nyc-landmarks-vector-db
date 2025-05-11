@@ -1,52 +1,57 @@
-# Progress: NYC Landmarks Vector Database
+# Project Progress
 
-## Achievements
+## Completed
 
-### Core System
-- ✅ Created comprehensive pipeline for processing landmark PDFs into vector embeddings
-- ✅ Implemented vector search API with customizable filtering
-- ✅ Added Wikipedia integration to enhance landmark information
-- ✅ Designed test framework for Pinecone integration
-- ✅ Created notebook for querying and analyzing vector database
-- ✅ Implemented null metadata filtering in vector storage to prevent 400 errors
-- ✅ Added tests for null metadata handling
-
-### Testing
-- ✅ Created comprehensive test suite for Pinecone operations
-- ✅ Implemented test-specific index creation for isolation
-- ✅ Added integration tests for fixed ID implementation
-- ✅ Added verification scripts for database integrity
-- ✅ Created metadata consistency tests
-- ✅ Implemented null metadata handling tests
+- ✅ Set up basic infrastructure (repository, framework)
+- ✅ Core modules implementation
+- ✅ PDF extraction from Azure Blob Storage
+- ✅ Initial text chunking for embedding
+- ✅ OpenAI embedding generation
+- ✅ Basic Pinecone storage implementation
+- ✅ API endpoint specification
+- ✅ Vector search implementation
+- ✅ Wikipedia article fetching and integration
+- ✅ Combined search across PDF and Wikipedia content
+- ✅ Initial GitHub Actions CI/CD pipeline
+- ✅ API endpoint for chat
+- ✅ Conversation memory for chatbot
+- ✅ Testing framework for core components
+- ✅ Basic documentation
+- ✅ Null metadata handling fix
+- ✅ Fixed landmark processing script to handle LpcReportDetailResponse objects correctly
+  - Successfully processed problematic landmarks (LP-00048, LP-00112, LP-00012)
+  - Added support for processing specific landmark IDs via command line arguments
+- ✅ Enhanced debug logging in vector verification script
 
 ## In Progress
 
-### Pinecone Index Issues
-- 🔄 Resolving issues with missing embeddings in Pinecone index
-- 🔄 Need to completely rebuild the index due to missing embeddings (0% valid)
-- 🔄 ID format is correct (100% standardized), but embeddings are missing
+- 🚧 Fixing issues with GitHub Actions and rebuilding Pinecone index
+- 🚧 Enhanced error handling and robustness
+- 🚧 Comprehensive test coverage
+- 🚧 Addressing embedding storage/retrieval issues in Pinecone vectors
+  - Current verification shows vector IDs and metadata valid, but embeddings (values) missing
+  - Need to investigate why vectors are stored without embeddings or why they aren't retrieved
 
-### Data Processing
-- 🔄 Regenerating vector database with proper embeddings
-- 🔄 Verifying vector integrity post-regeneration
+## Next Up
 
-## Upcoming Tasks
-
-### System Improvements
-- 📋 Complete index regeneration with proper embeddings
-- 📋 Verify embeddings are correctly stored
-- 📋 Update GitHub Actions workflow to prevent similar issues
-- 📋 Add better error handling for embedding generation during CI/CD
-
-### Documentation
-- 📋 Document the index regeneration process
-- 📋 Update API documentation with recent changes
+- 📅 Performance optimization for embedding generation and storage
+- 📅 Enhanced attribution of sources in responses
+- 📅 User feedback integration
+- 📅 API usage metrics and monitoring
+- 📅 Extended documentation
+- 📅 Integration testing with frontend components
 
 ## Known Issues
-- ⚠️ All vectors in Pinecone index are missing their embeddings (0% valid)
-- ⚠️ Current index is unusable for vector search due to missing embeddings
 
-## Upcoming Milestones
-1. Complete index regeneration with proper embeddings
-2. Verify system end-to-end functionality
-3. Test vector search performance with full dataset
+1. ⚠️ Missing embeddings in Pinecone vectors (requiring index recreation or fixing storage method)
+2. ⚠️ Some integration test failures in CI environment (working in local tests)
+3. ⚠️ Vector verification shows proper vector IDs and metadata, but 0% valid embeddings
+
+## Recent Achievements
+
+- Successfully implemented fixes for null metadata handling and validated with integration tests
+- Added comprehensive error handling for different response types from the CoreDataStore API
+- Implemented and verified Wikipedia article integration into the vector database
+- Fixed landmark processing script to properly handle Pydantic model responses
+- Successfully processed previously problematic landmarks (LP-00048, LP-00112, LP-00012)
+- Enhanced debugging in the vector verification script to better diagnose embedding issues

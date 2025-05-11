@@ -69,20 +69,24 @@ def _check_vector_has_embeddings(vector: Dict[str, Any]) -> bool:
     Returns:
         bool: True if the vector has valid embeddings, False otherwise
     """
+    # Debug logging to see the vector structure
+    vector_id = vector.get("id", "unknown")
+    logger.debug(f"Checking embeddings for vector {vector_id}")
+    logger.debug(f"Vector keys: {vector.keys()}")
+
+    # Check if the vector has the values field
     if "values" not in vector:
-        logger.warning(f"Vector {vector.get('id', 'unknown')} has no embeddings")
+        logger.warning(f"Vector {vector_id} has no embeddings")
         return False
 
     values = vector.get("values", [])
     if not values:
-        logger.warning(
-            f"Vector {vector.get('id', 'unknown')} has empty embeddings array"
-        )
+        logger.warning(f"Vector {vector_id} has empty embeddings array")
         return False
 
     # Check if embeddings are all zeros
     if np.allclose(np.array(values), 0):
-        logger.warning(f"Vector {vector.get('id', 'unknown')} has all-zero embeddings")
+        logger.warning(f"Vector {vector_id} has all-zero embeddings")
         return False
 
     return True

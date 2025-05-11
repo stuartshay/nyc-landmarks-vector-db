@@ -73,7 +73,19 @@ class DbClient:
             if hasattr(self.client, "get_landmark_by_id"):
                 landmark_data = self.client.get_landmark_by_id(lpc_id)
                 if isinstance(landmark_data, dict):
-                    return LpcReportDetailResponse(**landmark_data)
+                    try:
+                        # Ensure lpNumber field is present (it's required by the model)
+                        if "lpNumber" not in landmark_data and "id" in landmark_data:
+                            landmark_data["lpNumber"] = landmark_data["id"]
+                        elif "lpNumber" not in landmark_data:
+                            landmark_data["lpNumber"] = lpc_id
+
+                        return LpcReportDetailResponse(**landmark_data)
+                    except Exception as e:
+                        logger.warning(
+                            f"Could not parse response as LpcReportDetailResponse: {e}"
+                        )
+                        return landmark_data  # Return the raw dict if validation fails
                 return None
         except Exception as e:
             logger.warning(f"Could not parse response as LpcReportDetailResponse: {e}")
@@ -446,6 +458,14 @@ class DbClient:
         for item in landmarks_list:
             if isinstance(item, LandmarkDetail):
                 valid_details.append(item)
+            elif isinstance(item, dict):
+                try:
+                    # Try to convert dict to LandmarkDetail
+                    valid_details.append(LandmarkDetail(**item))
+                except Exception as e:
+                    logger.debug(
+                        f"Could not convert item to LandmarkDetail: {e} for LP {lp_number}"
+                    )
             else:
                 logger.debug(
                     f"Item in landmarks list is not of type LandmarkDetail: {type(item)} for LP {lp_number}"

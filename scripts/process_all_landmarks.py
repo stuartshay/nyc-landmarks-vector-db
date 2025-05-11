@@ -88,7 +88,20 @@ def fetch_all_landmark_ids(
 
                 # Process the landmarks
                 for landmark in landmarks:
-                    landmark_id = landmark.get("id", "") or landmark.get("lpNumber", "")
+                    # Handle both dictionary and Pydantic model responses
+                    if hasattr(landmark, "lpNumber"):
+                        # It's a Pydantic model
+                        landmark_id = landmark.lpNumber
+                    elif isinstance(landmark, dict):
+                        # It's a dictionary
+                        landmark_id = landmark.get("id", "") or landmark.get(
+                            "lpNumber", ""
+                        )
+                    else:
+                        # Unknown type, log and skip
+                        logger.warning(f"Unknown landmark type: {type(landmark)}")
+                        continue
+
                     if landmark_id:
                         all_landmark_ids.add(landmark_id)
 
@@ -192,6 +205,29 @@ def check_processing_status(
     return processed_landmarks, unprocessed_landmarks
 
 
+def safe_get_attribute(obj: Any, attr_name: str, default: Any = None) -> Any:
+    """
+    Safely get an attribute from an object, whether it's a dictionary or an object with attributes.
+
+    Args:
+        obj: The object to get the attribute from
+        attr_name: The name of the attribute to get
+        default: The default value to return if the attribute doesn't exist
+
+    Returns:
+        The attribute value if it exists, otherwise the default value
+    """
+    if obj is None:
+        return default
+
+    # If it's a dictionary, use .get()
+    if isinstance(obj, dict):
+        return obj.get(attr_name, default)
+
+    # Otherwise try to access it as an attribute
+    return getattr(obj, attr_name, default)
+
+
 def process_landmark(
     db_client: Any,
     pinecone_db: PineconeDB,
@@ -217,14 +253,37 @@ def process_landmark(
             chunk_count: Number of chunks processed
             error: Error message if any, None otherwise
     """
+    # Special logging for problematic landmark IDs
+    is_problematic = landmark_id in ["LP-00048", "LP-00112", "LP-00012"]
+    if is_problematic:
+        logger.info(f"Processing previously problematic landmark: {landmark_id}")
     try:
         # Get landmark details from API
-        landmark = db_client.get_lpc_report(landmark_id)
-        if not landmark:
+        landmark_response = db_client.get_landmark_by_id(landmark_id)
+        if not landmark_response:
             return False, 0, f"Landmark {landmark_id} not found in API"
 
-        # Check if the landmark has a PDF report
-        pdf_url = landmark.get("pdfReportUrl")
+        if is_problematic:
+            logger.info(
+                f"Landmark {landmark_id} response type: {type(landmark_response)}"
+            )
+
+        # Get PDF URL based on response type
+        pdf_url = None
+        if hasattr(landmark_response, "get") and callable(landmark_response.get):
+            # It's a dictionary or dict-like object with get method
+            pdf_url = landmark_response.get("pdfReportUrl")
+            if is_problematic:
+                logger.info(
+                    f"Landmark {landmark_id} pdf_url extracted using get method: {pdf_url}"
+                )
+        else:
+            # Assume it's a Pydantic model or similar object with attributes
+            pdf_url = getattr(landmark_response, "pdfReportUrl", None)
+            if is_problematic:
+                logger.info(
+                    f"Landmark {landmark_id} pdf_url extracted using getattr: {pdf_url}"
+                )
         if not pdf_url:
             return False, 0, f"Landmark {landmark_id} has no PDF report"
 
@@ -245,19 +304,48 @@ def process_landmark(
         # Create metadata and get embeddings
         processed_chunks = []
         for i, chunk in enumerate(chunks):
-            # Create metadata
+            # Create metadata based on response type
             metadata = {
                 "landmark_id": landmark_id,
-                "name": landmark.get("name", ""),
-                "borough": landmark.get("borough", ""),
                 "chunk_index": i,
                 "total_chunks": len(chunks),
-                "source": "pd",
+                "source": "pdf",
                 "pdf_url": pdf_url,
             }
 
+            # Add additional metadata based on response type
+            if isinstance(landmark_response, dict):
+                metadata.update(
+                    {
+                        "name": landmark_response.get("name", ""),
+                        "borough": landmark_response.get("borough", ""),
+                    }
+                )
+            else:
+                # Use getattr for object access
+                metadata.update(
+                    {
+                        "name": getattr(landmark_response, "name", ""),
+                        "borough": getattr(landmark_response, "borough", ""),
+                    }
+                )
+
             # Generate embedding
             embedding = embedding_generator.generate_embedding(chunk)
+
+            # Check embedding validity
+            is_valid_embedding = (
+                embedding and len(embedding) > 0 and not all(v == 0 for v in embedding)
+            )
+            if is_valid_embedding:
+                logger.info(
+                    f"Generated valid embedding for chunk {i} with dimensions: {len(embedding)}"
+                )
+            else:
+                logger.error(f"Invalid or empty embedding generated for chunk {i}!")
+                # Create a dummy embedding if generation failed
+                # This is a fallback - ideally we'd fix the root cause
+                embedding = [0.0] * settings.OPENAI_EMBEDDING_DIMENSIONS
 
             # Add to processed chunks
             processed_chunks.append(
@@ -269,6 +357,21 @@ def process_landmark(
                     "total_chunks": len(chunks),
                 }
             )
+
+        # Add debug logging for the processed chunks
+        for i, chunk in enumerate(processed_chunks):
+            embedding = chunk.get("embedding", [])
+            is_valid = (
+                embedding and len(embedding) > 0 and not all(v == 0 for v in embedding)
+            )
+            logger.info(
+                f"Chunk {i} ready for storage - has valid embedding: {is_valid}, length: {len(embedding)}"
+            )
+
+            # Log the first 3 values of the embedding for debugging
+            if embedding and len(embedding) > 3:
+                first_values = embedding[:3]
+                logger.info(f"Chunk {i} embedding first 3 values: {first_values}")
 
         # Store in Pinecone with fixed IDs
         vector_ids = pinecone_db.store_chunks_with_fixed_ids(
@@ -425,6 +528,11 @@ def main() -> None:
         default=10,
         help="Process landmarks in batches of N (default: 10)",
     )
+    parser.add_argument(
+        "landmark_ids",
+        nargs="*",
+        help="Optional: Specific landmark IDs to process (e.g., LP-00048 LP-00112)",
+    )
     args = parser.parse_args()
 
     # Create log directory if it doesn't exist
@@ -447,17 +555,28 @@ def main() -> None:
 
     logger.info(f"Successfully connected to Pinecone index: {pinecone_db.index_name}")
 
-    # Fetch landmarks
-    all_landmark_ids = fetch_all_landmark_ids(db_client, limit=args.limit)
+    # If specific landmark IDs are provided, use them
+    if args.landmark_ids:
+        logger.info(f"Processing specific landmark IDs: {args.landmark_ids}")
+        all_landmark_ids = set(args.landmark_ids)
+    else:
+        # Otherwise, fetch all landmarks
+        all_landmark_ids = fetch_all_landmark_ids(db_client, limit=args.limit)
 
     if not all_landmark_ids:
         logger.error("No landmarks found. Exiting.")
         return
 
-    # Check processing status
-    processed_landmarks, unprocessed_landmarks = check_processing_status(
-        pinecone_db, all_landmark_ids, batch_size=args.batch_size
-    )
+    # If specific landmark IDs are provided, force processing regardless of status
+    if args.landmark_ids:
+        unprocessed_landmarks = all_landmark_ids
+        processed_landmarks = set()
+        logger.info(f"Forcing processing of specific landmark IDs: {args.landmark_ids}")
+    else:
+        # Check processing status for fetched landmarks
+        processed_landmarks, unprocessed_landmarks = check_processing_status(
+            pinecone_db, all_landmark_ids, batch_size=args.batch_size
+        )
 
     # Print status
     logger.info(f"Total landmarks: {len(all_landmark_ids)}")

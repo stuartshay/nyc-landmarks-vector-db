@@ -443,6 +443,7 @@ class PineconeDB:
                 top_k=limit,
                 filter=filter_dict,
                 include_metadata=True,
+                include_values=True,  # Explicitly request embedding values
             )
 
             # Process the response to create a standardized return format
@@ -456,15 +457,14 @@ class PineconeDB:
                         "id": getattr(match, "id", ""),
                         "score": getattr(match, "score", 0.0),
                         "metadata": getattr(match, "metadata", {}),
+                        "values": getattr(
+                            match, "values", []
+                        ),  # Include the embedding values
                     }
                     matches_list.append(match_dict)
                 result["matches"] = matches_list
 
             return result
-
-        except Exception as e:
-            logger.error(f"Failed to list vectors by source: {e}")
-            return {"matches": []}
 
         except Exception as e:
             logger.error(f"Failed to list vectors by source: {e}")
@@ -516,7 +516,7 @@ class PineconeDB:
 
         try:
             # Initialize direct Pinecone client for index operations
-            from pinecone import Pinecone
+            from pinecone import Pinecone, ServerlessSpec
 
             pc = Pinecone(api_key=self.api_key)
 
@@ -529,11 +529,12 @@ class PineconeDB:
 
             # Create the new index
             try:
-                # Using standard OpenAI embedding dimensions
+                # Using standard OpenAI embedding dimensions with ServerlessSpec
                 pc.create_index(
                     name=self.index_name,
                     dimension=1536,  # OpenAI embedding dimension
                     metric="cosine",
+                    spec=ServerlessSpec(cloud="gcp", region="us-central1"),
                 )
                 logger.info(f"Created new index: {self.index_name}")
 
