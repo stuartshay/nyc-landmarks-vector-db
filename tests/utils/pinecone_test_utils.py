@@ -19,8 +19,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
 # Import needed for serverless spec - with type ignore similar to production code
 # Use Pinecone client for index management
-from pinecone import ServerlessSpec  # type: ignore
-from pinecone import Pinecone
+from pinecone import Pinecone, ServerlessSpec
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.utils.logger import get_logger
