@@ -75,7 +75,9 @@ def _check_vector_has_embeddings(vector: Dict[str, Any]) -> bool:
 
     values = vector.get("values", [])
     if not values:
-        logger.warning(f"Vector {vector.get('id', 'unknown')} has empty embeddings array")
+        logger.warning(
+            f"Vector {vector.get('id', 'unknown')} has empty embeddings array"
+        )
         return False
 
     # Check if embeddings are all zeros
@@ -102,20 +104,26 @@ def _check_metadata_fields(vector: Dict[str, Any], source_type: str) -> bool:
     # Check common required fields
     for field in REQUIRED_METADATA:
         if field not in metadata:
-            logger.warning(f"Vector {vector.get('id', 'unknown')} missing required metadata field: {field}")
+            logger.warning(
+                f"Vector {vector.get('id', 'unknown')} missing required metadata field: {field}"
+            )
             return False
 
     # Check Wikipedia-specific fields
     if source_type == "wikipedia":
         for field in REQUIRED_WIKI_METADATA:
             if field not in metadata:
-                logger.warning(f"Wikipedia vector {vector.get('id', 'unknown')} missing field: {field}")
+                logger.warning(
+                    f"Wikipedia vector {vector.get('id', 'unknown')} missing field: {field}"
+                )
                 return False
 
     return True
 
 
-def verify_sample_vectors(pinecone_db: PineconeDB, source_type: str, limit: int = 100) -> Tuple[int, int, int, int]:
+def verify_sample_vectors(
+    pinecone_db: PineconeDB, source_type: str, limit: int = 100
+) -> Tuple[int, int, int, int]:
     """
     Verify a sample of vectors from the specified source type.
 
@@ -196,13 +204,13 @@ def verify_index_integrity(verbose: bool = False) -> bool:
         return False
 
     # Verify PDF vectors
-    pdf_checked, pdf_id_valid, pdf_embeddings_valid, pdf_metadata_valid = verify_sample_vectors(
-        pinecone_db, "pdf", limit=100
+    pdf_checked, pdf_id_valid, pdf_embeddings_valid, pdf_metadata_valid = (
+        verify_sample_vectors(pinecone_db, "pdf", limit=100)
     )
 
     # Verify Wikipedia vectors
-    wiki_checked, wiki_id_valid, wiki_embeddings_valid, wiki_metadata_valid = verify_sample_vectors(
-        pinecone_db, "wikipedia", limit=100
+    wiki_checked, wiki_id_valid, wiki_embeddings_valid, wiki_metadata_valid = (
+        verify_sample_vectors(pinecone_db, "wikipedia", limit=100)
     )
 
     # Calculate overall statistics
@@ -217,32 +225,58 @@ def verify_index_integrity(verbose: bool = False) -> bool:
     logger.info("=" * 60)
     logger.info(f"Total vectors in index: {total_vectors}")
     logger.info(f"Vectors checked: {total_checked}")
-    logger.info(f"Valid ID format: {total_id_valid}/{total_checked} ({total_id_valid/total_checked*100:.2f}%)")
-    logger.info(f"Valid embeddings: {total_embeddings_valid}/{total_checked} ({total_embeddings_valid/total_checked*100:.2f}%)")
-    logger.info(f"Valid metadata: {total_metadata_valid}/{total_checked} ({total_metadata_valid/total_checked*100:.2f}%)")
+    logger.info(
+        f"Valid ID format: {total_id_valid}/{total_checked} ({total_id_valid / total_checked * 100:.2f}%)"
+    )
+    logger.info(
+        f"Valid embeddings: {total_embeddings_valid}/{total_checked} ({total_embeddings_valid / total_checked * 100:.2f}%)"
+    )
+    logger.info(
+        f"Valid metadata: {total_metadata_valid}/{total_checked} ({total_metadata_valid / total_checked * 100:.2f}%)"
+    )
     logger.info("\nPDF Vectors:")
     logger.info(f"  Checked: {pdf_checked}")
-    logger.info(f"  Valid ID format: {pdf_id_valid}/{pdf_checked} ({pdf_id_valid/pdf_checked*100 if pdf_checked else 0:.2f}%)")
-    logger.info(f"  Valid embeddings: {pdf_embeddings_valid}/{pdf_checked} ({pdf_embeddings_valid/pdf_checked*100 if pdf_checked else 0:.2f}%)")
-    logger.info(f"  Valid metadata: {pdf_metadata_valid}/{pdf_checked} ({pdf_metadata_valid/pdf_checked*100 if pdf_checked else 0:.2f}%)")
+    logger.info(
+        f"  Valid ID format: {pdf_id_valid}/{pdf_checked} ({pdf_id_valid / pdf_checked * 100 if pdf_checked else 0:.2f}%)"
+    )
+    logger.info(
+        f"  Valid embeddings: {pdf_embeddings_valid}/{pdf_checked} ({pdf_embeddings_valid / pdf_checked * 100 if pdf_checked else 0:.2f}%)"
+    )
+    logger.info(
+        f"  Valid metadata: {pdf_metadata_valid}/{pdf_checked} ({pdf_metadata_valid / pdf_checked * 100 if pdf_checked else 0:.2f}%)"
+    )
     logger.info("\nWikipedia Vectors:")
     logger.info(f"  Checked: {wiki_checked}")
-    logger.info(f"  Valid ID format: {wiki_id_valid}/{wiki_checked} ({wiki_id_valid/wiki_checked*100 if wiki_checked else 0:.2f}%)")
-    logger.info(f"  Valid embeddings: {wiki_embeddings_valid}/{wiki_checked} ({wiki_embeddings_valid/wiki_checked*100 if wiki_checked else 0:.2f}%)")
-    logger.info(f"  Valid metadata: {wiki_metadata_valid}/{wiki_checked} ({wiki_metadata_valid/wiki_checked*100 if wiki_checked else 0:.2f}%)")
+    logger.info(
+        f"  Valid ID format: {wiki_id_valid}/{wiki_checked} ({wiki_id_valid / wiki_checked * 100 if wiki_checked else 0:.2f}%)"
+    )
+    logger.info(
+        f"  Valid embeddings: {wiki_embeddings_valid}/{wiki_checked} ({wiki_embeddings_valid / wiki_checked * 100 if wiki_checked else 0:.2f}%)"
+    )
+    logger.info(
+        f"  Valid metadata: {wiki_metadata_valid}/{wiki_checked} ({wiki_metadata_valid / wiki_checked * 100 if wiki_checked else 0:.2f}%)"
+    )
     logger.info("=" * 60)
 
     # Determine overall success (at least 95% valid in each category)
     success = (
-        total_id_valid / total_checked >= 0.95 and
-        total_embeddings_valid / total_checked >= 0.95 and
-        total_metadata_valid / total_checked >= 0.95
-    ) if total_checked > 0 else False
+        (
+            total_id_valid / total_checked >= 0.95
+            and total_embeddings_valid / total_checked >= 0.95
+            and total_metadata_valid / total_checked >= 0.95
+        )
+        if total_checked > 0
+        else False
+    )
 
     if success:
-        logger.info("\n✅ Vector verification PASSED! The index appears to be in good shape.")
+        logger.info(
+            "\n✅ Vector verification PASSED! The index appears to be in good shape."
+        )
     else:
-        logger.error("\n❌ Vector verification FAILED! The index has issues that need to be addressed.")
+        logger.error(
+            "\n❌ Vector verification FAILED! The index has issues that need to be addressed."
+        )
 
     return success
 
@@ -252,11 +286,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Verify the integrity of vectors in the Pinecone index"
     )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Enable verbose output"
-    )
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
 
     args = parser.parse_args()
 

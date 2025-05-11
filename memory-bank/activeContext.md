@@ -2,7 +2,7 @@ NYC Landmarks Vector Database - Active Context
 
 ## Current Focus
 
-The current focus is on the Wikipedia integration with Pinecone DB, type safety improvements, and tool integration. We have successfully implemented the core functionality to fetch, process, and store Wikipedia content in the vector database alongside existing PDF content, have begun improving type safety across the codebase, and have integrated additional development tools to enhance productivity.
+The current focus is on the Wikipedia integration with Pinecone DB, type safety improvements, tool integration, and Pinecone metadata handling. We have successfully implemented the core functionality to fetch, process, and store Wikipedia content in the vector database alongside existing PDF content, have begun improving type safety across the codebase, integrated additional development tools to enhance productivity, and fixed metadata handling for Pinecone to properly filter out null values.
 
 ### Recent Implementation
 
@@ -75,6 +75,13 @@ The current focus is on the Wikipedia integration with Pinecone DB, type safety 
    - Updated test documentation in `tests/README.md` to explain the new testing strategy
    - Modified `test_pinecone_fixed_ids.py`, `test_pinecone_upsert.py`, and `test_wikipedia_integration.py` to use the test index
 
+8. **Pinecone Index Recreation**
+   - Successfully recreated the Pinecone index "nyc-landmarks" with 1536 dimensions
+   - Index configured with cosine similarity metric for optimal semantic search
+   - Created clean empty index ready for population via GitHub Action workflow
+   - Used the Pinecone ServerlessSpec with GCP cloud and us-central1 region
+   - Verified successful index creation with zero vectors and proper configuration
+
 ### Recent Testing and Verification
 
 1. **Wikipedia Import Testing**
@@ -146,18 +153,25 @@ The current focus is on the Wikipedia integration with Pinecone DB, type safety 
    - Completely separate test data from production data to prevent contamination
    - Use increased wait times (5 seconds instead of 2) for Pinecone operations to prevent timing-related test failures
 
-6. **API Error Handling Improvements**
+7. **API Error Handling Improvements**
    - Gracefully handle pagination boundary errors (404 on pages beyond available data)
    - Implement flexible landmark ID handling to accommodate various ID formats
    - Return empty but valid response structures instead of raising exceptions
    - Add detailed logging for all API interaction failures
    - Use multiple ID format variations when retrieving landmark data to maximize success
 
-7. **Wikipedia Metadata Handling**
+8. **Wikipedia Metadata Handling**
    - Create a single metadata dictionary and update it once rather than individual field assignments
    - Ensure consistent article_title and article_url fields in all Wikipedia vectors
    - Use centralized article_metadata in the wikipedia_fetcher module to ensure consistency
    - Store article metadata alongside chunk metadata for complete information attribution
+
+9. **Index Recreation Strategy**
+   - Use `scripts/create_pinecone_index.py` to create clean, empty index
+   - Leverage ServerlessSpec with GCP cloud and us-central1 region for optimal performance
+   - Configure index with cosine similarity metric and 1536 dimensions to match OpenAI embeddings
+   - Verify index creation with stats check to ensure proper configuration before population
+   - Allow GitHub Action to populate the newly created index rather than using backup/restore
 
 ## Next Steps
 
@@ -205,18 +219,25 @@ The current focus is on the Wikipedia integration with Pinecone DB, type safety 
    - ✅ Improved system prompt to properly incorporate and acknowledge Wikipedia sources
    - ✅ Enhanced vector filtering to support both content types
 
-7. **Process Additional Wikipedia Articles**
+7. **Pinecone Index Creation (Completed)**
+   - ✅ Successfully recreated the Pinecone "nyc-landmarks" index for fresh data population
+   - ✅ Created an empty, properly configured index with 1536 dimensions and cosine similarity
+   - ✅ Verified index stats and confirmed zero vector count with proper configuration
+   - ✅ Set up for GitHub Action workflow to populate the new index with vectors
+   - ✅ Used GCP cloud and us-central1 region for optimal performance
+
+8. **Process Additional Wikipedia Articles**
    - Execute processing for more landmarks to increase Wikipedia coverage
    - Update verification script to validate proper metadata for all processed landmarks
    - Use the parallel processing feature to efficiently process multiple landmarks
 
-8. **Development Tools Expansion**
+9. **Development Tools Expansion**
    - Leverage Context7 MCP for Pinecone, Pydantic, and other library documentation
    - Explore additional MCP servers for specialized functionality
    - Document library usage patterns based on up-to-date documentation
    - Create library-specific reference guides for the project
 
-9. **API Improvement Implementation**
+10. **API Improvement Implementation**
    - Implement recommendations from vector_rebuild_analysis.md
    - Add robust error recovery for vector storage operations
    - Implement batch validation before storage

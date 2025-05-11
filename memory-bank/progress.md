@@ -14,10 +14,17 @@
 - **Type Safety Improvements**: Enhanced DbClient and related code with better type annotations and error handling
 - **Development Tools Integration**: Integrated MCP servers for enhanced documentation access
 - **Test Isolation Strategy**: Implemented dedicated test index for Pinecone integration tests
+- **Fresh Pinecone Index**: Successfully recreated the empty Pinecone index for populating via GitHub Action
 
 ## Recently Completed
 
-1. **Type Safety Improvements**:
+1. **Pinecone Metadata Handling**:
+   - Fixed metadata handling in PineconeDB to filter out null values before uploading to Pinecone
+   - Implemented filtering logic in _create_metadata_for_chunk method to prevent 400 Bad Request errors
+   - Applied the fix to both standard metadata and Wikipedia-specific article metadata
+   - Protected against errors from null values that Pinecone API doesn't accept
+
+2. **Type Safety Improvements**:
    - Fixed DbClient implementation to properly handle type conversions between dict and Pydantic models
    - Created proper type stub for `db_client.py` to satisfy mypy type checking
    - Enhanced error handling for dict-to-model conversions with safe fallbacks
@@ -96,6 +103,14 @@
    - Modified both integration and functional tests to use the test fixtures
    - Improved test synchronization with increased wait times (5 seconds instead of 2) to prevent timing-related failures
 
+12. **Pinecone Index Recreation**:
+   - Successfully recreated the Pinecone "nyc-landmarks" index
+   - Created a clean, empty index with 1536 dimensions
+   - Configured with cosine similarity metric for optimal semantic search
+   - Used the ServerlessSpec with GCP cloud and us-central1 region
+   - Verified correct index creation with stats check (0 vectors, properly configured)
+   - Ready for population via GitHub Action workflow
+
 ## Recently Validated
 
 1. **Pinecone Vector Validation Testing**:
@@ -138,6 +153,12 @@
    - Tested the status command to check test index details like vector count and dimensions
    - Confirmed integration tests run correctly with the isolated test infrastructure
 
+7. **Pinecone Index Creation**:
+   - Verified successful creation of the empty "nyc-landmarks" index
+   - Confirmed proper configuration with 1536 dimensions and cosine similarity
+   - Validated index stats showing 0 vectors with proper configuration
+   - Verified the index is ready for population via GitHub Action
+
 ## In Progress
 
 - **Type Safety Expansion**: Addressing mypy errors across the codebase, particularly in test files
@@ -170,23 +191,29 @@
    - ✅ Improved metadata handling by using a single update operation rather than individual assignments
    - ✅ Successfully processed and stored Wikipedia article for LP-00001 with proper metadata
 
-4. **Fix Remaining Type Safety Issues**:
+4. **Pinecone Index Recreation (Completed)**:
+   - ✅ Successfully recreated the empty "nyc-landmarks" index
+   - ✅ Created a clean, properly configured index with 1536 dimensions and cosine similarity
+   - ✅ Verified index creation with stats check (0 vectors, correctly configured)
+   - ✅ Set up for GitHub Action to populate the index with vectors
+
+5. **Fix Remaining Type Safety Issues**:
    - Create additional type stubs for external dependencies where needed
    - Address the most critical mypy errors in test files
    - Update API interaction code to consistently use the new Pydantic models
 
-5. **Process Additional Wikipedia Articles**:
+6. **Process Additional Wikipedia Articles**:
    - Execute processing for more landmarks to increase Wikipedia coverage
    - Update verification script to validate proper metadata for all processed landmarks
    - Use the parallel processing feature to efficiently process multiple landmarks
 
-6. **Query API Optimization**:
+7. **Query API Optimization**:
    - Fine-tune Wikipedia and PDF search ranking to provide optimal results
    - Implement additional filtering options for more precise searches
    - Create specialized endpoints for Wikipedia-only or PDF-only searches
    - Enhance result presentation with more useful metadata
 
-7. **Expand Development Tools Integration**:
+8. **Expand Development Tools Integration**:
    - Use Context7 MCP to retrieve documentation for Pinecone, Pydantic, and other project dependencies
    - Create reference guides based on up-to-date library documentation
    - Explore additional MCP servers for specialized functionality like database access

@@ -184,18 +184,21 @@ class PineconeDB:
                 "processing_date"
             )
 
-        # Add enhanced metadata
-        metadata.update(enhanced_metadata)
+        # Filter out null values from enhanced metadata before adding
+        filtered_metadata = {
+            k: v for k, v in enhanced_metadata.items() if v is not None
+        }
+        metadata.update(filtered_metadata)
 
         # Add Wikipedia-specific metadata
         if source_type == "wikipedia" and "article_metadata" in chunk:
             article_meta = chunk.get("article_metadata", {})
-            metadata.update(
-                {
-                    "article_title": article_meta.get("title", ""),
-                    "article_url": article_meta.get("url", ""),
-                }
-            )
+            # Filter out null values from article metadata
+            article_data = {
+                "article_title": article_meta.get("title", ""),
+                "article_url": article_meta.get("url", ""),
+            }
+            metadata.update({k: v for k, v in article_data.items() if v is not None})
 
         return metadata
 
