@@ -92,7 +92,7 @@ To make tests more robust and runnable in offline environments, we've implemente
 
 4. **Conditional Test Skipping**: Tests that absolutely require external services are skipped when those services are unavailable.
 
-Example of fallback approach in `test_vector_storage_pipeline.py`:
+Example of fallback approach in `test_vector_storage_pipeline_fixed.py`:
 
 ```python
 # Try to fetch from API if available

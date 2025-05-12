@@ -181,7 +181,7 @@ def _resolve_pdf_url(db_client: Any, landmark_id: str, landmark_data: Any) -> st
             pdf_url = "https://cdn.informationcart.com/pdf/0001.pdf"
 
     assert pdf_url, f"No PDF URL found for landmark {landmark_id}"
-    return str(pdf_url)
+    return pdf_url
 
 
 def _download_pdf_file(
