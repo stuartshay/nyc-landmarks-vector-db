@@ -20,7 +20,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import requests
 from tqdm import tqdm
@@ -109,7 +109,8 @@ class LandmarkPipeline:
                 landmarks = self.db_client.get_landmarks_page(page_size, page)
 
                 if landmarks:
-                    all_landmarks.extend(landmarks)
+                    # Cast to handle Union return type for mypy
+                    all_landmarks.extend(cast(List[Dict[str, Any]], landmarks))
                     logger.info(f"Found {len(landmarks)} landmarks on page {page}")
                 else:
                     logger.warning(f"No results found on page {page}")
