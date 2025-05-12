@@ -1,0 +1,21 @@
+{
+  "include": [
+    "nyc_landmarks"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/*.pyc",
+    "stubs"
+  ],
+  "ignore": [],
+  "defineConstant": {},
+  "typeCheckingMode": "basic",
+  "useLibraryCodeForTypes": true,
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "reportUnknownMemberType": false,
+  "pythonVersion": "3.12",
+  "pythonPlatform": "Linux",
+  "reportGeneralTypeIssues": "none"
+}

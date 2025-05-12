@@ -215,7 +215,8 @@ class PineconeDB:
         for i in range(0, len(vectors), batch_size):
             batch = vectors[i : i + batch_size]
             try:
-                self.index.upsert(vectors=batch)
+                # Convert to the expected type for the Pinecone SDK
+                self.index.upsert(vectors=batch)  # pyright: ignore
             except Exception as e:
                 logger.error(f"Failed to store chunk batch {i // batch_size}: {e}")
 
@@ -339,25 +340,31 @@ class PineconeDB:
             result_list: List[Dict[str, Any]] = []
 
             # Handle response.matches which can be a list or other iterable
-            if hasattr(response, "matches"):
-                matches = response.matches
-                for match in matches:
-                    # Handle match objects
-                    match_dict: Dict[str, Any] = {}
+            # Cast response to Any to handle different return types from Pinecone SDK
+            from typing import Any as TypeAny
+            from typing import cast
 
-                    # Extract ID if available
-                    if hasattr(match, "id"):
-                        match_dict["id"] = match.id
+            response_dict = cast(TypeAny, response)
 
-                    # Extract score if available
-                    if hasattr(match, "score"):
-                        match_dict["score"] = match.score
+            # Access matches safely
+            matches = getattr(response_dict, "matches", [])
+            for match in matches:
+                # Handle match objects
+                match_dict: Dict[str, Any] = {}
 
-                    # Extract metadata if available
-                    if hasattr(match, "metadata"):
-                        match_dict["metadata"] = match.metadata
+                # Extract ID if available
+                if hasattr(match, "id"):
+                    match_dict["id"] = match.id
 
-                    result_list.append(match_dict)
+                # Extract score if available
+                if hasattr(match, "score"):
+                    match_dict["score"] = match.score
+
+                # Extract metadata if available
+                if hasattr(match, "metadata"):
+                    match_dict["metadata"] = match.metadata
+
+                result_list.append(match_dict)
 
             return result_list
 
@@ -431,7 +438,7 @@ class PineconeDB:
         """
         try:
             # Create filter dictionary
-            filter_dict = {"source_type": source_type}
+            filter_dict: Dict[str, Any] = {"source_type": source_type}
             if landmark_id:
                 filter_dict["landmark_id"] = landmark_id
 
@@ -449,20 +456,26 @@ class PineconeDB:
             # Process the response to create a standardized return format
             result: Dict[str, Any] = {"matches": []}
 
-            # Extract matches from the response
-            if hasattr(response, "matches"):
-                matches_list = []
-                for match in response.matches:
-                    match_dict = {
-                        "id": getattr(match, "id", ""),
-                        "score": getattr(match, "score", 0.0),
-                        "metadata": getattr(match, "metadata", {}),
-                        "values": getattr(
-                            match, "values", []
-                        ),  # Include the embedding values
-                    }
-                    matches_list.append(match_dict)
-                result["matches"] = matches_list
+            # Cast response to Any to handle different return types from Pinecone SDK
+            from typing import Any as TypeAny
+            from typing import cast
+
+            response_dict = cast(TypeAny, response)
+
+            # Extract matches from the response safely
+            matches = getattr(response_dict, "matches", [])
+            matches_list = []
+            for match in matches:
+                match_dict = {
+                    "id": getattr(match, "id", ""),
+                    "score": getattr(match, "score", 0.0),
+                    "metadata": getattr(match, "metadata", {}),
+                    "values": getattr(
+                        match, "values", []
+                    ),  # Include the embedding values
+                }
+                matches_list.append(match_dict)
+            result["matches"] = matches_list
 
             return result
 

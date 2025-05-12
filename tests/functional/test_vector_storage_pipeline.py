@@ -9,11 +9,12 @@ These tests verify that the entire pipeline works correctly:
 """
 
 import logging
+import os
 import shutil
 import tempfile
 import time
 from pathlib import Path
-from typing import Generator
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
 import pytest
 
@@ -22,6 +23,7 @@ from nyc_landmarks.db.db_client import get_db_client
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.pdf.extractor import PDFExtractor
 from nyc_landmarks.pdf.text_chunker import TextChunker
+from tests.utils.pinecone_test_utils import create_test_index, get_test_db
 from tests.utils.test_mocks import get_mock_landmark
 
 # Configure logging
@@ -30,7 +32,7 @@ logging.basicConfig(level=settings.LOG_LEVEL.value)
 
 
 @pytest.fixture
-def temp_dirs() -> Generator[dict[str, str | Path], None, None]:
+def temp_dirs() -> Generator[Dict[str, Path], None, None]:
     """Create temporary directories for test artifacts."""
     base_dir = tempfile.mkdtemp()
     pdfs_dir = Path(base_dir) / "pdfs"
@@ -39,26 +41,69 @@ def temp_dirs() -> Generator[dict[str, str | Path], None, None]:
     pdfs_dir.mkdir(exist_ok=True)
     text_dir.mkdir(exist_ok=True)
 
-    yield {"base_dir": base_dir, "pdfs_dir": pdfs_dir, "text_dir": text_dir}
+    yield {"base_dir": Path(base_dir), "pdfs_dir": pdfs_dir, "text_dir": text_dir}
 
     # Cleanup
     shutil.rmtree(base_dir)
 
 
-@pytest.mark.integration
-@pytest.mark.functional
-def test_vector_storage_pipeline(temp_dirs: dict, pinecone_test_db) -> None:
-    """Test the complete vector storage pipeline with one landmark."""
-    logger.info("=== Testing complete vector storage pipeline ===")
+@pytest.fixture(scope="module")
+def dedicated_test_db():
+    """
+    Create a dedicated test index specific for this test file to isolate from other tests.
+    """
+    # Create a unique test index name for this test file
+    test_index_name = f"nyc-landmarks-test-vector-pipeline-{int(time.time())}"
+    logger.info(
+        f"Creating dedicated test index for vector pipeline test: {test_index_name}"
+    )
 
-    # Step 1: Initialize components
+    # Create the test index
+    index_created = create_test_index(index_name=test_index_name, wait_for_ready=True)
+    if not index_created:
+        pytest.skip(f"Failed to create dedicated test index {test_index_name}")
+        return None
+
+    # Get database instance connected to the test index
+    test_db = get_test_db(index_name=test_index_name)
+
+    # Verify connection
+    if not test_db.index:
+        pytest.skip(f"Failed to connect to dedicated test index {test_index_name}")
+        return None
+
+    # Verify the index is ready by getting stats
+    try:
+        stats = test_db.get_index_stats()
+        logger.info(f"Successfully connected to test index. Stats: {stats}")
+    except Exception as e:
+        logger.error(f"Error verifying test index: {e}")
+        pytest.skip(f"Test index verification failed: {e}")
+        return None
+
+    # Return the database instance
+    yield test_db
+
+    # No cleanup - we'll let the session-scoped fixture handle cleanup
+
+
+def _setup_test_components(dedicated_test_db: Any) -> Tuple:
+    """
+    Set up the components needed for the vector storage pipeline test.
+
+    Args:
+        dedicated_test_db: The test database fixture
+
+    Returns:
+        Tuple containing components needed for testing
+    """
     db_client = get_db_client()
     pdf_extractor = PDFExtractor()
     text_chunker = TextChunker(
         chunk_size=settings.CHUNK_SIZE, chunk_overlap=settings.CHUNK_OVERLAP
     )
     embedding_generator = EmbeddingGenerator()
-    pinecone_db = pinecone_test_db
+    pinecone_db = dedicated_test_db
 
     # Ensure Pinecone client is initialized
     assert pinecone_db.index is not None, "PineconeDB index not initialized"
@@ -68,9 +113,27 @@ def test_vector_storage_pipeline(temp_dirs: dict, pinecone_test_db) -> None:
     before_count = before_stats.get("total_vector_count", 0)
     logger.info(f"Initial vector count: {before_count}")
 
-    # Step 2: Use a landmark ID for testing
-    landmark_id = "LP-00001"  # Use a known landmark ID
+    return (
+        db_client,
+        pdf_extractor,
+        text_chunker,
+        embedding_generator,
+        pinecone_db,
+        before_count,
+    )
 
+
+def _fetch_landmark_data(db_client: Any, landmark_id: str) -> Tuple[Any, str]:
+    """
+    Fetch landmark data from API or use mock data if unavailable.
+
+    Args:
+        db_client: Database client instance
+        landmark_id: ID of the landmark
+
+    Returns:
+        Tuple containing landmark data and name
+    """
     # Try to fetch from API if available
     landmark_data = db_client.get_landmark_by_id(landmark_id)
 
@@ -81,35 +144,105 @@ def test_vector_storage_pipeline(temp_dirs: dict, pinecone_test_db) -> None:
         )
         landmark_data = get_mock_landmark(landmark_id)
 
-    logger.info(f"Using landmark: {landmark_data.get('name', 'Unknown')}")
+    # Handle both Pydantic model and dictionary types
+    landmark_name = "Unknown"
+    if hasattr(landmark_data, "name"):
+        landmark_name = landmark_data.name
+    elif isinstance(landmark_data, dict):
+        landmark_name = landmark_data.get("name", "Unknown")
 
-    # Step 3: Get PDF URL (from data or mock)
+    logger.info(f"Using landmark: {landmark_name}")
+    return landmark_data, landmark_name
+
+
+def _resolve_pdf_url(db_client: Any, landmark_id: str, landmark_data: Any) -> str:
+    """
+    Get PDF URL from landmark data or fallback to a default.
+
+    Args:
+        db_client: Database client instance
+        landmark_id: ID of the landmark
+        landmark_data: Landmark data object or dictionary
+
+    Returns:
+        URL to the PDF file
+    """
     pdf_url = db_client.get_landmark_pdf_url(landmark_id)
 
     # If PDF URL not available, use the one from mock data
     if not pdf_url:
-        pdf_url = landmark_data.get(
-            "pdfReportUrl", "https://cdn.informationcart.com/pdf/0001.pdf"
-        )
+        if hasattr(landmark_data, "pdfReportUrl"):
+            pdf_url = landmark_data.pdfReportUrl
+        elif isinstance(landmark_data, dict):
+            pdf_url = landmark_data.get(
+                "pdfReportUrl", "https://cdn.informationcart.com/pdf/0001.pdf"
+            )
+        else:
+            pdf_url = "https://cdn.informationcart.com/pdf/0001.pdf"
 
     assert pdf_url, f"No PDF URL found for landmark {landmark_id}"
+    return str(pdf_url)
 
-    # Download PDF to temp location
+
+def _download_pdf_file(
+    temp_dirs: Dict[str, Path], landmark_id: str, pdf_url: str
+) -> Optional[Path]:
+    """
+    Download PDF and save to temporary directory.
+
+    Args:
+        temp_dirs: Dictionary of temporary directories
+        landmark_id: ID of the landmark
+        pdf_url: URL to download the PDF from
+
+    Returns:
+        Path to the downloaded PDF file or None if download failed
+    """
     import requests
 
     pdf_path = temp_dirs["pdfs_dir"] / f"{landmark_id.replace('/', '_')}.pdf"
     logger.info(f"Downloading PDF from {pdf_url} to {pdf_path}")
 
-    response = requests.get(pdf_url, stream=True, timeout=30)
-    response.raise_for_status()
+    try:
+        response = requests.get(pdf_url, stream=True, timeout=30)
+        response.raise_for_status()
 
-    with open(pdf_path, "wb") as f:
-        for chunk in response.iter_content(chunk_size=8192):
-            f.write(chunk)
+        with open(pdf_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
 
-    assert pdf_path.exists(), f"Failed to download PDF to {pdf_path}"
+        assert pdf_path.exists(), f"Failed to download PDF to {pdf_path}"
+        return Path(pdf_path)  # Explicitly return Path type
+    except Exception as e:
+        logger.error(f"Failed to download PDF: {e}")
+        # Use a fallback PDF if available
+        fallback_pdf = os.environ.get("FALLBACK_PDF_PATH")
+        if fallback_pdf and os.path.exists(fallback_pdf):
+            logger.info(f"Using fallback PDF: {fallback_pdf}")
+            shutil.copy(fallback_pdf, pdf_path)
+            return Path(pdf_path)  # Explicitly return Path type
+        else:
+            return None
 
-    # Step 4: Extract text from PDF
+
+def _process_pdf_text(
+    pdf_extractor: PDFExtractor,
+    pdf_path: Path,
+    temp_dirs: Dict[str, Path],
+    landmark_id: str,
+) -> str:
+    """
+    Extract text from PDF and save to file.
+
+    Args:
+        pdf_extractor: PDF extractor instance
+        pdf_path: Path to the PDF file
+        temp_dirs: Dictionary of temporary directories
+        landmark_id: ID of the landmark
+
+    Returns:
+        Extracted text content
+    """
     with open(pdf_path, "rb") as f:
         pdf_bytes = f.read()
         text = pdf_extractor.extract_text_from_bytes(pdf_bytes)
@@ -122,12 +255,29 @@ def test_vector_storage_pipeline(temp_dirs: dict, pinecone_test_db) -> None:
     with open(text_path, "w", encoding="utf-8") as f:
         f.write(text)
 
-    # Step 5: Chunk text
+    return text
+
+
+def _chunk_and_enrich_text(
+    text_chunker: TextChunker, text: str, landmark_id: str
+) -> Tuple[List[str], List[Dict[str, Any]]]:
+    """
+    Split text into chunks and enrich with metadata.
+
+    Args:
+        text_chunker: Text chunker instance
+        text: Text content to chunk
+        landmark_id: ID of the landmark
+
+    Returns:
+        Tuple containing chunks and enriched chunks with metadata
+    """
+    # Chunk text
     chunks = text_chunker.chunk_text_by_tokens(text)
     assert chunks, "Failed to chunk text"
     logger.info(f"Successfully created {len(chunks)} text chunks")
 
-    # Step 6: Generate embeddings
+    # Create enriched chunks with metadata
     enriched_chunks = []
     for i, chunk in enumerate(chunks):
         chunk_dict = {
@@ -144,6 +294,22 @@ def test_vector_storage_pipeline(temp_dirs: dict, pinecone_test_db) -> None:
         }
         enriched_chunks.append(chunk_dict)
 
+    return chunks, enriched_chunks
+
+
+def _create_embeddings(
+    embedding_generator: EmbeddingGenerator, enriched_chunks: List[Dict[str, Any]]
+) -> Tuple[List[List[float]], List[Dict[str, Any]]]:
+    """
+    Generate embeddings for text chunks.
+
+    Args:
+        embedding_generator: Embedding generator instance
+        enriched_chunks: List of enriched text chunks
+
+    Returns:
+        Tuple containing embeddings and chunks with embeddings
+    """
     # Get text content for embedding generation
     texts = [chunk["text"] for chunk in enriched_chunks]
     embeddings = embedding_generator.generate_embeddings_batch(texts)
@@ -153,12 +319,28 @@ def test_vector_storage_pipeline(temp_dirs: dict, pinecone_test_db) -> None:
     ), "Number of embeddings doesn't match number of chunks"
     logger.info(f"Successfully generated {len(embeddings)} embeddings")
 
-    # Step 7: Add embeddings to chunks
+    # Add embeddings to chunks
     chunks_with_embeddings = enriched_chunks.copy()
     for i, embedding in enumerate(embeddings):
         chunks_with_embeddings[i]["embedding"] = embedding
 
-    # Step 8: Store vectors in Pinecone
+    return embeddings, chunks_with_embeddings
+
+
+def _store_vectors_in_db(
+    pinecone_db: Any, chunks_with_embeddings: List[Dict[str, Any]], landmark_id: str
+) -> List[str]:
+    """
+    Store vectors in Pinecone database.
+
+    Args:
+        pinecone_db: Pinecone database instance
+        chunks_with_embeddings: List of chunks with embedding vectors
+        landmark_id: ID of the landmark
+
+    Returns:
+        List of vector IDs
+    """
     id_prefix = f"test-{landmark_id}-"
     vector_ids = pinecone_db.store_chunks(
         chunks=chunks_with_embeddings,
@@ -168,77 +350,178 @@ def test_vector_storage_pipeline(temp_dirs: dict, pinecone_test_db) -> None:
 
     assert vector_ids, "Failed to store vectors in Pinecone"
     logger.info(f"Successfully stored {len(vector_ids)} vectors in Pinecone")
+    return list(vector_ids)  # Convert to list to ensure correct return type
 
-    # Step 9: Verify vectors were stored by checking updated count
-    time.sleep(2)  # Give Pinecone time to update
+
+def _verify_vector_count(pinecone_db: Any, before_count: int) -> int:
+    """
+    Verify vectors were stored by checking updated count.
+
+    Args:
+        pinecone_db: Pinecone database instance
+        before_count: Vector count before storing
+
+    Returns:
+        Current vector count
+    """
+    time.sleep(5)  # Wait for Pinecone to update
     after_stats = pinecone_db.get_index_stats()
     after_count = after_stats.get("total_vector_count", 0)
     logger.info(f"Final vector count: {after_count}")
 
-    # The count should be greater than before (but we can't assert exact counts due to concurrent tests)
+    # The count should be greater than before
     assert (
         after_count >= before_count
     ), "Vector count did not increase after storing vectors"
+    return int(after_count)  # Explicitly convert to int
 
-    # Step 10: Query one of the stored vectors to make sure it's retrievable
-    if len(embeddings) > 0:
-        # Use the first embedding as a query
-        query_embedding = embeddings[0]
-        matches = pinecone_db.query_vectors(
-            query_embedding, top_k=5, filter_dict={"landmark_id": landmark_id}
-        )
 
-        assert matches, "Failed to retrieve vectors from Pinecone"
-        assert len(matches) > 0, "No matches found for query"
-        logger.info(f"Successfully retrieved {len(matches)} vector matches")
+def _query_and_verify_vectors(
+    pinecone_db: Any, embeddings: List[List[float]], landmark_id: str
+) -> bool:
+    """
+    Query vectors and verify they can be retrieved.
 
-        # Verify that at least one of our stored vectors is among the results
-        # (Note: may not match exactly due to vector normalization, approximate NN, etc.)
-        found_match = False
-        for match in matches:
-            # Handle match object or dictionary
-            metadata = {}
-            if hasattr(match, "metadata"):
-                metadata = match.metadata
-            elif hasattr(match, "get"):
-                metadata = match.get("metadata", {})
-            elif isinstance(match, dict):
-                metadata = match.get("metadata", {})
+    Args:
+        pinecone_db: Pinecone database instance
+        embeddings: List of embedding vectors
+        landmark_id: ID of the landmark
 
-            # Check if the landmark_id exists in metadata (direct field or nested dict)
-            if (
-                isinstance(metadata, dict)
-                and metadata.get("landmark_id") == landmark_id
-            ):
-                found_match = True
-                break
-            elif (
-                hasattr(metadata, "get") and metadata.get("landmark_id") == landmark_id
-            ):
-                found_match = True
-                break
+    Returns:
+        True if vectors were successfully retrieved
+    """
+    if len(embeddings) == 0:
+        logger.warning("No embeddings to query")
+        return False
 
-        assert found_match, "Could not find the stored landmark ID in query results"
+    # Use the first embedding as a query
+    query_embedding = embeddings[0]
+    matches = pinecone_db.query_vectors(
+        query_embedding, top_k=5, filter_dict={"landmark_id": landmark_id}
+    )
 
-    # Step 11: Clean up - optional: delete test vectors
-    # Uncomment the following lines if you want to delete the test vectors
-    # Note: In a production setting, you might want to keep them for debugging
+    assert matches, "Failed to retrieve vectors from Pinecone"
+    assert len(matches) > 0, "No matches found for query"
+    logger.info(f"Successfully retrieved {len(matches)} vector matches")
+
+    # Verify that at least one of our stored vectors is among the results
+    found_match = False
+    for match in matches:
+        # Handle match object or dictionary
+        metadata = {}
+        if hasattr(match, "metadata"):
+            metadata = match.metadata
+        elif hasattr(match, "get"):
+            metadata = match.get("metadata", {})
+        elif isinstance(match, dict):
+            metadata = match.get("metadata", {})
+
+        # Check if the landmark_id exists in metadata
+        if isinstance(metadata, dict) and metadata.get("landmark_id") == landmark_id:
+            found_match = True
+            break
+        elif hasattr(metadata, "get") and metadata.get("landmark_id") == landmark_id:
+            found_match = True
+            break
+
+    assert found_match, "Could not find the stored landmark ID in query results"
+    return True
+
+
+def _cleanup_test_vectors(pinecone_db: Any, vector_ids: List[str]) -> None:
+    """
+    Clean up test vectors from database.
+
+    Args:
+        pinecone_db: Pinecone database instance
+        vector_ids: List of vector IDs to delete
     """
     for vector_id in vector_ids:
-        pinecone_db.index.delete(ids=[vector_id])
+        pinecone_db.delete_vectors([vector_id])
     logger.info(f"Cleaned up {len(vector_ids)} test vectors")
+
+
+@pytest.mark.integration
+@pytest.mark.functional
+def test_vector_storage_pipeline(
+    temp_dirs: Dict[str, Path], dedicated_test_db: Any
+) -> None:
     """
+    Test the complete vector storage pipeline with one landmark.
+
+    This test validates the entire data flow:
+    1. Fetching landmark data from the API or using mock data
+    2. Downloading the landmark's PDF document
+    3. Extracting text content from the PDF
+    4. Chunking the text into processable segments
+    5. Generating vector embeddings for each text chunk
+    6. Storing these vectors in the Pinecone database
+    7. Verifying the vectors were stored correctly
+    8. Querying the database to retrieve the vectors
+    9. Cleaning up test data from Pinecone
+
+    Args:
+        temp_dirs: Fixture providing temporary directories for test artifacts
+        dedicated_test_db: Fixture providing a dedicated test database
+    """
+    logger.info("=== Testing complete vector storage pipeline ===")
+
+    # Step 1: Set up test components
+    (
+        db_client,
+        pdf_extractor,
+        text_chunker,
+        embedding_generator,
+        pinecone_db,
+        before_count,
+    ) = _setup_test_components(dedicated_test_db)
+
+    # Step 2: Select and fetch landmark data
+    landmark_id = "LP-00101"  # Use a known landmark ID that exists in CoreDataStore API
+    landmark_data, landmark_name = _fetch_landmark_data(db_client, landmark_id)
+
+    # Step 3: Get PDF URL
+    pdf_url = _resolve_pdf_url(db_client, landmark_id, landmark_data)
+
+    # Step 4: Download PDF
+    pdf_path = _download_pdf_file(temp_dirs, landmark_id, pdf_url)
+    if pdf_path is None:
+        pytest.skip("Cannot proceed without PDF")
+        return
+
+    # Step 5: Extract and process text from PDF
+    text = _process_pdf_text(pdf_extractor, pdf_path, temp_dirs, landmark_id)
+
+    # Step 6: Chunk text and enrich with metadata
+    chunks, enriched_chunks = _chunk_and_enrich_text(text_chunker, text, landmark_id)
+
+    # Step 7: Generate embeddings
+    embeddings, chunks_with_embeddings = _create_embeddings(
+        embedding_generator, enriched_chunks
+    )
+
+    # Step 8: Store vectors in Pinecone
+    vector_ids = _store_vectors_in_db(pinecone_db, chunks_with_embeddings, landmark_id)
+
+    # Step 9: Verify vectors were stored by checking count
+    _verify_vector_count(pinecone_db, before_count)
+
+    # Step 10: Query and verify vector retrieval
+    _query_and_verify_vectors(pinecone_db, embeddings, landmark_id)
+
+    # Step 11: Clean up test vectors
+    _cleanup_test_vectors(pinecone_db, vector_ids)
 
     logger.info("=== Vector storage pipeline test completed successfully ===")
 
 
 @pytest.mark.functional
-def test_pinecone_connection_and_operations(pinecone_test_db) -> None:
+def test_pinecone_connection_and_operations(dedicated_test_db) -> None:
     """Test basic Pinecone operations to ensure the database is accessible."""
     logger.info("=== Testing Pinecone connection and basic operations ===")
 
     # Use test-specific Pinecone client
-    pinecone_db = pinecone_test_db
+    pinecone_db = dedicated_test_db
 
     # Check if index exists
     assert pinecone_db.index is not None, "Failed to connect to Pinecone index"
@@ -261,7 +544,7 @@ def test_pinecone_connection_and_operations(pinecone_test_db) -> None:
         "total_chunks": 1,
         "embedding": test_vector,
         "metadata": {
-            "landmark_id": "TEST-LANDMARK",
+            "landmark_id": "LP-00101",  # Use a real landmark ID
             "chunk_index": 0,
             "total_chunks": 1,
             "source_type": "test",
@@ -273,15 +556,18 @@ def test_pinecone_connection_and_operations(pinecone_test_db) -> None:
 
     # Use store_chunks instead of store_vectors
     vector_ids = pinecone_db.store_chunks(
-        chunks=[test_chunk], id_prefix=test_id, landmark_id="TEST-LANDMARK"
+        chunks=[test_chunk], id_prefix=test_id, landmark_id="LP-00101"
     )
 
     assert vector_ids, "Failed to store test vector"
     logger.info(f"Successfully stored test vector with ID: {vector_ids[0]}")
 
+    # Wait for Pinecone to update - increased wait time to ensure indexing is complete
+    time.sleep(10)
+
     # Test querying the vector
     matches = pinecone_db.query_vectors(
-        query_vector=test_vector, top_k=1, filter_dict={"landmark_id": "TEST-LANDMARK"}
+        query_vector=test_vector, top_k=1, filter_dict={"landmark_id": "LP-00101"}
     )
 
     assert matches, "Failed to retrieve test vector"

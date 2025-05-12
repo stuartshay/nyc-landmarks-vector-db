@@ -88,9 +88,8 @@ class EnhancedMetadataCollector:
                     "photoStatus"
                 ):
                     has_photos = True
-                elif (
-                    hasattr(landmark_details, "photoStatus")
-                    and landmark_details.photoStatus
+                elif hasattr(landmark_details, "photoStatus") and getattr(
+                    landmark_details, "photoStatus", False
                 ):
                     has_photos = True
 

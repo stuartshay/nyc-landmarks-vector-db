@@ -80,7 +80,7 @@ Refactored complex functions into smaller, more manageable helper methods:
 1. Continue improving test coverage for the refactored code.
 
 2. Consider addressing complexity issues in test code, particularly in:
-   - `tests/functional/test_vector_storage_pipeline.py`
+   - `tests/functional/test_vector_storage_pipeline_fixed.py`
    - `tests/integration/verify_metadata_consistency.py`
 
 3. Address the linting issues in Jupyter notebooks when there's time available.

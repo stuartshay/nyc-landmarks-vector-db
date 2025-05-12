@@ -124,6 +124,7 @@ setup(
             "pytest-asyncio>=0.24.0",  # Added for asyncio support in tests
             "pre-commit>=3.8.0",  # Added for pre-commit hooks
             "pip-tools",  # Added for managing requirements
+            "pyright>=1.1.400",  # Added for static type checking
             "jupyterlab",  # Added for running notebooks
             "ipywidgets",  # Added for notebook interactivity
             "plotly",  # Added for interactive plots in notebooks

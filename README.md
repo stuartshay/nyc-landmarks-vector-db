@@ -28,6 +28,8 @@ This project aims to make information about New York City landmarks more accessi
 
 The system makes previously inaccessible information in PDF reports easily searchable through semantic understanding, allowing users to find relevant information about NYC landmarks using natural language queries.
 
+> **Note for Developers**: The API client now returns Pydantic models instead of dictionaries in some cases. See [API Response Handling Documentation](./docs/api_response_handling.md) for details on handling both response types.
+
 ## System Architecture
 
 ```mermaid

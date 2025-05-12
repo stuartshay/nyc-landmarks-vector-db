@@ -1,17 +1,17 @@
-# Project Progress
+# NYC Landmarks Vector Database - Progress
 
 ## What Works
 
-- **Core Data Store API Integration**
-  - Landmark data fetching from NYC LPC API
-  - Paginated requests with rate limiting
-  - Error handling for API failures
-  - Type-safe responses with Pydantic models
-
-- **PDF Processing Pipeline**
-  - PDF downloading and text extraction
-  - Text chunking with token-based sizing
-  - Embedding generation with OpenAI API
+- Core landmarks data fetching from CoreDataStore API
+- PDF text extraction from landmark reports
+- Text chunking for optimal embedding
+- Embedding generation using OpenAI's text-embedding models
+- Pinecone vector database storage and retrieval
+- Query API with filtering capabilities
+- Chat API with conversation memory
+- End-to-end pipeline from data extraction to vector storage
+- Support for filtering by landmark ID
+- Integration with CoreDataStore API as the data source
   - Storage in vector database
 
 - **Vector Database Integration**
