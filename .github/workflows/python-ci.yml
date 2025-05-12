@@ -27,8 +27,8 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install -e ".[dev]"
-          # Ensure pytest and coverage tools are installed
-          pip install pytest pytest-cov
+          # Install all linting and testing tools
+          pip install pytest pytest-cov flake8 black isort mypy bandit
 
       - name: Lint with flake8
         run: |
@@ -49,9 +49,6 @@ jobs:
         run: |
           mypy nyc_landmarks scripts
         continue-on-error: true
-
-      - name: Install Bandit
-        run: pip install bandit
 
       - name: Security scan with bandit
         run: |
