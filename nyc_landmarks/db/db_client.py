@@ -33,7 +33,8 @@ class SupportsWikipedia(Protocol):
         self, title: str
     ) -> Optional[Union[Dict[str, Any], WikipediaArticleModel]]:
         """Get Wikipedia article by title."""
-        pass
+        # Not implemented in this base class
+        return None
 
     def get_wikipedia_articles(self, landmark_id: str) -> List[WikipediaArticleModel]:
         """Get Wikipedia articles for a landmark."""
@@ -48,6 +49,64 @@ class DbClient:
     def __init__(self, client: CoreDataStoreAPI) -> None:
         """Initialize the CoreDataStore API client."""
         self.client = client
+        pass  # Protocol method
+
+    def _format_landmark_id(self, landmark_id: str) -> str:
+        """Format landmark ID to ensure it has the proper LP prefix format.
+
+        Args:
+            landmark_id: Raw landmark ID
+
+        Returns:
+            Properly formatted landmark ID with LP prefix
+        """
+        if not landmark_id.startswith("LP-"):
+            return f"LP-{landmark_id.zfill(5)}"
+        return landmark_id
+
+    def _parse_landmark_response(
+        self, landmark_data: Dict[str, Any], lpc_id: str
+    ) -> Optional[Union[Dict[str, Any], LpcReportDetailResponse]]:
+        """Parse the landmark API response.
+
+        Args:
+            landmark_data: Raw landmark data from the API (must not be None)
+            lpc_id: The formatted landmark ID
+
+        Returns:
+            Parsed landmark response or raw dict if parsing fails
+        """
+        # Safety check if somehow a non-dict makes it here
+        if not isinstance(landmark_data, dict):
+            return None
+
+        try:
+            # Ensure lpNumber field is present (it's required by the model)
+            if "lpNumber" not in landmark_data and "id" in landmark_data:
+                landmark_data["lpNumber"] = landmark_data["id"]
+            elif "lpNumber" not in landmark_data:
+                landmark_data["lpNumber"] = lpc_id
+
+            return LpcReportDetailResponse(**landmark_data)
+        except Exception as e:
+            logger.warning(f"Could not parse response as LpcReportDetailResponse: {e}")
+            return landmark_data  # Return the raw dict if validation fails
+
+    def _get_landmark_fallback(self, landmark_id: str) -> Optional[Dict[str, Any]]:
+        """Attempt to get landmark using fallback method.
+
+        Args:
+            landmark_id: ID of the landmark
+
+        Returns:
+            Landmark data or None if not found
+        """
+        try:
+            # Fall back to the older dictionary-based method
+            return self.client.get_landmark_by_id(landmark_id)
+        except Exception as e:
+            logger.error(f"Failed to get landmark with fallback method: {e}")
+            return None
 
     def get_landmark_by_id(
         self, landmark_id: str
@@ -61,36 +120,25 @@ class DbClient:
             LpcReportDetailResponse object or dictionary containing landmark information,
             or None if not found
         """
+        # Format the landmark ID
+        lpc_id = self._format_landmark_id(landmark_id)
+
         # Try to get the detailed response first
         try:
-            # Ensure landmark_id is properly formatted with LP prefix
-            if not landmark_id.startswith("LP-"):
-                lpc_id = f"LP-{landmark_id.zfill(5)}"
-            else:
-                lpc_id = landmark_id
-
             # Get the LPC report using the API - use public methods instead of protected _make_request
             if hasattr(self.client, "get_landmark_by_id"):
                 landmark_data = self.client.get_landmark_by_id(lpc_id)
-                if isinstance(landmark_data, dict):
-                    try:
-                        # Ensure lpNumber field is present (it's required by the model)
-                        if "lpNumber" not in landmark_data and "id" in landmark_data:
-                            landmark_data["lpNumber"] = landmark_data["id"]
-                        elif "lpNumber" not in landmark_data:
-                            landmark_data["lpNumber"] = lpc_id
-
-                        return LpcReportDetailResponse(**landmark_data)
-                    except Exception as e:
-                        logger.warning(
-                            f"Could not parse response as LpcReportDetailResponse: {e}"
-                        )
-                        return landmark_data  # Return the raw dict if validation fails
-                return None
+                if landmark_data is not None:
+                    return self._parse_landmark_response(landmark_data, lpc_id)
+            return None
         except Exception as e:
-            logger.warning(f"Could not parse response as LpcReportDetailResponse: {e}")
-            # Fall back to the older dictionary-based method
-            return self.client.get_landmark_by_id(landmark_id)
+            logger.warning(f"Could not get landmark response: {e}")
+            # Try fallback method
+            return self._get_landmark_fallback(landmark_id)
+        except Exception as e:
+            logger.warning(f"Could not get landmark response: {e}")
+            # Try fallback method
+            return self._get_landmark_fallback(landmark_id)
 
     def get_all_landmarks(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
         """Get all landmarks.

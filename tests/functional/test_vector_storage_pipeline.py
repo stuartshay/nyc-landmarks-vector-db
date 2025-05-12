@@ -32,7 +32,7 @@ logging.basicConfig(level=settings.LOG_LEVEL.value)
 
 
 @pytest.fixture
-def temp_dirs() -> Generator[dict[str, str | Path], None, None]:
+def temp_dirs() -> Generator[Dict[str, Path], None, None]:
     """Create temporary directories for test artifacts."""
     base_dir = tempfile.mkdtemp()
     pdfs_dir = Path(base_dir) / "pdfs"
@@ -41,7 +41,7 @@ def temp_dirs() -> Generator[dict[str, str | Path], None, None]:
     pdfs_dir.mkdir(exist_ok=True)
     text_dir.mkdir(exist_ok=True)
 
-    yield {"base_dir": base_dir, "pdfs_dir": pdfs_dir, "text_dir": text_dir}
+    yield {"base_dir": Path(base_dir), "pdfs_dir": pdfs_dir, "text_dir": text_dir}
 
     # Cleanup
     shutil.rmtree(base_dir)
@@ -185,7 +185,7 @@ def _resolve_pdf_url(db_client: Any, landmark_id: str, landmark_data: Any) -> st
 
 
 def _download_pdf_file(
-    temp_dirs: Dict, landmark_id: str, pdf_url: str
+    temp_dirs: Dict[str, Path], landmark_id: str, pdf_url: str
 ) -> Optional[Path]:
     """
     Download PDF and save to temporary directory.
@@ -212,7 +212,7 @@ def _download_pdf_file(
                 f.write(chunk)
 
         assert pdf_path.exists(), f"Failed to download PDF to {pdf_path}"
-        return pdf_path
+        return Path(pdf_path)  # Explicitly return Path type
     except Exception as e:
         logger.error(f"Failed to download PDF: {e}")
         # Use a fallback PDF if available
@@ -220,13 +220,16 @@ def _download_pdf_file(
         if fallback_pdf and os.path.exists(fallback_pdf):
             logger.info(f"Using fallback PDF: {fallback_pdf}")
             shutil.copy(fallback_pdf, pdf_path)
-            return pdf_path
+            return Path(pdf_path)  # Explicitly return Path type
         else:
             return None
 
 
 def _process_pdf_text(
-    pdf_extractor: PDFExtractor, pdf_path: Path, temp_dirs: Dict, landmark_id: str
+    pdf_extractor: PDFExtractor,
+    pdf_path: Path,
+    temp_dirs: Dict[str, Path],
+    landmark_id: str,
 ) -> str:
     """
     Extract text from PDF and save to file.
@@ -257,7 +260,7 @@ def _process_pdf_text(
 
 def _chunk_and_enrich_text(
     text_chunker: TextChunker, text: str, landmark_id: str
-) -> Tuple[List, List]:
+) -> Tuple[List[str], List[Dict[str, Any]]]:
     """
     Split text into chunks and enrich with metadata.
 
@@ -295,8 +298,8 @@ def _chunk_and_enrich_text(
 
 
 def _create_embeddings(
-    embedding_generator: EmbeddingGenerator, enriched_chunks: List
-) -> Tuple[List, List]:
+    embedding_generator: EmbeddingGenerator, enriched_chunks: List[Dict[str, Any]]
+) -> Tuple[List[List[float]], List[Dict[str, Any]]]:
     """
     Generate embeddings for text chunks.
 
@@ -325,8 +328,8 @@ def _create_embeddings(
 
 
 def _store_vectors_in_db(
-    pinecone_db: Any, chunks_with_embeddings: List, landmark_id: str
-) -> List:
+    pinecone_db: Any, chunks_with_embeddings: List[Dict[str, Any]], landmark_id: str
+) -> List[str]:
     """
     Store vectors in Pinecone database.
 
@@ -347,7 +350,7 @@ def _store_vectors_in_db(
 
     assert vector_ids, "Failed to store vectors in Pinecone"
     logger.info(f"Successfully stored {len(vector_ids)} vectors in Pinecone")
-    return vector_ids
+    return list(vector_ids)  # Convert to list to ensure correct return type
 
 
 def _verify_vector_count(pinecone_db: Any, before_count: int) -> int:
@@ -370,11 +373,11 @@ def _verify_vector_count(pinecone_db: Any, before_count: int) -> int:
     assert (
         after_count >= before_count
     ), "Vector count did not increase after storing vectors"
-    return after_count
+    return int(after_count)  # Explicitly convert to int
 
 
 def _query_and_verify_vectors(
-    pinecone_db: Any, embeddings: List, landmark_id: str
+    pinecone_db: Any, embeddings: List[List[float]], landmark_id: str
 ) -> bool:
     """
     Query vectors and verify they can be retrieved.
@@ -425,7 +428,7 @@ def _query_and_verify_vectors(
     return True
 
 
-def _cleanup_test_vectors(pinecone_db: Any, vector_ids: List) -> None:
+def _cleanup_test_vectors(pinecone_db: Any, vector_ids: List[str]) -> None:
     """
     Clean up test vectors from database.
 
@@ -440,7 +443,9 @@ def _cleanup_test_vectors(pinecone_db: Any, vector_ids: List) -> None:
 
 @pytest.mark.integration
 @pytest.mark.functional
-def test_vector_storage_pipeline(temp_dirs: dict, dedicated_test_db) -> None:
+def test_vector_storage_pipeline(
+    temp_dirs: Dict[str, Path], dedicated_test_db: Any
+) -> None:
     """
     Test the complete vector storage pipeline with one landmark.
 

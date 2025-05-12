@@ -89,7 +89,9 @@ class WikipediaFetcher:
                 return None
 
             # Find all paragraphs in the content
-            if hasattr(
+            from bs4 import NavigableString
+
+            if not isinstance(content_div, NavigableString) and hasattr(
                 content_div, "find_all"
             ):  # Ensure content_div has find_all method
                 paragraphs = content_div.find_all("p")

@@ -17,7 +17,7 @@ setup:
 
 lint:
 	flake8 nyc_landmarks tests
-	mypy nyc_landmarks
+	mypy --config-file=mypy.ini nyc_landmarks
 	pylint nyc_landmarks
 
 format:
