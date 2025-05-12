@@ -135,10 +135,6 @@ class DbClient:
             logger.warning(f"Could not get landmark response: {e}")
             # Try fallback method
             return self._get_landmark_fallback(landmark_id)
-        except Exception as e:
-            logger.warning(f"Could not get landmark response: {e}")
-            # Try fallback method
-            return self._get_landmark_fallback(landmark_id)
 
     def get_all_landmarks(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
         """Get all landmarks.
