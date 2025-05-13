@@ -4,13 +4,14 @@ Pytest fixtures for integration tests.
 This module provides fixtures specific to integration tests.
 """
 
-from typing import List
+from typing import Generator, List, Optional
 
 import numpy as np
 import pytest
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.utils.logger import get_logger
+from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 from tests.utils.pinecone_test_utils import (
     create_test_index,
     delete_test_index,
@@ -23,7 +24,7 @@ logger = get_logger(name="integration_test_fixtures")
 
 
 @pytest.fixture(scope="session")
-def pinecone_test_db():
+def pinecone_test_db() -> Generator[Optional[PineconeDB], None, None]:
     """
     Fixture that provides a PineconeDB instance connected to a dedicated test index.
 
@@ -73,4 +74,6 @@ def pinecone_test_db():
 def random_vector() -> List[float]:
     """Return a random vector for testing queries."""
     dimensions = settings.PINECONE_DIMENSIONS
-    return np.random.rand(dimensions).tolist()
+    # Explicitly convert to List[float] to satisfy mypy
+    vector: List[float] = np.random.rand(dimensions).tolist()
+    return vector
