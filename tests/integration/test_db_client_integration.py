@@ -36,7 +36,9 @@ class TestDbClientIntegration:
         return db_client.get_total_record_count()
 
     @pytest.mark.integration
-    def test_get_total_record_count_basic(self, db_client, total_count: int) -> None:
+    def test_get_total_record_count_basic(
+        self, db_client: DbClient, total_count: int
+    ) -> None:
         """Test that get_total_record_count returns a valid count of landmark records."""
         # Verify the count is a positive integer
         assert isinstance(total_count, int), "Total count should be an integer"
@@ -51,7 +53,9 @@ class TestDbClientIntegration:
         print(f"get_total_record_count() returned: {total_count}")
 
     @pytest.mark.integration
-    def test_total_count_api_consistency(self, db_client, total_count: int) -> None:
+    def test_total_count_api_consistency(
+        self, db_client: DbClient, total_count: int
+    ) -> None:
         """Test that total_count is consistent with direct API response."""
         # Check diagnostic information
         has_make_request = hasattr(db_client.client, "_make_request")
@@ -82,7 +86,9 @@ class TestDbClientIntegration:
             pytest.skip(f"API verification failed: {e}")
 
     @pytest.mark.integration
-    def test_get_landmarks_page_basic(self, db_client, page_size: int) -> None:
+    def test_get_landmarks_page_basic(
+        self, db_client: DbClient, page_size: int
+    ) -> None:
         """Test that get_landmarks_page returns valid results for the first page."""
         # Get first page
         first_page = db_client.get_landmarks_page(page_size=page_size, page=1)
@@ -95,7 +101,7 @@ class TestDbClientIntegration:
         ), f"First page should have at most {page_size} landmarks"
 
     @pytest.mark.integration
-    def test_landmarks_pagination(self, db_client, page_size: int) -> None:
+    def test_landmarks_pagination(self, db_client: DbClient, page_size: int) -> None:
         """Test that pagination works correctly for landmark pages."""
         # Fetch multiple pages to verify consistency
         first_page = db_client.get_landmarks_page(page_size=page_size, page=1)
@@ -120,7 +126,7 @@ class TestDbClientIntegration:
 
     @pytest.mark.integration
     def test_total_count_consistency(
-        self, db_client, total_count: int, page_size: int
+        self, db_client: DbClient, total_count: int, page_size: int
     ) -> None:
         """Test that total_count is consistent with the number of records we can fetch."""
         # Fetch sample pages
@@ -161,7 +167,7 @@ class TestDbClientIntegration:
                 landmark_id = lm.get("id", "") or lm.get("lpNumber", "")
             else:
                 # Handle Pydantic model case
-                landmark_id = getattr(lm, "id", None) or getattr(lm, "lpNumber", "")
+                landmark_id = getattr(lm, "id", "") or getattr(lm, "lpNumber", "")
 
             if landmark_id:
                 ids.add(
