@@ -77,4 +77,6 @@ def random_vector() -> List[float]:
     from nyc_landmarks.config.settings import settings
 
     dimensions = settings.PINECONE_DIMENSIONS
-    return np.random.rand(dimensions).tolist()
+    # Cast to List[float] to satisfy the type checker
+    result: List[float] = np.random.rand(dimensions).tolist()
+    return result

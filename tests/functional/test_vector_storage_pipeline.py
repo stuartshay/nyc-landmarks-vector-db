@@ -20,18 +20,18 @@ import pytest
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.db_client import get_db_client
+from nyc_landmarks.embeddings.generator import EmbeddingGenerator
+from nyc_landmarks.pdf.extractor import PDFExtractor
+from nyc_landmarks.pdf.text_chunker import TextChunker
+from nyc_landmarks.vectordb.pinecone_db import PineconeDB
+from tests.utils.pinecone_test_utils import create_test_index, get_test_db
+from tests.utils.test_mocks import get_mock_landmark
 
 
 # Define a protocol for objects with a name attribute
 class HasName(Protocol):
     name: str
 
-
-from nyc_landmarks.embeddings.generator import EmbeddingGenerator
-from nyc_landmarks.pdf.extractor import PDFExtractor
-from nyc_landmarks.pdf.text_chunker import TextChunker
-from tests.utils.pinecone_test_utils import create_test_index, get_test_db
-from tests.utils.test_mocks import get_mock_landmark
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -55,7 +55,7 @@ def temp_dirs() -> Generator[Dict[str, Path], None, None]:
 
 
 @pytest.fixture(scope="module")
-def dedicated_test_db():
+def dedicated_test_db() -> Generator[Optional[PineconeDB], None, None]:
     """
     Create a dedicated test index specific for this test file to isolate from other tests.
     """
@@ -451,7 +451,7 @@ def _cleanup_test_vectors(pinecone_db: Any, vector_ids: List[str]) -> None:
 @pytest.mark.integration
 @pytest.mark.functional
 def test_vector_storage_pipeline(
-    temp_dirs: Dict[str, Path], dedicated_test_db: Any
+    temp_dirs: Dict[str, Path], dedicated_test_db: Optional[PineconeDB]
 ) -> None:
     """
     Test the complete vector storage pipeline with one landmark.
@@ -523,12 +523,17 @@ def test_vector_storage_pipeline(
 
 
 @pytest.mark.functional
-def test_pinecone_connection_and_operations(dedicated_test_db) -> None:
+def test_pinecone_connection_and_operations(
+    dedicated_test_db: Optional[PineconeDB],
+) -> None:
     """Test basic Pinecone operations to ensure the database is accessible."""
     logger.info("=== Testing Pinecone connection and basic operations ===")
 
     # Use test-specific Pinecone client
     pinecone_db = dedicated_test_db
+
+    # Skip if no database connection
+    assert pinecone_db is not None, "No Pinecone DB instance available"
 
     # Check if index exists
     assert pinecone_db.index is not None, "Failed to connect to Pinecone index"

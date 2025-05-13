@@ -124,7 +124,7 @@ def create_serverless_index(pc: Pinecone, index_name: str, dimensions: int) -> b
             name=index_name,
             dimension=dimensions,
             metric="cosine",
-            spec=ServerlessSpec(cloud="gcp", region="us-central1"),
+            spec=ServerlessSpec(cloud="aws", region="us-east-1"),
         )
         return True
     except Exception as e:
@@ -146,11 +146,24 @@ def create_pod_index(pc: Pinecone, index_name: str, dimensions: int) -> bool:
     """
     try:
         logger.info(f"Attempting fallback to pod-based index '{index_name}'")
-        pc.create_index(  # pyright: ignore
-            name=index_name,
-            dimension=dimensions,
-            metric="cosine",
-        )
+        # Import PodSpec if it's available
+        try:
+            from pinecone import PodSpec
+
+            pc.create_index(  # pyright: ignore
+                name=index_name,
+                dimension=dimensions,
+                metric="cosine",
+                spec=PodSpec(environment="us-east-1-aws", pod_type="starter"),
+            )
+        except ImportError:
+            # Fallback for older pinecone versions
+            pc.create_index(  # pyright: ignore
+                name=index_name,
+                dimension=dimensions,
+                metric="cosine",
+                environment="us-east-1-aws",
+            )
         return True
     except Exception as e:
         logger.error(f"Fallback index creation failed: {e}")

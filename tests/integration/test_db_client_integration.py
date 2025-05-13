@@ -14,14 +14,14 @@ import pytest
 # Add project root to path
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
-from nyc_landmarks.db.db_client import get_db_client
+from nyc_landmarks.db.db_client import DbClient, get_db_client
 
 
 class TestDbClientIntegration:
     """Integration tests for the DbClient class."""
 
     @pytest.fixture(scope="class")
-    def db_client(self):
+    def db_client(self) -> DbClient:
         """Return a DbClient instance for testing."""
         return get_db_client()
 
@@ -31,7 +31,7 @@ class TestDbClientIntegration:
         return 10
 
     @pytest.fixture(scope="class")
-    def total_count(self, db_client) -> int:
+    def total_count(self, db_client: DbClient) -> int:
         """Return the total record count from the API."""
         return db_client.get_total_record_count()
 
