@@ -6,7 +6,8 @@ properly passes data to the models.
 """
 
 import unittest
-from unittest.mock import patch
+from typing import Any
+from unittest.mock import MagicMock, patch
 
 from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
 from nyc_landmarks.models.landmark_models import LpcReportModel, LpcReportResponse
@@ -113,10 +114,10 @@ class TestLpcReports(unittest.TestCase):
         self.assertEqual(response.results[0].lpNumber, "LP-00001")
 
     @patch("nyc_landmarks.db.coredatastore_api.CoreDataStoreAPI._make_request")
-    def test_get_lpc_reports(self, mock_make_request: unittest.mock.MagicMock):
+    def test_get_lpc_reports(self, mock_make_request: MagicMock):
         """Test that get_lpc_reports correctly processes API responses."""
         # Mock API response
-        mock_response: dict[str, any] = {
+        mock_response: dict[str, Any] = {
             "results": [
                 {
                     "lpNumber": "LP-00001",
