@@ -146,7 +146,7 @@ def create_pod_index(pc: Pinecone, index_name: str, dimensions: int) -> bool:
     """
     try:
         logger.info(f"Attempting fallback to pod-based index '{index_name}'")
-        pc.create_index(
+        pc.create_index(  # pyright: ignore
             name=index_name,
             dimension=dimensions,
             metric="cosine",

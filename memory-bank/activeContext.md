@@ -9,6 +9,7 @@
 
 ## Recent Changes
 
+- **Code Fix**: Fixed Pyright error in `check_landmark_processing.py` by correctly formatting the file-level setting directive on its own line. The error "Pyright comments used to control file-level settings must appear on their own line" was resolved by ensuring the `# pyright: reportMissingImports=false` directive appears on its own line without other comments.
 - **Bug Fix**: Fixed the "'LpcReportDetailResponse' object has no attribute 'get'" error in the landmark processing pipeline by implementing a safe attribute accessor that works with both dictionary-style objects and Pydantic models
 - Created a reusable `safe_get_attribute()` function that abstracts away the differences between dictionary-style access and attribute access
 - Fixed type annotation issues to properly handle both dictionary responses and Pydantic model objects

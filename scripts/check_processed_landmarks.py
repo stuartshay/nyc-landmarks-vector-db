@@ -26,6 +26,7 @@ sys.path.append(str(project_root / "notebooks"))
 try:
     # NOTE: These imports are intentionally placed here after modifying sys.path
     # to ensure the project root is in the Python path before importing project modules.
+    # pyright: reportMissingImports=false
     from pinecone_adapter import PineconeAdapterDB as PineconeDB  # noqa: E402
     from pinecone_adapter import get_adapter_from_settings  # noqa: E402
 

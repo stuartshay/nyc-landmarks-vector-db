@@ -29,7 +29,10 @@ adapter_path = project_root / "notebooks" / "pinecone_adapter.py"
 if adapter_path.exists():
     sys.path.append(str(project_root / "notebooks"))
     try:
-        from pinecone_adapter import get_adapter_from_settings
+        # Use a local import to avoid pyright errors when the file doesn't exist
+        # The import is conditional and handled by the try-except block
+        # pyright: reportMissingImports=false
+        from pinecone_adapter import get_adapter_from_settings  # noqa
 
         get_adapter_from_settings_available = True
         print("Using PineconeAdapter")

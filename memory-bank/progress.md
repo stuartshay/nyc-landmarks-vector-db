@@ -57,6 +57,11 @@
 
 ## Recent Completions
 
+- Fixed Pyright error in `check_landmark_processing.py`
+  - Resolved the "Pyright comments used to control file-level settings must appear on their own line" error
+  - Ensured the `# pyright: reportMissingImports=false` directive appears on its own line
+  - Improved code compliance with Pyright's static analysis requirements
+
 - Fixed attribute access errors in landmark processing
   - Implemented `safe_get_attribute()` function to handle both dictionary and object access patterns
   - Successfully processed previously problematic landmarks (LP-00048, LP-00112, LP-00012)
