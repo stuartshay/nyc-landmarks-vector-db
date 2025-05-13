@@ -146,9 +146,9 @@ def create_pod_index(pc: Pinecone, index_name: str, dimensions: int) -> bool:
     """
     try:
         logger.info(f"Attempting fallback to pod-based index '{index_name}'")
-        # Import PodSpec if it's available
+        # In Pinecone v6.0+, use PodSpec from pinecone.model namespace
         try:
-            from pinecone import PodSpec
+            from pinecone.model import PodSpec
 
             pc.create_index(  # pyright: ignore
                 name=index_name,
