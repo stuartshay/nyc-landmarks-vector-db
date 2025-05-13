@@ -16,7 +16,7 @@ from nyc_landmarks.models.landmark_models import LpcReportModel, LpcReportRespon
 class TestLpcReports(unittest.TestCase):
     """Test the LPC Report models and API client functionality."""
 
-    def test_lpc_report_model(self):
+    def test_lpc_report_model(self) -> None:
         """Test that LpcReportModel correctly validates and processes data."""
         # Test with minimal required fields
         report = LpcReportModel(
@@ -62,7 +62,7 @@ class TestLpcReports(unittest.TestCase):
         self.assertEqual(report.borough, "Manhattan")
         self.assertEqual(report.style, "Art Deco")
 
-    def test_lpc_report_response(self):
+    def test_lpc_report_response(self) -> None:
         """Test that LpcReportResponse correctly validates and processes data."""
         # Test with valid data
         response = LpcReportResponse(
@@ -114,7 +114,7 @@ class TestLpcReports(unittest.TestCase):
         self.assertEqual(response.results[0].lpNumber, "LP-00001")
 
     @patch("nyc_landmarks.db.coredatastore_api.CoreDataStoreAPI._make_request")
-    def test_get_lpc_reports(self, mock_make_request: MagicMock):
+    def test_get_lpc_reports(self, mock_make_request: MagicMock) -> None:
         """Test that get_lpc_reports correctly processes API responses."""
         # Mock API response
         mock_response: dict[str, Any] = {
@@ -166,7 +166,9 @@ class TestLpcReports(unittest.TestCase):
         self.assertEqual(response.results[1].name, "Chrysler Building")
 
     @patch("nyc_landmarks.db.coredatastore_api.CoreDataStoreAPI._make_request")
-    def test_get_lpc_reports_with_pagination(self, mock_make_request):
+    def test_get_lpc_reports_with_pagination(
+        self, mock_make_request: MagicMock
+    ) -> None:
         """Test pagination functionality of get_lpc_reports."""
         # Mock first page response
         mock_response_page1 = {
