@@ -252,7 +252,7 @@ def print_results(results: Dict[str, Any]) -> None:
         print("❌ FAILURE: Discrepancies found between API metadata and Pinecone data")
 
 
-def main():
+def main() -> None:
     """Main function to verify metadata consistency."""
     if len(sys.argv) < 2:
         print("Usage: python verify_metadata_consistency.py <landmark_id>")
