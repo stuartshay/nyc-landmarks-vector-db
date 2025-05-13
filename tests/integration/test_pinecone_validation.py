@@ -5,6 +5,14 @@ These tests validate that:
 1. The vectors in Pinecone have the expected format and metadata
 2. There are no duplicate vectors for the same landmark
 3. The vector IDs follow the deterministic pattern
+
+Vector ID Format Standards:
+- PDF vectors: `{landmark_id}-chunk-{chunk_index}` (e.g., `LP-00001-chunk-0`)
+- Wikipedia vectors: `wiki-{article_title}-{landmark_id}-chunk-{chunk_index}`
+
+All landmarks in the production database should follow these standard formats,
+as ensured by the regenerate_pinecone_index.py script which was previously run
+to standardize all vector IDs.
 """
 
 import os
@@ -94,18 +102,6 @@ def test_common_landmarks_have_vectors(
         for vector in vectors:
             vector_id: str = vector.get("id", "")
 
-            # Special handling for LP-00001 which might have non-standard formats
-            if landmark_id == "LP-00001" and (
-                vector_id.startswith(f"test-{landmark_id}-")
-                or vector_id.startswith("wiki-")
-                or "wiki" in vector_id
-            ):
-                # This is a known inconsistent format, so we accept it for now
-                logger.warning(
-                    f"Detected non-standard ID format for {vector_id} (landmark {landmark_id}), allowing for now"
-                )
-                continue
-
             assert vector_id.startswith(
                 f"{landmark_id}-chunk-"
             ), f"Vector ID {vector_id} does not follow pattern {landmark_id}-chunk-X"
@@ -136,18 +132,6 @@ def test_deterministic_ids_consistency(
 
         # Check if IDs have the correct format
         for vid in vector_ids:
-            # Special handling for LP-00001 which might have non-standard formats
-            if landmark_id == "LP-00001" and (
-                vid.startswith(f"test-{landmark_id}-")
-                or vid.startswith("wiki-")
-                or "wiki" in vid
-            ):
-                logger.warning(
-                    f"Detected non-standard ID format for {vid} (landmark {landmark_id}) in test_deterministic_ids_consistency, allowing for now."
-                )
-                # Skip further checks for this non-standard ID format as they rely on the "-chunk-" pattern
-                continue
-
             assert vid.startswith(
                 f"{landmark_id}-chunk-"
             ), f"Vector ID {vid} does not start with {landmark_id}-chunk-"
@@ -209,12 +193,9 @@ def test_metadata_consistency(
             vector_id: str = vector.get("id", "")
             source_type = metadata.get("source_type", "")
 
-            # Special handling for wiki- vectors, pdf vectors, and other special formats
-            is_special_format = (
-                "wiki" in vector_id
-                or source_type == "pdf"
-                or vector_id.startswith(f"test-{landmark_id}-")
-            )
+            # Handle wiki vectors and other potential special formats
+            # Note: After standardization, we should only have regular chunk vectors and wiki vectors
+            is_special_format = "wiki" in vector_id or source_type == "pdf"
 
             for field in consistent_fields:
                 if field in first_metadata:
@@ -233,7 +214,7 @@ def test_metadata_consistency(
             # Check chunk index matches the ID
             if "chunk_index" in metadata:
                 chunk_index: int = metadata["chunk_index"]
-                vector_id: str = vector.get("id", "")
+                # We already have vector_id defined above, so we don't need to redefine it
                 if "-chunk-" in vector_id:
                     id_index: str = vector_id.split("-chunk-")[1]
                     assert (
@@ -278,14 +259,6 @@ def test_comprehensive_vector_validation(
     assert (
         summary["landmarks_with_vectors"] == summary["total_landmarks_checked"]
     ), "Some landmarks don't have vectors"
-
-    # Temporarily disable the ID format check since we know LP-00001 has mixed formats
-    # We'll add a warning instead to indicate this is a known issue
-    if summary["correct_id_format"] != summary["total_landmarks_checked"]:
-        logger.warning(
-            "Some landmarks have inconsistent ID formats - this is a known issue being addressed by "
-            "the regenerate_pinecone_index.py script. Test adjusted to tolerate this temporarily."
-        )
 
     assert (
         summary["consistent_metadata"] == summary["total_landmarks_checked"]
