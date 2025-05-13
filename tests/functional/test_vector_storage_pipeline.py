@@ -14,12 +14,19 @@ import shutil
 import tempfile
 import time
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, Dict, Generator, List, Optional, Protocol, Tuple
 
 import pytest
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.db_client import get_db_client
+
+
+# Define a protocol for objects with a name attribute
+class HasName(Protocol):
+    name: str
+
+
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.pdf.extractor import PDFExtractor
 from nyc_landmarks.pdf.text_chunker import TextChunker
@@ -147,7 +154,7 @@ def _fetch_landmark_data(db_client: Any, landmark_id: str) -> Tuple[Any, str]:
     # Handle both Pydantic model and dictionary types
     landmark_name = "Unknown"
     if hasattr(landmark_data, "name"):
-        landmark_name = landmark_data.name
+        landmark_name = landmark_data.name  # pyright: ignore
     elif isinstance(landmark_data, dict):
         landmark_name = landmark_data.get("name", "Unknown")
 

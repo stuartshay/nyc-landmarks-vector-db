@@ -4,7 +4,7 @@ Pytest fixtures for functional tests.
 This module provides fixtures specific to functional tests.
 """
 
-from typing import List
+from typing import Any, List
 
 import pytest
 
@@ -21,7 +21,7 @@ logger = get_logger(name="functional_test_fixtures")
 
 
 @pytest.fixture(scope="session")
-def pinecone_test_db():
+def pinecone_test_db() -> Any:
     """
     Fixture that provides a PineconeDB instance connected to a dedicated test index.
 
