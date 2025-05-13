@@ -75,6 +75,7 @@ def process_landmark_wikipedia(
             articles, chunk_size, chunk_overlap
         )
 
+        # No cast needed - processed_articles is already a List[WikipediaContentModel]
         if not processed_articles:
             logger.warning(
                 f"No Wikipedia articles processed for landmark: {landmark_id}"
@@ -88,22 +89,28 @@ def process_landmark_wikipedia(
         # Step 4: Generate embeddings and store in Pinecone for each article
         total_chunks_embedded = 0
 
-        for article in processed_articles:
-            if not article.chunks:
-                logger.warning(f"No chunks to process for article: {article.title}")
+        # Process each article to generate embeddings and store them
+        for wiki_article in processed_articles:
+            # Skip articles with no chunks
+            if not hasattr(wiki_article, "chunks") or not wiki_article.chunks:
+                logger.warning(
+                    f"No chunks to process for article: {wiki_article.title}"
+                )
                 continue
 
             # Generate embeddings for the chunks
             logger.info(
-                f"Generating embeddings for {len(article.chunks)} chunks from article: {article.title}"
+                f"Generating embeddings for {len(wiki_article.chunks)} chunks from article: {wiki_article.title}"
             )
-            chunks_with_embeddings = embedding_generator.process_chunks(article.chunks)
+            chunks_with_embeddings = embedding_generator.process_chunks(
+                wiki_article.chunks
+            )
 
             # Store in Pinecone with deterministic IDs
             logger.info(f"Storing {len(chunks_with_embeddings)} vectors in Pinecone")
             vector_ids = pinecone_db.store_chunks(
                 chunks=chunks_with_embeddings,
-                id_prefix=f"wiki-{article.title.replace(' ', '_')}-",
+                id_prefix=f"wiki-{wiki_article.title.replace(' ', '_')}-",
                 landmark_id=landmark_id,
                 use_fixed_ids=True,
                 delete_existing=delete_existing
@@ -112,7 +119,7 @@ def process_landmark_wikipedia(
 
             total_chunks_embedded += len(vector_ids)
             logger.info(
-                f"Stored {len(vector_ids)} vectors for article: {article.title}"
+                f"Stored {len(vector_ids)} vectors for article: {wiki_article.title}"
             )
 
         logger.info(f"Total chunks embedded: {total_chunks_embedded}")

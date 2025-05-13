@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pyright: reportMissingImports=false
 """
 Script to analyze which landmarks have been processed and which still need to be processed.
 

@@ -36,18 +36,25 @@ def verify_landmark_metadata(landmark_id: str) -> Dict[str, Any]:
     Returns:
         Dict with verification results
     """
-    results = {
+    results: Dict[str, Any] = {
         "api_metadata": None,
         "enhanced_metadata": None,
         "pinecone_metadata": None,
         "matches_found": 0,
-        "matching_fields": [],
-        "mismatched_fields": [],
-        "missing_fields": [],
-        "extra_fields": [],
+        "matching_fields": [],  # List[str]
+        "mismatched_fields": [],  # List[Dict[str, Any]]
+        "missing_fields": [],  # List[str]
+        "extra_fields": [],  # List[str]
         "success": False,
-        "issues": [],
+        "issues": [],  # List[str]
     }
+
+    # Initialize list fields
+    results["matching_fields"] = []
+    results["mismatched_fields"] = []
+    results["missing_fields"] = []
+    results["extra_fields"] = []
+    results["issues"] = []
 
     try:
         # Step 1: Get metadata from CoreDataStore API
@@ -252,7 +259,7 @@ def print_results(results: Dict[str, Any]) -> None:
         print("❌ FAILURE: Discrepancies found between API metadata and Pinecone data")
 
 
-def main():
+def main() -> None:
     """Main function to verify metadata consistency."""
     if len(sys.argv) < 2:
         print("Usage: python verify_metadata_consistency.py <landmark_id>")

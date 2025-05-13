@@ -11,7 +11,7 @@ import os
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, mock_open, patch
 
 from requests.exceptions import RequestException
 
@@ -164,9 +164,9 @@ class TestLandmarkReportFetcher(unittest.TestCase):
         self.assertEqual(result, expected)
 
     @patch("scripts.fetch_landmark_reports.requests.get")
-    @patch("builtins.open", new_callable=unittest.mock.mock_open)
+    @patch("builtins.open", new_callable=mock_open)
     def test_download_sample_pdf(
-        self, mock_open: MagicMock, mock_get: MagicMock
+        self, mock_file: MagicMock, mock_get: MagicMock
     ) -> None:
         """Test downloading of sample PDFs."""
         # Test data
@@ -199,10 +199,10 @@ class TestLandmarkReportFetcher(unittest.TestCase):
             self.assertEqual(result, expected)
 
             # Verify file was opened and written to
-            mock_open.assert_called_once_with(f"{output_dir}/LP-12345.pdf", "wb")
-            mock_open().write.assert_called_once_with(b"PDF content")
+            mock_file.assert_called_once_with(f"{output_dir}/LP-12345.pdf", "wb")
+            mock_file().write.assert_called_once_with(b"PDF content")
 
-    @patch("builtins.open", new_callable=unittest.mock.mock_open)
+    @patch("builtins.open", new_callable=mock_open)
     @patch.object(LandmarkReportFetcher, "get_lpc_reports")
     @patch.object(LandmarkReportFetcher, "extract_pdf_urls")
     @patch.object(LandmarkReportFetcher, "download_sample_pdf")
@@ -211,7 +211,7 @@ class TestLandmarkReportFetcher(unittest.TestCase):
         mock_download: MagicMock,
         mock_extract: MagicMock,
         mock_get: MagicMock,
-        mock_open: MagicMock,
+        mock_file: MagicMock,
     ) -> None:
         """Test the main run method."""
         # Set up mock responses
@@ -240,7 +240,7 @@ class TestLandmarkReportFetcher(unittest.TestCase):
         mock_get.assert_called_once_with(10, 1)
         mock_extract.assert_called_once()
         mock_download.assert_called_once_with(mock_extract.return_value, limit=1)
-        self.assertEqual(mock_open.call_count, 2)  # Two files: landmarks and PDF URLs
+        self.assertEqual(mock_file.call_count, 2)  # Two files: landmarks and PDF URLs
 
 
 if __name__ == "__main__":

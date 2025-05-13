@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pyright: reportMissingImports=false
 """
 Script to quickly check the processing status of landmarks in Pinecone.
 
@@ -29,7 +30,9 @@ adapter_path = project_root / "notebooks" / "pinecone_adapter.py"
 if adapter_path.exists():
     sys.path.append(str(project_root / "notebooks"))
     try:
-        from pinecone_adapter import get_adapter_from_settings
+        # Use a local import to avoid pyright errors when the file doesn't exist
+        # The import is conditional and handled by the try-except block
+        from pinecone_adapter import get_adapter_from_settings  # noqa
 
         get_adapter_from_settings_available = True
         print("Using PineconeAdapter")

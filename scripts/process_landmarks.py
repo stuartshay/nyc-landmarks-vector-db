@@ -20,7 +20,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import requests
 from tqdm import tqdm
@@ -109,7 +109,8 @@ class LandmarkPipeline:
                 landmarks = self.db_client.get_landmarks_page(page_size, page)
 
                 if landmarks:
-                    all_landmarks.extend(landmarks)
+                    # Cast to handle Union return type for mypy
+                    all_landmarks.extend(cast(List[Dict[str, Any]], landmarks))
                     logger.info(f"Found {len(landmarks)} landmarks on page {page}")
                 else:
                     logger.warning(f"No results found on page {page}")
@@ -127,11 +128,11 @@ class LandmarkPipeline:
         self.stats["landmarks_fetched"] = len(all_landmarks)
         return all_landmarks
 
-    def _has_pdf(self, landmark: Dict[str, Any]) -> bool:
+    def _has_pdf(self, landmark: Union[Dict[str, Any], Any]) -> bool:
         """Check if a landmark has a PDF URL.
 
         Args:
-            landmark: The landmark data
+            landmark: The landmark data, either as a dictionary or an object
 
         Returns:
             True if the landmark has a PDF URL, False otherwise
@@ -139,7 +140,11 @@ class LandmarkPipeline:
         # Check if landmark has PDF URL directly
         if isinstance(landmark, dict) and landmark.get("pdfReportUrl"):
             return True
-        elif hasattr(landmark, "pdfReportUrl") and landmark.pdfReportUrl:
+        elif (
+            not isinstance(landmark, dict)
+            and hasattr(landmark, "pdfReportUrl")
+            and landmark.pdfReportUrl
+        ):
             return True
 
         # Check if we can get PDF URL from DB client
@@ -167,11 +172,13 @@ class LandmarkPipeline:
             return str(result)
         return str(getattr(landmark, "lpNumber", default))
 
-    def _get_pdf_url(self, landmark: Dict[str, Any], landmark_id: str) -> Optional[str]:
+    def _get_pdf_url(
+        self, landmark: Union[Dict[str, Any], Any], landmark_id: str
+    ) -> Optional[str]:
         """Get PDF URL for a landmark.
 
         Args:
-            landmark: The landmark data
+            landmark: The landmark data, either as a dictionary or an object
             landmark_id: The landmark ID
 
         Returns:
