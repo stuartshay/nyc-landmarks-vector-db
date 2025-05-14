@@ -15,6 +15,10 @@ from pydantic import BaseModel, Field
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.db_client import DbClient
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
+from nyc_landmarks.examples.search_examples import (
+    get_landmark_filter_examples,
+    get_text_query_examples,
+)
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
 # Configure logging
@@ -117,7 +121,16 @@ def get_db_client() -> DbClient:
 # --- API endpoints ---
 
 
-@router.post("/search", response_model=SearchResponse)  # type: ignore[misc]
+@router.post(
+    "/search",
+    response_model=SearchResponse,
+    responses={
+        200: {
+            "description": "Successful Response",
+            "content": {"application/json": {"examples": get_text_query_examples()}},
+        }
+    },
+)  # type: ignore[misc]
 async def search_text(
     query: TextQuery,
     embedding_generator: EmbeddingGenerator = Depends(get_embedding_generator),
@@ -211,6 +224,50 @@ async def search_text(
     except Exception as e:
         logger.error(f"Error searching text: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post(
+    "/search/landmark",
+    response_model=SearchResponse,
+    responses={
+        200: {
+            "description": "Successful Response with Landmark-Specific Filtering",
+            "content": {
+                "application/json": {"examples": get_landmark_filter_examples()}
+            },
+        }
+    },
+)  # type: ignore[misc]
+async def search_text_by_landmark(
+    query: TextQuery,
+    embedding_generator: EmbeddingGenerator = Depends(get_embedding_generator),
+    vector_db: PineconeDB = Depends(get_vector_db),
+    db_client: DbClient = Depends(get_db_client),
+) -> SearchResponse:
+    """Search for text using vector similarity with landmark filtering.
+
+    This endpoint is specifically optimized for searching within a specific landmark's documentation.
+
+    Args:
+        query: Text query model (must include landmark_id)
+        embedding_generator: EmbeddingGenerator instance
+        vector_db: PineconeDB instance
+        db_client: DbClient instance
+
+    Returns:
+        SearchResponse with results filtered by landmark_id
+    """
+    # Ensure landmark_id is provided
+    if not query.landmark_id:
+        raise HTTPException(
+            status_code=400, detail="landmark_id is required for this endpoint"
+        )
+
+    # Use the existing search_text functionality
+    result: SearchResponse = await search_text(
+        query, embedding_generator, vector_db, db_client
+    )
+    return result
 
 
 @router.get("/landmarks", response_model=LandmarkListResponse)  # type: ignore[misc]
