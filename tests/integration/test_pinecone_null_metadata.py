@@ -9,7 +9,7 @@ import logging
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import numpy as np
 import pytest
@@ -17,6 +17,7 @@ import pytest
 # Add project root to path
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from nyc_landmarks.config.settings import settings
+from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
 # Configure logging for tests
 logger = logging.getLogger(__name__)
@@ -24,8 +25,14 @@ logging.basicConfig(level=settings.LOG_LEVEL.value)
 
 
 @pytest.mark.integration
-def test_pinecone_null_metadata_handling(pinecone_test_db):
+def test_pinecone_null_metadata_handling(
+    pinecone_test_db: Optional[PineconeDB],
+) -> None:
     """Test that null values in metadata are properly filtered out."""
+    # Skip if Pinecone test database is not available
+    if pinecone_test_db is None:
+        pytest.skip("Pinecone test database is not available")
+
     # Use the test-specific PineconeDB instance
     pinecone_db = pinecone_test_db
 
@@ -133,8 +140,14 @@ def test_pinecone_null_metadata_handling(pinecone_test_db):
 
 
 @pytest.mark.integration
-def test_wikipedia_null_metadata_handling(pinecone_test_db):
+def test_wikipedia_null_metadata_handling(
+    pinecone_test_db: Optional[PineconeDB],
+) -> None:
     """Test that null values in Wikipedia article metadata are properly filtered out."""
+    # Skip if Pinecone test database is not available
+    if pinecone_test_db is None:
+        pytest.skip("Pinecone test database is not available")
+
     # Use the test-specific PineconeDB instance
     pinecone_db = pinecone_test_db
 
