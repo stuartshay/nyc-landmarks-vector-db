@@ -244,16 +244,9 @@ async def search_text_by_landmark(
     vector_db: PineconeDB = Depends(get_vector_db),
     db_client: DbClient = Depends(get_db_client),
 ) -> SearchResponse:
-    """Search within a specific landmark's documentation using vector similarity.
+    """Search within a specific landmark's documents by vector similarity.
 
-    Args:
-        query: Text query model (must include landmark_id)
-        embedding_generator: EmbeddingGenerator instance
-        vector_db: PineconeDB instance
-        db_client: DbClient instance
-
-    Returns:
-        SearchResponse with results filtered by landmark_id
+    Requires a landmark_id for filtering results to a single landmark.
     """
     # Ensure landmark_id is provided
     if not query.landmark_id:
