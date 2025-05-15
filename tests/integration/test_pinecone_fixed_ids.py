@@ -215,7 +215,10 @@ def count_vectors(pinecone_db: Optional[PineconeDB], landmark_id: str) -> int:
     logger.info(f"Counting vectors for landmark ID: {landmark_id}")
 
     # Try different filter approaches to ensure we find the vectors
-    filters = [{"landmark_id": landmark_id}, {"metadata": {"landmark_id": landmark_id}}]
+    filters: List[Dict[str, Any]] = [
+        {"landmark_id": landmark_id},
+        {"metadata": {"landmark_id": landmark_id}},
+    ]
 
     # Use a dummy random vector for querying
     from nyc_landmarks.config.settings import settings
@@ -256,7 +259,7 @@ def cleanup_vectors(pinecone_db: Optional[PineconeDB], landmark_id: str) -> None
     if pinecone_db is None or not pinecone_db.index:
         return
 
-    filter_dict = {"landmark_id": landmark_id}
+    filter_dict: Dict[str, Any] = {"landmark_id": landmark_id}
     # Use a dummy random vector for querying
     from nyc_landmarks.config.settings import settings
 
@@ -361,7 +364,7 @@ def verify_landmark_vectors(
     }
 
     # Query vectors for this landmark
-    filter_dict = {"landmark_id": landmark_id}
+    filter_dict: Dict[str, Any] = {"landmark_id": landmark_id}
     vectors: List[Dict[str, Any]] = []
 
     # Skip if no Pinecone database or connection
