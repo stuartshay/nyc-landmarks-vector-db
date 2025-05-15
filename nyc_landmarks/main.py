@@ -5,7 +5,8 @@ This module initializes the FastAPI application and registers all routes.
 """
 
 import logging
-from typing import Dict, List
+import time
+from typing import Any, Dict, List
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,7 +25,10 @@ logger = logging.getLogger(__name__)
 class HealthResponse(BaseModel):
     """Health check response model."""
 
-    status: str = Field(..., description="Health status of the API")
+    status: str = Field(..., description="Overall health status of the API")
+    services: Dict[str, Dict[str, Any]] = Field(
+        default_factory=dict, description="Health status of individual services"
+    )
 
 
 class RootResponse(BaseModel):
@@ -110,8 +114,54 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 # Add health check endpoint
 @app.get("/health", response_model=HealthResponse, tags=["health"])  # type: ignore[misc]
 async def health_check() -> HealthResponse:
-    """Health check endpoint."""
-    return HealthResponse(status="ok")
+    """Health check endpoint that tests connections to critical services."""
+    services = {}
+
+    # Check Pinecone connection
+    try:
+        from nyc_landmarks.vectordb.pinecone_db import PineconeDB
+
+        pinecone_db = PineconeDB()
+        stats = pinecone_db.get_index_stats()
+
+        # Consider the connection successful if we get some data back
+        if (
+            stats
+            and isinstance(stats, dict)
+            and ("dimension" in stats or "namespaces" in stats)
+        ):
+            pinecone_status = "healthy"
+            vector_count = stats.get("total_vector_count", 0)
+            services["pinecone"] = {
+                "status": pinecone_status,
+                "index": pinecone_db.index_name,
+                "vector_count": vector_count,
+                "timestamp": time.time(),
+            }
+        else:
+            pinecone_status = "degraded"
+            services["pinecone"] = {
+                "status": pinecone_status,
+                "error": "Could not retrieve index stats",
+                "timestamp": time.time(),
+            }
+    except Exception as e:
+        logger.error(f"Pinecone health check failed: {e}")
+        services["pinecone"] = {
+            "status": "error",
+            "error": str(e),
+            "timestamp": time.time(),
+        }
+
+    # Determine overall status
+    if any(service.get("status") == "error" for service in services.values()):
+        overall_status = "error"
+    elif any(service.get("status") == "degraded" for service in services.values()):
+        overall_status = "degraded"
+    else:
+        overall_status = "healthy"
+
+    return HealthResponse(status=overall_status, services=services)
 
 
 # Add root endpoint
