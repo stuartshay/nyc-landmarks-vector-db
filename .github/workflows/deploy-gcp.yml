@@ -96,8 +96,8 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: 'read'
-      id-token: 'write'
+      contents: "read"
+      id-token: "write"
 
     steps:
       - name: Google Auth
@@ -114,13 +114,15 @@ jobs:
           region: ${{ env.REGION }}
           image: ${{ env.IMAGE_NAME }}
           env_vars: |
+            ENV=production
             OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
             PINECONE_API_KEY=${{ secrets.PINECONE_API_KEY }}
             PINECONE_ENVIRONMENT=${{ secrets.PINECONE_ENVIRONMENT }}
             PINECONE_INDEX_NAME=${{ secrets.PINECONE_INDEX_NAME }}
             COREDATASTORE_API_KEY=${{ secrets.COREDATASTORE_API_KEY }}
             CONVERSATION_TTL=86400
-          flags: '--memory 1Gi --cpu 1 --concurrency 80 --max-instances 10 --min-instances 1 --timeout 300s --allow-unauthenticated --port 8000'
+            DEPLOYMENT_URL=https://vector-db.coredatastore.com
+          flags: "--memory 1Gi --cpu 1 --concurrency 80 --max-instances 10 --min-instances 1 --timeout 300s --allow-unauthenticated --port 8000"
 
       - name: Show Output
         run: echo "${{ steps.deploy.outputs.url }}"

@@ -7,7 +7,7 @@ This file configures pytest to automatically apply markers based on test locatio
 import pytest
 
 
-def pytest_collection_modifyitems(items):
+def pytest_collection_modifyitems(items) -> None:
     """Apply markers automatically based on test directory."""
     for item in items:
         # Get the path to the test file

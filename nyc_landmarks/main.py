@@ -5,11 +5,12 @@ This module initializes the FastAPI application and registers all routes.
 """
 
 import logging
-from typing import Dict
+from typing import Dict, List
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import AnyUrl, BaseModel
 
 from nyc_landmarks.api import chat, query
 from nyc_landmarks.config.settings import settings
@@ -18,11 +19,52 @@ from nyc_landmarks.config.settings import settings
 logging.basicConfig(level=settings.LOG_LEVEL.value)
 logger = logging.getLogger(__name__)
 
+
+# Define server models for OpenAPI documentation
+class ServerVariable(BaseModel):
+    """Server variable model for OpenAPI."""
+
+    default: str
+    description: str = ""
+    enum: List[str] = []
+
+
+class Server(BaseModel):
+    """Server model for OpenAPI."""
+
+    url: AnyUrl
+    description: str = ""
+    variables: Dict[str, ServerVariable] = {}
+
+
+# Create list of servers for OpenAPI based on environment
+servers = []
+if settings.ENV == "production":
+    # In production, only show the production server URL
+    if settings.DEPLOYMENT_URL:
+        servers.append(
+            {"url": settings.DEPLOYMENT_URL, "description": "Production server"}
+        )
+else:
+    # In development, show the local server URL
+    servers.append(
+        {
+            "url": f"http://127.0.0.1:{settings.APP_PORT}",
+            "description": "Local development server",
+        }
+    )
+    # Optionally include production URL in development for testing
+    if settings.DEPLOYMENT_URL and settings.SHOW_PROD_URL_IN_DEV:
+        servers.append(
+            {"url": settings.DEPLOYMENT_URL, "description": "Production server"}
+        )
+
 # Create FastAPI application
 app = FastAPI(
     title="NYC Landmarks Vector Database API",
     description="API for accessing NYC landmarks information and semantic search functionality",
     version="0.1.0",
+    servers=servers,  # Add servers configuration
 )
 
 # Add CORS middleware
