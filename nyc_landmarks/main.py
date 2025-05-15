@@ -10,7 +10,7 @@ from typing import Dict, List
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import AnyUrl, BaseModel
+from pydantic import AnyUrl, BaseModel, Field
 
 from nyc_landmarks.api import chat, query
 from nyc_landmarks.config.settings import settings
@@ -18,6 +18,21 @@ from nyc_landmarks.config.settings import settings
 # Configure logging
 logging.basicConfig(level=settings.LOG_LEVEL.value)
 logger = logging.getLogger(__name__)
+
+
+# Response models for basic endpoints
+class HealthResponse(BaseModel):
+    """Health check response model."""
+
+    status: str = Field(..., description="Health status of the API")
+
+
+class RootResponse(BaseModel):
+    """Root endpoint response model."""
+
+    message: str = Field(..., description="Welcome message")
+    version: str = Field(..., description="API version number")
+    docs_url: str = Field(..., description="URL to API documentation")
 
 
 # Define server models for OpenAPI documentation
@@ -93,21 +108,21 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 
 
 # Add health check endpoint
-@app.get("/health", tags=["health"])  # type: ignore[misc]
-async def health_check() -> Dict[str, str]:
+@app.get("/health", response_model=HealthResponse, tags=["health"])  # type: ignore[misc]
+async def health_check() -> HealthResponse:
     """Health check endpoint."""
-    return {"status": "ok"}
+    return HealthResponse(status="ok")
 
 
 # Add root endpoint
-@app.get("/", tags=["root"])  # type: ignore[misc]
-async def root() -> Dict[str, str]:
+@app.get("/", response_model=RootResponse, tags=["root"])  # type: ignore[misc]
+async def root() -> RootResponse:
     """Root endpoint that returns a welcome message."""
-    return {
-        "message": "Welcome to the NYC Landmarks Vector Database API",
-        "version": "0.1.0",
-        "docs_url": "/docs",
-    }
+    return RootResponse(
+        message="Welcome to the NYC Landmarks Vector Database API",
+        version="0.1.0",
+        docs_url="/docs",
+    )
 
 
 if __name__ == "__main__":
