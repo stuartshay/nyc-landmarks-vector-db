@@ -7,11 +7,9 @@ on:
   workflow_dispatch:
 
 env:
-  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   SERVICE_NAME: nyc-landmarks-vector-db
   REGION: us-east4
   DOCKER_IMAGE_TAG: 0.0.1.${{ github.run_number }}
-  IMAGE_NAME: us-east4-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/nyc-landmarks/nyc-landmarks-vector-db:0.0.1.${{ github.run_number }}
   ARTIFACT_REGISTRY_HOST: us-east4-docker.pkg.dev
 
 jobs:
@@ -34,7 +32,7 @@ jobs:
         with:
           context: .
           push: false
-          tags: ${{ env.IMAGE_NAME }}
+          tags: us-east4-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/nyc-landmarks/nyc-landmarks-vector-db:0.0.1.${{ github.run_number }}
           outputs: type=docker,dest=/tmp/docker-image.tar
 
       - name: Upload Docker image artifact
@@ -65,7 +63,7 @@ jobs:
       - name: Set up Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: ${{ env.GCP_PROJECT_ID}}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Configure Docker
         run: gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY_HOST }}
@@ -88,7 +86,7 @@ jobs:
           docker images
 
       - name: Push Docker image to Artifact Registry
-        run: docker push ${{ env.IMAGE_NAME }}
+        run: docker push us-east4-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/nyc-landmarks/nyc-landmarks-vector-db:0.0.1.${{ github.run_number }}
 
   deploy:
     name: Deploy
@@ -112,7 +110,7 @@ jobs:
         with:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
-          image: ${{ env.IMAGE_NAME }}
+          image: us-east4-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/nyc-landmarks/nyc-landmarks-vector-db:0.0.1.${{ github.run_number }}
           env_vars: |
             ENV=production
             OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
