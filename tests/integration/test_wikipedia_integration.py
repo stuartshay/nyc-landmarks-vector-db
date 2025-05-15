@@ -7,8 +7,11 @@ fetching articles from the CoreDataStore API to storing vectors in Pinecone.
 
 import logging
 import os
+from typing import Optional
 
 import pytest
+
+from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
 # Mark all tests in this module as integration tests
 pytestmark = pytest.mark.integration
@@ -26,7 +29,7 @@ TEST_LANDMARK_ID = "LP-00001"  # Wyckoff House (known to have Wikipedia articles
     os.environ.get("CI") == "true",
     reason="Skipping Wikipedia integration test in CI environment",
 )
-def test_end_to_end_wikipedia_pipeline(pinecone_test_db):
+def test_end_to_end_wikipedia_pipeline(pinecone_test_db: Optional[PineconeDB]) -> None:
     """Test the complete Wikipedia processing pipeline from API to vector storage."""
     # Skip imports when in CI to prevent module import errors
     if os.environ.get("CI") == "true":
@@ -73,6 +76,10 @@ def test_end_to_end_wikipedia_pipeline(pinecone_test_db):
 
     # Step 4: Store vectors with test prefix
     pinecone_db = pinecone_test_db
+    if not pinecone_db or not pinecone_db.index:
+        pytest.skip("No Pinecone index available")
+        return
+
     test_id_prefix = f"test-wiki-{article.title.replace(' ', '_')}-{TEST_LANDMARK_ID}-"
 
     vector_ids = pinecone_db.store_chunks(
