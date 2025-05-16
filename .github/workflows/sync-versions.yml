@@ -34,7 +34,7 @@ jobs:
       - name: Check if changes were made
         id: git-check
         run: |
-          git diff --exit-code setup.py || echo "changes=true" >> $GITHUB_OUTPUT
+          git diff --exit-code setup.py || echo "changes=true" >> "$GITHUB_OUTPUT"
 
       - name: Commit and push changes
         if: steps.git-check.outputs.changes == 'true'

@@ -5,15 +5,15 @@ on:
   pull_request:
     branches: [master]
     paths:
-      - 'requirements.txt'
-      - 'setup.py'
-      - '.github/workflows/**'
+      - "requirements.txt"
+      - "setup.py"
+      - ".github/workflows/**"
   push:
     branches: [master]
     paths:
-      - 'requirements.txt'
-      - 'setup.py'
-      - '.github/workflows/**'
+      - "requirements.txt"
+      - "setup.py"
+      - ".github/workflows/**"
 
 jobs:
   dependency-review:
@@ -29,8 +29,8 @@ jobs:
       - name: Dependency Review
         uses: actions/dependency-review-action@v4
         with:
-          deny-licenses: 'GPL-3.0, AGPL-3.0'
-          fail-on-severity: 'high'
+          deny-licenses: "GPL-3.0, AGPL-3.0"
+          fail-on-severity: "high"
           # For pull requests, these are set automatically
           # For other events, we'd need to specify these manually
 
@@ -45,7 +45,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
@@ -57,11 +57,11 @@ jobs:
 
       - name: Convert Bandit results to SARIF
         run: |
-          echo '{
-            "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
-            "version": "2.1.0",
-            "runs": [{"tool": {"driver": {"name": "Bandit"}}, "results": []}]
-          }' > bandit-results.sarif
+          echo "{
+            \"\$schema\": \"https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json\",
+            \"version\": \"2.1.0\",
+            \"runs\": [{\"tool\": {\"driver\": {\"name\": \"Bandit\"}}, \"results\": []}]
+          }" > bandit-results.sarif
           if [ -f bandit-results.json ]; then
             jq -r '[.results[] | {
               "ruleId": .test_id,
