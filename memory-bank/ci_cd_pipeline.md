@@ -1,32 +1,36 @@
 # NYC Landmarks Vector Database CI/CD Pipeline
 
-This document describes the Continuous Integration/Continuous Deployment (CI/CD) pipeline for the NYC Landmarks Vector Database project.
+This document describes the Continuous Integration/Continuous Deployment (CI/CD)
+pipeline for the NYC Landmarks Vector Database project.
 
 ## Overview
 
 The CI/CD pipeline automates the process of:
 
 1. Fetching landmark data from the CoreDataStore API
-2. Downloading PDF reports for landmarks
-3. Processing PDFs to extract text (placeholder)
-4. Generating embeddings from text (placeholder)
-5. Storing embeddings in a vector database (placeholder)
+1. Downloading PDF reports for landmarks
+1. Processing PDFs to extract text (placeholder)
+1. Generating embeddings from text (placeholder)
+1. Storing embeddings in a vector database (placeholder)
 
 ## Components
 
 ### 1. Pipeline Script
 
-The main pipeline script (`scripts/process_landmarks.py`) orchestrates the data processing workflow:
+The main pipeline script (`scripts/process_landmarks.py`) orchestrates the data
+processing workflow:
 
 - Connects to the CoreDataStore API
 - Retrieves landmark information
 - Downloads associated PDF documents
 - Creates structured output for further processing
-- Includes placeholder functions for text extraction, embedding generation, and vector database integration
+- Includes placeholder functions for text extraction, embedding generation, and vector
+  database integration
 
 ### 2. GitHub Actions Workflow
 
-The GitHub Actions workflow (`.github/workflows/update-vector-db.yml`) automates the execution of the pipeline:
+The GitHub Actions workflow (`.github/workflows/update-vector-db.yml`) automates the
+execution of the pipeline:
 
 - Runs on a schedule (weekly on Sundays)
 - Can be triggered manually with custom parameters
@@ -55,12 +59,12 @@ python scripts/process_landmarks.py --pages 5 --download
 ### Manual GitHub Actions Trigger
 
 1. Go to the Actions tab in the GitHub repository
-2. Select the "Update NYC Landmarks Vector Database" workflow
-3. Click "Run workflow"
-4. Enter the desired parameters:
+1. Select the "Update NYC Landmarks Vector Database" workflow
+1. Click "Run workflow"
+1. Enter the desired parameters:
    - Number of pages to fetch
    - Download limit (0 for all)
-5. Click "Run workflow"
+1. Click "Run workflow"
 
 ## Configuration
 
@@ -118,10 +122,12 @@ Modify the `store_in_vector_db` method to:
 
 ### Common Issues
 
-1. **API Authentication Failures**: Check that the COREDATASTORE_API_KEY is correctly set.
-2. **PDF Download Errors**: Some PDFs may be unavailable or require authentication.
-3. **Rate Limiting**: Add delays between API calls if encountering rate limits.
-4. **Memory Issues**: For large-scale processing, implement batching in the embedding generation step.
+1. **API Authentication Failures**: Check that the COREDATASTORE_API_KEY is correctly
+   set.
+1. **PDF Download Errors**: Some PDFs may be unavailable or require authentication.
+1. **Rate Limiting**: Add delays between API calls if encountering rate limits.
+1. **Memory Issues**: For large-scale processing, implement batching in the embedding
+   generation step.
 
 ### Error Handling
 

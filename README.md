@@ -1,34 +1,43 @@
 # NYC Landmarks Vector Database
 
-[![Python CI](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/python-ci.yml/badge.svg)](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/python-ci.yml) [![Dependency Review](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/dependency-review.yml)
+[![Python CI](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/python-ci.yml/badge.svg)](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/python-ci.yml)
+[![Dependency Review](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/dependency-review.yml)
 
 [![Process NYC Landmarks Data](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/process_landmarks.yml/badge.svg)](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/process_landmarks.yml)
 
 [![API Deploy to Google Cloud Run](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/deploy-gcp.yml/badge.svg)](https://github.com/stuartshay/nyc-landmarks-vector-db/actions/workflows/deploy-gcp.yml)
-
 
 ```
 Deployed Application
 https://vector-db.coredatastore.com/docs
 ```
 
-A vector database system for NYC landmarks that extracts metadata and  text from API and PDF reports, converts it to vector embeddings, and enables semantic search and chatbot functionality.
+A vector database system for NYC landmarks that extracts metadata and text from API and
+PDF reports, converts it to vector embeddings, and enables semantic search and chatbot
+functionality.
 
 ## Project Overview
 
-This project aims to make information about New York City landmarks more accessible and searchable by:
+This project aims to make information about New York City landmarks more accessible and
+searchable by:
 
 1. Extracting text from PDF reports stored in Azure Blob Storage
-2. Processing and chunking the text for optimal embedding
-3. Converting text into vector embeddings using OpenAI embedding models
-4. Storing embeddings in a Pinecone vector database with comprehensive metadata
-5. Providing API endpoints for semantic search and chatbot functionality with conversation memory
-6. Enabling filtering by landmark ID and other metadata
-7. Integrating exclusively with the CoreDataStore API as the data source
+1. Processing and chunking the text for optimal embedding
+1. Converting text into vector embeddings using OpenAI embedding models
+1. Storing embeddings in a Pinecone vector database with comprehensive metadata
+1. Providing API endpoints for semantic search and chatbot functionality with
+   conversation memory
+1. Enabling filtering by landmark ID and other metadata
+1. Integrating exclusively with the CoreDataStore API as the data source
 
-The system makes previously inaccessible information in PDF reports easily searchable through semantic understanding, allowing users to find relevant information about NYC landmarks using natural language queries.
+The system makes previously inaccessible information in PDF reports easily searchable
+through semantic understanding, allowing users to find relevant information about NYC
+landmarks using natural language queries.
 
-> **Note for Developers**: The API client now returns Pydantic models instead of dictionaries in some cases. See [API Response Handling Documentation](./docs/api_response_handling.md) for details on handling both response types.
+> **Note for Developers**: The API client now returns Pydantic models instead of
+> dictionaries in some cases. See
+> [API Response Handling Documentation](./docs/api_response_handling.md) for details on
+> handling both response types.
 
 ## System Architecture
 
@@ -84,26 +93,40 @@ flowchart TD
 
 ## Features
 
-- **PDF Processing Pipeline**: Extract text from PDF reports of NYC landmarks using PyPDF2/PDFPlumber
-- **Wikipedia Integration**: Fetch and process Wikipedia articles related to landmarks for additional content
-- **Intelligent Text Chunking**: Process text into optimized chunks (500-1000 tokens) with 10-20% overlap for context preservation
-- **High-Quality Embeddings**: Generate embeddings using OpenAI's text-embedding-3-small model (1536 dimensions)
-- **Rich Metadata Storage**: Store embeddings in Pinecone with comprehensive metadata including landmark ID, source type (PDF/Wikipedia), chunk position, and more
-- **Multi-Source Search**: Search across both PDF and Wikipedia content with source filtering capabilities
-- **Semantic Search API**: Provide vector search API for natural language queries with relevant results
-- **Conversational AI**: Enable chatbot functionality with conversation memory for contextual follow-up questions
-- **Flexible Filtering**: Filter results by landmark ID, source type, borough, neighborhood, and other metadata
-- **CoreDataStore Integration**: Access comprehensive NYC landmarks data exclusively through the CoreDataStore API
-- **MCP Server Tools**: Leverage coredatastore-swagger-mcp server for direct API interactions with extended functionality
-- **Secure Credential Management**: Manage all API keys and credentials through Google Cloud Secret Store
+- **PDF Processing Pipeline**: Extract text from PDF reports of NYC landmarks using
+  PyPDF2/PDFPlumber
+- **Wikipedia Integration**: Fetch and process Wikipedia articles related to landmarks
+  for additional content
+- **Intelligent Text Chunking**: Process text into optimized chunks (500-1000 tokens)
+  with 10-20% overlap for context preservation
+- **High-Quality Embeddings**: Generate embeddings using OpenAI's text-embedding-3-small
+  model (1536 dimensions)
+- **Rich Metadata Storage**: Store embeddings in Pinecone with comprehensive metadata
+  including landmark ID, source type (PDF/Wikipedia), chunk position, and more
+- **Multi-Source Search**: Search across both PDF and Wikipedia content with source
+  filtering capabilities
+- **Semantic Search API**: Provide vector search API for natural language queries with
+  relevant results
+- **Conversational AI**: Enable chatbot functionality with conversation memory for
+  contextual follow-up questions
+- **Flexible Filtering**: Filter results by landmark ID, source type, borough,
+  neighborhood, and other metadata
+- **CoreDataStore Integration**: Access comprehensive NYC landmarks data exclusively
+  through the CoreDataStore API
+- **MCP Server Tools**: Leverage coredatastore-swagger-mcp server for direct API
+  interactions with extended functionality
+- **Secure Credential Management**: Manage all API keys and credentials through Google
+  Cloud Secret Store
 
 ## Tech Stack
 
 - **Python 3.11+**: Primary programming language
-- **OpenAI API**: For generating text embeddings using text-embedding-3-small/large models
+- **OpenAI API**: For generating text embeddings using text-embedding-3-small/large
+  models
 - **Pinecone**: Vector database for storing and searching embeddings with metadata
 - **CoreDataStore API**: Exclusive REST API for accessing NYC landmarks information
-- **coredatastore-swagger-mcp**: MCP server providing tools for CoreDataStore API interaction
+- **coredatastore-swagger-mcp**: MCP server providing tools for CoreDataStore API
+  interaction
 - **Azure Blob Storage**: Storage location for landmark PDF reports
 - **Google Cloud Secret Store**: For secure credential management across environments
 - **FastAPI**: For creating API endpoints with automatic documentation
@@ -161,50 +184,64 @@ python -m nyc_landmarks.main
 
 ## Development Setup
 
-This project offers two ways to set up your development environment: using VS Code Dev Containers (recommended) or a traditional local setup.
+This project offers two ways to set up your development environment: using VS Code Dev
+Containers (recommended) or a traditional local setup.
 
 ### Option 1: Using VS Code Dev Containers (Recommended)
 
-This project includes a fully configured development container that provides a consistent, isolated environment with all the necessary tools and dependencies pre-installed.
+This project includes a fully configured development container that provides a
+consistent, isolated environment with all the necessary tools and dependencies
+pre-installed.
 
 #### Prerequisites
+
 - [VS Code](https://code.visualstudio.com/)
 - [Docker](https://www.docker.com/products/docker-desktop)
 - [VS Code Remote - Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
 
 #### Steps
+
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/yourusername/nyc-landmarks-vector-db.git
    cd nyc-landmarks-vector-db
    ```
 
-2. Open the project in VS Code:
+1. Open the project in VS Code:
+
    ```bash
    code .
    ```
 
-3. When prompted to "Reopen in Container", click "Reopen in Container". Alternatively, you can:
+1. When prompted to "Reopen in Container", click "Reopen in Container". Alternatively,
+   you can:
+
    - Press F1 and select "Remote-Containers: Reopen in Container"
    - Click the green button in the bottom-left corner and select "Reopen in Container"
 
-4. VS Code will build the container and configure the environment (this may take a few minutes the first time).
+1. VS Code will build the container and configure the environment (this may take a few
+   minutes the first time).
 
-5. Once inside the container, you're ready to work on the project with all tools and dependencies pre-configured.
+1. Once inside the container, you're ready to work on the project with all tools and
+   dependencies pre-configured.
 
-6. Copy the sample environment file and edit it:
+1. Copy the sample environment file and edit it:
+
    ```bash
    cp .env.example .env
    # Edit .env with your credentials
    ```
 
-7. Set up the MCP server for CoreDataStore API interactions:
+1. Set up the MCP server for CoreDataStore API interactions:
+
    ```bash
    # The coredatastore-swagger-mcp server should be configured
    # as specified in techContext.md
    ```
 
-8. Run the application:
+1. Run the application:
+
    ```bash
    python -m nyc_landmarks.main
    ```
@@ -213,20 +250,26 @@ This project includes a fully configured development container that provides a c
 
 ### Method 1: Using VS Code Development Container (Recommended)
 
-The easiest way to set up the development environment is to use Visual Studio Code with the Dev Containers extension, which automatically configures everything for you.
+The easiest way to set up the development environment is to use Visual Studio Code with
+the Dev Containers extension, which automatically configures everything for you.
 
 1. **Prerequisites:**
+
    - Install [Visual Studio Code](https://code.visualstudio.com/)
    - Install [Docker Desktop](https://www.docker.com/products/docker-desktop)
-   - Install [VS Code Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+   - Install
+     [VS Code Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
 
-2. **Open in Container:**
+1. **Open in Container:**
+
    - Open VS Code
-   - Use the command palette (`Ctrl+Shift+P` or `Cmd+Shift+P`) and select "Dev Containers: Open Folder in Container..."
+   - Use the command palette (`Ctrl+Shift+P` or `Cmd+Shift+P`) and select "Dev
+     Containers: Open Folder in Container..."
    - Select the project repository folder
    - VS Code will build the container and install all dependencies automatically
 
-3. **Configuration:**
+1. **Configuration:**
+
    - Copy `.env.sample` to `.env` and add your API keys and configuration
    - Everything else is automatically set up by the devcontainer
 
@@ -235,18 +278,21 @@ The easiest way to set up the development environment is to use Visual Studio Co
 If you prefer not to use containers, follow these steps to set up locally:
 
 #### Prerequisites
+
 - Python 3.11+
 - Git
 
 #### Steps
 
 1. **Clone the repository:**
+
    ```bash
    git clone https://github.com/yourusername/nyc-landmarks-vector-db.git
    cd nyc-landmarks-vector-db
    ```
 
-2. **Create and activate a virtual environment:**
+1. **Create and activate a virtual environment:**
+
    ```bash
    python3.11 -m venv venv
 
@@ -257,7 +303,8 @@ If you prefer not to use containers, follow these steps to set up locally:
    venv\Scripts\activate
    ```
 
-3. **Install dependencies:**
+1. **Install dependencies:**
+
    ```bash
    # Install regular dependencies
    pip install -r requirements.txt
@@ -266,26 +313,30 @@ If you prefer not to use containers, follow these steps to set up locally:
    pip install -e ".[dev]"
    ```
 
-4. **Set up pre-commit hooks:**
+1. **Set up pre-commit hooks:**
+
    ```bash
    pip install pre-commit
    pre-commit install
    pre-commit run --all-files  # Optional
    ```
 
-5. **Configure environment variables:**
+1. **Configure environment variables:**
+
    ```bash
    cp .env.sample .env
    # Edit .env with your credentials
    ```
 
-6. **Configure MCP server for CoreDataStore API:**
+1. **Configure MCP server for CoreDataStore API:**
+
    ```bash
    # Set up the coredatastore-swagger-mcp server
    # as detailed in techContext.md
    ```
 
-7. **Run the application:**
+1. **Run the application:**
+
    ```bash
    python -m nyc_landmarks.main
    ```
@@ -294,7 +345,8 @@ If you prefer not to use containers, follow these steps to set up locally:
 
 This project uses a dual approach to dependency management:
 
-- **setup.py**: Defines package metadata and flexible dependencies with minimum version constraints (`>=`)
+- **setup.py**: Defines package metadata and flexible dependencies with minimum version
+  constraints (`>=`)
 - **requirements.txt**: Contains pinned, exact versions for reproducible environments
 
 ### Installing Dependencies
@@ -304,6 +356,7 @@ For development:
 There are two ways to set up your development environment:
 
 **Option A: Using the automated setup script (recommended for notebook users)**
+
 ```bash
 # Make the script executable
 chmod +x ./setup_env.sh
@@ -316,6 +369,7 @@ chmod +x ./setup_env.sh
 ```
 
 **Option B: Manual setup**
+
 ```bash
 # Create a virtual environment
 python -m venv venv
@@ -334,9 +388,11 @@ pre-commit install
 
 We use automated tools to keep `setup.py` and `requirements.txt` in sync:
 
-1. **Automated Sync**: Our GitHub workflow automatically syncs versions between files when Dependabot creates updates
-2. **Manual Sync**: Run `./sync_versions.sh` to manually sync versions between files
-3. **Generating requirements.txt**: Generate requirements.txt from setup.py using pip-compile:
+1. **Automated Sync**: Our GitHub workflow automatically syncs versions between files
+   when Dependabot creates updates
+1. **Manual Sync**: Run `./sync_versions.sh` to manually sync versions between files
+1. **Generating requirements.txt**: Generate requirements.txt from setup.py using
+   pip-compile:
    ```bash
    pip-compile --constraint=constraints.txt --output-file=requirements.txt
    ```
@@ -344,35 +400,43 @@ We use automated tools to keep `setup.py` and `requirements.txt` in sync:
 ### Adding New Dependencies
 
 To add a new dependency:
+
 1. Add it to `setup.py` with an appropriate version constraint
-2. Regenerate `requirements.txt` using pip-compile
-3. Commit both files together
+1. Regenerate `requirements.txt` using pip-compile
+1. Commit both files together
 
 ## Package Management
 
-This project uses a dual dependency management approach to balance flexibility with reproducibility:
+This project uses a dual dependency management approach to balance flexibility with
+reproducibility:
 
 ### Dependency Files
 
-- **setup.py**: Contains package metadata and flexible dependencies with minimum versions (`>=`)
-- **requirements.txt**: Contains exact pinned versions (`==`) for reproducible environments
+- **setup.py**: Contains package metadata and flexible dependencies with minimum
+  versions (`>=`)
+- **requirements.txt**: Contains exact pinned versions (`==`) for reproducible
+  environments
 
 ### Adding New Dependencies
 
 1. First add the dependency to `setup.py` with appropriate version constraints:
+
    ```python
-   install_requires=[
-       # ...existing dependencies...
-       "new-package>=1.0.0",  # Add new package here
-   ],
+   install_requires = (
+       [
+           # ...existing dependencies...
+           "new-package>=1.0.0",  # Add new package here
+       ],
+   )
    ```
 
-2. Then generate the updated `requirements.txt`:
+1. Then generate the updated `requirements.txt`:
+
    ```bash
    pip-compile --constraint=constraints.txt --output-file=requirements.txt
    ```
 
-3. Commit both files together.
+1. Commit both files together.
 
 ### Synchronizing Versions
 
@@ -402,27 +466,35 @@ This project requires Pinecone SDK v6.0.2 or later. To update the Pinecone SDK:
 
 #### Google Cloud CLI Setup in Dev Container
 
-The development container comes with the Google Cloud CLI pre-installed. To use it for accessing secrets:
+The development container comes with the Google Cloud CLI pre-installed. To use it for
+accessing secrets:
 
 1. **Authenticate with Google Cloud:**
+
    ```bash
    gcloud auth login
    ```
+
    This will open a browser window where you can log in with your Google account.
 
-2. **Set your Google Cloud project:**
+1. **Set your Google Cloud project:**
+
    ```bash
    gcloud config set project your-project-id
    ```
+
    Replace `your-project-id` with your actual Google Cloud project ID.
 
-3. **Set up Application Default Credentials:**
+1. **Set up Application Default Credentials:**
+
    ```bash
    gcloud auth application-default login
    ```
+
    This will set up credentials for your local development environment.
 
-4. **Access Google Cloud Secret Manager:**
+1. **Access Google Cloud Secret Manager:**
+
    ```bash
    # List available secrets
    gcloud secrets list
@@ -431,31 +503,37 @@ The development container comes with the Google Cloud CLI pre-installed. To use 
    gcloud secrets versions access latest --secret="your-secret-name"
    ```
 
-5. **Configure service account (if needed):**
+1. **Configure service account (if needed):**
+
    ```bash
    gcloud iam service-accounts keys create key-file.json --iam-account=your-service-account@your-project.iam.gserviceaccount.com
    export GOOGLE_APPLICATION_CREDENTIALS="$PWD/key-file.json"
    ```
 
-The Google Cloud CLI provides many more capabilities. For more details, run `gcloud --help` or visit the [Google Cloud CLI documentation](https://cloud.google.com/sdk/gcloud/reference).
+The Google Cloud CLI provides many more capabilities. For more details, run
+`gcloud --help` or visit the
+[Google Cloud CLI documentation](https://cloud.google.com/sdk/gcloud/reference).
 
 ### Option 2: Traditional Local Setup
 
 If you prefer to set up the development environment locally without containers:
 
 #### Prerequisites
+
 - Python 3.11+
 - Git
 
 #### Steps
 
 1. **Clone the repository:**
+
    ```bash
    git clone https://github.com/yourusername/nyc-landmarks-vector-db.git
    cd nyc-landmarks-vector-db
    ```
 
-2. **Create and activate a virtual environment:**
+1. **Create and activate a virtual environment:**
+
    ```bash
    python3.11 -m venv venv
 
@@ -466,7 +544,8 @@ If you prefer to set up the development environment locally without containers:
    venv\Scripts\activate
    ```
 
-3. **Install dependencies:**
+1. **Install dependencies:**
+
    ```bash
    # Install regular dependencies
    pip install -r requirements.txt
@@ -475,26 +554,30 @@ If you prefer to set up the development environment locally without containers:
    pip install -e ".[dev]"
    ```
 
-4. **Set up pre-commit hooks:**
+1. **Set up pre-commit hooks:**
+
    ```bash
    pip install pre-commit
    pre-commit install
    pre-commit run --all-files  # Optional
    ```
 
-5. **Configure environment variables:**
+1. **Configure environment variables:**
+
    ```bash
    cp .env.sample .env
    # Edit .env with your credentials
    ```
 
-6. **Configure MCP server for CoreDataStore API:**
+1. **Configure MCP server for CoreDataStore API:**
+
    ```bash
    # Set up the coredatastore-swagger-mcp server
    # as detailed in techContext.md
    ```
 
-7. **Run the application:**
+1. **Run the application:**
+
    ```bash
    python -m nyc_landmarks.main
    ```
@@ -502,6 +585,7 @@ If you prefer to set up the development environment locally without containers:
 ## Code Quality Standards
 
 This project enforces:
+
 - Static type checking with mypy (strict mode)
 - Code formatting with Black (88 character line length)
 - Import sorting with isort
@@ -509,7 +593,8 @@ This project enforces:
 - Minimum 80% test coverage
 - Security scanning with bandit
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed information on our development workflow and code standards.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed information on our development
+workflow and code standards.
 
 ## Package Management
 
@@ -532,20 +617,24 @@ The project includes a comprehensive script for managing Python dependencies:
 ./manage_packages.sh help
 ```
 
-This script ensures consistent package versions between `setup.py` and `requirements.txt` and simplifies dependency updates.
+This script ensures consistent package versions between `setup.py` and
+`requirements.txt` and simplifies dependency updates.
 
 ## VS Code Integration
 
-This project includes Visual Studio Code configuration for an optimal development experience:
+This project includes Visual Studio Code configuration for an optimal development
+experience:
 
 **Features enabled:**
+
 - Integrated linting and type checking
 - Auto-formatting on save
 - Debug configurations for various project components
 - Test runner integration
 - Consistency via EditorConfig
 
-To take full advantage of these features, install the recommended extensions when prompted by VS Code.
+To take full advantage of these features, install the recommended extensions when
+prompted by VS Code.
 
 ## Project Structure
 
@@ -606,19 +695,25 @@ nyc-landmarks-vector-db/
 
 ## Configuration
 
-The project uses the CoreDataStore API as the exclusive data source for NYC landmarks information. The API provides comprehensive access to landmark data, buildings, photos, PLUTO data, and more. The system is designed with a secure configuration approach:
+The project uses the CoreDataStore API as the exclusive data source for NYC landmarks
+information. The API provides comprehensive access to landmark data, buildings, photos,
+PLUTO data, and more. The system is designed with a secure configuration approach:
 
 ### Production Environment
+
 - All credentials are stored in Google Cloud Secret Store
 - The application retrieves secrets at runtime
 - No credentials are stored in code or environment variables
 
 ### Development Environment
+
 - Credentials can be stored in a local `.env` file
-- The application will fall back to environment variables if Google Cloud is not configured
+- The application will fall back to environment variables if Google Cloud is not
+  configured
 - Sample configurations are provided in `.env.example`
 
 ### Key Configuration Parameters
+
 - `COREDATASTORE_API_KEY`: Your API key for accessing the CoreDataStore API
 - `OPENAI_API_KEY`: Your API key for OpenAI's embedding models
 - `PINECONE_API_KEY`: Your API key for the Pinecone vector database
@@ -640,7 +735,6 @@ Detailed documentation is available in the `memory-bank/` directory:
 - `techContext.md`: Technical context and constraints
 - `activeContext.md`: Current work focus and considerations
 - `progress.md`: Project progress and status
-
 
 ## License
 

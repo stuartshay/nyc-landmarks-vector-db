@@ -3,7 +3,7 @@
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v5.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -21,13 +21,13 @@ repos:
         args: ["--line-length", "88"]
 
   - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
+    rev: 6.0.1
     hooks:
       - id: isort
         args: ["--profile", "black", "--filter-files"]
 
   - repo: https://github.com/pycqa/flake8
-    rev: 7.0.0
+    rev: 7.2.0
     hooks:
       - id: flake8
         additional_dependencies:
@@ -36,7 +36,7 @@ repos:
           - flake8-comprehensions
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.9.0
+    rev: v1.15.0
     hooks:
       - id: mypy
         exclude: ^tests/
@@ -47,22 +47,51 @@ repos:
           - types-tabulate
 
   - repo: https://github.com/PyCQA/bandit
-    rev: 1.7.8
+    rev: 1.8.3
     hooks:
       - id: bandit
         exclude: ^tests/
         args: ["-c", "pyproject.toml"]
 
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.7 # Use the latest version
+    hooks:
+      - id: actionlint
+
+  # Custom hook for Dockerfile linting with hadolint
+  - repo: local
+    hooks:
+      - id: hadolint-docker
+        name: Lint Dockerfiles with hadolint (Docker)
+        description: Runs hadolint Docker image to lint Dockerfiles
+        language: system
+        entry: bash -c 'if [ -f "Dockerfile" ]; then docker run --rm -i hadolint/hadolint < Dockerfile || true; fi'
+        files: ^Dockerfile$
+        pass_filenames: false
+
+  - repo: https://github.com/executablebooks/mdformat
+    rev: 0.7.22
+    hooks:
+      - id: mdformat
+        name: Format Markdown files with mdformat
+        description: Auto-formats Markdown files for consistency
+        additional_dependencies:
+          - mdformat-gfm # GitHub-Flavored Markdown support
+          - mdformat-black # For code blocks
+          - mdformat-frontmatter # For YAML frontmatter
+          - mdformat-footnote # For footnote support
+        files: \.(md|markdown)$
+
   # Jupyter notebook output clearing
   - repo: https://github.com/kynan/nbstripout
-    rev: 0.6.1
+    rev: 0.8.1
     hooks:
       - id: nbstripout
         files: ".ipynb$"
 
   # Jupyter notebook linting
   - repo: https://github.com/nbQA-dev/nbQA
-    rev: 1.7.1
+    rev: 1.9.1
     hooks:
       - id: nbqa-black
         args: ["--line-length=88"]

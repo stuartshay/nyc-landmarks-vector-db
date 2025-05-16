@@ -15,7 +15,7 @@ import concurrent.futures
 import logging
 import sys
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 from tqdm import tqdm
 
@@ -130,13 +130,50 @@ def process_landmark_wikipedia(
         return False, 0, 0
 
 
+def process_landmarks_sequential(
+    landmarks: List[str],
+    chunk_size: int,
+    chunk_overlap: int,
+    delete_existing: bool,
+) -> Dict[str, Union[Tuple[bool, int, int], List[str]]]:
+    """
+    Process Wikipedia articles for multiple landmarks sequentially.
+
+    Args:
+        landmarks: List of landmark IDs to process
+        chunk_size: Target size of each chunk in characters
+        chunk_overlap: Number of characters to overlap between chunks
+        delete_existing: Whether to delete existing vectors for landmarks
+
+    Returns:
+        Dictionary mapping landmark IDs to processing results, plus a special key for missing articles
+    """
+    results: Dict[str, Union[Tuple[bool, int, int], List[str]]] = {}
+    # Track landmarks with missing articles separately
+    missing_articles: List[str] = []
+
+    for landmark_id in tqdm(landmarks, desc="Processing landmarks"):
+        success, articles_processed, chunks_embedded = process_landmark_wikipedia(
+            landmark_id, chunk_size, chunk_overlap, delete_existing
+        )
+        results[landmark_id] = (success, articles_processed, chunks_embedded)
+
+        # If not successful and no articles processed, likely missing articles
+        if not success and articles_processed == 0:
+            missing_articles.append(landmark_id)
+
+    # Store missing articles in the results object for reporting later
+    results["__missing_articles__"] = missing_articles
+    return results
+
+
 def process_landmarks_parallel(
     landmarks: List[str],
     chunk_size: int,
     chunk_overlap: int,
     delete_existing: bool,
     workers: int,
-) -> Dict[str, Tuple[bool, int, int]]:
+) -> Dict[str, Union[Tuple[bool, int, int], List[str]]]:
     """
     Process Wikipedia articles for multiple landmarks in parallel.
 
@@ -148,9 +185,12 @@ def process_landmarks_parallel(
         workers: Number of parallel workers
 
     Returns:
-        Dictionary mapping landmark IDs to processing results
+        Dictionary mapping landmark IDs to processing results, plus a special key for missing articles
     """
-    results = {}
+    results: Dict[str, Union[Tuple[bool, int, int], List[str]]] = {}
+    # Track landmarks with missing articles separately
+    missing_articles: List[str] = []
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
         # Submit all tasks
         future_to_landmark = {
@@ -174,37 +214,16 @@ def process_landmarks_parallel(
             try:
                 success, articles_processed, chunks_embedded = future.result()
                 results[landmark_id] = (success, articles_processed, chunks_embedded)
+
+                # If not successful and no articles processed, likely missing articles
+                if not success and articles_processed == 0:
+                    missing_articles.append(landmark_id)
             except Exception as e:
                 logger.error(f"Error processing {landmark_id}: {e}")
                 results[landmark_id] = (False, 0, 0)
 
-    return results
-
-
-def process_landmarks_sequential(
-    landmarks: List[str],
-    chunk_size: int,
-    chunk_overlap: int,
-    delete_existing: bool,
-) -> Dict[str, Tuple[bool, int, int]]:
-    """
-    Process Wikipedia articles for multiple landmarks sequentially.
-
-    Args:
-        landmarks: List of landmark IDs to process
-        chunk_size: Target size of each chunk in characters
-        chunk_overlap: Number of characters to overlap between chunks
-        delete_existing: Whether to delete existing vectors for landmarks
-
-    Returns:
-        Dictionary mapping landmark IDs to processing results
-    """
-    results = {}
-    for landmark_id in tqdm(landmarks, desc="Processing landmarks"):
-        success, articles_processed, chunks_embedded = process_landmark_wikipedia(
-            landmark_id, chunk_size, chunk_overlap, delete_existing
-        )
-        results[landmark_id] = (success, articles_processed, chunks_embedded)
+    # Store missing articles in the results object for reporting later
+    results["__missing_articles__"] = missing_articles
     return results
 
 
@@ -247,8 +266,12 @@ def get_all_landmark_ids(limit: Optional[int] = None) -> List[str]:
     return landmark_ids
 
 
-def main() -> None:
-    """Main entry point for the script."""
+def parse_arguments() -> argparse.Namespace:
+    """Parse command line arguments.
+
+    Returns:
+        Parsed command line arguments
+    """
     parser = argparse.ArgumentParser(
         description="Process Wikipedia articles for NYC landmarks"
     )
@@ -297,87 +320,243 @@ def main() -> None:
         help="Enable verbose logging",
     )
 
-    args = parser.parse_args()
+    return parser.parse_args()
 
-    # Set log level
-    if args.verbose:
+
+def setup_logging(verbose: bool) -> None:
+    """Configure logging based on verbosity level.
+
+    Args:
+        verbose: Whether to enable verbose (INFO) logging
+    """
+    if verbose:
         logging.getLogger().setLevel(logging.INFO)
     else:
         logging.getLogger().setLevel(logging.WARNING)
 
-    # Determine landmarks to process
-    landmarks_to_process = []
-    if args.landmark_ids:
+
+def get_landmarks_to_process(
+    landmark_ids: Optional[str], limit: Optional[int]
+) -> List[str]:
+    """Determine which landmarks to process.
+
+    Args:
+        landmark_ids: Comma-separated list of landmark IDs to process
+        limit: Maximum number of landmarks to process
+
+    Returns:
+        List of landmark IDs to process
+    """
+    if landmark_ids:
         # Process specific landmarks
-        landmarks_to_process = [lid.strip() for lid in args.landmark_ids.split(",")]
+        landmarks_to_process = [lid.strip() for lid in landmark_ids.split(",")]
         logger.info(f"Will process {len(landmarks_to_process)} specified landmarks")
     else:
         # Process all landmarks (or limited set)
-        landmarks_to_process = get_all_landmark_ids(args.limit)
+        landmarks_to_process = get_all_landmark_ids(limit)
         logger.info(f"Will process {len(landmarks_to_process)} landmarks")
 
-    if not landmarks_to_process:
-        logger.error("No landmarks to process")
-        sys.exit(1)
+    return landmarks_to_process
 
-    # Process landmarks
-    start_time = time.time()
 
-    if args.parallel:
+def process_landmarks(
+    landmarks: List[str],
+    chunk_size: int,
+    chunk_overlap: int,
+    delete_existing: bool,
+    use_parallel: bool,
+    workers: int,
+) -> Dict[str, Union[Tuple[bool, int, int], List[str]]]:
+    """Process the landmarks based on configuration.
+
+    Args:
+        landmarks: List of landmark IDs to process
+        chunk_size: Target size of each chunk in characters
+        chunk_overlap: Number of characters to overlap between chunks
+        delete_existing: Whether to delete existing vectors
+        use_parallel: Whether to process landmarks in parallel
+        workers: Number of parallel workers
+
+    Returns:
+        Results of processing each landmark
+    """
+    if use_parallel:
         logger.info(
-            f"Processing {len(landmarks_to_process)} landmarks in parallel with {args.workers} workers"
+            f"Processing {len(landmarks)} landmarks in parallel with {workers} workers"
         )
-        results = process_landmarks_parallel(
-            landmarks_to_process,
-            args.chunk_size,
-            args.chunk_overlap,
-            args.delete_existing,
-            args.workers,
+        return process_landmarks_parallel(
+            landmarks,
+            chunk_size,
+            chunk_overlap,
+            delete_existing,
+            workers,
         )
     else:
-        logger.info(f"Processing {len(landmarks_to_process)} landmarks sequentially")
-        results = process_landmarks_sequential(
-            landmarks_to_process,
-            args.chunk_size,
-            args.chunk_overlap,
-            args.delete_existing,
+        logger.info(f"Processing {len(landmarks)} landmarks sequentially")
+        return process_landmarks_sequential(
+            landmarks,
+            chunk_size,
+            chunk_overlap,
+            delete_existing,
         )
 
-    # Calculate statistics
-    elapsed_time = time.time() - start_time
-    successful_landmarks = sum(1 for success, _, _ in results.values() if success)
-    total_articles = sum(articles for _, articles, _ in results.values())
-    total_chunks = sum(chunks for _, _, chunks in results.values())
 
-    # Report results
+def calculate_statistics(
+    results: Dict[str, Union[Tuple[bool, int, int], List[str]]],
+    landmarks_count: int,
+    elapsed_time: float,
+) -> Tuple[int, int, int, List[str], List[str]]:
+    """Calculate statistics from processing results.
+
+    Args:
+        results: Processing results by landmark ID
+        landmarks_count: Total number of landmarks processed
+        elapsed_time: Time taken to process landmarks
+
+    Returns:
+        Tuple of (successful_landmarks, total_articles, total_chunks,
+                 missing_articles, failed_landmarks)
+    """
+    # Extract special key for missing articles
+    missing_articles_data = results.pop("__missing_articles__", [])
+    # Convert to list of strings to handle typing
+    missing_articles = [str(lid) for lid in missing_articles_data]
+
+    # Calculate statistics
+    successful_landmarks = sum(
+        1 for success, _, _ in results.values() if isinstance(success, bool) and success
+    )
+    # Only include tuples, not any special string values like "__missing_articles__"
+    total_articles = sum(
+        articles for _, articles, _ in results.values() if isinstance(articles, int)
+    )
+    total_chunks = sum(
+        chunks for _, _, chunks in results.values() if isinstance(chunks, int)
+    )
+
+    # Calculate true failures (not successful but not in missing_articles)
+    failed_landmarks = [
+        lid
+        for lid, (success, _, _) in results.items()
+        if not success and lid not in missing_articles
+    ]
+
+    return (
+        successful_landmarks,
+        total_articles,
+        total_chunks,
+        missing_articles,
+        failed_landmarks,
+    )
+
+
+def print_results(
+    landmarks_count: int,
+    successful_landmarks: int,
+    total_articles: int,
+    total_chunks: int,
+    elapsed_time: float,
+    missing_articles: List[str],
+    failed_landmarks: List[str],
+) -> int:
+    """Print results and determine exit code.
+
+    Args:
+        landmarks_count: Total number of landmarks processed
+        successful_landmarks: Number of successfully processed landmarks
+        total_articles: Total number of articles processed
+        total_chunks: Total number of chunks embedded
+        elapsed_time: Time taken for processing
+        missing_articles: List of landmarks with no Wikipedia articles
+        failed_landmarks: List of landmarks that failed processing
+
+    Returns:
+        Exit code (0 for success/partial success, 1 for complete failure)
+    """
+    # Print main statistics
     print("\n===== WIKIPEDIA PROCESSING RESULTS =====")
-    print(f"Total landmarks processed: {len(landmarks_to_process)}")
+    print(f"Total landmarks processed: {landmarks_count}")
     print(f"Successful landmarks: {successful_landmarks}")
     print(f"Total Wikipedia articles processed: {total_articles}")
     print(f"Total chunks embedded: {total_chunks}")
     print(f"Processing time: {elapsed_time:.2f} seconds")
 
-    if successful_landmarks < len(landmarks_to_process):
-        print(
-            f"\nWarning: Failed to process {len(landmarks_to_process) - successful_landmarks} landmarks"
-        )
-        failed_landmarks = [
-            lid for lid, (success, _, _) in results.items() if not success
-        ]
+    # Report landmarks with missing articles
+    if missing_articles:
+        print(f"\nLandmarks with no Wikipedia articles: {len(missing_articles)}")
+        print(f"IDs: {', '.join(missing_articles[:10])}")
+        if len(missing_articles) > 10:
+            print(f"...and {len(missing_articles) - 10} more")
+
+    # Report failed landmarks
+    if failed_landmarks:
+        print(f"\nLandmarks that failed processing: {len(failed_landmarks)}")
         print(f"Failed landmarks: {', '.join(failed_landmarks[:10])}")
         if len(failed_landmarks) > 10:
             print(f"...and {len(failed_landmarks) - 10} more")
 
-    # Set exit code based on success
+    # Determine exit code and final message
     if successful_landmarks == 0:
         print("\nError: No landmarks were successfully processed")
-        sys.exit(1)
-    elif successful_landmarks < len(landmarks_to_process):
-        print("\nWarning: Some landmarks failed to process")
-        sys.exit(0)  # Still exit with 0 to avoid failing CI jobs
+        return 1
+    elif failed_landmarks:
+        print(
+            "\nWarning: Some landmarks failed to process (not due to missing articles)"
+        )
+        return 0  # Still exit with 0 to avoid failing CI jobs
     else:
-        print("\nSuccess: All landmarks successfully processed")
-        sys.exit(0)
+        success_message = "Success: All landmarks successfully processed"
+        if missing_articles:
+            success_message += f" ({len(missing_articles)} had no Wikipedia articles)"
+        print(f"\n{success_message}")
+        return 0
+
+
+def main() -> None:
+    """Main entry point for the script."""
+    # Parse arguments and set up logging
+    args = parse_arguments()
+    setup_logging(args.verbose)
+
+    # Get landmarks to process
+    landmarks_to_process = get_landmarks_to_process(args.landmark_ids, args.limit)
+    if not landmarks_to_process:
+        logger.error("No landmarks to process")
+        sys.exit(1)
+
+    # Process landmarks and time the execution
+    start_time = time.time()
+    results = process_landmarks(
+        landmarks_to_process,
+        args.chunk_size,
+        args.chunk_overlap,
+        args.delete_existing,
+        args.parallel,
+        args.workers,
+    )
+    elapsed_time = time.time() - start_time
+
+    # Calculate statistics and print results
+    stats = calculate_statistics(results, len(landmarks_to_process), elapsed_time)
+    # Unpack stats in the correct order: successful_landmarks, total_articles, total_chunks, missing_articles, failed_landmarks
+    (
+        successful_landmarks,
+        total_articles,
+        total_chunks,
+        missing_articles,
+        failed_landmarks,
+    ) = stats
+    exit_code = print_results(
+        len(landmarks_to_process),
+        successful_landmarks,
+        total_articles,
+        total_chunks,
+        elapsed_time,
+        missing_articles,
+        failed_landmarks,
+    )
+
+    sys.exit(exit_code)
 
 
 if __name__ == "__main__":

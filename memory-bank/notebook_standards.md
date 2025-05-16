@@ -1,11 +1,15 @@
 # NYC Landmarks Vector Database - Jupyter Notebook Standards
 
-This document outlines the standards and best practices for Jupyter notebooks in the NYC Landmarks Vector Database project. Adherence to these standards ensures consistency, maintainability, and reproducibility of notebook-based analyses and development.
+This document outlines the standards and best practices for Jupyter notebooks in the NYC
+Landmarks Vector Database project. Adherence to these standards ensures consistency,
+maintainability, and reproducibility of notebook-based analyses and development.
 
 ## Notebook Structure
 
 ### 1. Header and Introduction
+
 Each notebook must begin with:
+
 - A clear title as an H1 markdown heading (`# Title`)
 - A brief description of the notebook's purpose
 - Date of creation/last major update
@@ -13,6 +17,7 @@ Each notebook must begin with:
 - Any prerequisites or dependencies
 
 Example:
+
 ```markdown
 # Landmark Query Testing Notebook
 
@@ -27,6 +32,7 @@ This notebook demonstrates vector search capabilities against the NYC Landmarks 
 ```
 
 ### 2. Import Section
+
 - All imports should be at the top of the notebook
 - Imports should be organized in groups:
   - Standard library imports first
@@ -36,6 +42,7 @@ This notebook demonstrates vector search capabilities against the NYC Landmarks 
 - Imports within groups should be alphabetized
 
 Example:
+
 ```python
 # Standard library imports
 import os
@@ -54,6 +61,7 @@ from nyc_landmarks.embeddings import generator
 ```
 
 ### 3. Logical Section Organization
+
 - Divide notebook into clear logical sections using markdown headers
 - Each section should have a descriptive H2 (`##`) or H3 (`###`) heading
 - Include a brief description of what each section does
@@ -65,7 +73,9 @@ from nyc_landmarks.embeddings import generator
   - Results/Conclusion
 
 ### 4. Documentation and Comments
-- Each code cell performing a significant operation should be preceded by a markdown cell explaining:
+
+- Each code cell performing a significant operation should be preceded by a markdown
+  cell explaining:
   - What the code is doing
   - Why it's being done (business/technical context)
   - Any important assumptions or constraints
@@ -73,6 +83,7 @@ from nyc_landmarks.embeddings import generator
 - Include explanations of important parameters and their impact
 
 ### 5. Conclusion
+
 - Each notebook should end with a conclusion section
 - Summarize key findings or outcomes
 - Identify any next steps or further work
@@ -80,6 +91,7 @@ from nyc_landmarks.embeddings import generator
 ## Code Quality Standards
 
 ### 1. Style and Formatting
+
 - All Python code must follow PEP 8 style guidelines
 - Maximum line length of 88 characters (Black default)
 - Use consistent variable naming:
@@ -92,6 +104,7 @@ from nyc_landmarks.embeddings import generator
   - flake8 linting
 
 ### 2. Cell Output Management
+
 - Cell outputs must never be committed to version control
 - The `nbstripout` pre-commit hook will automatically clear outputs
 - For sharing results:
@@ -99,6 +112,7 @@ from nyc_landmarks.embeddings import generator
   - Save executed notebooks in the `test_output/notebooks` directory
 
 ### 3. Function Definitions
+
 - Complex operations should be encapsulated in functions
 - Each function must include a docstring that describes:
   - Purpose of the function
@@ -107,6 +121,7 @@ from nyc_landmarks.embeddings import generator
   - Any exceptions that might be raised
 
 Example:
+
 ```python
 def filter_landmarks_by_borough(df, borough, min_score=0.7):
     """
@@ -123,20 +138,22 @@ def filter_landmarks_by_borough(df, borough, min_score=0.7):
     Raises:
         ValueError: If borough is not one of the five NYC boroughs
     """
-    valid_boroughs = ['Manhattan', 'Brooklyn', 'Queens', 'Bronx', 'Staten Island']
+    valid_boroughs = ["Manhattan", "Brooklyn", "Queens", "Bronx", "Staten Island"]
     if borough not in valid_boroughs:
         raise ValueError(f"Borough must be one of {valid_boroughs}")
 
-    return df[(df['borough'] == borough) & (df['score'] >= min_score)]
+    return df[(df["borough"] == borough) & (df["score"] >= min_score)]
 ```
 
 ### 4. Variable Naming
+
 - Use descriptive, unambiguous variable names
 - Avoid single-letter variables except in specific cases (e.g., `i` for loop indices)
 - Be consistent with naming patterns throughout the notebook
 - Prefix temporary or intermediate variables appropriately
 
 ### 5. Error Handling
+
 - Include appropriate error handling for operations that might fail
 - Use try/except blocks for potentially problematic code
 - Include informative error messages
@@ -144,46 +161,56 @@ def filter_landmarks_by_borough(df, borough, min_score=0.7):
 ## Execution and Testing
 
 ### 1. Sequential Execution
+
 - Notebooks should be designed to run from top to bottom sequentially
 - Avoid relying on out-of-order execution
 - Test notebook execution using:
+
 ```
 python scripts/run_notebook.py notebooks/your_notebook.ipynb
 ```
 
 ### 2. Headless Execution
+
 - All notebooks must execute successfully in headless environments
 - Avoid code that requires manual interaction
 - For visualization components that might fail in headless mode, include conditionals:
+
 ```python
 import os
+
 # Only show interactive plots when not in CI environment
-if os.environ.get('CI') != 'true':
+if os.environ.get("CI") != "true":
     plt.show()
 else:
-    plt.savefig('output_figure.png')
+    plt.savefig("output_figure.png")
 ```
 
 ### 3. Reproducibility
+
 - Set random seeds for any operations using randomness
 - Document any external dependencies or data sources
 - Include version information for critical libraries
 - Consider using environment variables or config files for sensitive information
 
 ### 4. Performance Considerations
+
 - Include execution timing for expensive operations
 - For long-running cells, include progress bars (e.g., tqdm)
 - Consider chunking large data operations
 - Add memory usage monitoring for large-scale data processing
 
 Example:
+
 ```python
 from time import time
 import psutil
 import os
 
+
 def log_resource_usage(func):
     """Decorator to log execution time and memory usage of a function."""
+
     def wrapper(*args, **kwargs):
         process = psutil.Process(os.getpid())
         mem_before = process.memory_info().rss / 1024 / 1024  # MB
@@ -197,7 +224,9 @@ def log_resource_usage(func):
         print(f"Memory usage: {mem_after:.2f} MB (Δ {mem_after - mem_before:.2f} MB)")
 
         return result
+
     return wrapper
+
 
 @log_resource_usage
 def process_large_dataset(data):
@@ -208,6 +237,7 @@ def process_large_dataset(data):
 ## Visualization Standards
 
 ### 1. Plot Formatting
+
 - All visualizations should include:
   - Descriptive title
   - Labeled axes with units
@@ -216,11 +246,13 @@ def process_large_dataset(data):
 - Use consistent styling across plots in the same notebook
 
 ### 2. Interactive Visualizations
+
 - Consider using interactive visualizations for complex data exploration
 - Ensure interactive elements degrade gracefully in non-interactive environments
 - Document any interactivity features in markdown
 
 ### 3. Plot Sizing
+
 - Set appropriate figure sizes for visualizations
 - Consider the context in which the plot will be viewed
 - For multiple related plots, maintain consistent sizing
@@ -228,18 +260,22 @@ def process_large_dataset(data):
 ## Version Control and Collaboration
 
 ### 1. Pre-commit Hooks
+
 The following pre-commit hooks are applied to notebooks:
+
 - `nbstripout`: Clears all cell outputs
 - `nbqa-black`: Formats code cells according to Black standards
 - `nbqa-isort`: Sorts imports
 - `nbqa-flake8`: Performs linting
 
 ### 2. Review Process
+
 - All notebook changes should be reviewed before merging to main
 - Reviewers should run the notebook independently to verify results
 - Focus on both code quality and analytical approach
 
 ### 3. Notebook Execution Results
+
 - Execute notebooks using the provided scripts:
   ```bash
   # Run a single notebook
@@ -254,7 +290,7 @@ The following pre-commit hooks are applied to notebooks:
 
 ## Example Notebook Template
 
-```
+````
 # Notebook Title
 
 Brief description of the notebook's purpose and context.
@@ -273,9 +309,10 @@ import pandas as pd
 
 # Project imports
 from nyc_landmarks.config import settings
-```
+````
 
 ### Configuration Parameters
+
 ```python
 # Set configuration parameters
 LANDMARK_LIMIT = 100
@@ -288,7 +325,7 @@ Description of the data sources and loading process.
 
 ```python
 # Load the data
-data = pd.read_csv('path/to/data.csv')
+data = pd.read_csv("path/to/data.csv")
 
 # Preview the data
 data.head()
@@ -313,16 +350,18 @@ Explanation of what the visualization shows.
 ```python
 # Create visualization
 plt.figure(figsize=(10, 6))
-plt.plot(results['x'], results['y'])
-plt.title('Analysis Results')
-plt.xlabel('X Axis Label')
-plt.ylabel('Y Axis Label')
+plt.plot(results["x"], results["y"])
+plt.title("Analysis Results")
+plt.xlabel("X Axis Label")
+plt.ylabel("Y Axis Label")
 plt.show()
 ```
 
 ## Conclusion
 
 Summary of findings and next steps.
+
 ```
 
 By following these standards, we ensure that all notebooks in the project are consistent, maintainable, and reproducible, facilitating collaboration and knowledge sharing across the team.
+```

@@ -1,25 +1,33 @@
-.PHONY: help setup lint format test clean run diff
+.PHONY: help setup lint format test clean run diff pre-commit pre-commit-update
 
 help:
 	@echo "NYC Landmarks Vector DB Makefile"
 	@echo "================================="
-	@echo "setup        - Install dependencies and set up pre-commit hooks"
-	@echo "lint         - Run linters (flake8, mypy, pylint)"
-	@echo "format       - Format code with black and isort"
-	@echo "test         - Run tests with pytest"
-	@echo "clean        - Clean cache files and build artifacts"
-	@echo "run          - Run the FastAPI server"
-	@echo "diff         - Run the diff tool (example usage)"
+	@echo "setup              - Install dependencies and set up pre-commit hooks"
+	@echo "lint               - Run linters (flake8, mypy, pylint)"
+	@echo "format             - Format code with black and isort"
+	@echo "test               - Run tests with pytest"
+	@echo "clean              - Clean cache files and build artifacts"
+	@echo "run                - Run the FastAPI server"
+	@echo "pre-commit         - Pre-commit All Files"
+	@echo "pre-commit-update  - Update pre-commit hooks to latest versions and install them"
 
 setup:
 	pip install -r requirements.txt
 	pip install -e ".[dev]"
 	pre-commit install
 
+pre-commit-update:
+	pre-commit autoupdate
+	pre-commit install
+
 lint:
 	flake8 nyc_landmarks tests
 	mypy --config-file=mypy.ini nyc_landmarks
 	pylint nyc_landmarks
+
+pre-commit:
+	pre-commit run --all-files
 
 format:
 	isort nyc_landmarks tests
@@ -41,20 +49,3 @@ clean:
 
 run:
 	python -m uvicorn nyc_landmarks.main:app --reload
-
-diff:
-	@echo "Diff Tool Examples:"
-	@echo "-------------------"
-	@echo "Compare files:"
-	@echo "  python scripts/diff_tool.py file file1.py file2.py --color"
-	@echo "  python scripts/diff_tool.py file file1.py file2.py --html --browser"
-	@echo ""
-	@echo "Compare vectors:"
-	@echo "  python scripts/diff_tool.py vector vector1.npy vector2.npy --plot --output diff_plot.png"
-	@echo ""
-	@echo "Compare DataFrames:"
-	@echo "  python scripts/diff_tool.py dataframe data1.csv data2.csv --output diff.csv"
-	@echo ""
-	@echo "Running diff tool test:"
-	chmod +x scripts/diff_tool.py
-	python -m pytest tests/unit/test_diff_utils.py -v
