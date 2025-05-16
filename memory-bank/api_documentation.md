@@ -1,10 +1,14 @@
 # NYC Landmarks Vector Database - API Documentation
 
-This document provides comprehensive documentation of the process_landmarks GitHub Action workflow and the CoreDataStore API schema used in the NYC Landmarks Vector Database project.
+This document provides comprehensive documentation of the process_landmarks GitHub
+Action workflow and the CoreDataStore API schema used in the NYC Landmarks Vector
+Database project.
 
 ## Process Landmarks Pipeline
 
-The process_landmarks script implements a complete pipeline for processing NYC landmark data, fetching it from the CoreDataStore API, extracting text from PDFs, generating embeddings, and storing them in Pinecone vector database.
+The process_landmarks script implements a complete pipeline for processing NYC landmark
+data, fetching it from the CoreDataStore API, extracting text from PDFs, generating
+embeddings, and storing them in Pinecone vector database.
 
 ### Pipeline Workflow Diagram
 
@@ -75,32 +79,42 @@ flowchart TD
 ### Pipeline Steps
 
 1. **Initialization**: Set up the pipeline and initialize all required components.
-2. **API Step 1 - Fetch Landmarks**: Retrieve landmarks from the CoreDataStore API using pagination.
-3. **API Step 2 - Download PDFs**: Download PDF reports for each landmark using the URLs provided in the API response.
-4. **Processing Step 3 - Extract Text**: Extract text content from the downloaded PDFs.
-5. **Processing Step 4 - Chunk Text**: Split the extracted text into smaller chunks for embedding generation.
-6. **Processing Step 5 - Generate Embeddings**: Generate vector embeddings for each text chunk.
-7. **API Step 6 - Store in Vector DB**: Store the embeddings in Pinecone vector database with enhanced metadata.
-8. **Finalization**: Aggregate statistics and save results to files.
+1. **API Step 1 - Fetch Landmarks**: Retrieve landmarks from the CoreDataStore API using
+   pagination.
+1. **API Step 2 - Download PDFs**: Download PDF reports for each landmark using the URLs
+   provided in the API response.
+1. **Processing Step 3 - Extract Text**: Extract text content from the downloaded PDFs.
+1. **Processing Step 4 - Chunk Text**: Split the extracted text into smaller chunks for
+   embedding generation.
+1. **Processing Step 5 - Generate Embeddings**: Generate vector embeddings for each text
+   chunk.
+1. **API Step 6 - Store in Vector DB**: Store the embeddings in Pinecone vector database
+   with enhanced metadata.
+1. **Finalization**: Aggregate statistics and save results to files.
 
-Each step includes robust error handling and logging to ensure the pipeline can recover from failures and provide clear information about the processing status.
+Each step includes robust error handling and logging to ensure the pipeline can recover
+from failures and provide clear information about the processing status.
 
 ## CoreDataStore API Schema
 
-The NYC Landmarks Vector Database interacts with the CoreDataStore API to retrieve landmark data. The complete API schema is available at:
+The NYC Landmarks Vector Database interacts with the CoreDataStore API to retrieve
+landmark data. The complete API schema is available at:
 
 ```
 https://api.coredatastore.com/swagger/v1/swagger.json
 ```
 
-This Swagger documentation should be considered the definitive reference for API interactions. Below is the documentation for the key endpoints used in the pipeline.
+This Swagger documentation should be considered the definitive reference for API
+interactions. Below is the documentation for the key endpoints used in the pipeline.
 
 ### 1. Landmark Reports API
 
 #### GET `/api/LpcReport/{pageSize}/{page}`
+
 Retrieves a paginated list of landmark reports.
 
 **Parameters:**
+
 - `pageSize` (path): Number of results per page (default: 100)
 - `page` (path): Page number, starting from 1
 - `SearchText` (query, optional): Filter results by search term
@@ -112,6 +126,7 @@ Retrieves a paginated list of landmark reports.
 - `SortOrder` (query, optional): Sort direction ("asc" or "desc")
 
 **Response Schema:**
+
 ```json
 {
   "total": 1765,
@@ -142,12 +157,15 @@ Retrieves a paginated list of landmark reports.
 ```
 
 #### GET `/api/LpcReport/{landmark_id}`
+
 Retrieves detailed information about a specific landmark.
 
 **Parameters:**
+
 - `landmark_id` (path): The LP number of the landmark (e.g., "LP-00001")
 
 **Response Schema:**
+
 ```json
 {
   "name": "Irad Hawley House",
@@ -230,14 +248,17 @@ Retrieves detailed information about a specific landmark.
 ### 2. Landmark Buildings API
 
 #### GET `/api/LpcReport/landmark/{limit}/{page}`
+
 Retrieves buildings associated with a landmark.
 
 **Parameters:**
+
 - `limit` (path): Maximum number of buildings to return
 - `page` (path): Page number, starting from 1
 - `LpcNumber` (query): The LP number of the landmark
 
 **Response Schema:**
+
 ```json
 {
   "total": 1375,
@@ -283,14 +304,17 @@ Retrieves buildings associated with a landmark.
 ### 3. Photo Archive API
 
 #### GET `/api/PhotoArchive/{limit}/{page}`
+
 Retrieves photos associated with a landmark.
 
 **Parameters:**
+
 - `limit` (path): Maximum number of photos to return
 - `page` (path): Page number, starting from 1
 - `LpcId` (query): The LP number of the landmark
 
 **Response Schema:**
+
 ```json
 {
   "total": 1221,
@@ -326,12 +350,15 @@ Retrieves photos associated with a landmark.
 ### 4. Web Content API
 
 #### GET `/api/WebContent/{landmark_id}`
+
 Retrieves web content (including Wikipedia articles) associated with a landmark.
 
 **Parameters:**
+
 - `landmark_id` (path): The LP number of the landmark
 
 **Response Schema:**
+
 ```json
 [
   {
@@ -349,9 +376,11 @@ Retrieves web content (including Wikipedia articles) associated with a landmark.
 Several reference endpoints provide metadata for the application:
 
 #### GET `/api/Reference/borough`
+
 Returns a list of boroughs.
 
 **Response Schema:**
+
 ```json
 [
   "Manhattan",
@@ -363,12 +392,15 @@ Returns a list of boroughs.
 ```
 
 #### GET `/api/Reference/neighborhood`
+
 Returns a list of neighborhoods, optionally filtered by borough.
 
 **Parameters:**
+
 - `borough` (query, optional): Filter neighborhoods by borough
 
 **Response Schema:**
+
 ```json
 [
   {
@@ -380,9 +412,11 @@ Returns a list of neighborhoods, optionally filtered by borough.
 ```
 
 #### GET `/api/Reference/objectType`
+
 Returns a list of landmark object types.
 
 **Response Schema:**
+
 ```json
 [
   "Individual Landmark",
@@ -393,9 +427,11 @@ Returns a list of landmark object types.
 ```
 
 #### GET `/api/Reference/parentStyle`
+
 Returns a list of architecture styles.
 
 **Response Schema:**
+
 ```json
 [
   "Art Deco",
@@ -415,9 +451,11 @@ Returns a list of architecture styles.
 
 ### Input Data
 
-The pipeline starts with the landmark data retrieved from the CoreDataStore API, which includes metadata about the landmark and URLs to PDF reports.
+The pipeline starts with the landmark data retrieved from the CoreDataStore API, which
+includes metadata about the landmark and URLs to PDF reports.
 
 Example landmark data:
+
 ```json
 {
   "id": "LP-00001",
@@ -436,16 +474,19 @@ Example landmark data:
 ### Data Transformations
 
 1. **PDF Text Extraction**: Convert PDF reports into plain text.
-2. **Text Chunking**: Split large text documents into smaller chunks for better embedding generation.
+1. **Text Chunking**: Split large text documents into smaller chunks for better
+   embedding generation.
    - Each chunk includes metadata about its position (chunk_index, total_chunks).
-3. **Embedding Generation**: Convert text chunks into vector embeddings.
-4. **Metadata Enhancement**: Combine chunk metadata with landmark metadata.
+1. **Embedding Generation**: Convert text chunks into vector embeddings.
+1. **Metadata Enhancement**: Combine chunk metadata with landmark metadata.
 
 ### Output Data
 
-The final output is a set of vector embeddings stored in Pinecone, each with rich metadata that enables filtering and retrieval.
+The final output is a set of vector embeddings stored in Pinecone, each with rich
+metadata that enables filtering and retrieval.
 
 Example vector data:
+
 ```json
 {
   "id": "LP-00001-chunk-0",
@@ -471,7 +512,8 @@ Example vector data:
 
 ## GitHub Action Configuration
 
-The process_landmarks GitHub Action can be configured with various parameters to control its behavior:
+The process_landmarks GitHub Action can be configured with various parameters to control
+its behavior:
 
 ```yaml
 - name: Process Landmarks
@@ -501,7 +543,8 @@ The process_landmarks GitHub Action can be configured with various parameters to
 - `download`: Whether to download PDFs (default: false)
 - `limit`: Maximum number of PDFs to download (optional)
 - `recreate-index`: Whether to recreate the Pinecone index (default: false)
-- `drop-index`: Whether to drop the Pinecone index without recreating it (default: false)
+- `drop-index`: Whether to drop the Pinecone index without recreating it (default:
+  false)
 
 ### Environment Variables
 
@@ -515,26 +558,39 @@ The process_landmarks GitHub Action can be configured with various parameters to
 
 ## API Client Implementation Notes
 
-The NYC Landmarks project uses a central `DbClient` class that serves as an abstraction layer over the CoreDataStore API. This class provides robust type handling through Pydantic models that match the API response schemas.
+The NYC Landmarks project uses a central `DbClient` class that serves as an abstraction
+layer over the CoreDataStore API. This class provides robust type handling through
+Pydantic models that match the API response schemas.
 
 ### Key Features of the DB Client
 
-1. **Type Safety**: Uses Pydantic models (`LpcReportModel`, `LpcReportResponse`, `LpcReportDetailResponse`) for consistent data parsing and validation with comprehensive handling of Union types.
+1. **Type Safety**: Uses Pydantic models (`LpcReportModel`, `LpcReportResponse`,
+   `LpcReportDetailResponse`) for consistent data parsing and validation with
+   comprehensive handling of Union types.
 
-2. **Error Handling**: Contains comprehensive error handling with fallback mechanisms and proper logging, ensuring reliable API interactions even when response formats vary.
+1. **Error Handling**: Contains comprehensive error handling with fallback mechanisms
+   and proper logging, ensuring reliable API interactions even when response formats
+   vary.
 
-3. **Flexible Response Handling**: Can return both Pydantic model objects or raw dictionaries depending on the needs of the caller.
+1. **Flexible Response Handling**: Can return both Pydantic model objects or raw
+   dictionaries depending on the needs of the caller.
 
-4. **Pagination Support**: Built-in pagination for large result sets with flexible page size control.
+1. **Pagination Support**: Built-in pagination for large result sets with flexible page
+   size control.
 
-5. **Modular Design**: Key methods are broken down into smaller, focused helper methods to improve maintainability and testability:
+1. **Modular Design**: Key methods are broken down into smaller, focused helper methods
+   to improve maintainability and testability:
+
    - `_standardize_lp_number`: Ensures consistent landmark ID formatting
    - `_fetch_buildings_from_client`: Retrieves building data from the client API
-   - `_fetch_buildings_from_landmark_detail`: Falls back to landmark details when direct building fetch fails
-   - `_convert_building_items_to_models`: Converts various data types to consistent model objects
+   - `_fetch_buildings_from_landmark_detail`: Falls back to landmark details when direct
+     building fetch fails
+   - `_convert_building_items_to_models`: Converts various data types to consistent
+     model objects
    - `_convert_item_to_lpc_report_model`: Handles type conversion for individual items
 
-6. **API Method Coverage**: Provides methods for all key CoreDataStore endpoints:
+1. **API Method Coverage**: Provides methods for all key CoreDataStore endpoints:
+
    - `get_landmark_by_id`
    - `get_all_landmarks`
    - `get_landmarks_page`
@@ -557,10 +613,7 @@ client = get_db_client()
 
 # Get paginated landmarks
 landmarks = client.get_lpc_reports(
-    page=1,
-    limit=10,
-    borough="Manhattan",
-    object_type="Individual Landmark"
+    page=1, limit=10, borough="Manhattan", object_type="Individual Landmark"
 )
 
 # Access results as Pydantic models
@@ -584,4 +637,6 @@ for building in buildings:
 
 ### Client Implementation
 
-The `DbClient` class is designed with type safety in mind, using Pydantic models that match the CoreDataStore API response schemas. It provides a consistent interface for interacting with the API and handles error cases gracefully.
+The `DbClient` class is designed with type safety in mind, using Pydantic models that
+match the CoreDataStore API response schemas. It provides a consistent interface for
+interacting with the API and handles error cases gracefully.

@@ -7,11 +7,9 @@ on:
   workflow_dispatch:
 
 env:
-  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   SERVICE_NAME: nyc-landmarks-vector-db
   REGION: us-east4
   DOCKER_IMAGE_TAG: 0.0.1.${{ github.run_number }}
-  IMAGE_NAME: us-east4-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/nyc-landmarks/nyc-landmarks-vector-db:0.0.1.${{ github.run_number }}
   ARTIFACT_REGISTRY_HOST: us-east4-docker.pkg.dev
 
 jobs:
@@ -34,7 +32,7 @@ jobs:
         with:
           context: .
           push: false
-          tags: ${{ env.IMAGE_NAME }}
+          tags: us-east4-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/nyc-landmarks/nyc-landmarks-vector-db:0.0.1.${{ github.run_number }}
           outputs: type=docker,dest=/tmp/docker-image.tar
 
       - name: Upload Docker image artifact
@@ -65,7 +63,7 @@ jobs:
       - name: Set up Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: ${{ env.GCP_PROJECT_ID}}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Configure Docker
         run: gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY_HOST }}
@@ -88,7 +86,7 @@ jobs:
           docker images
 
       - name: Push Docker image to Artifact Registry
-        run: docker push ${{ env.IMAGE_NAME }}
+        run: docker push us-east4-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/nyc-landmarks/nyc-landmarks-vector-db:0.0.1.${{ github.run_number }}
 
   deploy:
     name: Deploy
@@ -96,8 +94,8 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: 'read'
-      id-token: 'write'
+      contents: "read"
+      id-token: "write"
 
     steps:
       - name: Google Auth
@@ -112,15 +110,17 @@ jobs:
         with:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
-          image: ${{ env.IMAGE_NAME }}
+          image: us-east4-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/nyc-landmarks/nyc-landmarks-vector-db:0.0.1.${{ github.run_number }}
           env_vars: |
+            ENV=production
             OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
             PINECONE_API_KEY=${{ secrets.PINECONE_API_KEY }}
             PINECONE_ENVIRONMENT=${{ secrets.PINECONE_ENVIRONMENT }}
             PINECONE_INDEX_NAME=${{ secrets.PINECONE_INDEX_NAME }}
             COREDATASTORE_API_KEY=${{ secrets.COREDATASTORE_API_KEY }}
             CONVERSATION_TTL=86400
-          flags: '--memory 1Gi --cpu 1 --concurrency 80 --max-instances 10 --min-instances 1 --timeout 300s --allow-unauthenticated --port 8000'
+            DEPLOYMENT_URL=https://vector-db.coredatastore.com
+          flags: "--memory 1Gi --cpu 1 --concurrency 80 --max-instances 10 --min-instances 1 --timeout 300s --allow-unauthenticated --port 8000"
 
       - name: Show Output
         run: echo "${{ steps.deploy.outputs.url }}"

@@ -1,6 +1,7 @@
 # Type Checking Setup
 
 This project uses two type checkers:
+
 - **mypy**: Primary type checker with stricter rules
 - **pyright**: Secondary type checker with additional checks
 
@@ -29,7 +30,8 @@ warn_unused_ignores = false
 check_untyped_defs = false
 ```
 
-Note: In our pre-commit configuration, we also disable specific error codes for smoother integration:
+Note: In our pre-commit configuration, we also disable specific error codes for smoother
+integration:
 
 ```yaml
 - id: mypy

@@ -1,10 +1,14 @@
 # Memory Bank
 
-This directory serves as a centralized location for project documentation, research notes, implementation details, and improvement records that are relevant to the project's development and maintenance.
+This directory serves as a centralized location for project documentation, research
+notes, implementation details, and improvement records that are relevant to the
+project's development and maintenance.
 
 ## Purpose
 
-The Memory Bank helps developers understand project decisions, track improvements, and maintain institutional knowledge even as team members change over time. Think of it as the project's "brain" that retains important information.
+The Memory Bank helps developers understand project decisions, track improvements, and
+maintain institutional knowledge even as team members change over time. Think of it as
+the project's "brain" that retains important information.
 
 ## What to Store Here
 
@@ -22,11 +26,13 @@ The Memory Bank helps developers understand project decisions, track improvement
 - **Code** - Code belongs in the appropriate source directories
 - **Configuration files** - These belong in their respective locations
 - **Personal notes** - Information not relevant to the project
-- **Duplicate documentation** - Don't duplicate what's in the main README or inline docstrings
+- **Duplicate documentation** - Don't duplicate what's in the main README or inline
+  docstrings
 
 ## Naming Convention
 
 Use descriptive kebab-case names for files:
+
 - `test-improvements.md`
 - `vector-storage-architecture.md`
 - `api-design.md`
@@ -40,4 +46,5 @@ Use descriptive kebab-case names for files:
 
 ## Organization
 
-As the memory bank grows, consider organizing files into subdirectories by category (e.g., `architecture/`, `research/`, `improvements/`).
+As the memory bank grows, consider organizing files into subdirectories by category
+(e.g., `architecture/`, `research/`, `improvements/`).

@@ -1,14 +1,16 @@
 # Contributing to NYC Landmarks Vector DB
 
-Thank you for considering contributing to the NYC Landmarks Vector Database project! This document outlines the process and guidelines for contributing.
+Thank you for considering contributing to the NYC Landmarks Vector Database project!
+This document outlines the process and guidelines for contributing.
 
 ## Development Process
 
 1. **Fork the repository** and clone your fork locally
-2. **Set up the development environment** using one of these methods:
-   - **Recommended:** Use VS Code with Dev Containers (see "Development Environment Options" in README.md)
+1. **Set up the development environment** using one of these methods:
+   - **Recommended:** Use VS Code with Dev Containers (see "Development Environment
+     Options" in README.md)
    - Alternatively, follow the local setup instructions in README.md
-3. **Create a new branch** for your feature or bugfix
+1. **Create a new branch** for your feature or bugfix
    ```bash
    git checkout -b feature/your-feature-name
    ```
@@ -16,8 +18,8 @@ Thank you for considering contributing to the NYC Landmarks Vector Database proj
    ```bash
    git checkout -b fix/issue-you-are-fixing
    ```
-4. **Make your changes** following our code standards
-5. **Run tests and linting** to ensure your changes meet our quality standards
+1. **Make your changes** following our code standards
+1. **Run tests and linting** to ensure your changes meet our quality standards
    ```bash
    # Run tests
    pytest
@@ -25,18 +27,18 @@ Thank you for considering contributing to the NYC Landmarks Vector Database proj
    # Run pre-commit checks
    pre-commit run --all-files
    ```
-6. **Commit your changes** with clear, descriptive commit messages
+1. **Commit your changes** with clear, descriptive commit messages
    ```bash
    git commit -m "Add feature: your feature description"
    ```
-7. **Push to your fork** and submit a pull request
+1. **Push to your fork** and submit a pull request
 
 ## Pull Request Process
 
 1. Update the README.md or documentation with details of changes if appropriate
-2. Make sure all CI checks pass
-3. Your PR will be reviewed by at least one maintainer
-4. Once approved, a maintainer will merge your changes
+1. Make sure all CI checks pass
+1. Your PR will be reviewed by at least one maintainer
+1. Once approved, a maintainer will merge your changes
 
 ## Code Standards
 
@@ -45,7 +47,8 @@ We use several tools to enforce code quality:
 ### Python Style Guide
 
 - Follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) style guide
-- Use [Black](https://black.readthedocs.io/) for code formatting with 88 character line length
+- Use [Black](https://black.readthedocs.io/) for code formatting with 88 character line
+  length
 - Sort imports with [isort](https://pycqa.github.io/isort/)
 
 ### Static Type Checking
@@ -58,7 +61,8 @@ We use several tools to enforce code quality:
 - Document all public modules, functions, classes, and methods
 - Use Google-style docstrings
 - Keep documentation up-to-date when changing code
-- Store project-wide documentation, research, and improvement notes in the `memory-bank/` directory
+- Store project-wide documentation, research, and improvement notes in the
+  `memory-bank/` directory
 - Use descriptive filenames with hyphens (e.g., `test-improvements.md`, `api-design.md`)
 
 ### Testing
@@ -118,4 +122,5 @@ pre-commit run --all-files
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the project's MIT License.
+By contributing, you agree that your contributions will be licensed under the project's
+MIT License.

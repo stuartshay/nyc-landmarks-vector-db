@@ -3,49 +3,71 @@
 ## Summary of Changes (May 3, 2025)
 
 ### Fixed Issues
-1. **Resolved unknown pytest mark warnings**
-   - Created a `conftest.py` file to automatically apply markers based on test directory structure
-   - This ensures all tests are properly marked without requiring explicit decorators in each test file
 
-2. **Fixed asyncio warnings**
-   - Updated `pytest.ini` to specify `asyncio_mode` and `asyncio_default_fixture_loop_scope`
+1. **Resolved unknown pytest mark warnings**
+
+   - Created a `conftest.py` file to automatically apply markers based on test directory
+     structure
+   - This ensures all tests are properly marked without requiring explicit decorators in
+     each test file
+
+1. **Fixed asyncio warnings**
+
+   - Updated `pytest.ini` to specify `asyncio_mode` and
+     `asyncio_default_fixture_loop_scope`
    - This prevents warnings from pytest-asyncio about unset configuration options
 
-3. **Improved Python environment configuration**
+1. **Improved Python environment configuration**
+
    - Added environment variables in `.env` file for Python paths
    - Updated VS Code settings to use these environment variables
    - This makes it easier to switch between different Python environments
 
-4. **Enhanced test resilience**
+1. **Enhanced test resilience**
+
    - Improved fallback mechanisms for tests that rely on external APIs
    - Added proper mock data support in the test utilities
 
-5. **Added dependency management documentation**
+1. **Added dependency management documentation**
+
    - Updated CONTRIBUTING.md with clear instructions on how to manage dependencies
    - Added pytest-dotenv to setup.py to ensure consistent environment loading in tests
 
 ### Benefits
 
-1. **More reliable tests**: Tests now work consistently even when external APIs are unavailable
-2. **Cleaner test output**: No more warnings when running the test suite
-3. **Better developer experience**: Clear guidelines for adding dependencies and managing the environment
-4. **Enhanced maintainability**: Automatic test marking based on directory structure simplifies test organization
+1. **More reliable tests**: Tests now work consistently even when external APIs are
+   unavailable
+1. **Cleaner test output**: No more warnings when running the test suite
+1. **Better developer experience**: Clear guidelines for adding dependencies and
+   managing the environment
+1. **Enhanced maintainability**: Automatic test marking based on directory structure
+   simplifies test organization
 
 ### Next Steps
 
-1. **Test Documentation**: Consider expanding the test documentation to explain the different test categories
-2. **Mock Data**: Continue improving mock data coverage for more comprehensive offline testing
-3. **CI Integration**: Ensure CI pipelines use the same environment configuration as local development
+1. **Test Documentation**: Consider expanding the test documentation to explain the
+   different test categories
+1. **Mock Data**: Continue improving mock data coverage for more comprehensive offline
+   testing
+1. **CI Integration**: Ensure CI pipelines use the same environment configuration as
+   local development
 
 ## Vector Storage Pipeline Test Refactoring (May 12, 2025)
 
 ### Original Issue
-The test function `test_vector_storage_pipeline` in `tests/functional/test_vector_storage_pipeline.py` was flagged by McCabe complexity analysis as too complex (21), exceeding the recommended threshold of 10. This made the test difficult to understand, maintain, and debug.
+
+The test function `test_vector_storage_pipeline` in
+`tests/functional/test_vector_storage_pipeline.py` was flagged by McCabe complexity
+analysis as too complex (21), exceeding the recommended threshold of 10. This made the
+test difficult to understand, maintain, and debug.
 
 ### Improvement Details
+
 The test was refactored by:
 
-1. Breaking down the complex test function into smaller, single-responsibility helper functions:
+1. Breaking down the complex test function into smaller, single-responsibility helper
+   functions:
+
    - `_setup_test_components`: Initialize all necessary components
    - `_fetch_landmark_data`: Get landmark data from API or mock
    - `_resolve_pdf_url`: Determine PDF URL for the landmark
@@ -58,11 +80,12 @@ The test was refactored by:
    - `_query_and_verify_vectors`: Query the database and verify retrieval
    - `_cleanup_test_vectors`: Clean up test vectors
 
-2. Adding proper type hints to make the code more robust
+1. Adding proper type hints to make the code more robust
 
-3. Improving documentation with clear function descriptions
+1. Improving documentation with clear function descriptions
 
 ### Benefits
+
 - **Enhanced Readability**: Each function has a single, clear responsibility
 - **Easier Maintenance**: Smaller functions are easier to update and fix
 - **Better Testing**: Potential to test individual steps separately in the future
@@ -70,6 +93,10 @@ The test was refactored by:
 - **Reduced Complexity**: McCabe complexity reduced to well under the threshold
 
 ### Future Considerations
-- We could further improve the test by making the helper functions more reusable across other tests
-- The landmark ID is hardcoded; we might want to parameterize it to test with different landmarks
-- Consider adding specific unit tests for these helper functions if they become more complex
+
+- We could further improve the test by making the helper functions more reusable across
+  other tests
+- The landmark ID is hardcoded; we might want to parameterize it to test with different
+  landmarks
+- Consider adding specific unit tests for these helper functions if they become more
+  complex

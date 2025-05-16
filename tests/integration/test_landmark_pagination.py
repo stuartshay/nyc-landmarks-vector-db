@@ -8,6 +8,7 @@ direct client and MCP server approaches.
 
 import sys
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 import pytest
 
@@ -65,7 +66,8 @@ class TestLandmarkPagination:
         assert "results" in response, "No results in response"
         assert "total" in response, "No total count in response"
 
-        total_count = response["total"]
+        response_dict = cast(Dict[str, Any], response)
+        total_count = response_dict["total"]
         assert total_count > 0, "Total count should be positive"
 
         # Calculate number of pages needed
@@ -94,7 +96,7 @@ class TestLandmarkPagination:
         ), f"Expected {total_count} unique IDs, got {len(all_ids)}"
 
     @pytest.mark.mcp
-    def test_pagination_with_mcp_server(self):
+    def test_pagination_with_mcp_server(self) -> None:
         """Test pagination using MCP server direct access."""
         import pytest
 
@@ -139,7 +141,7 @@ class TestLandmarkPagination:
             pytest.skip(f"MCP server test skipped: {str(e)}")
 
     @pytest.mark.integration
-    def test_page_size_variations(self):
+    def test_page_size_variations(self) -> None:
         """Test different page sizes to verify correct handling."""
         # Create fetcher instance
         fetcher = LandmarkReportFetcher()
@@ -153,13 +155,14 @@ class TestLandmarkPagination:
             assert response, f"No response with page size {page_size}"
             assert "results" in response, f"No results with page size {page_size}"
 
+            response_dict = cast(Dict[str, Any], response)
             # Verify we get the requested page size (or less for the last page)
             assert (
-                len(response["results"]) <= page_size
+                len(response_dict["results"]) <= page_size
             ), f"Got too many results with page size {page_size}"
 
     @pytest.mark.integration
-    def test_api_url_format(self):
+    def test_api_url_format(self) -> None:
         """Test that the API uses the correct URL format for pagination."""
         # Create fetcher instance
         fetcher = LandmarkReportFetcher()
@@ -168,16 +171,24 @@ class TestLandmarkPagination:
         original_make_request = fetcher.api_client._make_request
 
         # Keep track of calls to _make_request
-        call_args = []
+        call_args: List[
+            Tuple[str, str, Optional[Dict[str, Any]], Optional[Dict[str, Any]]]
+        ] = []
 
-        def mock_make_request(method, endpoint, params=None, json_data=None):
+        def mock_make_request(
+            method: str,
+            endpoint: str,
+            params: Optional[Dict[str, Any]] = None,
+            json_data: Optional[Dict[str, Any]] = None,
+        ) -> Dict[str, Any]:
             # Record the call arguments
             call_args.append((method, endpoint, params, json_data))
             # Call the original method
-            return original_make_request(method, endpoint, params, json_data)
+            result = original_make_request(method, endpoint, params, json_data)
+            return cast(Dict[str, Any], result)
 
-        # Replace the method with our mock
-        fetcher.api_client._make_request = mock_make_request
+        # Replace the method with our mock using setattr
+        setattr(fetcher.api_client, "_make_request", mock_make_request)
 
         try:
             # Make a call to get_lpc_reports
@@ -209,10 +220,10 @@ class TestLandmarkPagination:
 
         finally:
             # Restore the original method
-            fetcher.api_client._make_request = original_make_request
+            setattr(fetcher.api_client, "_make_request", original_make_request)
 
     @pytest.mark.integration
-    def test_last_page_handling(self):
+    def test_last_page_handling(self) -> None:
         """Test handling of the last page of results."""
         # Create fetcher instance
         fetcher = LandmarkReportFetcher()
@@ -223,7 +234,8 @@ class TestLandmarkPagination:
         assert response, "No response from API"
         assert "total" in response, "No total count in response"
 
-        total_count = response["total"]
+        response_dict = cast(Dict[str, Any], response)
+        total_count = response_dict["total"]
         page_size = 20
 
         # Calculate last page number

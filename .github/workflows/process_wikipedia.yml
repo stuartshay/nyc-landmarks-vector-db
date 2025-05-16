@@ -4,46 +4,46 @@ on:
   workflow_dispatch:
     inputs:
       landmark_ids:
-        description: 'Comma-separated list of landmark IDs to process (leave empty for all landmarks)'
+        description: "Comma-separated list of landmark IDs to process (leave empty for all landmarks)"
         required: false
-        default: ''
+        default: ""
       limit:
-        description: 'Maximum number of landmarks to process (for testing)'
+        description: "Maximum number of landmarks to process (for testing)"
         required: false
-        default: '0'
+        default: "0"
       chunk_size:
-        description: 'Text chunk size in characters'
+        description: "Text chunk size in characters"
         required: false
-        default: '1000'
+        default: "1000"
       chunk_overlap:
-        description: 'Overlap between chunks in characters'
+        description: "Overlap between chunks in characters"
         required: false
-        default: '200'
+        default: "200"
       parallel:
-        description: 'Run processing in parallel'
+        description: "Run processing in parallel"
         required: false
         default: true
         type: boolean
       workers:
-        description: 'Number of parallel workers (if parallel is true)'
+        description: "Number of parallel workers (if parallel is true)"
         required: false
-        default: '4'
+        default: "4"
       index_name:
-        description: 'Pinecone index name (leave empty for default in settings)'
+        description: "Pinecone index name (leave empty for default in settings)"
         required: false
-        default: ''
+        default: ""
       force_reprocess:
-        description: 'Force reprocessing of articles already in the index'
+        description: "Force reprocessing of articles already in the index"
         required: false
         default: false
         type: boolean
       skip_verification:
-        description: 'Skip verification step after processing'
+        description: "Skip verification step after processing"
         required: false
         default: false
         type: boolean
       verbose:
-        description: 'Enable verbose logging'
+        description: "Enable verbose logging"
         required: false
         default: true
         type: boolean
@@ -60,8 +60,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-          cache: 'pip'
+          python-version: "3.10"
+          cache: "pip"
 
       - name: Install dependencies
         run: |
@@ -153,7 +153,7 @@ jobs:
           echo "See attached verification report for details." >> wiki_processing_summary.md
 
       - name: Upload processing results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wikipedia-processing-results
           path: |

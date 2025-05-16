@@ -9,7 +9,7 @@ import logging
 import sys
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 import pytest
@@ -33,7 +33,7 @@ def get_vector_count(
 
     # Query Pinecone
     filter_dict: dict[str, str] = {"landmark_id": landmark_id}
-    results: list[dict[str, any]] = pinecone_db.query_vectors(
+    results: list[dict[str, Any]] = pinecone_db.query_vectors(
         query_vector=random_vector,
         top_k=100,  # Set high to get all chunks
         filter_dict=filter_dict,
@@ -43,8 +43,12 @@ def get_vector_count(
 
 
 @pytest.mark.integration
-def test_fixed_id_upsert_behavior(pinecone_test_db):
+def test_fixed_id_upsert_behavior(pinecone_test_db: Optional[PineconeDB]) -> None:
     """Test that processing the same landmark twice doesn't create duplicates."""
+    # Skip if Pinecone test database is not available
+    if pinecone_test_db is None:
+        pytest.skip("Pinecone test database is not available")
+
     # Use the test-specific PineconeDB instance
     pinecone_db = pinecone_test_db
 
@@ -59,7 +63,7 @@ def test_fixed_id_upsert_behavior(pinecone_test_db):
     logger.info(f"Cleaning up any existing vectors for {test_landmark_id}")
     initial_count, initial_results = get_vector_count(pinecone_db, test_landmark_id)
     if initial_results:
-        vector_ids = [r.get("id") for r in initial_results]
+        vector_ids = [str(r.get("id", "")) for r in initial_results]
         pinecone_db.delete_vectors(vector_ids)
 
     try:
@@ -165,5 +169,5 @@ def test_fixed_id_upsert_behavior(pinecone_test_db):
         logger.info(f"Cleaning up test vectors for {test_landmark_id}")
         cleanup_count, cleanup_results = get_vector_count(pinecone_db, test_landmark_id)
         if cleanup_results:
-            vector_ids = [r.get("id") for r in cleanup_results]
+            vector_ids = [str(r.get("id", "")) for r in cleanup_results]
             pinecone_db.delete_vectors(vector_ids)

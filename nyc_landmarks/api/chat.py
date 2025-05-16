@@ -79,6 +79,22 @@ class ChatResponse(BaseModel):
     )
 
 
+class ConversationHistoryResponse(BaseModel):
+    """Response model for conversation history endpoint."""
+
+    messages: List[ChatMessage] = Field(
+        ..., description="List of messages in the conversation"
+    )
+
+
+class DeleteConversationResponse(BaseModel):
+    """Response model for delete conversation endpoint."""
+
+    success: bool = Field(
+        ..., description="Whether the conversation was deleted successfully"
+    )
+
+
 # --- Dependency injection functions ---
 
 
@@ -439,8 +455,8 @@ async def chat_message(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/conversations/{conversation_id}", response_model=List[ChatMessage])  # type: ignore[misc]
-async def get_conversation_history(conversation_id: str) -> List[ChatMessage]:
+@router.get("/conversations/{conversation_id}", response_model=ConversationHistoryResponse)  # type: ignore[misc]
+async def get_conversation_history(conversation_id: str) -> ConversationHistoryResponse:
     """Get conversation history.
 
     Args:
@@ -459,7 +475,10 @@ async def get_conversation_history(conversation_id: str) -> List[ChatMessage]:
             )
 
         # Convert conversation messages to ChatMessage objects
-        return _convert_to_chat_messages(conversation)
+        messages = _convert_to_chat_messages(conversation)
+
+        # Return response model
+        return ConversationHistoryResponse(messages=messages)
     except HTTPException:
         raise
     except Exception as e:
@@ -467,8 +486,8 @@ async def get_conversation_history(conversation_id: str) -> List[ChatMessage]:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/conversations/{conversation_id}", response_model=Dict[str, bool])  # type: ignore[misc]
-async def delete_conversation(conversation_id: str) -> Dict[str, bool]:
+@router.delete("/conversations/{conversation_id}", response_model=DeleteConversationResponse)  # type: ignore[misc]
+async def delete_conversation(conversation_id: str) -> DeleteConversationResponse:
     """Delete a conversation.
 
     Args:
@@ -486,7 +505,7 @@ async def delete_conversation(conversation_id: str) -> Dict[str, bool]:
                 status_code=404, detail=f"Conversation not found: {conversation_id}"
             )
 
-        return {"success": True}
+        return DeleteConversationResponse(success=True)
     except HTTPException:
         raise
     except Exception as e:

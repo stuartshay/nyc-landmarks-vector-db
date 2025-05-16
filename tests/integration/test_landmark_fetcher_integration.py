@@ -20,14 +20,17 @@ from scripts.fetch_landmark_reports import LandmarkReportFetcher
 class TestLandmarkFetcherIntegration(unittest.TestCase):
     """Integration tests for the LandmarkReportFetcher."""
 
+    api_key: str
+    fetcher: LandmarkReportFetcher
+
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         """Set up test fixtures once for all tests."""
         # Use API key from environment or a default test key
         cls.api_key = os.environ.get("COREDATASTORE_API_KEY", "")
         cls.fetcher = LandmarkReportFetcher(cls.api_key)
 
-    def test_get_lpc_reports_returns_data(self):
+    def test_get_lpc_reports_returns_data(self) -> None:
         """Test that get_lpc_reports returns actual data from the API."""
         # Fetch a small number of reports
         reports = self.fetcher.get_lpc_reports(page_size=5, page=1)
@@ -48,7 +51,7 @@ class TestLandmarkFetcherIntegration(unittest.TestCase):
         except Exception as e:
             self.fail(f"Failed to validate report with Pydantic model: {e}")
 
-    def test_extract_pdf_urls_with_real_data(self):
+    def test_extract_pdf_urls_with_real_data(self) -> None:
         """Test that extract_pdf_urls correctly processes real data."""
         # Fetch some reports
         reports = self.fetcher.get_lpc_reports(page_size=5, page=1)
@@ -73,7 +76,7 @@ class TestLandmarkFetcherIntegration(unittest.TestCase):
             except Exception as e:
                 self.fail(f"Failed to validate PDF info with Pydantic model: {e}")
 
-    def test_full_run_integration(self):
+    def test_full_run_integration(self) -> None:
         """Test the full run method with minimal settings."""
         # Run the fetcher with minimal settings
         result = self.fetcher.run(page_size=3, pages=1, download_samples=False)

@@ -1,6 +1,7 @@
 # Development Container for NYC Landmarks Vector DB
 
-This directory contains the configuration for the Visual Studio Code Development Container, which provides a consistent development environment for all contributors.
+This directory contains the configuration for the Visual Studio Code Development
+Container, which provides a consistent development environment for all contributors.
 
 ## Features
 
@@ -15,10 +16,11 @@ This directory contains the configuration for the Visual Studio Code Development
 ## Getting Started
 
 1. Install [Visual Studio Code](https://code.visualstudio.com/)
-2. Install the [Remote - Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
-3. Clone the repository
-4. Create a `.env` file based on `.env.sample` with your API keys and configuration
-5. Open the folder in VS Code and when prompted, click "Reopen in Container"
+1. Install the
+   [Remote - Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+1. Clone the repository
+1. Create a `.env` file based on `.env.sample` with your API keys and configuration
+1. Open the folder in VS Code and when prompted, click "Reopen in Container"
 
 ### Alternative: Manual Container Build
 

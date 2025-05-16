@@ -115,7 +115,7 @@ def test_inspect_real_landmark_ids(random_vector: List[float]) -> None:
         pytest.skip("No Pinecone index available")
 
     # Track overall results for each landmark
-    results_summary = {}
+    results_summary: Dict[str, Dict[str, Any]] = {}
 
     for real_landmark_id in landmark_ids:
         # Query to find vectors for this landmark

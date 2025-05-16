@@ -77,6 +77,10 @@ class Settings(BaseSettings):
     # Application settings
     APP_HOST: str = Field(default="0.0.0.0")  # nosec
     APP_PORT: int = Field(default=8000)
+    # URL for production/deployed environment (optional)
+    DEPLOYMENT_URL: Optional[str] = Field(default="https://vector-db.coredatastore.com")
+    # Whether to show production URL in development swagger UI
+    SHOW_PROD_URL_IN_DEV: bool = Field(default=True)
 
     # PDF processing settings
     CHUNK_SIZE: int = Field(default=1000)  # Token size for text chunks
