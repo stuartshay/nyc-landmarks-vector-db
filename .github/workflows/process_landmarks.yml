@@ -4,33 +4,33 @@ on:
   workflow_dispatch: # Allows manual triggering
     inputs:
       api_page_size:
-        description: 'Records per API page fetch'
+        description: "Records per API page fetch"
         required: true
-        default: '100'
+        default: "100"
       job_batch_size:
-        description: 'Number of API pages per parallel job'
+        description: "Number of API pages per parallel job"
         required: true
-        default: '5'
+        default: "5"
       parallel_workers:
-        description: 'Number of parallel workers per job (0 for sequential)'
+        description: "Number of parallel workers per job (0 for sequential)"
         required: true
-        default: '2'
+        default: "2"
       recreate_index:
-        description: 'Recreate Pinecone index before processing? (true/false)'
+        description: "Recreate Pinecone index before processing? (true/false)"
         required: false
-        default: 'false'
+        default: "false"
       total_records:
-        description: 'Total number of landmark records to process (used for batching)'
+        description: "Total number of landmark records to process (used for batching)"
         required: true
-        default: '1765' # Update if the total changes significantly
+        default: "1765" # Update if the total changes significantly
       start_page_override:
-        description: 'Override start page number (leave empty to process from beginning)'
+        description: "Override start page number (leave empty to process from beginning)"
         required: false
-        default: ''
+        default: ""
       end_page_override:
-        description: 'Override end page number (leave empty to process to end)'
+        description: "Override end page number (leave empty to process to end)"
         required: false
-        default: ''
+        default: ""
 
 jobs:
   build_image:
@@ -66,33 +66,43 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Generate processing matrix
         id: set_matrix
         run: |
           echo "Generating matrix..."
 
-          # Build command with optional page override parameters
-          CMD="python scripts/generate_matrix.py \
-            --total-records ${{ github.event.inputs.total_records }} \
-            --api-page-size ${{ github.event.inputs.api_page_size }} \
-            --job-batch-size ${{ github.event.inputs.job_batch_size }}"
+          # Build command with array for proper argument handling
+          CMD=(
+            "python" "scripts/generate_matrix.py"
+          )
+
+          # Add optional parameters if provided
+          if [[ -n "${{ github.event.inputs.total_records }}" ]]; then
+            CMD+=("--total-records" "${{ github.event.inputs.total_records }}")
+          fi
+
+          # Add required parameters
+          CMD+=(
+            "--api-page-size" "${{ github.event.inputs.api_page_size }}"
+            "--job-batch-size" "${{ github.event.inputs.job_batch_size }}"
+          )
 
           # Add start page override if provided
           if [[ -n "${{ github.event.inputs.start_page_override }}" ]]; then
-            CMD="$CMD --start-page-override ${{ github.event.inputs.start_page_override }}"
+            CMD+=("--start-page-override" "${{ github.event.inputs.start_page_override }}")
             echo "Using start page override: ${{ github.event.inputs.start_page_override }}"
           fi
 
           # Add end page override if provided
           if [[ -n "${{ github.event.inputs.end_page_override }}" ]]; then
-            CMD="$CMD --end-page-override ${{ github.event.inputs.end_page_override }}"
+            CMD+=("--end-page-override" "${{ github.event.inputs.end_page_override }}")
             echo "Using end page override: ${{ github.event.inputs.end_page_override }}"
           fi
 
           # Execute the command
-          MATRIX_JSON=$(eval $CMD)
+          MATRIX_JSON=$("${CMD[@]}")
           echo "Matrix JSON: $MATRIX_JSON"
 
           # Check if JSON is valid (basic check)
@@ -100,7 +110,7 @@ jobs:
             echo "::error::Generated matrix JSON is invalid: $MATRIX_JSON"
             exit 1
           fi
-          echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
+          echo "matrix=$MATRIX_JSON" >> "$GITHUB_OUTPUT"
 
   process:
     needs: [build_image, generate_batches]
@@ -125,8 +135,7 @@ jobs:
           PINECONE_ENVIRONMENT: ${{ secrets.PINECONE_ENVIRONMENT }}
         run: |
           echo "Testing connection to Pinecone DB..."
-          python scripts/test_pinecone_connection.py
-          if [ $? -ne 0 ]; then
+          if ! python scripts/test_pinecone_connection.py; then
             echo "Failed to connect to Pinecone DB. Exiting workflow."
             exit 1
           fi
@@ -140,11 +149,22 @@ jobs:
           PINECONE_ENVIRONMENT: ${{ secrets.PINECONE_ENVIRONMENT }}
         run: |
           echo "Starting landmark processing for pages ${{ matrix.start_page }} to ${{ matrix.end_page }}..."
-          ARGS="--start-page ${{ matrix.start_page }} --end-page ${{ matrix.end_page }} --page-size ${{ github.event.inputs.api_page_size }}"
 
-          WORKERS=${{ github.event.inputs.parallel_workers }}
+          # Build arguments individually to avoid issues with quoting
+          START_PAGE="${{ matrix.start_page }}"
+          END_PAGE="${{ matrix.end_page }}"
+          PAGE_SIZE="${{ github.event.inputs.api_page_size }}"
+
+          # Use array to properly handle arguments with spaces
+          ARGS=(
+            "--start-page" "$START_PAGE"
+            "--end-page" "$END_PAGE"
+            "--page-size" "$PAGE_SIZE"
+          )
+
+          WORKERS="${{ github.event.inputs.parallel_workers }}"
           if [[ "$WORKERS" -gt 0 ]]; then
-            ARGS="$ARGS --parallel --workers $WORKERS"
+            ARGS+=("--parallel" "--workers" "$WORKERS")
             echo "Using parallel mode with $WORKERS workers for this batch."
           else
             echo "Using sequential mode for this batch."
@@ -153,11 +173,12 @@ jobs:
           if [[ "${{ github.event.inputs.recreate_index }}" == "true" ]]; then
              if [[ "${{ matrix.start_page }}" == "1" ]]; then
                echo "Adding --recreate-index for the first batch."
-               ARGS="$ARGS --recreate-index"
+               ARGS+=("--recreate-index")
              else
                echo "Skipping --recreate-index for subsequent batches."
              fi
           fi
 
-          python scripts/process_landmarks.py $ARGS
+          # Use "${ARGS[@]}" to properly expand the array with all arguments
+          python scripts/process_landmarks.py "${ARGS[@]}"
           echo "Landmark processing finished for pages ${{ matrix.start_page }}-${{ matrix.end_page }}."
