@@ -97,7 +97,7 @@ nest-asyncio==1.6.0
 nodeenv==1.9.1
 notebook_shim==0.2.4
 numpy==2.2.5
-nyc_landmarks_vector_db==1.0.0
+# Remove the package itself - this is being installed with -e in the CI
 openai==1.77.0
 overrides==7.7.0
 packaging==25.0

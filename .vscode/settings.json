@@ -24,5 +24,12 @@
   "python.analysis.stubPath": "stubs",
   "python.analysis.diagnosticSeverityOverrides": {
     "reportMissingTypeStubs": "none"
+  },
+  "terminal.integrated.defaultProfile.linux": "bash",
+  "terminal.integrated.profiles.linux": {
+    "bash": {
+      "path": "/usr/bin/bash",
+      "icon": "terminal-bash"
+    }
   }
 }
