@@ -71,72 +71,82 @@ jobs:
 
       - name: Configure environment
         run: |
-          echo "PINECONE_API_KEY=${{ secrets.PINECONE_API_KEY }}" >> $GITHUB_ENV
-          echo "PINECONE_ENVIRONMENT=${{ secrets.PINECONE_ENVIRONMENT }}" >> $GITHUB_ENV
-          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> $GITHUB_ENV
-          echo "COREDATASTORE_API_KEY=${{ secrets.COREDATASTORE_API_KEY }}" >> $GITHUB_ENV
+          {
+            echo "PINECONE_API_KEY=${{ secrets.PINECONE_API_KEY }}"
+            echo "PINECONE_ENVIRONMENT=${{ secrets.PINECONE_ENVIRONMENT }}"
+            echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}"
+            echo "COREDATASTORE_API_KEY=${{ secrets.COREDATASTORE_API_KEY }}"
 
-          # Add custom index name if provided
-          if [[ -n "${{ github.event.inputs.index_name }}" ]]; then
-            echo "PINECONE_INDEX_NAME=${{ github.event.inputs.index_name }}" >> $GITHUB_ENV
-          fi
+            # Add custom index name if provided
+            if [[ -n "${{ github.event.inputs.index_name }}" ]]; then
+              echo "PINECONE_INDEX_NAME=${{ github.event.inputs.index_name }}"
+            fi
+          } >> "$GITHUB_ENV"
 
       - name: Check API connections
         run: |
-          python scripts/test_pinecone_connection.py
+          if ! python scripts/test_pinecone_connection.py; then
+            echo "Failed to connect to Pinecone API"
+            exit 1
+          fi
 
       - name: Process Wikipedia articles
         id: process_articles
         run: |
-          # Build command arguments
-          ARGS=""
+          # Build command arguments using array for proper handling
+          ARGS=()
 
           # Add landmark IDs if specified
           if [[ -n "${{ github.event.inputs.landmark_ids }}" ]]; then
-            ARGS="$ARGS --landmark-ids ${{ github.event.inputs.landmark_ids }}"
+            ARGS+=(--landmark-ids "${{ github.event.inputs.landmark_ids }}")
           fi
 
           # Add limit if specified
           if [[ "${{ github.event.inputs.limit }}" != "0" ]]; then
-            ARGS="$ARGS --limit ${{ github.event.inputs.limit }}"
+            ARGS+=(--limit "${{ github.event.inputs.limit }}")
           fi
 
           # Add chunk configuration
-          ARGS="$ARGS --chunk-size ${{ github.event.inputs.chunk_size }} --chunk-overlap ${{ github.event.inputs.chunk_overlap }}"
+          ARGS+=(
+            --chunk-size "${{ github.event.inputs.chunk_size }}"
+            --chunk-overlap "${{ github.event.inputs.chunk_overlap }}"
+          )
 
           # Add parallel processing if enabled
           if [[ "${{ github.event.inputs.parallel }}" == "true" ]]; then
-            ARGS="$ARGS --parallel --workers ${{ github.event.inputs.workers }}"
+            ARGS+=(--parallel --workers "${{ github.event.inputs.workers }}")
           fi
 
           # Add force reprocess if enabled
           if [[ "${{ github.event.inputs.force_reprocess }}" == "true" ]]; then
-            ARGS="$ARGS --force-reprocess"
+            ARGS+=(--force-reprocess)
           fi
 
           # Add verbose flag if enabled
           if [[ "${{ github.event.inputs.verbose }}" == "true" ]]; then
-            ARGS="$ARGS --verbose"
+            ARGS+=(--verbose)
           fi
 
           # Run the processing script
-          echo "Running: python scripts/process_wikipedia_articles.py $ARGS"
-          python scripts/process_wikipedia_articles.py $ARGS
+          echo "Running: python scripts/process_wikipedia_articles.py ${ARGS[*]}"
+          python scripts/process_wikipedia_articles.py "${ARGS[@]}"
 
           # Create a summary file for artifacts
-          echo "# Wikipedia Processing Results" > wiki_processing_summary.md
-          echo "## Configuration" >> wiki_processing_summary.md
-          echo "- Landmark IDs: ${{ github.event.inputs.landmark_ids || 'All landmarks' }}" >> wiki_processing_summary.md
-          echo "- Chunk size: ${{ github.event.inputs.chunk_size }}" >> wiki_processing_summary.md
-          echo "- Chunk overlap: ${{ github.event.inputs.chunk_overlap }}" >> wiki_processing_summary.md
-          echo "- Parallel processing: ${{ github.event.inputs.parallel }}" >> wiki_processing_summary.md
-          echo "- Workers: ${{ github.event.inputs.workers }}" >> wiki_processing_summary.md
-          echo "- Force reprocess: ${{ github.event.inputs.force_reprocess }}" >> wiki_processing_summary.md
-          if [[ -n "${{ github.event.inputs.index_name }}" ]]; then
-            echo "- Pinecone index: ${{ github.event.inputs.index_name }}" >> wiki_processing_summary.md
-          fi
+          {
+            echo "# Wikipedia Processing Results"
+            echo "## Configuration"
+            echo "- Landmark IDs: ${{ github.event.inputs.landmark_ids || 'All landmarks' }}"
+            echo "- Chunk size: ${{ github.event.inputs.chunk_size }}"
+            echo "- Chunk overlap: ${{ github.event.inputs.chunk_overlap }}"
+            echo "- Parallel processing: ${{ github.event.inputs.parallel }}"
+            echo "- Workers: ${{ github.event.inputs.workers }}"
+            echo "- Force reprocess: ${{ github.event.inputs.force_reprocess }}"
+            if [[ -n "${{ github.event.inputs.index_name }}" ]]; then
+              echo "- Pinecone index: ${{ github.event.inputs.index_name }}"
+            fi
 
-          echo "Processing completed successfully." >> wiki_processing_summary.md
+            echo "Processing completed successfully."
+          } > wiki_processing_summary.md
 
       - name: Verify Wikipedia integration
         if: ${{ github.event.inputs.skip_verification != 'true' }}
@@ -149,8 +159,10 @@ jobs:
           python scripts/verify_wikipedia_imports.py --verbose --coverage-report --output-dir verification_results
 
           # Add verification results to summary
-          echo "## Verification Results" >> wiki_processing_summary.md
-          echo "See attached verification report for details." >> wiki_processing_summary.md
+          {
+            echo "## Verification Results"
+            echo "See attached verification report for details."
+          } >> wiki_processing_summary.md
 
       - name: Upload processing results
         uses: actions/upload-artifact@v4
