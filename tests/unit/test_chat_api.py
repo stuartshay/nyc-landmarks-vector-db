@@ -230,9 +230,11 @@ class TestChatAPI:
 
         # Assert
         assert response.status_code == 200
-        assert len(response.json()) == 2  # Excludes system message
-        assert response.json()[0]["role"] == "user"
-        assert response.json()[1]["role"] == "assistant"
+        response_data = response.json()
+        assert "messages" in response_data
+        assert len(response_data["messages"]) == 2  # Excludes system message
+        assert response_data["messages"][0]["role"] == "user"
+        assert response_data["messages"][1]["role"] == "assistant"
 
     @patch("nyc_landmarks.api.chat.conversation_store")
     def test_get_conversation_history_not_found(
