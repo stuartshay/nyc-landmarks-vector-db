@@ -86,7 +86,7 @@ setup(
     install_requires=[
         "fastapi>=0.115.12",
         "uvicorn>=0.34.2",
-        "openai>=1.77.0",
+        "openai>=1.78.0",
         "pinecone>=6.0.2",  # Updated from pinecone-client to pinecone
         "pypdf>=5.4.0",  # Updated from pypdf2 to pypdf
         "pdfplumber>=0.11.6",
@@ -99,6 +99,8 @@ setup(
         "numpy>=2.2.5",  # Added for vector tests
         "pandas>=2.2.3",  # Added for dataframe tests
         "tenacity>=9.1.2",  # Added for retry logic in API calls
+        "beautifulsoup4>=4.12.3",  # Added for Wikipedia scraping
+        "requests>=2.32.3",  # Added for HTTP requests
         "matplotlib",  # Added for notebooks
         "folium",  # Added for map visualizations in notebooks
         "scikit-learn",  # Added for clustering in notebooks
