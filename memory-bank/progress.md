@@ -39,6 +39,8 @@
   - Error handling with detailed logging
   - Robust attribute access for both dictionary and object responses
   - Modular code structure with focused helper functions
+  - Pagination support for efficient batch processing
+  - Full database processing with the `--all` option
 
 - **Wikipedia Integration**
 
@@ -46,6 +48,8 @@
   - Content filtering and cleaning
   - Embedding generation for article chunks
   - Storage alongside PDF content
+  - Page-based fetching for controlled batch processing
+  - Complete database processing capabilities
 
 ## Work In Progress
 
@@ -69,8 +73,38 @@
 - Embedding quality varies based on text content
 - Wikipedia content may not always match landmarks perfectly
 - Test coverage for edge cases needs expansion
+- Large Wikipedia articles can exceed token limits for embedding models
+  - Observed with The Ansonia (LP-00285) causing a 400 error due to the article's 11,091 tokens exceeding the model's 8,192 token limit
+- Many landmarks don't have associated Wikipedia articles
+  - Approximately 60% of landmarks tested on page 3 had no Wikipedia content
+- Processing across multiple pages requires careful handling of limits to ensure a balanced workload
 
 ## Recent Completions
+
+- **Enhanced Command-Line Options and Validation**
+  - Added new `--page-size` parameter to control the number of landmarks per API request
+  - Implemented mutual exclusivity between `--all` and `--page` parameters
+  - Created proper error handling for invalid argument combinations
+  - Added clear error messages to guide users on correct usage
+  - Validated all key parameter combinations:
+    - `--all --page-size 50 --verbose`: Process all landmarks with page size 50
+    - `--all --page-size 50 --limit 5 --verbose`: Process first 5 landmarks with page size 50
+    - `--page 2 --page-size 50 --verbose`: Start from page 2 with page size 50
+    - `--page 2 --limit 5 --page-size 50 --verbose`: Process 5 landmarks from page 2 with page size 50
+  - Improved documentation in help text to indicate incompatible arguments
+  - Tested with different page sizes to optimize API requests and processing
+
+- **Enhanced Wikipedia Processing with Full Database Support**
+  - Added `--all` parameter to process all available landmarks in database
+  - Integrated with `DbClient.get_total_record_count()` to determine total records
+  - Enabled selective processing with combined `--limit` and `--all` options
+  - Successfully tested pagination with batches of landmarks from different pages
+
+- **Enhanced Wikipedia Processing with Pagination**
+  - Added `--page` parameter to `process_wikipedia_articles.py` to allow starting landmark fetch from a specific page
+  - Improved control over batch processing for large datasets
+  - Enabled resuming failed runs and distributing workload across multiple sessions
+  - Successfully tested pagination with batches of landmarks from different pages
 
 - Fixed Pyright error in `check_landmark_processing.py`
 

@@ -12,8 +12,8 @@ Deployed Application
 https://vector-db.coredatastore.com/docs
 ```
 
-A vector database system for NYC landmarks that extracts metadata and text from API and
-PDF reports, converts it to vector embeddings, and enables semantic search and chatbot
+A vector database system for NYC landmarks that extracts metadata and text from API,
+PDF reports and Wikipedia Pages, converts it to vector embeddings, and enables semantic search and chatbot
 functionality.
 
 ## Project Overview
@@ -156,7 +156,7 @@ git clone https://github.com/yourusername/nyc-landmarks-vector-db.git
 cd nyc-landmarks-vector-db
 
 # Option 1: Using venv (if you have Python 3.11 installed)
-python3.11 -m venv venv
+python3.12 -m venv venv
 
 # Activate the virtual environment
 # On Unix or MacOS:
@@ -535,7 +535,7 @@ If you prefer to set up the development environment locally without containers:
 1. **Create and activate a virtual environment:**
 
    ```bash
-   python3.11 -m venv venv
+   python3.12 -m venv venv
 
    # Activate the virtual environment
    # On Unix or MacOS:

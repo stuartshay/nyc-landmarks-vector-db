@@ -206,9 +206,8 @@ def validate_vector_metadata() -> Dict[str, Any]:
     required_fields = [
         "landmark_id",
         "source_type",
-        "article_title",
-        "article_url",
         "chunk_index",
+        "text"
     ]
 
     # Check each vector's metadata

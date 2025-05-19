@@ -20,7 +20,6 @@ from typing import Dict, List, Optional, Tuple, Union
 from tqdm import tqdm
 
 from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
-from nyc_landmarks.db.db_client import DbClient
 from nyc_landmarks.db.wikipedia_fetcher import WikipediaFetcher
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.utils.logger import get_logger
@@ -105,6 +104,42 @@ def process_landmark_wikipedia(
             chunks_with_embeddings = embedding_generator.process_chunks(
                 wiki_article.chunks
             )
+
+            # Add article title and URL to metadata for each chunk
+            for chunk in chunks_with_embeddings:
+                # Ensure metadata structure is consistent
+                if isinstance(chunk, dict):
+                    # Add article_metadata field which is used by PineconeDB._create_metadata_for_chunk
+                    if "article_metadata" not in chunk:
+                        chunk["article_metadata"] = {}
+                    chunk["article_metadata"]["title"] = wiki_article.title
+                    chunk["article_metadata"]["url"] = wiki_article.url
+
+                    # Also add directly to metadata for backwards compatibility
+                    if "metadata" in chunk and chunk["metadata"] is not None:
+                        chunk["metadata"]["article_title"] = wiki_article.title
+                        chunk["metadata"]["article_url"] = wiki_article.url
+
+                    # Debug log to verify metadata is being set
+                    logger.info(
+                        f"Added article metadata to chunk: article_title={wiki_article.title}, article_url={wiki_article.url}"
+                    )
+                else:
+                    # Handle object-style chunks
+                    # Add article_metadata field
+                    if not hasattr(chunk, "article_metadata"):
+                        setattr(chunk, "article_metadata", {})
+                    chunk.article_metadata["title"] = wiki_article.title
+                    chunk.article_metadata["url"] = wiki_article.url
+
+                    # Also add directly to metadata for backwards compatibility
+                    if hasattr(chunk, "metadata") and chunk.metadata is not None:
+                        chunk.metadata["article_title"] = wiki_article.title
+                        chunk.metadata["article_url"] = wiki_article.url
+
+                    logger.info(
+                        f"Added article metadata to object-style chunk: {wiki_article.title}"
+                    )
 
             # Store in Pinecone with deterministic IDs
             logger.info(f"Storing {len(chunks_with_embeddings)} vectors in Pinecone")
@@ -227,39 +262,105 @@ def process_landmarks_parallel(
     return results
 
 
-def get_all_landmark_ids(limit: Optional[int] = None) -> List[str]:
+def get_all_landmark_ids(
+    limit: Optional[int] = None,
+    start_page: int = 1,
+    process_all: bool = False,
+    page_size: int = 100,
+) -> List[str]:
     """
     Get all landmark IDs from the CoreDataStore API.
 
     Args:
         limit: Maximum number of landmarks to return
+        start_page: Page number to start fetching landmarks from
+        process_all: Whether to process all available landmarks across all pages
+        page_size: Number of landmarks to fetch per API request
 
     Returns:
         List of landmark IDs
     """
     logger.info("Fetching all landmark IDs from CoreDataStore API")
-    db_client = DbClient(CoreDataStoreAPI())
+    api_client = CoreDataStoreAPI()
 
-    # Get all landmarks
-    landmarks = db_client.get_all_landmarks()
-
-    # Extract IDs
+    # Initialize variables for pagination
     landmark_ids = []
-    for landmark in landmarks:
-        if isinstance(landmark, dict):
-            landmark_id = landmark.get("id") or landmark.get("lpc_id")
-        else:
-            landmark_id = getattr(landmark, "id", None) or getattr(
-                landmark, "lpc_id", None
-            )
+    current_page = start_page  # Start from the specified page
 
-        if landmark_id:
-            landmark_ids.append(landmark_id)
+    logger.info(f"Using page size of {page_size} landmarks per request")
+
+    # If processing all, calculate total pages needed based on total records
+    if process_all:
+        from nyc_landmarks.db.db_client import get_db_client
+
+        db_client = get_db_client()
+        total_records = db_client.get_total_record_count()
+        total_pages = (total_records + page_size - 1) // page_size
+        logger.info(
+            f"Processing all landmarks across {total_pages} pages (total records: {total_records})"
+        )
+
+    continue_fetching = True
+
+    logger.info(f"Starting landmark fetch from page {start_page}")
+
+    # Fetch landmarks page by page
+    while continue_fetching:
+        logger.info(
+            f"Fetching landmarks page {current_page} with page size {page_size}"
+        )
+        try:
+            # Get landmarks for current page using the paginated API endpoint
+            landmarks_page = api_client.get_landmarks_page(page_size, current_page)
+
+            # Break if no results returned
+            if not landmarks_page:
+                logger.info(f"No more landmarks found on page {current_page}")
+                break
+
+            # Process landmarks and extract IDs
+            for landmark in landmarks_page:
+                if isinstance(landmark, dict):
+                    landmark_id = landmark.get("id") or landmark.get("lpc_id")
+                else:
+                    landmark_id = getattr(landmark, "id", None) or getattr(
+                        landmark, "lpc_id", None
+                    )
+
+                if landmark_id:
+                    landmark_ids.append(landmark_id)
+
+                    # Break if we've reached the limit and not processing all pages
+                    if (
+                        limit is not None
+                        and len(landmark_ids) >= limit
+                        and not process_all
+                    ):
+                        logger.info(
+                            f"Reached limit of {limit} landmarks on current page"
+                        )
+                        continue_fetching = False
+                        break
+
+            # Move to next page
+            current_page += 1
+
+            # If we're processing all records and hit the limit, stop
+            if limit is not None and len(landmark_ids) >= limit and process_all:
+                logger.info(f"Reached total limit of {limit} landmarks across pages")
+                break
+
+            # Log progress
+            logger.info(f"Collected {len(landmark_ids)} landmark IDs so far")
+
+        except Exception as e:
+            logger.error(f"Error fetching landmarks page {current_page}: {e}")
+            break
 
     logger.info(f"Found {len(landmark_ids)} total landmarks")
 
-    # Apply limit if specified
-    if limit is not None and limit > 0:
+    # Apply limit if we haven't done so during fetch (safety check)
+    if limit is not None and limit > 0 and len(landmark_ids) > limit:
         landmark_ids = landmark_ids[:limit]
         logger.info(f"Limited to {len(landmark_ids)} landmarks")
 
@@ -314,13 +415,42 @@ def parse_arguments() -> argparse.Namespace:
         help="Maximum number of landmarks to process (only used when no landmark IDs specified)",
     )
     parser.add_argument(
+        "--page-size",
+        type=int,
+        default=100,
+        help="Number of landmarks to fetch per API request (default: 100)",
+    )
+
+    # Create mutually exclusive group for processing mode
+    mode_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument(
+        "--all",
+        action="store_true",
+        help="Process all available landmarks in the database (cannot be used with --page)",
+    )
+    mode_group.add_argument(
+        "--page",
+        type=int,
+        default=1,
+        help="Page number to start fetching landmarks from (default: 1, cannot be used with --all)",
+    )
+
+    parser.add_argument(
         "--verbose",
         "-v",
         action="store_true",
         help="Enable verbose logging",
     )
 
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    # Additional validation: if someone uses --page with default value and --all
+    if args.all and args.page != 1:
+        parser.error(
+            "Argument --all cannot be used with --page (use either --all or --page N, not both)"
+        )
+
+    return args
 
 
 def setup_logging(verbose: bool) -> None:
@@ -336,13 +466,20 @@ def setup_logging(verbose: bool) -> None:
 
 
 def get_landmarks_to_process(
-    landmark_ids: Optional[str], limit: Optional[int]
+    landmark_ids: Optional[str],
+    limit: Optional[int],
+    page: int = 1,
+    process_all: bool = False,
+    page_size: int = 100,
 ) -> List[str]:
     """Determine which landmarks to process.
 
     Args:
         landmark_ids: Comma-separated list of landmark IDs to process
         limit: Maximum number of landmarks to process
+        page: Page number to start fetching landmarks from (not used if process_all is True)
+        process_all: Whether to process all available landmarks in the database
+        page_size: Number of landmarks to fetch per API request
 
     Returns:
         List of landmark IDs to process
@@ -351,10 +488,35 @@ def get_landmarks_to_process(
         # Process specific landmarks
         landmarks_to_process = [lid.strip() for lid in landmark_ids.split(",")]
         logger.info(f"Will process {len(landmarks_to_process)} specified landmarks")
+    elif process_all:
+        # Process all available landmarks
+        from nyc_landmarks.db.db_client import get_db_client
+
+        db_client = get_db_client()
+        total_records = db_client.get_total_record_count()
+        logger.info(f"Retrieved total record count: {total_records}")
+
+        # If limit is provided, use the smaller of limit or total_records
+        effective_limit = (
+            min(limit, total_records) if limit is not None else total_records
+        )
+        logger.info(
+            f"Will process up to {effective_limit} landmarks of {total_records} total"
+        )
+
+        # When process_all is True, we always start from page 1 (due to mutual exclusivity)
+        landmarks_to_process = get_all_landmark_ids(
+            effective_limit, 1, process_all=True, page_size=page_size
+        )
+        logger.info(
+            f"Will process {len(landmarks_to_process)} landmarks across all pages"
+        )
     else:
-        # Process all landmarks (or limited set)
-        landmarks_to_process = get_all_landmark_ids(limit)
-        logger.info(f"Will process {len(landmarks_to_process)} landmarks")
+        # Process landmarks with specified limit starting from the specified page
+        landmarks_to_process = get_all_landmark_ids(limit, page, page_size=page_size)
+        logger.info(
+            f"Will process {len(landmarks_to_process)} landmarks starting from page {page}"
+        )
 
     return landmarks_to_process
 
@@ -519,7 +681,9 @@ def main() -> None:
     setup_logging(args.verbose)
 
     # Get landmarks to process
-    landmarks_to_process = get_landmarks_to_process(args.landmark_ids, args.limit)
+    landmarks_to_process = get_landmarks_to_process(
+        args.landmark_ids, args.limit, args.page, args.all, args.page_size
+    )
     if not landmarks_to_process:
         logger.error("No landmarks to process")
         sys.exit(1)
