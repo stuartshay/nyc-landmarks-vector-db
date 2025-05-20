@@ -47,7 +47,9 @@ def verify_batch_vectors(vector_ids: List[str]) -> Dict[str, bool]:
     print("\n" + "=" * 50)
     print("VERIFICATION RESULTS:")
     valid_count = sum(1 for result in results.values() if result)
-    print(f"Valid vectors: {valid_count}/{len(vector_ids)} ({valid_count/len(vector_ids)*100:.1f}%)")
+    print(
+        f"Valid vectors: {valid_count}/{len(vector_ids)} ({valid_count/len(vector_ids)*100:.1f}%)"
+    )
 
     if valid_count < len(vector_ids):
         print("\nInvalid vectors:")
@@ -64,7 +66,7 @@ def main() -> None:
     vector_ids = [
         "wiki-Wyckoff_House-LP-00001-chunk-0",
         "wiki-Brooklyn_Naval_Hospital-LP-00003-chunk-0",
-        "wiki-Prospect_Park_Boathouse-LP-00004-chunk-0"
+        "wiki-Prospect_Park_Boathouse-LP-00004-chunk-0",
     ]
 
     # Verify the vectors

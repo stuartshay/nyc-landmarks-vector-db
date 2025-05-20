@@ -110,13 +110,17 @@ def update_wikipedia_vectors(dry_run: bool = False) -> bool:
         updated_metadata["article_url"] = article_url
 
         # Prepare for update
-        vectors_to_update.append({
-            "id": vector_id,
-            "metadata": updated_metadata,
-            "values": vector.get("values", [])  # Keep original embeddings
-        })
+        vectors_to_update.append(
+            {
+                "id": vector_id,
+                "metadata": updated_metadata,
+                "values": vector.get("values", []),  # Keep original embeddings
+            }
+        )
 
-        logger.info(f"Will update vector {vector_id} with article_title='{article_title}'")
+        logger.info(
+            f"Will update vector {vector_id} with article_title='{article_title}'"
+        )
 
     # Update vectors in Pinecone
     if not vectors_to_update:
@@ -134,11 +138,13 @@ def update_wikipedia_vectors(dry_run: bool = False) -> bool:
     success = True
 
     for i in range(0, len(vectors_to_update), batch_size):
-        batch = vectors_to_update[i:i + batch_size]
+        batch = vectors_to_update[i : i + batch_size]
         try:
             # Update vectors in Pinecone
             pinecone_db.index.upsert(vectors=batch)
-            logger.info(f"Successfully updated batch {i//batch_size + 1}/{(len(vectors_to_update) + batch_size - 1)//batch_size}")
+            logger.info(
+                f"Successfully updated batch {i//batch_size + 1}/{(len(vectors_to_update) + batch_size - 1)//batch_size}"
+            )
         except Exception as e:
             logger.error(f"Error updating batch {i//batch_size + 1}: {e}")
             success = False
@@ -154,7 +160,7 @@ def main() -> None:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Perform a dry run without making changes"
+        help="Perform a dry run without making changes",
     )
 
     args = parser.parse_args()

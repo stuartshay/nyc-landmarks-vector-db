@@ -24,6 +24,18 @@
 
   - Storage in vector database
 
+- **Test Coverage**
+
+  - Unit tests for db_client module with 96% code coverage (improved from 76%)
+  - Well-organized test suite with functional grouping across three files:
+    - `test_db_client.py`: Core functionality tests
+    - `test_db_client_additional.py`: Additional functionality tests
+    - `test_db_client_coverage.py`: Coverage-focused tests
+  - Comprehensive test documentation in tests/unit/README.md
+  - Clear separation of concerns in test cases
+  - Edge case handling and error condition testing
+  - Detailed documentation in memory-bank/test-improvements.md
+
 - **Vector Database Integration**
 
   - Pinecone index configuration and management
@@ -81,7 +93,32 @@
 
 ## Recent Completions
 
+- **Improved Unit Test Coverage**
+
+  - Increased db_client test coverage from 76% to 96%
+  - Organized tests into three files for clarity:
+    - `test_db_client.py`: Core functionality tests
+    - `test_db_client_additional.py`: Additional functionality tests
+    - `test_db_client_coverage.py`: Coverage-focused tests
+  - Added comprehensive tests for edge cases and error handling
+  - Corrected Wikipedia model usage in tests to match actual implementation
+  - Created detailed documentation in `memory-bank/db_client_test_documentation.md`
+  - Identified and documented remaining uncovered lines with explanations
+  - Established pattern for organizing tests by functional areas
+  - Set up foundation for extending coverage to other modules
+
+- **Fixed Wikipedia Article Processing in CoreDataStoreAPI**
+
+  - Updated `get_wikipedia_articles` method to use the correct `/api/WebContent/batch` endpoint
+  - Implemented proper case-insensitive handling for landmark IDs in API responses
+  - Added robust type checking and validation for API response data
+  - Implemented detailed logging for troubleshooting API responses
+  - Fixed the filter logic for Wikipedia article records
+  - Successfully processed Wikipedia articles for landmarks (confirmed with LP-00009)
+  - Ensured proper TypeScript type annotations using `cast()` to satisfy type checker
+
 - **Enhanced Command-Line Options and Validation**
+
   - Added new `--page-size` parameter to control the number of landmarks per API request
   - Implemented mutual exclusivity between `--all` and `--page` parameters
   - Created proper error handling for invalid argument combinations
@@ -95,12 +132,14 @@
   - Tested with different page sizes to optimize API requests and processing
 
 - **Enhanced Wikipedia Processing with Full Database Support**
+
   - Added `--all` parameter to process all available landmarks in database
   - Integrated with `DbClient.get_total_record_count()` to determine total records
   - Enabled selective processing with combined `--limit` and `--all` options
   - Successfully tested pagination with batches of landmarks from different pages
 
 - **Enhanced Wikipedia Processing with Pagination**
+
   - Added `--page` parameter to `process_wikipedia_articles.py` to allow starting landmark fetch from a specific page
   - Improved control over batch processing for large datasets
   - Enabled resuming failed runs and distributing workload across multiple sessions

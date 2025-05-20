@@ -55,7 +55,7 @@ def check_vector(vector_id: str) -> None:
             vector=[0.0] * dimension,  # Dummy vector
             filter={"id": vector_id},  # Simple filter
             top_k=1,
-            include_metadata=True
+            include_metadata=True,
         )
 
         # Access matches safely
@@ -81,9 +81,13 @@ def check_vector(vector_id: str) -> None:
 
             query_response = pinecone_db.index.query(
                 vector=[0.0] * dimension,  # Use the dimension from earlier
-                filter={"landmark_id": landmark_id, "source_type": "wikipedia"} if landmark_id else None,
+                filter=(
+                    {"landmark_id": landmark_id, "source_type": "wikipedia"}
+                    if landmark_id
+                    else None
+                ),
                 top_k=10,
-                include_metadata=True
+                include_metadata=True,
             )
 
             # Access matches safely
@@ -169,7 +173,14 @@ def check_vector(vector_id: str) -> None:
         # Note: Testing on May 18, 2025 revealed that some Wikipedia vectors
         # were missing article_title and article_url fields, which should be
         # added by process_wikipedia_articles.py
-        required_fields = ["landmark_id", "source_type", "chunk_index", "text", "article_title", "article_url"]
+        required_fields = [
+            "landmark_id",
+            "source_type",
+            "chunk_index",
+            "text",
+            "article_title",
+            "article_url",
+        ]
 
         # Check for missing fields
         missing = [field for field in required_fields if field not in metadata]

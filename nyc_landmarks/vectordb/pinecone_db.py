@@ -184,10 +184,43 @@ class PineconeDB:
                 "processing_date"
             )
 
-        # Filter out null values from enhanced metadata before adding
-        filtered_metadata = {
-            k: v for k, v in enhanced_metadata.items() if v is not None
-        }
+        # Filter out null values and complex objects from enhanced metadata before adding
+        # We need to handle the buildings list specially for Pinecone compatibility
+        filtered_metadata = {}
+        for k, v in enhanced_metadata.items():
+            # Skip None values
+            if v is None:
+                continue
+
+            # Handle buildings list - convert to flattened structure for Pinecone
+            if k == "buildings" and isinstance(v, list):
+                # Include the count of buildings
+                filtered_metadata["building_count"] = len(v)
+
+                # Collect all BBLs from buildings for searchability
+                bbls = []
+                for building in v:
+                    if isinstance(building, dict) and building.get("bbl") is not None:
+                        bbls.append(building["bbl"])
+
+                # We're now storing all BBL data in the buildings complex object
+                # No need to keep redundant standalone fields
+                # Instead, just track the building count and details
+
+                # For compatibility, only include detailed building data if there are not too many
+                # Pinecone has metadata size limits
+                if (
+                    len(v) <= 5
+                ):  # Limit to a reasonable number to avoid hitting metadata size limits
+                    # Add each building with indexed fields
+                    for i, building in enumerate(v):
+                        for bk, bv in building.items():
+                            if bv is not None:
+                                filtered_metadata[f"building_{i}_{bk}"] = bv
+            else:
+                # Include other metadata as is
+                filtered_metadata[k] = v
+
         metadata.update(filtered_metadata)
 
         # Add Wikipedia-specific metadata

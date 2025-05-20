@@ -5,8 +5,6 @@ Script to check a specific vector ID from Pinecone.
 
 import argparse
 import json
-import sys
-from typing import Any, Dict, List, Optional
 
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
@@ -76,7 +74,9 @@ def check_wiki_vector(vector_id: str) -> None:
                 if metadata["article_title"] == article_title_from_id:
                     print("✓ ID article title matches metadata article title")
                 else:
-                    print(f"✗ ID article title does not match metadata: {metadata['article_title']}")
+                    print(
+                        f"✗ ID article title does not match metadata: {metadata['article_title']}"
+                    )
 
 
 def main() -> None:
@@ -85,7 +85,8 @@ def main() -> None:
         description="Check metadata for a specific Wikipedia vector"
     )
     parser.add_argument(
-        "vector_id", help="The ID of the vector to check (e.g., wiki-Wyckoff_House-LP-00001-chunk-0)"
+        "vector_id",
+        help="The ID of the vector to check (e.g., wiki-Wyckoff_House-LP-00001-chunk-0)",
     )
 
     args = parser.parse_args()

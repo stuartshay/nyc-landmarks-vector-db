@@ -56,11 +56,17 @@ def check_metadata():
 
     print("\nMetadata field counts:")
     for field, count in sorted(field_counts.items()):
-        print(f"- {field}: {count}/{len(vectors)} vectors ({count/len(vectors)*100:.1f}%)")
+        print(
+            f"- {field}: {count}/{len(vectors)} vectors ({count/len(vectors)*100:.1f}%)"
+        )
 
     # Check for article_title and article_url
-    missing_article_title = sum(1 for v in vectors if "article_title" not in v.get("metadata", {}))
-    missing_article_url = sum(1 for v in vectors if "article_url" not in v.get("metadata", {}))
+    missing_article_title = sum(
+        1 for v in vectors if "article_title" not in v.get("metadata", {})
+    )
+    missing_article_url = sum(
+        1 for v in vectors if "article_url" not in v.get("metadata", {})
+    )
 
     print(f"\nMissing article_title: {missing_article_title}/{len(vectors)}")
     print(f"Missing article_url: {missing_article_url}/{len(vectors)}")

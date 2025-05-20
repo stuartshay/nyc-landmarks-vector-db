@@ -42,5 +42,6 @@ Missing required Wikipedia fields: ['article_title', 'article_url']
 ```
 
 **Notes:**
+
 - Testing on May 18, 2025 revealed that some Wikipedia vectors were missing `article_title` and `article_url` fields.
 - These fields should be added by `process_wikipedia_articles.py`.

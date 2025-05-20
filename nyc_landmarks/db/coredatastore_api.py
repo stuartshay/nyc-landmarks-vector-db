@@ -151,11 +151,38 @@ class CoreDataStoreAPI:
             # Try each variation until we find a match
             for lpc_id in id_variations:
                 try:
-                    # Get the LPC report using the API
-                    response = self._make_request("GET", f"/api/LpcReport/{lpc_id}")
-                    if response:
-                        logger.debug(f"Found landmark with ID variation: {lpc_id}")
-                        break
+                    # First try to get detailed landmark info using the landmark endpoint,
+                    # which includes BBL information
+                    landmark_response = self._make_request(
+                        "GET",
+                        "/api/LpcReport/landmark/10/1",
+                        params={"LpcNumber": lpc_id},
+                    )
+
+                    if (
+                        landmark_response
+                        and isinstance(landmark_response, dict)
+                        and "results" in landmark_response
+                    ):
+                        # Get the first result if available
+                        if (
+                            landmark_response["results"]
+                            and len(landmark_response["results"]) > 0
+                        ):
+                            response = landmark_response["results"][0]
+                            logger.debug(
+                                f"Found landmark with ID in landmark endpoint: {lpc_id}"
+                            )
+                            break
+
+                    # If that fails, try the regular LpcReport endpoint as a fallback
+                    if not response:
+                        response = self._make_request("GET", f"/api/LpcReport/{lpc_id}")
+                        if response:
+                            logger.debug(
+                                f"Found landmark with ID in LpcReport endpoint: {lpc_id}"
+                            )
+                            break
                 except Exception as e:
                     logger.debug(f"Attempted ID {lpc_id} resulted in error: {e}")
                     continue
@@ -175,16 +202,20 @@ class CoreDataStoreAPI:
             landmark = {
                 "id": response.get("lpNumber", ""),
                 "name": response.get("name", ""),
-                "location": response.get("street", ""),
-                "borough": response.get("borough", ""),
+                "location": response.get("street", "")
+                or response.get("designatedAddress", ""),
+                "borough": response.get("borough", "") or response.get("boroughId", ""),
                 "type": response.get("objectType", ""),
-                "designation_date": response.get("dateDesignated", ""),
+                "designation_date": response.get("dateDesignated", "")
+                or response.get("designatedDate", ""),
                 "description": "",  # API doesn't seem to provide a description field
                 "architect": response.get("architect", ""),
                 "style": response.get("style", ""),
                 "neighborhood": response.get("neighborhood", ""),
                 "pdfReportUrl": response.get("pdfReportUrl", ""),
                 "photoUrl": response.get("photoUrl", ""),
+                # Add BBL directly from the response
+                "bbl": response.get("bbl", None),
             }
 
             return landmark
@@ -691,16 +722,24 @@ class CoreDataStoreAPI:
                 params={"LpcNumber": lpc_number},
             )
 
+            # First check if we have results in a container structure
+            if isinstance(response, dict) and "results" in response:
+                response = response["results"]
+
             # The response is an array of landmark buildings
             buildings = []
             if response and isinstance(response, list):
                 for building in response:
                     if not isinstance(building, dict):
                         continue
+                    # Get BBL value and handle empty/none values properly
+                    bbl_value = building.get("bbl")
                     building_info = {
                         "name": building.get("name", ""),
                         "address": building.get("designatedAddress", ""),
-                        "bbl": building.get("bbl", ""),
+                        "bbl": (
+                            bbl_value if bbl_value else None
+                        ),  # Use None if BBL is empty or missing
                         "bin": building.get("binNumber", None),
                         "block": building.get("block", None),
                         "lot": building.get("lot", None),
@@ -844,193 +883,107 @@ class CoreDataStoreAPI:
             logger.error(f"Error getting object types: {e}")
             return []
 
-    def get_architecture_styles(self) -> List[str]:
-        """Get list of architecture styles.
+    def get_wikipedia_articles(self, landmark_id: str) -> List[WikipediaArticleModel]:
+        """Get Wikipedia articles associated with a landmark.
+
+        Args:
+            landmark_id: ID of the landmark (LP number)
 
         Returns:
-            List of architecture style names
+            List of WikipediaArticleModel objects
         """
         try:
-            response = self._make_request("GET", "/api/Reference/parentStyle")
-            if response and isinstance(response, list):
-                return cast(List[str], response)
-            return []
+            # Ensure landmark_id is properly formatted with LP prefix
+            if not landmark_id.startswith("LP-"):
+                lpc_id = f"LP-{landmark_id.zfill(5)}"
+            else:
+                lpc_id = landmark_id
+
+            # Make the API request using the correct WebContent/batch endpoint with POST
+            json_data = {"lpcIds": [lpc_id]}
+            logger.info(f"Requesting Wikipedia articles with data: {json_data}")
+            response = self._make_request(
+                "POST", "/api/WebContent/batch", json_data=json_data
+            )
+
+            # Log the raw response for debugging
+            logger.info(f"Raw API response: {response}")
+
+            articles = []
+            # Check if response is a list or dict with items
+            if response:
+                # The response structure may be different from the previous endpoint
+                # Handle both list and dict responses
+                items_to_process: List[Dict[str, Any]] = []
+
+                if isinstance(response, list):
+                    items_to_process = cast(List[Dict[str, Any]], response)
+                elif isinstance(response, dict) and "items" in response:
+                    items_to_process = cast(
+                        List[Dict[str, Any]], response.get("items", [])
+                    )
+                elif isinstance(response, dict):
+                    # Check for lpc_id in response (case-insensitive)
+                    lpc_id_lower = lpc_id.lower()
+                    found_key = None
+                    for key in response:
+                        if isinstance(key, str) and key.lower() == lpc_id_lower:
+                            found_key = key
+                            break
+
+                    if found_key:
+                        items_to_process = cast(
+                            List[Dict[str, Any]], response.get(found_key, [])
+                        )
+
+                # Process each article
+                for item in items_to_process:
+                    if not isinstance(item, dict):
+                        continue
+
+                    # Check if this is a Wikipedia article (case-insensitive comparison)
+                    record_type = item.get("recordType", "")
+                    if (
+                        isinstance(record_type, str)
+                        and record_type.lower() == "wikipedia"
+                    ):
+                        article = WikipediaArticleModel(
+                            id=item.get("id"),
+                            lpNumber=landmark_id,
+                            url=item.get("url", ""),
+                            title=item.get("title", ""),
+                            recordType="Wikipedia",
+                        )
+                        articles.append(article)
+                        logger.debug(f"Found Wikipedia article: {article.title}")
+
+            logger.info(
+                f"Retrieved {len(articles)} Wikipedia articles for landmark {landmark_id}"
+            )
+            return articles
 
         except Exception as e:
-            logger.error(f"Error getting architecture styles: {e}")
+            logger.error(
+                f"Error getting Wikipedia articles for landmark {landmark_id}: {e}"
+            )
             return []
 
     def get_landmark_pdf_url(self, landmark_id: str) -> Optional[str]:
         """Get the PDF report URL for a landmark.
 
         Args:
-            landmark_id: ID of the landmark (LP number, e.g., "LP-00001")
+            landmark_id: ID of the landmark (LP number)
 
         Returns:
-            The PDF report URL, or None if not found
+            URL of the PDF report, or None if not found
         """
         try:
-            # Ensure landmark_id is properly formatted with LP prefix
-            if not landmark_id.startswith("LP-"):
-                lpc_id = f"LP-{landmark_id.zfill(5)}"
-            else:
-                lpc_id = landmark_id
-
-            # Get the LPC report using the API
-            response = self._make_request("GET", f"/api/LpcReport/{lpc_id}")
-
-            if not response:
-                logger.warning(f"Landmark not found with ID: {landmark_id}")
-                return None
-
-            # Check if response is a dictionary before accessing attributes
-            if not isinstance(response, dict):
-                logger.error(
-                    f"Expected dictionary response but got {type(response).__name__}"
-                )
-                return None
-
-            # Extract the PDF report URL
-            pdf_url = response.get("pdfReportUrl")
-            if not pdf_url:
-                logger.warning(
-                    f"No PDF report URL found for landmark ID: {landmark_id}"
-                )
-                return None
-
-            # Ensure we return a string, not Any
-            return str(pdf_url) if pdf_url is not None else None
-
-        except Exception as e:
-            logger.error(f"Error getting PDF report URL for landmark: {e}")
+            landmark = self.get_landmark_by_id(landmark_id)
+            if landmark and "pdfReportUrl" in landmark:
+                pdf_url = landmark["pdfReportUrl"]
+                # Ensure we're returning a string or None
+                return str(pdf_url) if pdf_url else None
             return None
-
-    def get_wikipedia_articles(self, landmark_id: str) -> List[WikipediaArticleModel]:
-        """Get Wikipedia articles associated with a landmark.
-
-        This method queries the WebContent endpoint to retrieve Wikipedia articles
-        associated with a specific landmark.
-
-        Args:
-            landmark_id: ID of the landmark (LP number, e.g., "LP-00001")
-
-        Returns:
-            List of WikipediaArticleModel objects, empty list if none found
-        """
-        try:
-            # Ensure landmark_id is properly formatted with LP prefix
-            if not landmark_id.startswith("LP-"):
-                lpc_id = f"LP-{landmark_id.zfill(5)}"
-            else:
-                lpc_id = landmark_id
-
-            # Make the API request
-            response_content = self._make_request("GET", f"/api/WebContent/{lpc_id}")
-
-            articles = self._process_wikipedia_response(response_content, lpc_id)
-
-            if not articles:
-                logger.info(f"No Wikipedia articles found for landmark: {landmark_id}")
-
-            return articles
-
         except Exception as e:
-            logger.error(f"Error getting Wikipedia articles for landmark: {e}")
-            return []
-
-    def _process_wikipedia_response(
-        self, api_response_content: Any, lpc_id: str
-    ) -> List[WikipediaArticleModel]:
-        """Helper function to process the response from /api/WebContent for Wikipedia articles."""
-        articles: List[WikipediaArticleModel] = []
-        if not isinstance(api_response_content, list):
-            # If the response is not a list (e.g., None, dict, or error string),
-            # log if appropriate or simply return empty list.
-            # Assuming _make_request might return non-list for errors or empty valid responses.
-            if (
-                api_response_content is not None
-            ):  # Avoid logging None as an "unexpected type"
-                logger.debug(
-                    f"Received non-list response type ({type(api_response_content)}) for Wikipedia content for {lpc_id}, expected list."
-                )
-            return articles
-
-        # Now api_response_content is known to be a list
-        for item in api_response_content:
-            if not isinstance(item, dict):
-                logger.warning(
-                    f"Skipping non-dictionary item in Wikipedia articles response for landmark {lpc_id}: {type(item).__name__} - {str(item)[:100]}"
-                )
-                continue  # Skip to the next item
-
-            if item.get("recordType") == "Wikipedia":
-                try:
-                    # Validate with Pydantic model
-                    article = WikipediaArticleModel(**item)
-                    articles.append(article)
-                except Exception as e:
-                    # Log carefully, ensuring item is representable
-                    item_str_representation = str(item)
-                    logger.warning(
-                        f"Error validating Wikipedia article data for landmark {lpc_id} (item: {item_str_representation[:100]}): {e}"
-                    )
-                    continue  # Continue to next item if validation fails
-        return articles
-
-    def get_all_landmarks_with_wikipedia(
-        self, limit: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
-        """Get all landmarks with associated Wikipedia articles.
-
-        Args:
-            limit: Maximum number of landmarks to return (optional)
-
-        Returns:
-            List of dictionaries containing landmark information and Wikipedia articles
-        """
-        try:
-            # Set default limit if not provided
-            page_limit = min(limit or 100, 100)
-            page = 1
-
-            # Make API request
-            response = self._make_request("GET", f"/api/LpcReport/{page_limit}/{page}")
-
-            results = []
-            if isinstance(response, dict) and "results" in response:
-                # Convert the results to the format expected by the application
-                for item in response["results"]:
-                    if not isinstance(item, dict):
-                        continue
-                    landmark = {
-                        "id": item.get("lpNumber", ""),
-                        "name": item.get("name", ""),
-                        "location": item.get("street", ""),
-                        "borough": item.get("borough", ""),
-                        "type": item.get("objectType", ""),
-                        "designation_date": item.get("dateDesignated", ""),
-                        "description": "",  # API doesn't seem to provide a description field
-                        "architect": item.get("architect", ""),
-                        "style": item.get("style", ""),
-                        "neighborhood": item.get("neighborhood", ""),
-                        "pdfReportUrl": item.get("pdfReportUrl", ""),
-                        "photoUrl": item.get("photoUrl", ""),
-                    }
-                    results.append(landmark)
-
-            # If a specific limit was provided and it's less than what we got, truncate
-            if limit and len(results) > limit:
-                results = results[:limit]
-
-            # Enrich with Wikipedia articles
-            for landmark in results:
-                landmark_id = landmark.get("id", "")
-                if landmark_id:
-                    articles = self.get_wikipedia_articles(landmark_id)
-                    landmark["wikipedia_articles"] = articles
-
-            return results
-
-        except Exception as e:
-            logger.error(f"Error getting all landmarks with Wikipedia articles: {e}")
-            return []
+            logger.error(f"Error getting PDF URL for landmark {landmark_id}: {e}")
+            return None

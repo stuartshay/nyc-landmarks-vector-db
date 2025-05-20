@@ -13,7 +13,10 @@ from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 # Configure logging
 logger = get_logger(__name__)
 
-def list_vectors(prefix: Optional[str] = None, limit: int = 10, pretty_print: bool = False) -> List[Dict[str, Any]]:
+
+def list_vectors(
+    prefix: Optional[str] = None, limit: int = 10, pretty_print: bool = False
+) -> List[Dict[str, Any]]:
     """
     List vectors in Pinecone, optionally filtering by prefix.
 
@@ -50,14 +53,14 @@ def list_vectors(prefix: Optional[str] = None, limit: int = 10, pretty_print: bo
         logger.info(f"Querying with parameters: {query_params}")
         result = index.query(vector=zero_vector, **query_params)
 
-        if not result or not hasattr(result, 'matches') or not result.matches:
+        if not result or not hasattr(result, "matches") or not result.matches:
             logger.warning("No vectors found in Pinecone")
             return []
 
         # Filter results if prefix is provided
         filtered_matches = []
         for match in result.matches:
-            match_id = getattr(match, 'id', None)
+            match_id = getattr(match, "id", None)
             if match_id and (not prefix or (prefix and match_id.startswith(prefix))):
                 filtered_matches.append(match)
 
@@ -70,10 +73,10 @@ def list_vectors(prefix: Optional[str] = None, limit: int = 10, pretty_print: bo
         for match in filtered_matches:
             match_dict = {}
             # Extract attributes safely
-            match_dict['id'] = getattr(match, 'id', None)
-            match_dict['score'] = getattr(match, 'score', None)
-            if hasattr(match, 'metadata') and match.metadata:
-                match_dict['metadata'] = match.metadata
+            match_dict["id"] = getattr(match, "id", None)
+            match_dict["score"] = getattr(match, "score", None)
+            if hasattr(match, "metadata") and match.metadata:
+                match_dict["metadata"] = match.metadata
             matches_data.append(match_dict)
 
         # Print the results
@@ -88,14 +91,14 @@ def list_vectors(prefix: Optional[str] = None, limit: int = 10, pretty_print: bo
     except Exception as e:
         logger.error(f"Error listing vectors: {e}")
         import traceback
+
         traceback.print_exc()
         return []
 
+
 def parse_arguments() -> argparse.Namespace:
     """Parse command line arguments."""
-    parser = argparse.ArgumentParser(
-        description="List vectors in Pinecone"
-    )
+    parser = argparse.ArgumentParser(description="List vectors in Pinecone")
     parser.add_argument(
         "--prefix",
         "-p",
@@ -116,10 +119,12 @@ def parse_arguments() -> argparse.Namespace:
     )
     return parser.parse_args()
 
+
 def main() -> None:
     """Main entry point for the script."""
     args = parse_arguments()
     list_vectors(args.prefix, args.limit, args.pretty)
+
 
 if __name__ == "__main__":
     main()

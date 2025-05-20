@@ -5,10 +5,11 @@ This is a wrapper that runs both verify_vectors.py and verify_wikipedia_imports.
 to provide a comprehensive verification of the Pinecone database.
 """
 
+import os.path
 import subprocess
 import sys
-import os.path
-from typing import Tuple, List
+from typing import List, Tuple
+
 
 def run_script(script_path: str) -> Tuple[int, List[str]]:
     """
@@ -28,7 +29,7 @@ def run_script(script_path: str) -> Tuple[int, List[str]]:
         [sys.executable, script_path],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        text=True
+        text=True,
     )
 
     output = process.stdout.splitlines()
@@ -36,6 +37,7 @@ def run_script(script_path: str) -> Tuple[int, List[str]]:
         print(line)
 
     return process.returncode, output
+
 
 def main():
     """Main entry point."""
@@ -60,6 +62,7 @@ def main():
         if wiki_code != 0:
             print("  - Wikipedia import verification failed")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

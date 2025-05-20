@@ -12,6 +12,7 @@ This script:
 
 import argparse
 import concurrent.futures
+import datetime
 import logging
 import sys
 import time
@@ -105,7 +106,10 @@ def process_landmark_wikipedia(
                 wiki_article.chunks
             )
 
-            # Add article title and URL to metadata for each chunk
+            # Get current timestamp for processing_date
+            current_time = datetime.datetime.now().isoformat()
+
+            # Add article title, URL, and processing date to metadata for each chunk
             for chunk in chunks_with_embeddings:
                 # Ensure metadata structure is consistent
                 if isinstance(chunk, dict):
@@ -115,14 +119,18 @@ def process_landmark_wikipedia(
                     chunk["article_metadata"]["title"] = wiki_article.title
                     chunk["article_metadata"]["url"] = wiki_article.url
 
+                    # Add processing_date to be picked up by PineconeDB._create_metadata_for_chunk
+                    chunk["processing_date"] = current_time
+
                     # Also add directly to metadata for backwards compatibility
                     if "metadata" in chunk and chunk["metadata"] is not None:
                         chunk["metadata"]["article_title"] = wiki_article.title
                         chunk["metadata"]["article_url"] = wiki_article.url
+                        chunk["metadata"]["processing_date"] = current_time
 
                     # Debug log to verify metadata is being set
                     logger.info(
-                        f"Added article metadata to chunk: article_title={wiki_article.title}, article_url={wiki_article.url}"
+                        f"Added article metadata to chunk: article_title={wiki_article.title}, article_url={wiki_article.url}, processing_date={current_time}"
                     )
                 else:
                     # Handle object-style chunks
@@ -132,13 +140,17 @@ def process_landmark_wikipedia(
                     chunk.article_metadata["title"] = wiki_article.title
                     chunk.article_metadata["url"] = wiki_article.url
 
+                    # Add processing_date to be picked up by PineconeDB._create_metadata_for_chunk
+                    setattr(chunk, "processing_date", current_time)
+
                     # Also add directly to metadata for backwards compatibility
                     if hasattr(chunk, "metadata") and chunk.metadata is not None:
                         chunk.metadata["article_title"] = wiki_article.title
                         chunk.metadata["article_url"] = wiki_article.url
+                        chunk.metadata["processing_date"] = current_time
 
                     logger.info(
-                        f"Added article metadata to object-style chunk: {wiki_article.title}"
+                        f"Added article metadata to object-style chunk: {wiki_article.title} with processing_date={current_time}"
                     )
 
             # Store in Pinecone with deterministic IDs

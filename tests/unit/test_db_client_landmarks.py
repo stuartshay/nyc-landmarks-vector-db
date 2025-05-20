@@ -70,7 +70,11 @@ class TestDbClientLandmarkMethods(unittest.TestCase):
     def test_get_landmark_metadata(self) -> None:
         """Test get_landmark_metadata method."""
         # Set up mock API to return metadata
-        metadata = {"landmark_id": "LP-00001", "name": "Test Landmark", "borough": "Manhattan"}
+        metadata = {
+            "landmark_id": "LP-00001",
+            "name": "Test Landmark",
+            "borough": "Manhattan",
+        }
         self.mock_api.get_landmark_metadata.return_value = metadata
 
         # Call the method
@@ -100,7 +104,10 @@ class TestDbClientLandmarkMethods(unittest.TestCase):
         client = DbClient(mock_api)
 
         # Test first page
-        with patch('builtins.hasattr', lambda obj, attr: False if attr == 'get_landmarks_page' else True):
+        with patch(
+            "builtins.hasattr",
+            lambda obj, attr: False if attr == "get_landmarks_page" else True,
+        ):
             # Call the method to get first page with 5 items
             result = client.get_landmarks_page(page_size=5, page=1)
 
@@ -114,7 +121,10 @@ class TestDbClientLandmarkMethods(unittest.TestCase):
 
         # Test second page
         mock_api.get_all_landmarks.reset_mock()
-        with patch('builtins.hasattr', lambda obj, attr: False if attr == 'get_landmarks_page' else True):
+        with patch(
+            "builtins.hasattr",
+            lambda obj, attr: False if attr == "get_landmarks_page" else True,
+        ):
             # Call the method to get second page with 5 items
             result = client.get_landmarks_page(page_size=5, page=2)
 
@@ -130,7 +140,10 @@ class TestDbClientLandmarkMethods(unittest.TestCase):
         mock_api.get_all_landmarks.reset_mock()
         mock_api.get_all_landmarks.side_effect = Exception("API error")
 
-        with patch('builtins.hasattr', lambda obj, attr: False if attr == 'get_landmarks_page' else True):
+        with patch(
+            "builtins.hasattr",
+            lambda obj, attr: False if attr == "get_landmarks_page" else True,
+        ):
             # Call the method - should return empty list for error case
             result = client.get_landmarks_page(page_size=5, page=1)
 
@@ -236,7 +249,9 @@ class TestDbClientLandmarkMethods(unittest.TestCase):
         mock_response.pdfReportUrl = "https://example.com/pdf.pdf"
 
         # Set up mock get_landmark_by_id to return our response
-        with patch.object(self.client, 'get_landmark_by_id', return_value=mock_response):
+        with patch.object(
+            self.client, "get_landmark_by_id", return_value=mock_response
+        ):
             # Call the method
             result = self.client.get_landmark_pdf_url("LP-00001")
 
@@ -247,9 +262,13 @@ class TestDbClientLandmarkMethods(unittest.TestCase):
     def test_get_landmark_pdf_url_with_error(self, mock_logger: Mock) -> None:
         """Test get_landmark_pdf_url with error."""
         # Set up mock get_landmark_by_id to raise exception
-        with patch.object(self.client, 'get_landmark_by_id', side_effect=Exception("API error")):
+        with patch.object(
+            self.client, "get_landmark_by_id", side_effect=Exception("API error")
+        ):
             # Set up mock API client with get_landmark_pdf_url method
-            self.mock_api.get_landmark_pdf_url.return_value = "https://example.com/fallback.pdf"
+            self.mock_api.get_landmark_pdf_url.return_value = (
+                "https://example.com/fallback.pdf"
+            )
 
             # Call the method
             result = self.client.get_landmark_pdf_url("LP-00001")
@@ -272,7 +291,9 @@ class TestDbClientLandmarkMethods(unittest.TestCase):
         mock_response.pdfReportUrl = None
 
         # Set up mock get_landmark_by_id to return our response
-        with patch.object(self.client, 'get_landmark_by_id', return_value=mock_response):
+        with patch.object(
+            self.client, "get_landmark_by_id", return_value=mock_response
+        ):
             # Also make sure the fallback method returns None too
             self.mock_api.get_landmark_pdf_url.return_value = None
 
@@ -298,7 +319,7 @@ class TestDbClientBuildingsMethods(unittest.TestCase):
         # Set up mock API to return buildings
         buildings = [
             {"lpNumber": "LP-00001", "name": "Building 1"},
-            {"lpNumber": "LP-00001", "name": "Building 2"}
+            {"lpNumber": "LP-00001", "name": "Building 2"},
         ]
         self.mock_api.get_landmark_buildings.return_value = buildings
 
@@ -360,13 +381,15 @@ class TestDbClientBuildingsMethods(unittest.TestCase):
                 designatedDate="2020-01-02",
                 historicDistrict="Test District",
                 street="456 Side St",
-            )
+            ),
         ]
         mock_response = Mock(spec=LpcReportDetailResponse)
         mock_response.landmarks = landmarks_list
 
         # Set up mock get_landmark_by_id to return our response
-        with patch.object(self.client, 'get_landmark_by_id', return_value=mock_response):
+        with patch.object(
+            self.client, "get_landmark_by_id", return_value=mock_response
+        ):
             # Call the method
             result = self.client._fetch_buildings_from_landmark_detail("LP-00001", 10)
 
@@ -376,7 +399,9 @@ class TestDbClientBuildingsMethods(unittest.TestCase):
             self.assertEqual(result[1], landmarks_list[1])
 
     @patch("nyc_landmarks.db.db_client.logger")
-    def test_fetch_buildings_from_landmark_detail_with_dict_items(self, mock_logger: Mock) -> None:
+    def test_fetch_buildings_from_landmark_detail_with_dict_items(
+        self, mock_logger: Mock
+    ) -> None:
         """Test _fetch_buildings_from_landmark_detail with dict items in landmarks list."""
         # Create a mock LpcReportDetailResponse with landmarks list containing dicts
         landmarks_list = [
@@ -399,13 +424,15 @@ class TestDbClientBuildingsMethods(unittest.TestCase):
                 "designatedDate": "2020-01-02",
                 "historicDistrict": "Test District",
                 "street": "456 Side St",
-            }
+            },
         ]
         mock_response = Mock(spec=LpcReportDetailResponse)
         mock_response.landmarks = landmarks_list
 
         # Set up mock get_landmark_by_id to return our response
-        with patch.object(self.client, 'get_landmark_by_id', return_value=mock_response):
+        with patch.object(
+            self.client, "get_landmark_by_id", return_value=mock_response
+        ):
             # Call the method
             result = self.client._fetch_buildings_from_landmark_detail("LP-00001", 10)
 
@@ -463,7 +490,7 @@ class TestDbClientBuildingsMethods(unittest.TestCase):
                 zipCode="10001",
                 photoUrl="https://example.com/photo.jpg",
                 pdfReportUrl="https://example.com/pdf.pdf",
-            )
+            ),
         ]
 
         # Call the method
@@ -483,11 +510,15 @@ class TestDbClientBuildingsMethods(unittest.TestCase):
         # Set up mock _fetch_buildings_from_client to return buildings
         buildings = [
             {"lpNumber": "LP-00001A", "name": "Building 1"},
-            {"lpNumber": "LP-00001B", "name": "Building 2"}
+            {"lpNumber": "LP-00001B", "name": "Building 2"},
         ]
 
-        with patch.object(self.client, '_fetch_buildings_from_client', return_value=buildings) as mock_fetch_client:
-            with patch.object(self.client, '_convert_building_items_to_models') as mock_convert:
+        with patch.object(
+            self.client, "_fetch_buildings_from_client", return_value=buildings
+        ) as mock_fetch_client:
+            with patch.object(
+                self.client, "_convert_building_items_to_models"
+            ) as mock_convert:
                 # Set up mock _convert_building_items_to_models to return models
                 mock_models = [
                     LpcReportModel(
@@ -523,7 +554,7 @@ class TestDbClientBuildingsMethods(unittest.TestCase):
                         zipCode="10001",
                         photoUrl="https://example.com/photo.jpg",
                         pdfReportUrl="https://example.com/pdf.pdf",
-                    )
+                    ),
                 ]
                 mock_convert.return_value = mock_models
 
@@ -542,7 +573,7 @@ class TestDbClientBuildingsMethods(unittest.TestCase):
     def test_get_landmark_buildings_fallback(self) -> None:
         """Test get_landmark_buildings fallback when primary method returns empty list."""
         # Set up mock _fetch_buildings_from_client to return empty list
-        with patch.object(self.client, '_fetch_buildings_from_client', return_value=[]):
+        with patch.object(self.client, "_fetch_buildings_from_client", return_value=[]):
             # Set up mock _fetch_buildings_from_landmark_detail to return buildings
             buildings = [
                 LandmarkDetail(
@@ -557,8 +588,14 @@ class TestDbClientBuildingsMethods(unittest.TestCase):
                 )
             ]
 
-            with patch.object(self.client, '_fetch_buildings_from_landmark_detail', return_value=buildings) as mock_fetch_detail:
-                with patch.object(self.client, '_convert_building_items_to_models') as mock_convert:
+            with patch.object(
+                self.client,
+                "_fetch_buildings_from_landmark_detail",
+                return_value=buildings,
+            ) as mock_fetch_detail:
+                with patch.object(
+                    self.client, "_convert_building_items_to_models"
+                ) as mock_convert:
                     # Set up mock _convert_building_items_to_models to return models
                     mock_models = [
                         LpcReportModel(
@@ -617,7 +654,9 @@ class TestDbClientTotalCount(unittest.TestCase):
         mock_response.to = 1
 
         # Set up mock get_lpc_reports to return our response
-        with patch.object(self.client, 'get_lpc_reports', return_value=mock_response) as mock_get_lpc_reports:
+        with patch.object(
+            self.client, "get_lpc_reports", return_value=mock_response
+        ) as mock_get_lpc_reports:
             # Call the method
             result = self.client.get_total_record_count()
 
@@ -630,22 +669,28 @@ class TestDbClientTotalCount(unittest.TestCase):
     def test_get_total_record_count_from_pages(self) -> None:
         """Test get_total_record_count by estimating from pages."""
         # Set up mock _get_count_from_api_metadata to return 0 (failure)
-        with patch.object(self.client, '_get_count_from_api_metadata', return_value=0):
+        with patch.object(self.client, "_get_count_from_api_metadata", return_value=0):
             # Set up mock get_landmarks_page to return diminishing results
             landmarks = [
                 {"id": f"LP-0000{i}", "name": f"Landmark {i}"} for i in range(1, 51)
             ]
 
-            with patch.object(self.client, 'get_landmarks_page', side_effect=[
-                landmarks,  # First page (50 items)
-                landmarks[:30],  # Second page (30 items - less than page size)
-                []  # Third page (empty - end of data)
-            ]) as mock_get_page:
+            with patch.object(
+                self.client,
+                "get_landmarks_page",
+                side_effect=[
+                    landmarks,  # First page (50 items)
+                    landmarks[:30],  # Second page (30 items - less than page size)
+                    [],  # Third page (empty - end of data)
+                ],
+            ) as mock_get_page:
                 # Call the method
                 result = self.client.get_total_record_count()
 
                 # Verify get_landmarks_page was called correctly
-                self.assertEqual(mock_get_page.call_count, 2)  # Should stop after second page
+                self.assertEqual(
+                    mock_get_page.call_count, 2
+                )  # Should stop after second page
 
                 # Verify result is sum of items (50 + 30 = 80)
                 self.assertEqual(result, 80)
@@ -654,8 +699,16 @@ class TestDbClientTotalCount(unittest.TestCase):
     def test_get_total_record_count_with_error(self, mock_logger: Mock) -> None:
         """Test get_total_record_count with error."""
         # Set up mock methods to raise exceptions
-        with patch.object(self.client, '_get_count_from_api_metadata', side_effect=Exception("API error")):
-            with patch.object(self.client, '_estimate_count_from_pages', side_effect=Exception("API error")):
+        with patch.object(
+            self.client,
+            "_get_count_from_api_metadata",
+            side_effect=Exception("API error"),
+        ):
+            with patch.object(
+                self.client,
+                "_estimate_count_from_pages",
+                side_effect=Exception("API error"),
+            ):
                 # Call the method
                 result = self.client.get_total_record_count()
 

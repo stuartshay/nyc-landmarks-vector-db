@@ -68,12 +68,12 @@ def main() -> None:
         "--limit",
         type=int,
         default=5,
-        help="Maximum number of vectors to analyze (default: 5)"
+        help="Maximum number of vectors to analyze (default: 5)",
     )
     parser.add_argument(
         "--pattern",
         type=str,
-        help="Optional pattern to filter vector IDs (e.g., 'wiki-')"
+        help="Optional pattern to filter vector IDs (e.g., 'wiki-')",
     )
 
     args = parser.parse_args()

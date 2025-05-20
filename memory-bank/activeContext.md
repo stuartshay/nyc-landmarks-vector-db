@@ -2,6 +2,8 @@
 
 ## Current Focus
 
+- Improved test coverage for the DbClient class from 76% to 96%
+- Organized and documented unit tests for the db_client module
 - Enhanced `process_wikipedia_articles.py` script with pagination and full processing capabilities
 - Implemented `--all` option to process the entire database of landmarks
 - Fixed issues with processing certain landmarks in `process_all_landmarks.py` script
@@ -12,7 +14,27 @@
 
 ## Recent Changes
 
+- **Test Coverage Improvement**: Improved DbClient test coverage to exceed quality standards:
+
+  - Created a new `test_db_client_coverage.py` file to target uncovered code paths
+  - Added tests for the `SupportsWikipedia` protocol methods
+  - Added tests for edge cases in Wikipedia article fetching methods
+  - Created comprehensive tests for PLUTO data methods and record counting
+  - Improved test organization with clear class and method naming
+  - Added detailed documentation in `tests/unit/README.md`
+  - Added detailed test improvement documentation in `memory-bank/test-improvements.md`
+  - Achieved 96% code coverage, well above the 80% target
+
+- **API Integration Fix**: Fixed Wikipedia article processing by updating the CoreDataStoreAPI's `get_wikipedia_articles` method to:
+
+  - Use the correct `/api/WebContent/batch` endpoint with POST request
+  - Properly handle case-insensitive landmark IDs in response keys (e.g., 'lP-00009' vs 'LP-00009')
+  - Add robust type checking and validation for API responses
+  - Implement detailed logging of raw API responses for debugging
+  - Correctly filter records by recordType with proper type checking
+
 - **Feature Enhancement**: Added `--page-size` parameter to `process_wikipedia_articles.py` to control the number of landmarks fetched per API request. This feature:
+
   - Makes the page size configurable (default: 100)
   - Allows optimizing API requests based on server load and network conditions
   - Provides better control over processing batches
@@ -21,17 +43,20 @@
   - Can be combined with `--limit` as in `--all --page-size 50 --limit 5` to process a limited number of landmarks
 
 - **Argument Validation**: Implemented mutual exclusivity between `--all` and `--page` parameters:
+
   - Used argparse's mutually exclusive group feature
   - Added clear error message when both parameters are used together
   - Enhanced help text to indicate incompatible arguments
   - Ensured proper validation to enforce supported usage patterns
 
 - **Feature Enhancement**: Added `--all` parameter to `process_wikipedia_articles.py` to process the entire database. This feature:
+
   - Uses the `get_total_record_count()` method from `DbClient` to determine the total number of landmarks
   - Allows processing all available landmarks in a single run
   - Can be combined with `--limit` to process only a subset of the total records
 
 - **Feature Enhancement**: Added `--page` parameter to `process_wikipedia_articles.py` to allow starting the landmark fetch from a specific page number. This enables:
+
   - Resuming failed processing runs from a specific page
   - Distributing processing workload across multiple runs
   - Processing specific subsets of landmarks by page number
@@ -58,6 +83,7 @@
 
 - Refactored complex functions into smaller, focused helper functions to reduce
   cognitive complexity:
+
   - Added `extract_landmark_id()` to cleanly handle ID extraction from different object
     types
   - Added `fetch_landmarks_page()` to centralize API request logic and error handling
@@ -70,33 +96,59 @@
 
 ## Active Decisions
 
-- Added a new `--all` option to process all available landmarks in the database
-- Integrated with the `DbClient.get_total_record_count()` method to determine the total number of landmarks
-- Made `process_all` an optional parameter with a default value of `False` to maintain backward compatibility
-- Ensured that `--all` respects the `--limit` option if provided (using the smaller of the two values)
-- Added pagination support to `process_wikipedia_articles.py` to give more control over landmark processing
-- Made `start_page` an optional parameter with a default value of 1 to maintain backward compatibility
-- Updated functions to properly handle the new parameter throughout the processing pipeline
-- Used a unified attribute access approach with the `safe_get_attribute()` function
-  instead of maintaining separate code paths for different object types
-- Improved type annotations to ensure proper static type checking
-- Added better logging for debugging problematic landmark processing
-- Enhanced robustness by handling both dictionary and object attribute access patterns
-  consistently
-- Adopted a modular approach to break down complex functions into smaller, more focused
-  units with clear responsibilities
+- **Test Organization Strategy**:
+
+  - Organized tests into three files (`test_db_client.py`, `test_db_client_additional.py`, `test_db_client_coverage.py`) for clarity
+  - Structured test classes by functional areas (core methods, conversion methods, Wikipedia integration, etc.)
+  - Used consistent naming conventions for test methods to clearly indicate what's being tested
+  - Documented remaining uncovered lines (10 lines at 96% coverage) with explanations for why they're difficult to test
+
+- **Script Enhancements**:
+
+  - Added a new `--all` option to process all available landmarks in the database
+  - Integrated with the `DbClient.get_total_record_count()` method to determine the total number of landmarks
+  - Made `process_all` an optional parameter with a default value of `False` to maintain backward compatibility
+  - Ensured that `--all` respects the `--limit` option if provided (using the smaller of the two values)
+  - Added pagination support to `process_wikipedia_articles.py` to give more control over landmark processing
+  - Made `start_page` an optional parameter with a default value of 1 to maintain backward compatibility
+  - Updated functions to properly handle the new parameter throughout the processing pipeline
+
+- **Code Quality Improvements**:
+
+  - Used a unified attribute access approach with the `safe_get_attribute()` function
+    instead of maintaining separate code paths for different object types
+  - Improved type annotations to ensure proper static type checking
+  - Added better logging for debugging problematic landmark processing
+  - Enhanced robustness by handling both dictionary and object attribute access patterns
+    consistently
+  - Adopted a modular approach to break down complex functions into smaller, more focused
+    units with clear responsibilities
 
 ## Next Steps
 
-- Implement better error handling for oversized Wikipedia articles (like The Ansonia - LP-00285) that exceed token limits
-- Add automatic chunk size adjustment for large Wikipedia articles to prevent 400 errors
-- Enhance the Wikipedia article fetcher to automatically split very large articles into smaller chunks
-- Add additional filtering options to target specific types of landmarks or specific geographical areas
-- Create a resumption capability to continue processing from where a previous run left off
-- Implement smart retry logic for failed landmarks, with backoff strategies
-- Continue monitoring landmark processing to ensure no new errors occur
-- Consider applying similar robust attribute access patterns in other parts of the codebase
-- Update test cases to verify both dictionary and object attribute access works as expected
-- Consider adding additional error handling and recovery mechanisms to make processing even more robust
-- Apply similar refactoring techniques to other complex functions in the codebase to improve maintainability
-- Add additional validation for other command-line arguments to prevent conflicts
+- **Testing Improvements**:
+
+  - Update remaining tests for additional modules to meet or exceed 80% coverage
+  - Create parameterized tests for similar test cases with different inputs
+  - Implement property-based testing for complex data conversions
+  - Consider testing with actual API responses for better integration coverage
+  - Add performance testing for methods that work with large datasets
+  - Split test files by functionality for better organization
+
+- **Wikipedia Processing Enhancements**:
+
+  - Implement better error handling for oversized Wikipedia articles (like The Ansonia - LP-00285) that exceed token limits
+  - Add automatic chunk size adjustment for large Wikipedia articles to prevent 400 errors
+  - Enhance the Wikipedia article fetcher to automatically split very large articles into smaller chunks
+  - Add additional filtering options to target specific types of landmarks or specific geographical areas
+  - Create a resumption capability to continue processing from where a previous run left off
+  - Implement smart retry logic for failed landmarks, with backoff strategies
+
+- **Code Quality Continuation**:
+
+  - Continue monitoring landmark processing to ensure no new errors occur
+  - Consider applying similar robust attribute access patterns in other parts of the codebase
+  - Update test cases to verify both dictionary and object attribute access works as expected
+  - Consider adding additional error handling and recovery mechanisms to make processing even more robust
+  - Apply similar refactoring techniques to other complex functions in the codebase to improve maintainability
+  - Add additional validation for other command-line arguments to prevent conflicts
