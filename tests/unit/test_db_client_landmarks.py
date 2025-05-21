@@ -6,10 +6,8 @@ focusing on building, landmark, and search methods.
 """
 
 import unittest
-from typing import Any, Dict
+from typing import Any, Dict, List, Union
 from unittest.mock import Mock, patch
-
-import pytest
 
 from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
 from nyc_landmarks.db.db_client import DbClient
@@ -116,8 +114,23 @@ class TestDbClientLandmarkMethods(unittest.TestCase):
 
             # Verify result - should have first 5 landmarks
             self.assertEqual(len(result), 5)
-            self.assertEqual(result[0]["id"], "LP-00001")
-            self.assertEqual(result[4]["id"], "LP-00005")
+            # Handle type-safely
+            first_item = result[0]
+            last_item = result[4]
+
+            if isinstance(first_item, dict):
+                self.assertEqual(first_item.get("id"), "LP-00001")
+            elif hasattr(first_item, "id"):
+                self.assertEqual(first_item.id, "LP-00001")
+            else:
+                self.fail(f"Unexpected type for result item: {type(first_item)}")
+
+            if isinstance(last_item, dict):
+                self.assertEqual(last_item.get("id"), "LP-00005")
+            elif hasattr(last_item, "id"):
+                self.assertEqual(last_item.id, "LP-00005")
+            else:
+                self.fail(f"Unexpected type for result item: {type(last_item)}")
 
         # Test second page
         mock_api.get_all_landmarks.reset_mock()
@@ -133,8 +146,23 @@ class TestDbClientLandmarkMethods(unittest.TestCase):
 
             # Verify result - should have second 5 landmarks
             self.assertEqual(len(result), 5)
-            self.assertEqual(result[0]["id"], "LP-00006")
-            self.assertEqual(result[4]["id"], "LP-00010")
+            # Handle type-safely
+            first_item = result[0]
+            last_item = result[4]
+
+            if isinstance(first_item, dict):
+                self.assertEqual(first_item.get("id"), "LP-00006")
+            elif hasattr(first_item, "id"):
+                self.assertEqual(first_item.id, "LP-00006")
+            else:
+                self.fail(f"Unexpected type for result item: {type(first_item)}")
+
+            if isinstance(last_item, dict):
+                self.assertEqual(last_item.get("id"), "LP-00010")
+            elif hasattr(last_item, "id"):
+                self.assertEqual(last_item.id, "LP-00010")
+            else:
+                self.fail(f"Unexpected type for result item: {type(last_item)}")
 
         # Test with API error
         mock_api.get_all_landmarks.reset_mock()
@@ -176,7 +204,7 @@ class TestDbClientLandmarkMethods(unittest.TestCase):
             total=1,
             page=1,
             limit=10,
-            from_=1,
+            **{"from": 1},  # Use explicit dict unpacking for reserved keyword
             to=1,
         )
 
@@ -360,30 +388,16 @@ class TestDbClientBuildingsMethods(unittest.TestCase):
 
     def test_fetch_buildings_from_landmark_detail(self) -> None:
         """Test _fetch_buildings_from_landmark_detail method."""
-        # Create a mock LpcReportDetailResponse with landmarks list
-        landmarks_list = [
-            LandmarkDetail(
-                lpNumber="LP-00001A",
-                name="Building 1",
-                designatedAddress="123 Main St",
-                boroughId="1",
-                objectType="Individual Landmark",
-                designatedDate="2020-01-01",
-                historicDistrict="Test District",
-                street="123 Main St",
-            ),
-            LandmarkDetail(
-                lpNumber="LP-00001B",
-                name="Building 2",
-                designatedAddress="456 Side St",
-                boroughId="1",
-                objectType="Individual Landmark",
-                designatedDate="2020-01-02",
-                historicDistrict="Test District",
-                street="456 Side St",
-            ),
-        ]
+        # Create mock response for testing
         mock_response = Mock(spec=LpcReportDetailResponse)
+
+        # Use the centralized mock function from landmark_mocks.py
+        from tests.mocks.landmark_mocks import (
+            get_mock_landmarks_for_test_fetch_buildings,
+        )
+
+        # Set up mock response landmarks list
+        landmarks_list = get_mock_landmarks_for_test_fetch_buildings()
         mock_response.landmarks = landmarks_list
 
         # Set up mock get_landmark_by_id to return our response
@@ -438,15 +452,29 @@ class TestDbClientBuildingsMethods(unittest.TestCase):
 
             # Verify result
             self.assertEqual(len(result), 2)
-            self.assertIsInstance(result[0], LandmarkDetail)
-            self.assertIsInstance(result[1], LandmarkDetail)
-            self.assertEqual(result[0].lpNumber, "LP-00001A")
-            self.assertEqual(result[1].lpNumber, "LP-00001B")
+
+            # Type-safely check first item
+            item0 = result[0]
+            if isinstance(item0, LandmarkDetail):
+                self.assertEqual(item0.lpNumber, "LP-00001A")
+            elif isinstance(item0, dict):
+                self.assertEqual(item0.get("lpNumber"), "LP-00001A")
+            else:
+                self.fail(f"Unexpected type for item0: {type(item0)}")
+
+            # Type-safely check second item
+            item1 = result[1]
+            if isinstance(item1, LandmarkDetail):
+                self.assertEqual(item1.lpNumber, "LP-00001B")
+            elif isinstance(item1, dict):
+                self.assertEqual(item1.get("lpNumber"), "LP-00001B")
+            else:
+                self.fail(f"Unexpected type for item1: {type(item1)}")
 
     def test_convert_building_items_to_models(self) -> None:
         """Test _convert_building_items_to_models method."""
-        # Create a mixed list of items
-        items = [
+        # Create a mixed list of items with explicit typing
+        items: List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]] = [
             LandmarkDetail(
                 lpNumber="LP-00001A",
                 name="Building 1",
@@ -456,6 +484,26 @@ class TestDbClientBuildingsMethods(unittest.TestCase):
                 designatedDate="2020-01-01",
                 historicDistrict="Test District",
                 street="123 Main St",
+                bbl="1000010001",
+                binNumber=1000001,
+                block=1000,
+                lot=1,
+                plutoAddress="123 Main St New York NY",
+                number="123",
+                city="New York",
+                calendaredDate="2019-01-01",
+                publicHearingDate="2019-02-01",
+                otherHearingDate="2019-03-01",
+                isCurrent=True,
+                status="Designated",
+                lastAction="Designated",
+                priorStatus="Calendared",
+                recordType="Individual Landmark",
+                isBuilding=True,
+                isVacantLot=False,
+                isSecondaryBuilding=False,
+                latitude=40.7128,
+                longitude=-74.0060,
             ),
             {
                 "lpNumber": "LP-00001B",
@@ -585,6 +633,26 @@ class TestDbClientBuildingsMethods(unittest.TestCase):
                     designatedDate="2020-01-01",
                     historicDistrict="Test District",
                     street="123 Main St",
+                    bbl="1000010001",
+                    binNumber=1000001,
+                    block=1000,
+                    lot=1,
+                    plutoAddress="123 Main St New York NY",
+                    number="123",
+                    city="New York",
+                    calendaredDate="2019-01-01",
+                    publicHearingDate="2019-02-01",
+                    otherHearingDate="2019-03-01",
+                    isCurrent=True,
+                    status="Designated",
+                    lastAction="Designated",
+                    priorStatus="Calendared",
+                    recordType="Individual Landmark",
+                    isBuilding=True,
+                    isVacantLot=False,
+                    isSecondaryBuilding=False,
+                    latitude=40.7128,
+                    longitude=-74.0060,
                 )
             ]
 

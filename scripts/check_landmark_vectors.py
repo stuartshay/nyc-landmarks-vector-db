@@ -32,13 +32,13 @@ def check_landmark_vectors(landmark_id: str, verbose: bool = False) -> None:
     print(f"Checking vectors for landmark: {landmark_id}")
 
     # Use a dimension of 1536 for OpenAI embeddings
-    dimension = settings.EMBEDDING_DIMENSION
+    dimension = settings.OPENAI_EMBEDDING_DIMENSIONS
 
     # Query all vectors for this landmark
     query_response = pinecone_db.index.query(
         vector=[0.0] * dimension,  # Dummy vector
         filter={"landmark_id": landmark_id},
-        top_k=100,  # Increase if needed
+        top_k=100,  # Increase if neede
         include_metadata=True,
     )
 

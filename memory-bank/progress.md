@@ -2,6 +2,14 @@
 
 ## What Works
 
+- **Data Models**
+
+  - Comprehensive Pydantic models for landmarks, LPC reports, and Wikipedia data
+  - Type-safe Pydantic model for PLUTO data with proper field descriptions
+  - New LandmarkMetadata model with dictionary-like access for vector metadata
+  - Strong typing throughout the codebase with proper null handling
+  - Consistent model configuration across all data models
+
 - Core landmarks data fetching from CoreDataStore API
 
 - PDF text extraction from landmark reports
@@ -27,13 +35,16 @@
 - **Test Coverage**
 
   - Unit tests for db_client module with 96% code coverage (improved from 76%)
-  - Well-organized test suite with functional grouping across three files:
-    - `test_db_client.py`: Core functionality tests
-    - `test_db_client_additional.py`: Additional functionality tests
-    - `test_db_client_coverage.py`: Coverage-focused tests
+  - Unit tests for EnhancedMetadataCollector with 97% code coverage
+  - Well-organized test suite with functional grouping:
+    - `test_db_client.py`, `test_db_client_additional.py`, `test_db_client_coverage.py`: DB client tests
+    - `test_enhanced_metadata_collector.py`: Metadata collector tests
+  - Centralized mock data in dedicated `tests/mocks` directory for better reuse and maintenance
   - Comprehensive test documentation in tests/unit/README.md
   - Clear separation of concerns in test cases
   - Edge case handling and error condition testing
+  - Testing of both API and non-API modes
+  - Testing of error handling and fallback behaviors
   - Detailed documentation in memory-bank/test-improvements.md
 
 - **Vector Database Integration**
@@ -65,6 +76,12 @@
 
 ## Work In Progress
 
+- **Additional Module Test Coverage**
+
+  - Creating unit tests for remaining modules to reach >80% coverage
+  - Exploring property-based testing for data conversions
+  - Implementing performance testing for data-intensive operations
+
 - **Query API Enhancement**
 
   - Semantic search across landmark content
@@ -93,19 +110,95 @@
 
 ## Recent Completions
 
-- **Improved Unit Test Coverage**
+- **Enhanced Metadata Extraction for Wikipedia Articles**
+
+  - Fixed missing metadata properties (`architect`, `neighborhood`, `style`) in Wikipedia article vector data
+  - Modified `EnhancedMetadataCollector.collect_landmark_metadata` to explicitly extract these properties from landmark details
+  - Modified the CoreDataStoreAPI client to prioritize the /api/LpcReport endpoint which provides more complete data
+  - Implemented dual extraction approach for both dictionary and object types to ensure compatibility across different response formats
+  - Added logging to confirm successful extraction of previously missing properties
+  - Verified the fix by processing landmark LP-00009 and confirmed field values in Pinecone vector:
+    - `architect: "Unknown"`
+    - `neighborhood: "Greenwich Village"`
+    - `style: "Italianate"`
+  - Improved metadata consistency between PDF and Wikipedia sources for the same landmarks
+  - Proper attribute extraction ensures fields will be populated with correct values from the API
+
+- **PLUTO Data Modeling**: Created Pydantic model for PLUTO data:
+
+  - Implemented PlutoDataModel in landmark_models.py with appropriate fields
+  - Enhanced EnhancedMetadataCollector to use PlutoDataModel for type safety
+  - Updated relevant tests to verify the model integration
+  - Improved type checking with Optional fields and proper field descriptions
+  - Ensured consistent null value handling for optional PLUTO fields
+  - Provided better type safety with model-based access instead of dictionary access
+
+- **Test Organization Verification**: Confirmed proper separation of Wikipedia integration tests:
+
+  - Verified `TestWikipediaIntegration` class is correctly placed in `test_db_client_wikipedia.py`
+  - Ran tests to confirm all Wikipedia integration tests are passing
+  - Confirmed test functionality is maintained with proper organization
+  - Validated the project's pattern of structuring tests by functional area
+  - Ensured test files remain focused and maintainable
+  - Verified proper module docstrings and import structure are in place
+
+- **Test Mock Organization and Refactoring**
+
+  - Created a dedicated `tests/mocks` directory for centralized test mock data
+  - Implemented `landmark_mocks.py` with reusable functions:
+    - `get_mock_landmark_details()`
+    - `get_mock_buildings_from_landmark_detail()`
+    - `get_mock_building_model()`
+    - `get_mock_landmarks_for_test_fetch_buildings()`
+  - Refactored the `test_fetch_buildings_from_landmark_detail` test method to use centralized mocks
+  - Extracted mock landmark details, building lists, and model data from test files
+  - Updated multiple test files to use the centralized mock data
+  - Fixed failing tests by ensuring consistent mock data across the test suite
+  - Improved maintainability by eliminating duplicate test data
+  - Established a pattern for future mock data centralization
+  - Created appropriate package structure with `__init__.py` and documentation
+
+- **Code Simplification**
+
+  - Simplified EnhancedMetadataCollector by removing helper methods and using direct property access:
+    - Removed `get_normalized_bbl()` and `has_photos()` methods from the LpcReportDetailResponse model
+    - Modified metadata collection to directly access `photoStatus` and `bbl` properties
+    - Used direct 1:1 mapping between API fields and metadata fields for greater simplicity
+    - Updated unit tests to match the simplified approach
+    - Maintained full functionality while reducing code complexity
+    - Eliminated conditional logic that was previously needed for method calls vs. property access
+
+- **Enhanced Unit Test Coverage**
+
+  - Created comprehensive unit tests for EnhancedMetadataCollector:
+
+    - Achieved 97% code coverage of the enhanced_metadata.py module
+    - Created test suites for API mode, non-API mode, error handling, and batch processing
+    - Implemented proper mocking of DB client and direct API access
+    - Added test cases for building data collection, photo status, and PLUTO data integration
+    - Fixed error handling in the batch metadata collection method
+    - Enhanced robustness of metadata collection with better error handling
 
   - Increased db_client test coverage from 76% to 96%
-  - Organized tests into three files for clarity:
+
+  - Organized tests into files for clarity:
+
     - `test_db_client.py`: Core functionality tests
     - `test_db_client_additional.py`: Additional functionality tests
     - `test_db_client_coverage.py`: Coverage-focused tests
+    - `test_enhanced_metadata_collector.py`: Metadata collector tests
+
   - Added comprehensive tests for edge cases and error handling
+
   - Corrected Wikipedia model usage in tests to match actual implementation
+
   - Created detailed documentation in `memory-bank/db_client_test_documentation.md`
+
   - Identified and documented remaining uncovered lines with explanations
+
   - Established pattern for organizing tests by functional areas
-  - Set up foundation for extending coverage to other modules
+
+  - Extended foundation for coverage to additional modules
 
 - **Fixed Wikipedia Article Processing in CoreDataStoreAPI**
 

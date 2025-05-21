@@ -39,7 +39,7 @@ def run_script(script_path: str) -> Tuple[int, List[str]]:
     return process.returncode, output
 
 
-def main():
+def main() -> None:
     """Main entry point."""
     scripts_dir = os.path.dirname(os.path.abspath(__file__))
 

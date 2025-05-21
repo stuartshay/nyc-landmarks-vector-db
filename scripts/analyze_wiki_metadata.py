@@ -10,7 +10,7 @@ This script:
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Set
+from typing import Dict, Set
 
 # Add the project root to the path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -22,9 +22,12 @@ from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 logger = get_logger(__name__)
 
 
-def verify_wiki_vectors():
+def verify_wiki_vectors() -> bool:
     """
     Verify Wikipedia vectors in Pinecone.
+
+    Returns:
+        bool: True if verification was successful, False otherwise
     """
     # Connect to Pinecone
     pinecone_db = PineconeDB()
@@ -51,7 +54,6 @@ def verify_wiki_vectors():
 
     # Analyze all metadata fields present
     for vector in vectors:
-        vector_id = vector.get("id", "unknown")
         metadata = vector.get("metadata", {})
 
         # Track metadata fields
@@ -85,7 +87,7 @@ def verify_wiki_vectors():
     return True
 
 
-def main():
+def main() -> None:
     """Main entry point for the script."""
     # Run verification
     result = verify_wiki_vectors()

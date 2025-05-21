@@ -151,7 +151,23 @@ class CoreDataStoreAPI:
             # Try each variation until we find a match
             for lpc_id in id_variations:
                 try:
-                    # First try to get detailed landmark info using the landmark endpoint,
+                    # First try the regular LpcReport endpoint, which has more complete data
+                    response = self._make_request("GET", f"/api/LpcReport/{lpc_id}")
+                    if response:
+                        logger.debug(
+                            f"Found landmark with ID in LpcReport endpoint: {lpc_id}"
+                        )
+                        # Debug output for tracking field values
+                        # Only try to access properties if response is a dictionary
+                        if isinstance(response, dict):
+                            logger.debug(
+                                f"Direct API response fields: architect={response.get('architect', '<none>')}, "
+                                f"style={response.get('style', '<none>')}, "
+                                f"neighborhood={response.get('neighborhood', '<none>')}"
+                            )
+                        break
+
+                    # If that fails, try the landmark endpoint as a fallback
                     # which includes BBL information
                     landmark_response = self._make_request(
                         "GET",
@@ -172,15 +188,6 @@ class CoreDataStoreAPI:
                             response = landmark_response["results"][0]
                             logger.debug(
                                 f"Found landmark with ID in landmark endpoint: {lpc_id}"
-                            )
-                            break
-
-                    # If that fails, try the regular LpcReport endpoint as a fallback
-                    if not response:
-                        response = self._make_request("GET", f"/api/LpcReport/{lpc_id}")
-                        if response:
-                            logger.debug(
-                                f"Found landmark with ID in LpcReport endpoint: {lpc_id}"
                             )
                             break
                 except Exception as e:
@@ -808,7 +815,7 @@ class CoreDataStoreAPI:
             landmark_id: ID of the landmark (LP number)
 
         Returns:
-            List of dictionaries containing PLUTO data
+            List of dictionaries containing PLUTO data that can be converted to PlutoDataModel
         """
         try:
             # Ensure landmark_id is properly formatted with LP prefix
@@ -822,7 +829,21 @@ class CoreDataStoreAPI:
 
             # The response is an array of PLUTO records
             if response and isinstance(response, list):
-                return cast(List[Dict[str, Any]], response)
+                # Ensure all required fields are present in each record
+                # This helps with conversion to PlutoDataModel later
+                standardized_records: List[Dict[str, Any]] = []
+                for record in response:
+                    if isinstance(record, dict):
+                        # Add any missing fields with None value
+                        standardized_record = {
+                            "yearBuilt": record.get("yearBuilt"),
+                            "landUse": record.get("landUse"),
+                            "historicDistrict": record.get("historicDistrict"),
+                            "zoneDist1": record.get("zoneDist1"),
+                        }
+                        standardized_records.append(standardized_record)
+
+                return standardized_records
             return []
 
         except Exception as e:

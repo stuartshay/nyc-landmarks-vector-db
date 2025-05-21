@@ -13,6 +13,7 @@ from nyc_landmarks.db.db_client import DbClient, SupportsWikipedia
 from nyc_landmarks.models.landmark_models import (
     LpcReportDetailResponse,
     LpcReportResponse,
+    PlutoDataModel,
 )
 from nyc_landmarks.models.wikipedia_models import WikipediaArticleModel
 
@@ -272,7 +273,11 @@ class TestWikipediaMethods(unittest.TestCase):
         result = self.client.get_wikipedia_article_by_title("Test Article")
 
         # Verify result is a WikipediaArticleModel
+        self.assertIsNotNone(result)
         self.assertIsInstance(result, WikipediaArticleModel)
+        assert (
+            result is not None
+        )  # Help mypy understand result can't be None after the assertion
         self.assertEqual(result.title, "Test Article")
         self.assertEqual(result.url, "https://en.wikipedia.org/wiki/Test_Article")
 
@@ -284,6 +289,7 @@ class TestWikipediaMethods(unittest.TestCase):
             url="https://en.wikipedia.org/wiki/Test_Article",
             lpNumber="LP-12345",
             recordType="Wikipedia",
+            id=None,  # Explicitly set id to None as it's an optional field
         )
         self.mock_api.get_wikipedia_article_by_title.return_value = article_model
 
@@ -380,14 +386,27 @@ class TestOtherMethods(unittest.TestCase):
     def test_get_landmark_pluto_data(self) -> None:
         """Test get_landmark_pluto_data method."""
         # Set up mock to return pluto data
-        pluto_data = [{"bbl": "1000010001", "address": "123 Test St"}]
+        pluto_data = [
+            {
+                "yearBuilt": "1900",
+                "landUse": "Residential",
+                "historicDistrict": "Greenwich Village",
+                "zoneDist1": "R6",
+            }
+        ]
         self.mock_api.get_landmark_pluto_data.return_value = pluto_data
 
         # Call the method
         result = self.client.get_landmark_pluto_data("LP-12345")
 
         # Verify result
-        self.assertEqual(result, pluto_data)
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], PlutoDataModel)
+        self.assertEqual(result[0].yearBuilt, "1900")
+        self.assertEqual(result[0].landUse, "Residential")
+        self.assertEqual(result[0].historicDistrict, "Greenwich Village")
+        self.assertEqual(result[0].zoneDist1, "R6")
         self.mock_api.get_landmark_pluto_data.assert_called_once_with("LP-12345")
 
     def test_get_landmark_pluto_data_client_lacks_method(self) -> None:
@@ -401,6 +420,8 @@ class TestOtherMethods(unittest.TestCase):
 
         # Verify empty list is returned
         self.assertEqual(result, [])
+        # Ensure the return type is still a list (though empty)
+        self.assertIsInstance(result, list)
 
     def test_get_total_record_count_metadata_success(self) -> None:
         """Test get_total_record_count with successful metadata retrieval."""

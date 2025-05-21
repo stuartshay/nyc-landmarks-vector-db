@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from pinecone import Pinecone
 
 from nyc_landmarks.config.settings import settings
+from nyc_landmarks.models.landmark_models import LandmarkMetadata
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.enhanced_metadata import EnhancedMetadataCollector
 
@@ -107,14 +108,16 @@ class PineconeDB:
         Returns:
             Enhanced metadata dictionary
         """
-        enhanced_metadata = {}
+        enhanced_metadata_obj: Optional[LandmarkMetadata] = None
         try:
             collector = EnhancedMetadataCollector()
-            enhanced_metadata = collector.collect_landmark_metadata(landmark_id)
+            enhanced_metadata_obj = collector.collect_landmark_metadata(landmark_id)
             logger.info(f"Retrieved enhanced metadata for landmark: {landmark_id}")
         except Exception as e:
             logger.warning(f"Could not retrieve enhanced metadata: {e}")
-        return enhanced_metadata
+
+        # Convert LandmarkMetadata to dictionary or return empty dict if it failed
+        return enhanced_metadata_obj.dict() if enhanced_metadata_obj else {}
 
     def _generate_vector_id(
         self,
@@ -309,6 +312,10 @@ class PineconeDB:
             metadata = self._create_metadata_for_chunk(
                 chunk, source_type, i, landmark_id, enhanced_metadata
             )
+
+            # Remove _extra_fields from LandmarkMetadata to avoid Pinecone errors
+            if "_extra_fields" in metadata:
+                del metadata["_extra_fields"]
 
             # Create vector
             vector = {"id": vector_id, "values": embedding, "metadata": metadata}

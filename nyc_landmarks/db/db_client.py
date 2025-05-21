@@ -15,8 +15,10 @@ from nyc_landmarks.models.landmark_models import (
 )
 from nyc_landmarks.models.landmark_models import (
     LandmarkDetail,
+    LandmarkMetadata,
     LpcReportDetailResponse,
     LpcReportModel,
+    PlutoDataModel,
 )
 from nyc_landmarks.models.wikipedia_models import WikipediaArticleModel
 
@@ -205,16 +207,43 @@ class DbClient:
         """
         return self.client.search_landmarks(search_term)
 
-    def get_landmark_metadata(self, landmark_id: str) -> Dict[str, Any]:
+    def get_landmark_metadata(self, landmark_id: str) -> LandmarkMetadata:
         """Get metadata for a landmark suitable for storing with vector embeddings.
 
         Args:
             landmark_id: ID of the landmark
 
         Returns:
-            Dictionary containing landmark metadata
+            LandmarkMetadata object containing structured landmark metadata
         """
-        return self.client.get_landmark_metadata(landmark_id)
+        # Get the raw metadata dictionary from the client
+        raw_metadata = self.client.get_landmark_metadata(landmark_id)
+
+        try:
+            # Convert the dictionary to a LandmarkMetadata object
+            return LandmarkMetadata(**raw_metadata)
+        except Exception as e:
+            logger.warning(
+                f"Error converting metadata to LandmarkMetadata model for {landmark_id}: {e}"
+            )
+            # Create a model with required fields and all optional fields initialized to None
+            # This ensures the model has all the necessary fields while still being valid
+            return LandmarkMetadata(
+                landmark_id=landmark_id,
+                name=raw_metadata.get("name", "Unknown Landmark"),
+                location=raw_metadata.get("location"),
+                borough=raw_metadata.get("borough"),
+                type=raw_metadata.get("type"),
+                designation_date=raw_metadata.get("designation_date"),
+                architect=raw_metadata.get("architect"),
+                style=raw_metadata.get("style"),
+                neighborhood=raw_metadata.get("neighborhood"),
+                has_pluto_data=raw_metadata.get("has_pluto_data"),
+                year_built=raw_metadata.get("year_built"),
+                land_use=raw_metadata.get("land_use"),
+                historic_district=raw_metadata.get("historic_district"),
+                zoning_district=raw_metadata.get("zoning_district"),
+            )
 
     def get_lpc_reports(
         self,
@@ -658,17 +687,30 @@ class DbClient:
                 return []
         return []
 
-    def get_landmark_pluto_data(self, landmark_id: str) -> List[Dict[str, Any]]:
+    def get_landmark_pluto_data(self, landmark_id: str) -> List[PlutoDataModel]:
         """Get PLUTO data for a landmark.
 
         Args:
             landmark_id: ID of the landmark
 
         Returns:
-            List of PLUTO data records
+            List of PLUTO data records as PlutoDataModel objects
         """
         if hasattr(self.client, "get_landmark_pluto_data"):
-            return self.client.get_landmark_pluto_data(landmark_id)
+            # Get raw data from client
+            raw_pluto_data = self.client.get_landmark_pluto_data(landmark_id)
+
+            # Convert to PlutoDataModel objects
+            pluto_models: List[PlutoDataModel] = []
+            for data in raw_pluto_data:
+                try:
+                    pluto_models.append(PlutoDataModel(**data))
+                except Exception as e:
+                    logger.warning(
+                        f"Error converting PLUTO data to model for landmark {landmark_id}: {e}"
+                    )
+
+            return pluto_models
         return []
 
     def get_total_record_count(self) -> int:
