@@ -16,7 +16,7 @@ Usage:
 import argparse
 import json
 import time
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.db_client import get_db_client
@@ -60,13 +60,20 @@ def update_and_verify_landmark(landmark_id: str, verbose: bool = False) -> None:
         # Step 3: Collect enhanced metadata
         enhanced_metadata = metadata_collector.collect_landmark_metadata(landmark_id)
 
+        # Convert enhanced_metadata to dict for compatibility with _create_metadata_for_chunk
+        enhanced_metadata_dict = (
+            enhanced_metadata.model_dump()
+            if hasattr(enhanced_metadata, "model_dump")
+            else enhanced_metadata.dict()
+        )
+
         # Step 4: Create a test vector
         test_vector_id = f"test-{landmark_id}-update-{int(time.time())}"
         logger.info(f"Creating test vector with ID: {test_vector_id}")
 
         mock_chunk = {
             "text": f"Test chunk for {landmark_name}",
-            "embedding": [0.1] * settings.EMBEDDING_DIMENSION,
+            "embedding": [0.1] * settings.OPENAI_EMBEDDING_DIMENSIONS,
         }
 
         metadata = pinecone_db._create_metadata_for_chunk(
@@ -74,21 +81,40 @@ def update_and_verify_landmark(landmark_id: str, verbose: bool = False) -> None:
             source_type="test",
             chunk_index=0,
             landmark_id=landmark_id,
-            enhanced_metadata=enhanced_metadata,
+            enhanced_metadata=enhanced_metadata_dict,
         )
 
         # Step 5: Upload test vector
-        pinecone_db.upsert_vector(
-            vector_id=test_vector_id, vector=mock_chunk["embedding"], metadata=metadata
-        )
-        logger.info(f"Uploaded test vector to Pinecone")
+        # Format the vector as expected by Pinecone SDK
+        vectors_to_upsert = [
+            {
+                "id": test_vector_id,
+                "values": mock_chunk["embedding"],
+                "metadata": metadata,
+            }
+        ]
+
+        # Use the namespace if configured
+        namespace = pinecone_db.namespace if pinecone_db.namespace else None
+
+        logger.info(f"Upserting test vector to Pinecone with ID: {test_vector_id}")
+        if namespace:
+            logger.info(f"Using namespace: {namespace}")
+            pinecone_db.index.upsert(vectors=vectors_to_upsert, namespace=namespace)
+        else:
+            pinecone_db.index.upsert(vectors=vectors_to_upsert)
+
+        logger.info("Uploaded test vector to Pinecone")
 
         # Step 6: Verify the results
         logger.info("Waiting a moment for indexing...")
-        time.sleep(1)
+        # Increase wait time to allow for Pinecone indexing
+        wait_time = 10
+        logger.info(f"Waiting {wait_time} seconds for indexing to complete...")
+        time.sleep(wait_time)
 
         # Query the vector to verify
-        verify_vector(test_vector_id, verbose)
+        verify_vector(test_vector_id, verbose, namespace)
 
         logger.info("Update and verification complete")
 
@@ -96,58 +122,110 @@ def update_and_verify_landmark(landmark_id: str, verbose: bool = False) -> None:
         logger.error(f"Error updating and verifying landmark: {e}", exc_info=True)
 
 
-def verify_vector(vector_id: str, verbose: bool = False) -> None:
-    """Check metadata for a specific vector ID to verify the update.
+def execute_vector_query(
+    pinecone_db: PineconeDB,
+    vector: list,
+    filter_dict: Optional[Dict[str, Any]] = None,
+    top_k: int = 1,
+    namespace: Optional[str] = None,
+) -> Any:
+    """
+    Execute a query against the Pinecone index.
 
     Args:
-        vector_id: The ID of the vector to check
-        verbose: Whether to print detailed results
+        pinecone_db: Pinecone DB instance
+        vector: Vector to query with
+        filter_dict: Optional filter dictionary
+        top_k: Number of results to return
+        namespace: Optional namespace to query in
+
+    Returns:
+        Query response from Pinecone
     """
-    pinecone_db = PineconeDB()
+    # Build query based on available parameters to avoid using **kwargs
+    # which is causing type errors
+    if namespace and filter_dict:
+        return pinecone_db.index.query(
+            vector=vector,
+            filter=filter_dict,
+            top_k=top_k,
+            include_metadata=True,
+            namespace=namespace,
+        )
+    elif namespace:
+        return pinecone_db.index.query(
+            vector=vector, top_k=top_k, include_metadata=True, namespace=namespace
+        )
+    elif filter_dict:
+        return pinecone_db.index.query(
+            vector=vector, filter=filter_dict, top_k=top_k, include_metadata=True
+        )
+    else:
+        return pinecone_db.index.query(
+            vector=vector, top_k=top_k, include_metadata=True
+        )
 
-    logger.info(f"Verifying vector: {vector_id}")
 
-    # Get index stats and extract dimension
-    dimension = settings.EMBEDDING_DIMENSION
+def extract_matches_from_response(
+    response: Any, vector_id: Optional[str] = None
+) -> List[Any]:
+    """
+    Extract matches from a Pinecone query response.
 
-    # Query by exact ID
-    query_response = pinecone_db.index.query(
-        vector=[0.0] * dimension,  # Dummy vector
-        filter={"id": vector_id},
-        top_k=1,
-        include_metadata=True,
-    )
+    Args:
+        response: Pinecone query response
+        vector_id: Optional vector ID to filter matches by
 
-    # Access matches safely
+    Returns:
+        List of matches
+    """
     matches = []
-    try:
-        if hasattr(query_response, "matches"):
-            matches = getattr(query_response, "matches")
-        elif isinstance(query_response, dict) and "matches" in query_response:
-            matches = query_response["matches"]
-    except Exception as e:
-        logger.warning(f"Error accessing matches: {e}")
+    if hasattr(response, "matches"):
+        matches = getattr(response, "matches")
+    elif isinstance(response, dict) and "matches" in response:
+        matches = response["matches"]
 
-    if not matches:
-        logger.error(f"Vector not found: {vector_id}")
-        return
+    # If vector_id is provided, filter matches for that ID
+    if vector_id and matches:
+        filtered_matches = []
+        for match in matches:
+            match_id = (
+                getattr(match, "id", "")
+                if hasattr(match, "id")
+                else match.get("id", "")
+            )
+            if match_id == vector_id:
+                filtered_matches.append(match)
+        return filtered_matches
 
-    vector = matches[0]
+    return matches
 
-    # Handle metadata dynamically
+
+def extract_metadata_from_vector(vector: Any) -> Dict[str, Any]:
+    """
+    Extract metadata from a vector object.
+
+    Args:
+        vector: Vector object from Pinecone
+
+    Returns:
+        Dictionary of metadata
+    """
     metadata = {}
-    try:
-        if hasattr(vector, "metadata"):
-            metadata = getattr(vector, "metadata")
-        elif isinstance(vector, dict) and "metadata" in vector:
-            metadata = vector["metadata"]
-    except Exception as e:
-        logger.error(f"Error accessing metadata: {e}")
+    if hasattr(vector, "metadata"):
+        metadata = getattr(vector, "metadata")
+    elif isinstance(vector, dict) and "metadata" in vector:
+        metadata = vector["metadata"]
+    return metadata
 
-    # Print metadata details
-    logger.info(f"Vector ID: {vector_id}")
 
-    # Check for BBL-related fields
+def check_bbl_fields(metadata: Dict[str, Any]) -> None:
+    """
+    Check BBL-related fields in the metadata.
+
+    Args:
+        metadata: Vector metadata dictionary
+    """
     logger.info("Checking BBL-related fields:")
 
     # Check if buildings are present in the metadata
@@ -164,6 +242,14 @@ def verify_vector(vector_id: str, verbose: bool = False) -> None:
                 f"Deprecated standalone field '{field}' found in metadata: {metadata[field]}"
             )
 
+
+def check_building_fields(metadata: Dict[str, Any]) -> None:
+    """
+    Check building-related fields in the metadata.
+
+    Args:
+        metadata: Vector metadata dictionary
+    """
     # Check for building structure
     building_fields = [k for k in metadata.keys() if k.startswith("building_")]
     if building_fields:
@@ -175,22 +261,99 @@ def verify_vector(vector_id: str, verbose: bool = False) -> None:
 
         # Extract BBLs from building fields
         bbls = []
-        for i in range(building_count):
+        for i in range(
+            int(building_count) if isinstance(building_count, (int, float, str)) else 0
+        ):
             bbl_field = f"building_{i}_bbl"
             if bbl_field in metadata:
                 bbls.append(metadata[bbl_field])
 
         logger.info(f"BBLs from buildings: {bbls}")
+    else:
+        logger.info("No building-related fields found in metadata")
 
-    # Print full metadata if verbose
-    if verbose:
-        try:
-            logger.info(
-                f"Full metadata:\n{json.dumps(metadata, indent=2, default=str)}"
+
+def verify_vector(
+    vector_id: str, verbose: bool = False, namespace: Optional[str] = None
+) -> None:
+    """Check metadata for a specific vector ID to verify the update.
+
+    Args:
+        vector_id: The ID of the vector to check
+        verbose: Whether to print detailed results
+        namespace: Optional namespace to use for querying
+    """
+    pinecone_db = PineconeDB()
+
+    logger.info(f"Verifying vector: {vector_id}")
+    if namespace:
+        logger.info(f"Using namespace: {namespace}")
+
+    # Get index stats and extract dimension
+    dimension = settings.OPENAI_EMBEDDING_DIMENSIONS
+    dummy_vector = [0.0] * dimension
+
+    try:
+        # First try querying with filter
+        logger.info(f"Querying for vector ID: {vector_id}")
+        filter_dict = {"id": vector_id}
+
+        # Execute query with filter
+        query_response = execute_vector_query(
+            pinecone_db, dummy_vector, filter_dict, 1, namespace
+        )
+
+        # Extract matches from response
+        matches = extract_matches_from_response(query_response)
+
+        # If no matches found, try without filter
+        if not matches:
+            logger.error(f"Vector not found: {vector_id}")
+            logger.info("Trying query without filter...")
+
+            # Execute query without filter
+            query_response = execute_vector_query(
+                pinecone_db, dummy_vector, None, 100, namespace
             )
-        except Exception as e:
-            logger.error(f"Could not serialize metadata: {e}")
-            logger.info(f"Raw metadata: {metadata}")
+
+            # Look for our specific vector ID in the results
+            matches = extract_matches_from_response(query_response, vector_id)
+
+            if not matches:
+                logger.error(f"Vector still not found: {vector_id}")
+                return
+
+        # We have a match, get the first one
+        vector = matches[0]
+
+        # Extract metadata from vector
+        metadata = extract_metadata_from_vector(vector)
+        if not metadata:
+            logger.error("No metadata found in vector")
+            return
+
+        # Print basic vector info
+        logger.info(f"Vector ID: {vector_id}")
+
+        # Check BBL and building fields
+        check_bbl_fields(metadata)
+        check_building_fields(metadata)
+
+        # Print full metadata if verbose
+        if verbose:
+            try:
+                logger.info(
+                    f"Full metadata:\n{json.dumps(metadata, indent=2, default=str)}"
+                )
+            except Exception as e:
+                logger.error(f"Could not serialize metadata: {e}")
+                logger.info(f"Raw metadata: {metadata}")
+
+        logger.info("Verification complete")
+
+    except Exception as e:
+        logger.error(f"Error verifying vector {vector_id}: {e}", exc_info=True)
+        return
 
 
 def main() -> None:

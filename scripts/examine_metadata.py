@@ -10,7 +10,7 @@ This script:
 
 import argparse
 import json
-import sys
+from typing import Dict
 
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
@@ -19,7 +19,7 @@ from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 logger = get_logger(__name__)
 
 
-def check_metadata():
+def check_metadata() -> None:
     """
     Examine the metadata of vectors in the Pinecone index.
     """
@@ -48,7 +48,7 @@ def check_metadata():
         print(f"   Full metadata: {json.dumps(metadata, indent=2, default=str)}")
 
     # Count metadata fields
-    field_counts = {}
+    field_counts: Dict[str, int] = {}
     for vector in vectors:
         metadata = vector.get("metadata", {})
         for key in metadata.keys():
@@ -57,7 +57,7 @@ def check_metadata():
     print("\nMetadata field counts:")
     for field, count in sorted(field_counts.items()):
         print(
-            f"- {field}: {count}/{len(vectors)} vectors ({count/len(vectors)*100:.1f}%)"
+            f"- {field}: {count}/{len(vectors)} vectors ({count / len(vectors) * 100:.1f}%)"
         )
 
     # Check for article_title and article_url
@@ -72,13 +72,14 @@ def check_metadata():
     print(f"Missing article_url: {missing_article_url}/{len(vectors)}")
 
 
-def main():
+def main() -> None:
     """Main entry point for the script."""
     parser = argparse.ArgumentParser(
         description="Verify vector metadata structure in Pinecone"
     )
 
-    args = parser.parse_args()
+    # We don't need to store args since we're not using them
+    parser.parse_args()
 
     # Check metadata
     check_metadata()

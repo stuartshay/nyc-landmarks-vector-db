@@ -14,6 +14,78 @@ from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 logger = get_logger(__name__)
 
 
+def query_pinecone_index(pinecone_db: PineconeDB, limit: int) -> Any:
+    """
+    Query the Pinecone index and retrieve vectors.
+
+    Args:
+        pinecone_db: PineconeDB instance
+        limit: Maximum number of vectors to return
+
+    Returns:
+        Query result from Pinecone
+    """
+    # Use a standard dimension for embeddings
+    vector_dimension = 1536  # Common dimension for embeddings
+    zero_vector = [0.0] * vector_dimension
+
+    # Query the index without filtering - we'll filter results locally
+    logger.info(f"Querying with top_k: {limit}")
+    result = pinecone_db.index.query(
+        vector=zero_vector,
+        top_k=limit,
+        include_metadata=True,
+        include_values=False,
+    )
+    return result
+
+
+def filter_matches_by_prefix(matches: List[Any], prefix: Optional[str]) -> List[Any]:
+    """
+    Filter match results by prefix.
+
+    Args:
+        matches: List of match objects from Pinecone
+        prefix: Optional prefix to filter vector IDs
+
+    Returns:
+        Filtered list of matches
+    """
+    if not prefix:
+        return matches
+
+    filtered_matches = []
+    for match in matches:
+        match_id = getattr(match, "id", None)
+        if match_id and match_id.startswith(prefix):
+            filtered_matches.append(match)
+
+    return filtered_matches
+
+
+def convert_matches_to_dicts(matches: List[Any]) -> List[Dict[str, Any]]:
+    """
+    Convert match objects to dictionaries.
+
+    Args:
+        matches: List of match objects from Pinecone
+
+    Returns:
+        List of match dictionaries
+    """
+    matches_data = []
+    for match in matches:
+        match_dict = {}
+        # Extract attributes safely
+        match_dict["id"] = getattr(match, "id", None)
+        match_dict["score"] = getattr(match, "score", None)
+        if hasattr(match, "metadata") and match.metadata:
+            match_dict["metadata"] = match.metadata
+        matches_data.append(match_dict)
+
+    return matches_data
+
+
 def list_vectors(
     prefix: Optional[str] = None, limit: int = 10, pretty_print: bool = False
 ) -> List[Dict[str, Any]]:
@@ -31,53 +103,25 @@ def list_vectors(
     try:
         # Initialize Pinecone client
         pinecone_db = PineconeDB()
-
-        # Access the Pinecone index directly
         logger.info(f"Listing vectors with prefix: {prefix if prefix else 'all'}")
-        # Get the underlying index object from PineconeDB
-        index = pinecone_db.index
 
-        # Query parameters
-        query_params = {
-            "top_k": limit,
-            "include_metadata": True,
-            "include_values": False,
-        }
+        # Query the Pinecone index
+        result = query_pinecone_index(pinecone_db, limit)
 
-        # Use a standard dimension for embeddings (most models use 1536 for text)
-        # This is just a dummy vector to list vectors
-        vector_dimension = 1536  # Common dimension for embeddings
-        zero_vector = [0.0] * vector_dimension
-
-        # Query the index without filtering - we'll filter results locally
-        logger.info(f"Querying with parameters: {query_params}")
-        result = index.query(vector=zero_vector, **query_params)
-
-        if not result or not hasattr(result, "matches") or not result.matches:
+        # Handle the result safely
+        matches = getattr(result, "matches", None)
+        if not matches:
             logger.warning("No vectors found in Pinecone")
             return []
 
         # Filter results if prefix is provided
-        filtered_matches = []
-        for match in result.matches:
-            match_id = getattr(match, "id", None)
-            if match_id and (not prefix or (prefix and match_id.startswith(prefix))):
-                filtered_matches.append(match)
-
+        filtered_matches = filter_matches_by_prefix(matches, prefix)
         if not filtered_matches:
             logger.warning(f"No vectors found with prefix: {prefix}")
             return []
 
         # Convert matches to dictionaries for display
-        matches_data = []
-        for match in filtered_matches:
-            match_dict = {}
-            # Extract attributes safely
-            match_dict["id"] = getattr(match, "id", None)
-            match_dict["score"] = getattr(match, "score", None)
-            if hasattr(match, "metadata") and match.metadata:
-                match_dict["metadata"] = match.metadata
-            matches_data.append(match_dict)
+        matches_data = convert_matches_to_dicts(filtered_matches)
 
         # Print the results
         if pretty_print:
