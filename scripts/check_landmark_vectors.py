@@ -60,7 +60,7 @@ def check_landmark_vectors(landmark_id: str, verbose: bool = False) -> None:
         # Get vector ID
         vector_id = match.id if hasattr(match, "id") else match.get("id", "unknown")
 
-        print(f"\nVector {i+1}: {vector_id}")
+        print(f"\nVector {i + 1}: {vector_id}")
 
         # Get metadata
         metadata = {}

@@ -110,9 +110,8 @@ def get_vector_db() -> PineconeDB:
 
 def get_db_client() -> DbClient:
     """Get an instance of DbClient."""
-    from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
-
-    return DbClient(CoreDataStoreAPI())
+    # Use the default db_client implementation (CoreDataStoreAPI is now private and handled in db_client)
+    return DbClient()
 
 
 # --- Helper functions ---
@@ -205,9 +204,15 @@ def _get_landmark_name(landmark_id: str, db_client: DbClient) -> Optional[str]:
 
     # Handle both dict and Pydantic model objects
     if isinstance(landmark, dict):
-        return landmark.get("name")
+        name = landmark.get("name")
+        if name is not None:
+            return str(name)
+        return None
     else:
-        return getattr(landmark, "name", None)
+        name = getattr(landmark, "name", None)
+        if name is not None:
+            return str(name)
+        return None
 
 
 def _create_source_object(

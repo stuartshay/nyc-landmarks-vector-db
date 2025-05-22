@@ -194,3 +194,14 @@ class EmbeddingGenerator:
 
         logger.info(f"Processed {len(processed_chunks)} chunks with embeddings")
         return processed_chunks
+
+    def process_chunk(self, chunk: str) -> List[float]:
+        """Process a chunk of text to generate its embedding.
+
+        Args:
+            chunk: Text chunk to process
+
+        Returns:
+            Embedding vector as a list of floats
+        """
+        return self.generate_embedding(chunk)

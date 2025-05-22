@@ -33,6 +33,17 @@
 
 ## Recent Changes
 
+- **Fixed Wikipedia Article Tokenization**: Fixed the tokenization process in the Wikipedia articles processing script:
+
+  - Properly integrated importing WikipediaContentModel from the wikipedia_models module
+  - Added explicit content fetching from Wikipedia for articles retrieved from the API
+  - Fixed the token-based chunking process to properly create WikipediaContentModel objects
+  - Added appropriate type hints to the split_into_token_chunks function
+  - Improved error handling with proper warning messages
+  - Successfully tested with landmark LP-00079 (Manhattan Municipal Building)
+  - Confirmed the script now properly fetches content, splits into token-based chunks, generates embeddings, and stores them in Pinecone
+  - Fixed the issue where the content field was None for Wikipedia articles by adding direct fetching
+
 - **Enhanced Landmark Metadata Modeling**: Created a Pydantic model for landmark metadata:
 
   - Defined a new `LandmarkMetadata` model in landmark_models.py to represent vector metadata

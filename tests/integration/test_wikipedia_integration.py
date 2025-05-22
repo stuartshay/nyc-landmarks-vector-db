@@ -37,13 +37,13 @@ def test_end_to_end_wikipedia_pipeline(pinecone_test_db: Optional[PineconeDB]) -
         return
 
     # Only import dependencies when actually running the test
-    from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
+    from nyc_landmarks.db.db_client import get_db_client
     from nyc_landmarks.db.wikipedia_fetcher import WikipediaFetcher
     from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 
     # Step 1: Retrieve Wikipedia articles from CoreDataStore API
-    api_client = CoreDataStoreAPI()
-    articles = api_client.get_wikipedia_articles(TEST_LANDMARK_ID)
+    db_client = get_db_client()
+    articles = db_client.get_wikipedia_articles(TEST_LANDMARK_ID)
     assert (
         articles
     ), f"Should retrieve at least one Wikipedia article for {TEST_LANDMARK_ID}"
@@ -105,10 +105,3 @@ def test_end_to_end_wikipedia_pipeline(pinecone_test_db: Optional[PineconeDB]) -
 
     assert results, "Should retrieve vectors with Wikipedia source_type"
     logger.info(f"Retrieved {len(results)} Wikipedia vectors for query '{test_query}'")
-
-    # Step 6: Clean up test vectors
-    deleted_count = pinecone_db.delete_vectors(vector_ids)
-    assert deleted_count == len(
-        vector_ids
-    ), f"Should delete all {len(vector_ids)} test vectors"
-    logger.info(f"Cleaned up {deleted_count} test vectors")

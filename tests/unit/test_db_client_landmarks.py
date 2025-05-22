@@ -9,7 +9,7 @@ import unittest
 from typing import Any, Dict, List, Union
 from unittest.mock import Mock, patch
 
-from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
+from nyc_landmarks.db._coredatastore_api import _CoreDataStoreAPI as CoreDataStoreAPI
 from nyc_landmarks.db.db_client import DbClient
 from nyc_landmarks.models.landmark_models import (
     LandmarkDetail,

@@ -11,13 +11,15 @@ from typing import Any, Dict, List, Optional, Protocol, Union, cast
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db._coredatastore_api import _CoreDataStoreAPI
 from nyc_landmarks.models.landmark_models import (
+    LpcReportResponse,  # Ensure LpcReportResponse is here
+)
+from nyc_landmarks.models.landmark_models import (
     LandmarkDetail,
-    LandmarkMetadata,
     LpcReportDetailResponse,
     LpcReportModel,
-    LpcReportResponse,  # Ensure LpcReportResponse is here
     PlutoDataModel,
 )
+from nyc_landmarks.models.metadata_models import LandmarkMetadata
 from nyc_landmarks.models.wikipedia_models import WikipediaArticleModel
 
 # Configure logging
@@ -49,6 +51,7 @@ class DbClient:
     def __init__(self, client: Optional["_CoreDataStoreAPI"] = None) -> None:
         """Initialize the CoreDataStore API client."""
         from nyc_landmarks.db._coredatastore_api import _CoreDataStoreAPI
+
         self.client = client if client is not None else _CoreDataStoreAPI()
         pass  # Protocol method
 
@@ -237,24 +240,24 @@ class DbClient:
                     model_results.append(LpcReportModel(**item))
                 except Exception as e:
                     logger.warning(f"Error converting item to LpcReportModel: {e}")
-                    # Create a minimal model with required fields
+                    # Create a minimal model with required fields and fallback values
                     model_results.append(
                         LpcReportModel(
-                            name="Unknown",
-                            lpNumber="Unknown",
-                            lpcId="",
-                            objectType="",
-                            architect="",
-                            style="",
-                            street="",
-                            borough="",
-                            dateDesignated="",
-                            photoStatus=False,
-                            mapStatus=False,
-                            neighborhood="",
-                            zipCode="",
-                            photoUrl=None,
-                            pdfReportUrl=None,
+                            name=item.get("name", "Unknown"),
+                            lpNumber=item.get("lpNumber", "Unknown"),
+                            lpcId=item.get("lpcId", ""),
+                            objectType=item.get("objectType", ""),
+                            architect=item.get("architect", ""),
+                            style=item.get("style", ""),
+                            street=item.get("street", ""),
+                            borough=item.get("borough", ""),
+                            dateDesignated=item.get("dateDesignated", ""),
+                            photoStatus=item.get("photoStatus", False),
+                            mapStatus=item.get("mapStatus", False),
+                            neighborhood=item.get("neighborhood", ""),
+                            zipCode=item.get("zipCode", ""),
+                            photoUrl=item.get("photoUrl"),
+                            pdfReportUrl=item.get("pdfReportUrl"),
                         )
                     )
             # Create the LpcReportResponse with proper field names
@@ -448,22 +451,40 @@ class DbClient:
         Returns:
             URL string if available, None otherwise
         """
-        # Try to get the PDF URL from the detailed response first
         try:
+            # Try to get the PDF URL from the detailed response first
             response = self.get_landmark_by_id(landmark_id)
-            if isinstance(response, LpcReportDetailResponse) and response.pdfReportUrl:
-                return response.pdfReportUrl
+            if isinstance(response, LpcReportDetailResponse):
+                if response.pdfReportUrl:
+                    return response.pdfReportUrl
+                else:
+                    logger.info(
+                        f"No PDF URL found in LpcReportDetailResponse for landmark ID {landmark_id}."
+                    )
         except Exception as e:
-            logger.warning(f"Error getting PDF URL from response: {e}")
+            logger.warning(
+                f"Error getting PDF URL from response for landmark ID {landmark_id}: {e}"
+            )
 
-        # Fall back to the direct method if needed
-        if hasattr(self.client, "get_landmark_pdf_url"):
-            result = self.client.get_landmark_pdf_url(landmark_id)
-            if isinstance(result, str) or result is None:
-                return result
-            # If result is not a string or None, log a warning and return None
-            logger.warning(f"get_landmark_pdf_url returned non-str value: {type(result)}")
-            return None
+        try:
+            # Fall back to the direct method if needed
+            if hasattr(self.client, "get_landmark_pdf_url"):
+                result = self.client.get_landmark_pdf_url(landmark_id)
+                if isinstance(result, str):
+                    return result
+                elif result is None:
+                    logger.info(
+                        f"No PDF URL found using client method for landmark ID {landmark_id}."
+                    )
+                else:
+                    logger.warning(
+                        f"get_landmark_pdf_url returned unexpected type {type(result)} for landmark ID {landmark_id}."
+                    )
+        except Exception as e:
+            logger.error(
+                f"Error calling client.get_landmark_pdf_url for landmark ID {landmark_id}: {e}"
+            )
+
         return None
 
     def _map_borough_id_to_name(self, borough_id: Optional[str]) -> Optional[str]:
@@ -500,7 +521,6 @@ class DbClient:
 
         if isinstance(item, LandmarkDetail):
             # Map fields from LandmarkDetail to LpcReportModel
-            # Some fields might be missing or need default values
             return LpcReportModel(
                 name=item.name or "Unknown Building Name",
                 lpNumber=item.lpNumber or landmark_lp_number_context or "Unknown LP",
@@ -514,20 +534,15 @@ class DbClient:
                 photoStatus=None,  # Not directly available in LandmarkDetail
                 mapStatus=None,  # Not directly available in LandmarkDetail
                 neighborhood=item.historicDistrict,  # Using historicDistrict as neighborhood
-                zipCode=None,  # Not directly in LandmarkDetail, might be part of plutoAddress
+                zipCode=None,  # Not directly in LandmarkDetail
                 photoUrl=None,  # Not in LandmarkDetail
                 pdfReportUrl=None,  # Not in LandmarkDetail
             )
 
         # If execution reaches here, 'item' must be a dict due to the Union type hint
-        # and the preceding checks for LpcReportModel and LandmarkDetail.
-        # Thus, isinstance(item, dict) is not strictly necessary if type hints are correct.
-        # However, to be absolutely safe against unexpected inputs or if type hints are bypassed,
-        # it can be kept. For now, assuming type hints are honored by callers.
         try:
             # Attempt to directly create LpcReportModel from dict
-            # This assumes the dict keys match LpcReportModel fields
-            return LpcReportModel(**item)  # item is implicitly Dict[str, Any] here
+            return LpcReportModel(**item)
         except Exception as e:
             logger.warning(
                 f"Error converting dict to LpcReportModel for LP {landmark_lp_number_context}: {e}. Dict keys: {list(item.keys())}"
@@ -777,11 +792,10 @@ class DbClient:
         """
         if hasattr(self.client, "get_wikipedia_articles"):
             try:
-                client_with_wiki_methods = cast(SupportsWikipedia, self.client)
-                return client_with_wiki_methods.get_wikipedia_articles(landmark_id)
+                return self.client.get_wikipedia_articles(landmark_id)
             except Exception as e:
                 logger.error(
-                    f"Error accessing get_wikipedia_articles for landmark_id '{landmark_id}': {e}"
+                    f"Error fetching Wikipedia articles for landmark {landmark_id}: {e}"
                 )
                 return []
         return []

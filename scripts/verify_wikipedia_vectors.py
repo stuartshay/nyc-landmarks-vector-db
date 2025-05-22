@@ -48,7 +48,7 @@ def verify_batch_vectors(vector_ids: List[str]) -> Dict[str, bool]:
     print("VERIFICATION RESULTS:")
     valid_count = sum(1 for result in results.values() if result)
     print(
-        f"Valid vectors: {valid_count}/{len(vector_ids)} ({valid_count/len(vector_ids)*100:.1f}%)"
+        f"Valid vectors: {valid_count} / {len(vector_ids)} ({valid_count / len(vector_ids) * 100:.1f}%)"
     )
 
     if valid_count < len(vector_ids):

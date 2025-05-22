@@ -8,7 +8,7 @@ at least 80% test coverage across the codebase.
 import unittest
 from unittest.mock import Mock, patch
 
-from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
+from nyc_landmarks.db._coredatastore_api import _CoreDataStoreAPI as CoreDataStoreAPI
 from nyc_landmarks.db.db_client import DbClient, SupportsWikipedia
 from nyc_landmarks.models.landmark_models import (
     LpcReportDetailResponse,

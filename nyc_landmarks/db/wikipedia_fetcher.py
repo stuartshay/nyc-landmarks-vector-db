@@ -79,6 +79,9 @@ class WikipediaFetcher:
             response = requests.get(url, headers=self.headers, timeout=30)
             response.raise_for_status()
 
+            logger.debug(f"HTTP response status: {response.status_code}")
+            logger.debug(f"Response preview: {response.text[:500]}...")
+
             # Parse HTML content
             soup = BeautifulSoup(response.text, "html.parser")
 
@@ -115,6 +118,7 @@ class WikipediaFetcher:
             logger.info(
                 f"Successfully fetched Wikipedia content ({len(content)} chars)"
             )
+            logger.debug(f"Content after fetching: {content[:500]}...")
             return content
 
         except requests.exceptions.RequestException as e:
@@ -249,8 +253,9 @@ class WikipediaFetcher:
             # Fetch the article content
             content = self.fetch_wikipedia_content(article.url)
             if not content:
-                logger.warning(f"No content retrieved for article: {article.title}")
+                logger.error(f"Content is None for URL: {article.url}")
                 return None
+            logger.debug(f"Fetched content preview: {content[:500]}...")
 
             # Chunk the content
             chunks = self.chunk_wikipedia_text(content, chunk_size, chunk_overlap)

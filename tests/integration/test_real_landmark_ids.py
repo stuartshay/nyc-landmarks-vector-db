@@ -12,38 +12,10 @@ import pytest
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
+from nyc_landmarks.vectordb.vector_id_validator import check_vector_formats
 
 # Set up logger
 logger = get_logger(name="test_real_landmark_ids")
-
-
-def check_vector_formats(results: List[Dict[str, Any]], landmark_id: str) -> bool:
-    """
-    Check if all vector IDs follow the expected format.
-
-    Args:
-        results: List of vector results from Pinecone
-        landmark_id: The landmark ID being checked
-
-    Returns:
-        bool: True if all vectors have correct format, False otherwise
-    """
-    correct_format = True
-
-    for result in results:
-        vector_id = result.get("id", "")
-        metadata = result.get("metadata", {})
-        chunk_index = metadata.get("chunk_index", -1)
-
-        # Verify the ID follows the expected pattern: {landmark_id}-chunk-{index}
-        expected_id = f"{landmark_id}-chunk-{int(chunk_index)}"
-        if vector_id != expected_id:
-            logger.warning(
-                f"Vector ID format mismatch for {landmark_id}: {vector_id} != {expected_id}"
-            )
-            correct_format = False
-
-    return correct_format
 
 
 def log_landmark_info(results: List[Dict[str, Any]], landmark_id: str) -> None:

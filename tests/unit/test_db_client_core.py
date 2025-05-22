@@ -8,7 +8,7 @@ focusing on ID handling, basic landmark fetching, and model conversion methods.
 import unittest
 from unittest.mock import Mock
 
-from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
+from nyc_landmarks.db._coredatastore_api import _CoreDataStoreAPI as CoreDataStoreAPI
 from nyc_landmarks.db.db_client import DbClient
 from nyc_landmarks.models.landmark_models import (
     LandmarkDetail,

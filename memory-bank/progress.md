@@ -110,6 +110,19 @@
 
 ## Recent Completions
 
+- **Fixed Wikipedia Article Tokenization Process**:
+
+  - Fixed the tokenization process in the Wikipedia articles processing script
+  - Added proper import for WikipediaContentModel from wikipedia_models
+  - Implemented explicit content fetching from Wikipedia for articles that only have metadata from the API
+  - Restructured the token-based chunking process to properly create WikipediaContentModel objects
+  - Added appropriate type hints to the split_into_token_chunks function to fix mypy errors
+  - Improved error handling with proper warning messages
+  - Successfully tested with landmark LP-00079 (Manhattan Municipal Building)
+  - Verified the entire pipeline: articles fetched → content retrieved → token-based chunks created → embeddings generated → vectors stored in Pinecone
+  - Fixed the issue where tokenization was failing due to the content field being None
+  - Resolved the problem with uninitialized variables being used in the content processing flow
+
 - **Enhanced Metadata Extraction for Wikipedia Articles**
 
   - Fixed missing metadata properties (`architect`, `neighborhood`, `style`) in Wikipedia article vector data

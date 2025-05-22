@@ -21,6 +21,7 @@ from nyc_landmarks.models.wikipedia_models import WikipediaArticleModel
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=settings.LOG_LEVEL.value)
 
+
 class _CoreDataStoreAPI:
     """CoreDataStore API client for landmark operations (private, internal use only)."""
 
@@ -31,7 +32,6 @@ class _CoreDataStoreAPI:
         if self.api_key:
             self.headers["Authorization"] = f"Bearer {self.api_key}"
         logger.info("Initialized CoreDataStore API client")
-
 
     def _make_request(
         self,
@@ -948,3 +948,47 @@ class _CoreDataStoreAPI:
             logger.error(f"Error getting total record count: {e}")
             return 0
 
+    def get_landmark_pdf_url(self, landmark_id: str) -> Optional[str]:
+        """Get the PDF report URL for a landmark.
+
+        Args:
+            landmark_id: ID of the landmark (LP number, e.g., "LP-00001")
+
+        Returns:
+            The PDF report URL, or None if not found
+        """
+        try:
+            # Ensure landmark_id is properly formatted with LP prefix
+            if not landmark_id.startswith("LP-"):
+                lpc_id = f"LP-{landmark_id.zfill(5)}"
+            else:
+                lpc_id = landmark_id
+
+            # Get the LPC report using the API
+            response = self._make_request("GET", f"/api/LpcReport/{lpc_id}")
+
+            if not response:
+                logger.warning(f"Landmark not found with ID: {landmark_id}")
+                return None
+
+            # Check if response is a dictionary before accessing attributes
+            if not isinstance(response, dict):
+                logger.error(
+                    f"Expected dictionary response but got {type(response).__name__}"
+                )
+                return None
+
+            # Extract the PDF report URL
+            pdf_url = response.get("pdfReportUrl")
+            if not pdf_url:
+                logger.warning(
+                    f"No PDF report URL found for landmark ID: {landmark_id}"
+                )
+                return None
+
+            # Ensure we return a string, not Any
+            return str(pdf_url) if pdf_url is not None else None
+
+        except Exception as e:
+            logger.error(f"Error getting PDF report URL for landmark: {e}")
+            return None

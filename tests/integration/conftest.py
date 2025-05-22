@@ -65,7 +65,10 @@ def pinecone_test_db() -> Generator[Optional[PineconeDB], None, None]:
         # Note: We keep this code for safety, but with unique session indexes
         # there's less risk of affecting other parallel test sessions
         try:
-            delete_test_index(index_name=test_index_name)
+            logger.info(
+                f"Deleting test index {test_index_name} - #### Commented out ###"
+            )
+            # delete_test_index(index_name=test_index_name)
         except Exception as e:
             logger.warning(f"Failed to delete test index {test_index_name}: {e}")
 

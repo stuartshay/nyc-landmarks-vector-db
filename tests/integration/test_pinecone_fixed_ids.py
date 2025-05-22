@@ -16,6 +16,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
+from nyc_landmarks.vectordb.vector_id_validator import VectorIDValidator
 
 # Set up logger
 logger = get_logger(name="test_pinecone_fixed_ids")
@@ -285,37 +286,15 @@ def _check_vector_id_format(
     vector_id: str, metadata: Dict[str, Any], landmark_id: str, verbose: bool
 ) -> bool:
     """Helper function to check the format and consistency of a vector ID."""
-    is_format_correct = True
-    expected_prefix = f"{landmark_id}-chunk-"
-
-    # Special handling for LP-00001 which might have non-standard formats
-    if landmark_id == "LP-00001" and (
-        vector_id.startswith(f"test-{landmark_id}-")
-        or vector_id.startswith("wiki-")
-        or "wiki" in vector_id
-    ):
-        # This is a known inconsistent format, so we accept it for now
-        return True
-
-    if not vector_id.startswith(expected_prefix):
-        is_format_correct = False
-        if verbose:
-            logger.error(f"Vector ID {vector_id} does not start with {expected_prefix}")
-    else:
-        try:
-            chunk_index_from_id = int(vector_id.split("-chunk-")[1])
-            if "chunk_index" in metadata:
-                chunk_index_from_meta = metadata["chunk_index"]
-                if int(chunk_index_from_meta) != chunk_index_from_id:
-                    is_format_correct = False
-                    if verbose:
-                        logger.error(
-                            f"ID chunk index {chunk_index_from_id} != metadata chunk index {chunk_index_from_meta}"
-                        )
-        except (ValueError, IndexError):
-            is_format_correct = False
-            if verbose:
-                logger.error(f"Could not parse chunk index from ID {vector_id}")
+    # Use the VectorIDValidator for all IDs
+    chunk_index = metadata.get("chunk_index", -1)
+    is_format_correct = VectorIDValidator.is_valid(
+        vector_id, landmark_id, int(chunk_index)
+    )
+    if not is_format_correct and verbose:
+        logger.error(
+            f"Vector ID {vector_id} is not valid for landmark {landmark_id} (chunk_index={chunk_index})"
+        )
     return is_format_correct
 
 

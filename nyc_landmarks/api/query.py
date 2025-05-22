@@ -439,9 +439,15 @@ def _get_landmark_name(landmark_id: str, db_client: DbClient) -> Optional[str]:
 
     # Handle both dict and Pydantic model objects
     if isinstance(landmark, dict):
-        return landmark.get("name")
+        name = landmark.get("name")
+        if isinstance(name, str) or name is None:
+            return name
+        return str(name)
     else:
-        return getattr(landmark, "name", None)
+        name = getattr(landmark, "name", None)
+        if isinstance(name, str) or name is None:
+            return name
+        return str(name)
 
 
 def _get_source_info(metadata: Dict[str, Any]) -> Tuple[str, str]:

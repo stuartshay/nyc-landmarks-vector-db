@@ -22,7 +22,3 @@ def pytest_collection_modifyitems(items: List[pytest.Item]) -> None:
             item.add_marker(pytest.mark.integration)
         elif "/tests/functional/" in test_path:
             item.add_marker(pytest.mark.functional)
-
-        # Apply MCP marker for tests using MCP server
-        if "mcp" in test_path.lower():
-            item.add_marker(pytest.mark.mcp)

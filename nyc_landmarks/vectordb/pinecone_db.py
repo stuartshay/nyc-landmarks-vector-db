@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from pinecone import Pinecone
 
 from nyc_landmarks.config.settings import settings
-from nyc_landmarks.models.landmark_models import LandmarkMetadata
+from nyc_landmarks.models.metadata_models import LandmarkMetadata
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.enhanced_metadata import EnhancedMetadataCollector
 
@@ -190,39 +190,17 @@ class PineconeDB:
         # Filter out null values and complex objects from enhanced metadata before adding
         # We need to handle the buildings list specially for Pinecone compatibility
         filtered_metadata = {}
-        for k, v in enhanced_metadata.items():
-            # Skip None values
-            if v is None:
-                continue
-
-            # Handle buildings list - convert to flattened structure for Pinecone
-            if k == "buildings" and isinstance(v, list):
-                # Include the count of buildings
-                filtered_metadata["building_count"] = len(v)
-
-                # Collect all BBLs from buildings for searchability
-                bbls = []
-                for building in v:
-                    if isinstance(building, dict) and building.get("bbl") is not None:
-                        bbls.append(building["bbl"])
-
-                # We're now storing all BBL data in the buildings complex object
-                # No need to keep redundant standalone fields
-                # Instead, just track the building count and details
-
-                # For compatibility, only include detailed building data if there are not too many
-                # Pinecone has metadata size limits
-                if (
-                    len(v) <= 5
-                ):  # Limit to a reasonable number to avoid hitting metadata size limits
-                    # Add each building with indexed fields
-                    for i, building in enumerate(v):
-                        for bk, bv in building.items():
-                            if bv is not None:
-                                filtered_metadata[f"building_{i}_{bk}"] = bv
-            else:
-                # Include other metadata as is
+        try:
+            for k, v in enhanced_metadata.items():
+                if v is None:
+                    continue
+                # Add additional checks for unsupported data types
+                if isinstance(v, (list, dict)) and k != "buildings":
+                    logger.warning(f"Skipping unsupported metadata field: {k}")
+                    continue
                 filtered_metadata[k] = v
+        except Exception as e:
+            logger.error(f"Error processing enhanced metadata: {e}")
 
         metadata.update(filtered_metadata)
 
@@ -250,11 +228,21 @@ class PineconeDB:
         """
         for i in range(0, len(vectors), batch_size):
             batch = vectors[i : i + batch_size]
-            try:
-                # Convert to the expected type for the Pinecone SDK
-                self.index.upsert(vectors=batch)  # pyright: ignore
-            except Exception as e:
-                logger.error(f"Failed to store chunk batch {i // batch_size}: {e}")
+            retry_count = 0
+            while retry_count < 3:
+                try:
+                    # Convert to the expected type for the Pinecone SDK
+                    self.index.upsert(vectors=batch)  # pyright: ignore
+                    break
+                except Exception as e:
+                    retry_count += 1
+                    logger.error(
+                        f"Failed to store chunk batch {i // batch_size} on attempt {retry_count}: {e}"
+                    )
+                    if retry_count == 3:
+                        logger.error(
+                            f"Giving up on batch {i // batch_size} after 3 attempts"
+                        )
 
     def store_chunks(
         self,
@@ -667,3 +655,20 @@ class PineconeDB:
         except Exception as e:
             logger.error(f"Failed to delete index: {e}")
             return False
+
+    def store_embedding(self, embedding: List[float], metadata: Dict[str, Any]) -> None:
+        """Store an embedding in the Pinecone index.
+
+        Args:
+            embedding: The embedding vector to store
+            metadata: Metadata associated with the embedding
+        """
+        try:
+            vector_id = str(uuid.uuid4())  # Generate a unique ID for the vector
+            self.index.upsert(
+                vectors=[{"id": vector_id, "values": embedding, "metadata": metadata}]
+            )
+            logger.info(f"Stored embedding with ID: {vector_id}")
+        except Exception as e:
+            logger.error(f"Failed to store embedding: {e}")
+            raise

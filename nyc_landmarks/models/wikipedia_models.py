@@ -28,6 +28,9 @@ class WikipediaArticleModel(BaseModel):
     )
     url: str = Field(..., description="URL to the Wikipedia article")
     title: str = Field(..., description="Title of the Wikipedia article")
+    content: Optional[str] = Field(
+        None, description="Full content of the Wikipedia article"
+    )
     recordType: str = Field("Wikipedia", description="Type of record")
 
     @field_validator("url", mode="after")  # pyright: ignore[misc] # type: ignore

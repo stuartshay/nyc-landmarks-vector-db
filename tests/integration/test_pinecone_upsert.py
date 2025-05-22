@@ -10,6 +10,7 @@ import sys
 import time
 from pathlib import Path
 from typing import Any, Optional
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -22,6 +23,20 @@ from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 # Configure logging for tests
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=settings.LOG_LEVEL.value)
+
+
+def get_vector_metadata(pinecone_db: PineconeDB, vector_id: str) -> dict[str, Any]:
+    """Get the metadata for a specific vector ID."""
+    # Query Pinecone for the specific vector ID
+    filter_dict: dict[str, str] = {"id": vector_id}
+    results: list[dict[str, Any]] = pinecone_db.query_vectors(
+        query_vector=[],  # No need for a query vector
+        top_k=1,  # Only need one result
+        filter_dict=filter_dict,
+    )
+
+    # Return the metadata of the found vector, or an empty dict if not found
+    return results[0].get("metadata", {}) if results else {}
 
 
 def get_vector_count(
@@ -116,6 +131,16 @@ def test_fixed_id_upsert_behavior(pinecone_test_db: Optional[PineconeDB]) -> Non
                 expected_id in first_vector_ids
             ), f"Expected ID {expected_id} not found"
 
+        # Validate metadata correctness
+        for vector_id in first_vector_ids:
+            vector_metadata = get_vector_metadata(pinecone_db, vector_id)
+            assert (
+                vector_metadata["landmark_id"] == test_landmark_id
+            ), "Incorrect landmark_id in metadata"
+            assert (
+                vector_metadata["source_type"] == "test"
+            ), "Incorrect source_type in metadata"
+
         # Process second time with the same chunks
         logger.info(f"Processing {test_landmark_id} second time with fixed IDs")
         # Update the processing date to identify the second run
@@ -163,6 +188,25 @@ def test_fixed_id_upsert_behavior(pinecone_test_db: Optional[PineconeDB]) -> Non
             assert processing_date == time.strftime(
                 "%Y-%m-%d"
             ), "Processing date should be updated"
+
+        # Simulate a batch failure and verify retry logic
+        with patch.object(
+            pinecone_db.index, "upsert", side_effect=Exception("Simulated failure")
+        ) as mock_upsert:
+            try:
+                pinecone_db.store_chunks(
+                    chunks=test_chunks,
+                    landmark_id=test_landmark_id,
+                    use_fixed_ids=True,
+                    delete_existing=True,
+                )
+            except Exception:
+                pass
+
+            # Verify retry attempts
+            assert (
+                mock_upsert.call_count == 3
+            ), "Retry logic failed to execute 3 attempts"
 
     finally:
         # Clean up

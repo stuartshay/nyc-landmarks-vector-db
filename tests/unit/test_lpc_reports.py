@@ -9,7 +9,7 @@ import unittest
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
+from nyc_landmarks.db._coredatastore_api import _CoreDataStoreAPI as CoreDataStoreAPI
 from nyc_landmarks.models.landmark_models import LpcReportModel, LpcReportResponse
 
 
@@ -113,7 +113,7 @@ class TestLpcReports(unittest.TestCase):
         self.assertEqual(response.page, 1)
         self.assertEqual(response.results[0].lpNumber, "LP-00001")
 
-    @patch("nyc_landmarks.db.coredatastore_api.CoreDataStoreAPI._make_request")
+    @patch("nyc_landmarks.db._coredatastore_api._CoreDataStoreAPI._make_request")
     def test_get_lpc_reports(self, mock_make_request: MagicMock) -> None:
         """Test that get_lpc_reports correctly processes API responses."""
         # Mock API response
@@ -165,7 +165,7 @@ class TestLpcReports(unittest.TestCase):
         self.assertEqual(response.results[0].lpNumber, "LP-00001")
         self.assertEqual(response.results[1].name, "Chrysler Building")
 
-    @patch("nyc_landmarks.db.coredatastore_api.CoreDataStoreAPI._make_request")
+    @patch("nyc_landmarks.db._coredatastore_api._CoreDataStoreAPI._make_request")
     def test_get_lpc_reports_with_pagination(
         self, mock_make_request: MagicMock
     ) -> None:
