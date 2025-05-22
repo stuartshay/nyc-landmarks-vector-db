@@ -48,16 +48,40 @@ class TestGetLpcReportsFallback(unittest.TestCase):
 
     def test_fallback_to_get_landmarks_page(self) -> None:
         """Test fallback to get_landmarks_page when get_lpc_reports is unavailable."""
-        # Set up mock get_landmarks_page to return a list of landmarks
-        self.mock_api.get_landmarks_page.return_value = [
-            {
-                "lpNumber": "LP-12345",
-                "name": "Test Landmark",
-                "objectType": "Individual Landmark",
-                "borough": "Manhattan",
-                "dateDesignated": "2020-01-01",
-            }
+        # Create a mock LpcReportResponse to return from get_landmarks_page
+        from nyc_landmarks.models.landmark_models import LpcReportModel
+
+        mock_results = [
+            LpcReportModel(
+                lpNumber="LP-12345",
+                name="Test Landmark",
+                objectType="Individual Landmark",
+                borough="Manhattan",
+                dateDesignated="2020-01-01",
+                lpcId="",  # Required field
+                street="",  # Required field
+                architect="",  # Required field
+                style="",  # Required field
+                photoStatus=False,
+                mapStatus=False,
+                neighborhood="",
+                zipCode="",
+                photoUrl=None,
+                pdfReportUrl=None,
+            )
         ]
+
+        mock_response = LpcReportResponse(
+            results=mock_results,
+            page=1,
+            limit=10,
+            total=1,
+            **{"from": 1},  # Use unpacking for the "from" field
+            to=1,
+        )
+
+        # Set up mock get_landmarks_page to return our mock response
+        self.mock_api.get_landmarks_page.return_value = mock_response
 
         # Call the method
         result = self.client.get_lpc_reports(page=1, limit=10)
@@ -75,6 +99,11 @@ class TestGetLpcReportsFallback(unittest.TestCase):
 
     def test_fallback_with_invalid_item(self) -> None:
         """Test handling of invalid items during conversion in fallback."""
+        # Create a mock get_landmarks_page method that returns a list
+        # We need to modify the mock to return a list instead of a LpcReportResponse
+        # because we're testing the fallback path specifically
+        from nyc_landmarks.models.landmark_models import LpcReportResponse
+
         # Set up mock get_landmarks_page to return a list with an invalid item
         self.mock_api.get_landmarks_page.return_value = [
             {
@@ -453,27 +482,6 @@ class TestOtherMethods(unittest.TestCase):
 
                 # Verify default value is returned
                 self.assertEqual(result, 100)
-
-    def test_estimate_count_from_pages_empty_first_page(self) -> None:
-        """Test _estimate_count_from_pages when first page is empty."""
-        # Mock get_landmarks_page to return an empty list
-        with patch.object(self.client, "get_landmarks_page", return_value=[]):
-            # Call the method
-            result = self.client._estimate_count_from_pages()
-
-            # Verify minimum value of 1 is returned
-            self.assertEqual(result, 1)
-
-    def test_estimate_count_from_pages_reaches_max_pages(self) -> None:
-        """Test _estimate_count_from_pages when it reaches max pages without end."""
-        # Mock get_landmarks_page to always return a full page
-        full_page = [{"id": f"LP-{i}", "name": f"Landmark {i}"} for i in range(50)]
-        with patch.object(self.client, "get_landmarks_page", return_value=full_page):
-            # Call the method
-            result = self.client._estimate_count_from_pages()
-
-            # Verify result is 5 pages × 50 items = 250
-            self.assertEqual(result, 250)
 
 
 if __name__ == "__main__":

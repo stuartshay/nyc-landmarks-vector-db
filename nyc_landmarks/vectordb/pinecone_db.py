@@ -117,7 +117,7 @@ class PineconeDB:
             logger.warning(f"Could not retrieve enhanced metadata: {e}")
 
         # Convert LandmarkMetadata to dictionary or return empty dict if it failed
-        return enhanced_metadata_obj.dict() if enhanced_metadata_obj else {}
+        return enhanced_metadata_obj.model_dump() if enhanced_metadata_obj else {}
 
     def _generate_vector_id(
         self,

@@ -8,6 +8,11 @@ This script:
 3. Processes the articles into chunks
 4. Generates embeddings for the chunks
 5. Stores the vectors in Pinecone
+
+
+python scripts/process_wikipedia_articles.py --page 2 --limit 5 --verbose
+python scripts/process_wikipedia_articles.py --landmark-ids LP-00204 --verbose
+
 """
 
 import argparse
@@ -20,7 +25,6 @@ from typing import Dict, List, Optional, Tuple, Union
 
 from tqdm import tqdm
 
-from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
 from nyc_landmarks.db.wikipedia_fetcher import WikipediaFetcher
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.utils.logger import get_logger
@@ -52,13 +56,15 @@ def process_landmark_wikipedia(
         logger.info(f"Processing Wikipedia articles for landmark: {landmark_id}")
 
         # Step 1: Initialize components
-        api_client = CoreDataStoreAPI()
+        from nyc_landmarks.db.db_client import get_db_client
+
+        db_client = get_db_client()
         wiki_fetcher = WikipediaFetcher()
         embedding_generator = EmbeddingGenerator()
         pinecone_db = PineconeDB()
 
         # Step 2: Get Wikipedia articles for the landmark
-        articles = api_client.get_wikipedia_articles(landmark_id)
+        articles = db_client.get_wikipedia_articles(landmark_id)
 
         if not articles:
             logger.info(f"No Wikipedia articles found for landmark: {landmark_id}")
@@ -293,7 +299,9 @@ def get_all_landmark_ids(
         List of landmark IDs
     """
     logger.info("Fetching all landmark IDs from CoreDataStore API")
-    api_client = CoreDataStoreAPI()
+    from nyc_landmarks.db.db_client import get_db_client
+
+    db_client = get_db_client()
 
     # Initialize variables for pagination
     landmark_ids = []
@@ -323,7 +331,10 @@ def get_all_landmark_ids(
         )
         try:
             # Get landmarks for current page using the paginated API endpoint
-            landmarks_page = api_client.get_landmarks_page(page_size, current_page)
+            landmarks_response = db_client.get_lpc_reports(
+                page=current_page, limit=page_size
+            )
+            landmarks_page = landmarks_response.results
 
             # Break if no results returned
             if not landmarks_page:

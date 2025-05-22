@@ -53,8 +53,40 @@ class TestDbClientLandmarkMethods(unittest.TestCase):
     def test_search_landmarks(self) -> None:
         """Test search_landmarks method."""
         # Set up mock API to return search results
-        search_results = [{"id": "LP-00001", "name": "Empire State Building"}]
-        self.mock_api.search_landmarks.return_value = search_results
+        from nyc_landmarks.models.landmark_models import (
+            LpcReportModel,
+            LpcReportResponse,
+        )
+
+        # Create proper response with Pydantic models
+        mock_model = LpcReportModel(
+            lpNumber="LP-00001",
+            name="Empire State Building",
+            lpcId="",
+            objectType="",
+            architect="",
+            style="",
+            street="",
+            borough="",
+            dateDesignated="",
+            photoStatus=False,
+            mapStatus=False,
+            neighborhood="",
+            zipCode="",
+            photoUrl=None,
+            pdfReportUrl=None,
+        )
+
+        mock_response = LpcReportResponse(
+            results=[mock_model],
+            total=1,
+            page=1,
+            limit=10,
+            **{"from": 1},  # Use explicit dict unpacking for reserved keyword
+            to=1,
+        )
+
+        self.mock_api.search_landmarks.return_value = mock_response
 
         # Call the method
         result = self.client.search_landmarks("Empire")
@@ -63,7 +95,7 @@ class TestDbClientLandmarkMethods(unittest.TestCase):
         self.mock_api.search_landmarks.assert_called_once_with("Empire")
 
         # Verify result
-        self.assertEqual(result, search_results)
+        self.assertEqual(result, mock_response)
 
     def test_get_landmark_metadata(self) -> None:
         """Test get_landmark_metadata method."""
@@ -89,11 +121,43 @@ class TestDbClientLandmarkMethods(unittest.TestCase):
         # Create a mock API
         mock_api = Mock(spec=CoreDataStoreAPI)
 
-        # Prepare a list of landmarks to return
-        all_landmarks = [
-            {"id": f"LP-{i:05}", "name": f"Landmark {i}"} for i in range(1, 21)
+        # Create a proper LpcReportResponse return value (if needed based on implementation)
+        from nyc_landmarks.models.landmark_models import (
+            LpcReportModel,
+            LpcReportResponse,
+        )
+
+        result_models = [
+            LpcReportModel(
+                lpNumber=f"LP-{i:05}",
+                name=f"Landmark {i}",
+                lpcId="",
+                objectType="",
+                architect="",
+                style="",
+                street="",
+                borough="",
+                dateDesignated="",
+                photoStatus=False,
+                mapStatus=False,
+                neighborhood="",
+                zipCode="",
+                photoUrl=None,
+                pdfReportUrl=None,
+            )
+            for i in range(1, 21)
         ]
-        mock_api.get_all_landmarks.return_value = all_landmarks
+        report_response = LpcReportResponse(
+            total=20,
+            page=1,
+            limit=20,
+            **{"from": 1},  # Use unpacking for the "from" field
+            to=20,
+            results=result_models,
+        )
+
+        # Mock both implementations to test fallback path
+        mock_api.get_all_landmarks.return_value = report_response
 
         # Make get_lpc_reports raise an exception
         mock_api.get_lpc_reports.side_effect = Exception("API error")
@@ -119,16 +183,30 @@ class TestDbClientLandmarkMethods(unittest.TestCase):
             last_item = result[4]
 
             if isinstance(first_item, dict):
-                self.assertEqual(first_item.get("id"), "LP-00001")
+                if "id" in first_item:
+                    self.assertEqual(first_item.get("id"), "LP-00001")
+                elif "lpNumber" in first_item:
+                    self.assertEqual(first_item.get("lpNumber"), "LP-00001")
+                else:
+                    self.fail(f"Item missing expected keys: {first_item}")
             elif hasattr(first_item, "id"):
                 self.assertEqual(first_item.id, "LP-00001")
+            elif hasattr(first_item, "lpNumber"):
+                self.assertEqual(first_item.lpNumber, "LP-00001")
             else:
                 self.fail(f"Unexpected type for result item: {type(first_item)}")
 
             if isinstance(last_item, dict):
-                self.assertEqual(last_item.get("id"), "LP-00005")
+                if "id" in last_item:
+                    self.assertEqual(last_item.get("id"), "LP-00005")
+                elif "lpNumber" in last_item:
+                    self.assertEqual(last_item.get("lpNumber"), "LP-00005")
+                else:
+                    self.fail(f"Item missing expected keys: {last_item}")
             elif hasattr(last_item, "id"):
                 self.assertEqual(last_item.id, "LP-00005")
+            elif hasattr(last_item, "lpNumber"):
+                self.assertEqual(last_item.lpNumber, "LP-00005")
             else:
                 self.fail(f"Unexpected type for result item: {type(last_item)}")
 
@@ -151,16 +229,30 @@ class TestDbClientLandmarkMethods(unittest.TestCase):
             last_item = result[4]
 
             if isinstance(first_item, dict):
-                self.assertEqual(first_item.get("id"), "LP-00006")
+                if "id" in first_item:
+                    self.assertEqual(first_item.get("id"), "LP-00006")
+                elif "lpNumber" in first_item:
+                    self.assertEqual(first_item.get("lpNumber"), "LP-00006")
+                else:
+                    self.fail(f"Item missing expected keys: {first_item}")
             elif hasattr(first_item, "id"):
                 self.assertEqual(first_item.id, "LP-00006")
+            elif hasattr(first_item, "lpNumber"):
+                self.assertEqual(first_item.lpNumber, "LP-00006")
             else:
                 self.fail(f"Unexpected type for result item: {type(first_item)}")
 
             if isinstance(last_item, dict):
-                self.assertEqual(last_item.get("id"), "LP-00010")
+                if "id" in last_item:
+                    self.assertEqual(last_item.get("id"), "LP-00010")
+                elif "lpNumber" in last_item:
+                    self.assertEqual(last_item.get("lpNumber"), "LP-00010")
+                else:
+                    self.fail(f"Item missing expected keys: {last_item}")
             elif hasattr(last_item, "id"):
                 self.assertEqual(last_item.id, "LP-00010")
+            elif hasattr(last_item, "lpNumber"):
+                self.assertEqual(last_item.lpNumber, "LP-00010")
             else:
                 self.fail(f"Unexpected type for result item: {type(last_item)}")
 

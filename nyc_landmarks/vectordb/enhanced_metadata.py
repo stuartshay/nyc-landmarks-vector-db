@@ -6,7 +6,7 @@ the CoreDataStore API to enhance vector database entries.
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Dict, List
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.db_client import get_db_client

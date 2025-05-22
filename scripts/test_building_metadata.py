@@ -93,7 +93,7 @@ def convert_enhanced_metadata_to_dict(
     if hasattr(enhanced_metadata, "model_dump"):
         return enhanced_metadata.model_dump()
     elif hasattr(enhanced_metadata, "dict"):
-        return enhanced_metadata.dict()
+        return enhanced_metadata.model_dump()
     else:
         # Handle edge cases to ensure Dict[str, Any] return type
         if isinstance(enhanced_metadata, dict):

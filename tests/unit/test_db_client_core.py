@@ -133,34 +133,20 @@ class TestDbClientCore(unittest.TestCase):
         # Verify None is returned for error case
         self.assertIsNone(result)
 
-    def test_get_landmark_by_id_fallback(self) -> None:
-        """Test get_landmark_by_id fallback mechanism."""
-        # Set up primary method to fail but fallback to succeed
-        mock_response = {"id": "LP-00001", "name": "Test Landmark"}
-        self.mock_api.get_landmark_by_id.side_effect = [
-            Exception("API error"),
-            mock_response,
-        ]
+    def test_get_landmark_by_id_with_error_handling(self) -> None:
+        """Test get_landmark_by_id error handling (replaces fallback test)."""
+        # Setup: API throws an exception when called
+        self.mock_api.get_landmark_by_id.side_effect = Exception("API error")
 
-        # Call the method
+        # Call the method - should gracefully handle the exception and return None
         result = self.client.get_landmark_by_id("LP-00001")
 
-        # Verify fallback method was called
-        self.assertEqual(self.mock_api.get_landmark_by_id.call_count, 2)
+        # Verify API was called once - no fallback in the new implementation
+        self.assertEqual(self.mock_api.get_landmark_by_id.call_count, 1)
         self.mock_api.get_landmark_by_id.assert_called_with("LP-00001")
 
-        # Verify result - could be a dict or LpcReportDetailResponse
-        self.assertIsNotNone(result)
-
-        # Verify it contains the expected data regardless of type
-        if isinstance(result, LpcReportDetailResponse):
-            self.assertEqual(result.lpNumber, "LP-00001")
-            self.assertEqual(result.name, "Test Landmark")
-        elif isinstance(result, dict):
-            self.assertEqual(result.get("id"), "LP-00001")
-            self.assertEqual(result.get("name"), "Test Landmark")
-        else:
-            self.fail(f"Unexpected result type: {type(result)}")
+        # Verify None is returned for error case
+        self.assertIsNone(result)
 
     def test_get_landmarks_page_success(self) -> None:
         """Test get_landmarks_page method with successful API call."""

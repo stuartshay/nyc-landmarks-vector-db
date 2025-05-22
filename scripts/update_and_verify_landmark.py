@@ -64,7 +64,7 @@ def update_and_verify_landmark(landmark_id: str, verbose: bool = False) -> None:
         enhanced_metadata_dict = (
             enhanced_metadata.model_dump()
             if hasattr(enhanced_metadata, "model_dump")
-            else enhanced_metadata.dict()
+            else enhanced_metadata.model_dump()
         )
 
         # Step 4: Create a test vector

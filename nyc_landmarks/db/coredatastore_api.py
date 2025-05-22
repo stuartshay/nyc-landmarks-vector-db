@@ -12,7 +12,10 @@ from urllib.parse import urljoin
 import requests
 
 from nyc_landmarks.config.settings import settings
-from nyc_landmarks.models.landmark_models import LpcReportResponse
+from nyc_landmarks.models.landmark_models import (
+    LpcReportDetailResponse,
+    LpcReportResponse,
+)
 from nyc_landmarks.models.wikipedia_models import WikipediaArticleModel
 
 # Configure logging
@@ -134,14 +137,14 @@ class CoreDataStoreAPI:
         # Remove duplicates while preserving order
         return list(dict.fromkeys(variations))
 
-    def get_landmark_by_id(self, landmark_id: str) -> Optional[Dict[str, Any]]:
+    def get_landmark_by_id(self, landmark_id: str) -> Optional[LpcReportDetailResponse]:
         """Get landmark information by ID.
 
         Args:
             landmark_id: ID of the landmark (LP number, e.g., "LP-00001")
 
         Returns:
-            Dictionary containing landmark information, or None if not found
+            LpcReportDetailResponse object containing landmark information, or None if not found
         """
         try:
             # Get potential ID variations to try
@@ -151,45 +154,11 @@ class CoreDataStoreAPI:
             # Try each variation until we find a match
             for lpc_id in id_variations:
                 try:
-                    # First try the regular LpcReport endpoint, which has more complete data
+                    # Get detailed landmark data from the LpcReport endpoint
                     response = self._make_request("GET", f"/api/LpcReport/{lpc_id}")
                     if response:
-                        logger.debug(
-                            f"Found landmark with ID in LpcReport endpoint: {lpc_id}"
-                        )
-                        # Debug output for tracking field values
-                        # Only try to access properties if response is a dictionary
-                        if isinstance(response, dict):
-                            logger.debug(
-                                f"Direct API response fields: architect={response.get('architect', '<none>')}, "
-                                f"style={response.get('style', '<none>')}, "
-                                f"neighborhood={response.get('neighborhood', '<none>')}"
-                            )
+                        logger.debug(f"Found landmark with ID: {lpc_id}")
                         break
-
-                    # If that fails, try the landmark endpoint as a fallback
-                    # which includes BBL information
-                    landmark_response = self._make_request(
-                        "GET",
-                        "/api/LpcReport/landmark/10/1",
-                        params={"LpcNumber": lpc_id},
-                    )
-
-                    if (
-                        landmark_response
-                        and isinstance(landmark_response, dict)
-                        and "results" in landmark_response
-                    ):
-                        # Get the first result if available
-                        if (
-                            landmark_response["results"]
-                            and len(landmark_response["results"]) > 0
-                        ):
-                            response = landmark_response["results"][0]
-                            logger.debug(
-                                f"Found landmark with ID in landmark endpoint: {lpc_id}"
-                            )
-                            break
                 except Exception as e:
                     logger.debug(f"Attempted ID {lpc_id} resulted in error: {e}")
                     continue
@@ -198,34 +167,34 @@ class CoreDataStoreAPI:
                 logger.warning(f"Landmark not found with ID: {landmark_id}")
                 return None
 
-            # Check if response is a dictionary before accessing attributes
+            # Check if response is a dictionary before processing
             if not isinstance(response, dict):
                 logger.error(
                     f"Expected dictionary response but got {type(response).__name__}"
                 )
                 return None
 
-            # Convert the response to a format compatible with what the PostgresDB provided
-            landmark = {
-                "id": response.get("lpNumber", ""),
-                "name": response.get("name", ""),
-                "location": response.get("street", "")
-                or response.get("designatedAddress", ""),
-                "borough": response.get("borough", "") or response.get("boroughId", ""),
-                "type": response.get("objectType", ""),
-                "designation_date": response.get("dateDesignated", "")
-                or response.get("designatedDate", ""),
-                "description": "",  # API doesn't seem to provide a description field
-                "architect": response.get("architect", ""),
-                "style": response.get("style", ""),
-                "neighborhood": response.get("neighborhood", ""),
-                "pdfReportUrl": response.get("pdfReportUrl", ""),
-                "photoUrl": response.get("photoUrl", ""),
-                # Add BBL directly from the response
-                "bbl": response.get("bbl", None),
-            }
+            # Ensure lpNumber field is present (it's required by the model)
+            if "lpNumber" not in response and "id" in response:
+                response["lpNumber"] = response["id"]
+            elif "lpNumber" not in response:
+                # Use the landmark ID as a fallback
+                for lpc_id in id_variations:
+                    if lpc_id.startswith("LP-"):
+                        response["lpNumber"] = lpc_id
+                        break
+                else:
+                    # If no LP- format ID was found, use the original ID
+                    response["lpNumber"] = landmark_id
 
-            return landmark
+            try:
+                # Convert to a Pydantic model
+                return LpcReportDetailResponse(**response)
+            except Exception as e:
+                logger.error(
+                    f"Failed to parse response as LpcReportDetailResponse: {e}"
+                )
+                return None
 
         except Exception as e:
             logger.error(f"Error getting landmark by ID: {e}")
@@ -233,7 +202,7 @@ class CoreDataStoreAPI:
 
     def get_landmarks_page(
         self, page_size: int = 10, page: int = 1
-    ) -> List[Dict[str, Any]]:
+    ) -> LpcReportResponse:
         """Get a page of landmarks directly using the API's pagination.
 
         Args:
@@ -241,39 +210,10 @@ class CoreDataStoreAPI:
             page: Page number (starting from 1)
 
         Returns:
-            List of landmarks for the requested page
+            LpcReportResponse object containing the requested page of landmarks
         """
-        try:
-            # Make API request with pagination parameters
-            response = self._make_request("GET", f"/api/LpcReport/{page_size}/{page}")
-
-            results = []
-            if isinstance(response, dict) and "results" in response:
-                # Convert the API response format to our internal format
-                for item in response["results"]:
-                    if not isinstance(item, dict):
-                        continue
-                    landmark = {
-                        "id": item.get("lpNumber", ""),
-                        "name": item.get("name", ""),
-                        "location": item.get("street", ""),
-                        "borough": item.get("borough", ""),
-                        "type": item.get("objectType", ""),
-                        "designation_date": item.get("dateDesignated", ""),
-                        "description": "",  # API doesn't seem to provide a description field
-                        "architect": item.get("architect", ""),
-                        "style": item.get("style", ""),
-                        "neighborhood": item.get("neighborhood", ""),
-                        "pdfReportUrl": item.get("pdfReportUrl", ""),
-                        "photoUrl": item.get("photoUrl", ""),
-                    }
-                    results.append(landmark)
-
-            return results
-
-        except Exception as e:
-            logger.error(f"Error getting landmarks page {page}: {e}")
-            return []
+        # Use the more comprehensive get_lpc_reports method
+        return self.get_lpc_reports(page=page, limit=page_size)
 
     def get_lpc_reports(
         self,
@@ -535,143 +475,131 @@ class CoreDataStoreAPI:
             raise
         return validated_response
 
-    def get_lpc_reports_with_mcp(
-        self,
-        page: int = 1,
-        limit: int = 10,
-        borough: Optional[str] = None,
-        object_type: Optional[str] = None,
-        neighborhood: Optional[str] = None,
-        search_text: Optional[str] = None,
-        parent_style_list: Optional[List[str]] = None,
-        sort_column: Optional[str] = None,
-        sort_order: Optional[str] = None,
-        fields_list: Optional[List[str]] = None,
-    ) -> LpcReportResponse:
-        """Get LPC reports using the MCP server GetLpcReports tool.
-
-        This method is intended for use in environments where the MCP
-        server is available. It provides a Python interface to the
-        MCP tool without having to directly call the use_mcp_tool function.
-
-        Args:
-            page: Page number (starting from 1)
-            limit: Number of records per page
-            borough: Optional borough filter
-            object_type: Optional object type filter
-            neighborhood: Optional neighborhood filter
-            search_text: Optional text search
-            parent_style_list: Optional list of architectural styles
-            sort_column: Optional column to sort by
-            sort_order: Optional sort direction ("asc" or "desc")
-            fields_list: Optional list of fields to return
-
-        Returns:
-            LpcReportResponse object containing results and pagination info
-
-        Raises:
-            NotImplementedError: This is a placeholder that should be implemented
-            by code that has access to the MCP service.
-        """
-        # This method is a placeholder for future implementation
-        # The actual implementation would involve using an MCP tool to fetch data
-        raise NotImplementedError(
-            "This method requires direct MCP server integration. Use get_lpc_reports() instead."
-        )
-
-    def get_all_landmarks(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+    def get_all_landmarks(self, limit: Optional[int] = None) -> LpcReportResponse:
         """Get all landmarks.
+
+        This method retrieves landmarks by automatically handling pagination.
+        If a limit is provided, it will return only up to that number of landmarks.
+        Otherwise, it attempts to retrieve all available landmarks by making
+        multiple paginated requests as needed.
 
         Args:
             limit: Maximum number of landmarks to return (optional)
 
         Returns:
-            List of dictionaries containing landmark information
+            LpcReportResponse object containing landmark information and pagination data
         """
         try:
-            # Set default limit if not provided
-            page_limit = min(limit or 100, 100)
-            page = 1
+            # Get the total count for accurate pagination
+            total_records = self.get_total_record_count()
+            if total_records == 0:
+                logger.warning("No landmarks found or unable to determine total count")
 
-            # Make API request
-            response = self._make_request("GET", f"/api/LpcReport/{page_limit}/{page}")
+            # Determine how many records we need to fetch
+            records_to_fetch = min(limit, total_records) if limit else total_records
+            if records_to_fetch == 0:
+                # Return empty response if no records to fetch
+                empty_response = {
+                    "results": [],
+                    "page": 1,
+                    "limit": 0,
+                    "total": 0,
+                    "from_": 1,
+                    "to": 0,
+                }
+                return self._validate_lpc_report_response(empty_response)
 
-            results = []
-            if isinstance(response, dict) and "results" in response:
-                # Convert the results to the format expected by the application
-                for item in response["results"]:
-                    if not isinstance(item, dict):
-                        continue
-                    landmark = {
-                        "id": item.get("lpNumber", ""),
-                        "name": item.get("name", ""),
-                        "location": item.get("street", ""),
-                        "borough": item.get("borough", ""),
-                        "type": item.get("objectType", ""),
-                        "designation_date": item.get("dateDesignated", ""),
-                        "description": "",  # API doesn't seem to provide a description field
-                        "architect": item.get("architect", ""),
-                        "style": item.get("style", ""),
-                        "neighborhood": item.get("neighborhood", ""),
-                        "pdfReportUrl": item.get("pdfReportUrl", ""),
-                        "photoUrl": item.get("photoUrl", ""),
-                    }
-                    results.append(landmark)
+            # Configure optimal page size for fetching
+            page_size = min(
+                100, records_to_fetch
+            )  # Use up to 100 records per page for efficiency
 
-            # If a specific limit was provided and it's less than what we got, truncate
-            if limit and len(results) > limit:
-                results = results[:limit]
+            # For simple cases where one page is enough, just use get_lpc_reports directly
+            if records_to_fetch <= page_size:
+                return self.get_lpc_reports(page=1, limit=records_to_fetch)
 
-            return results
+            # For multiple pages, we need to fetch all pages and combine results
+            all_results = []
+            pages_needed = (
+                records_to_fetch + page_size - 1
+            ) // page_size  # Ceiling division
+
+            for page in range(1, pages_needed + 1):
+                # For the last page, adjust the limit if needed
+                if page == pages_needed and records_to_fetch % page_size != 0:
+                    current_page_size = records_to_fetch % page_size
+                else:
+                    current_page_size = page_size
+
+                # Get this page of results
+                page_response = self.get_lpc_reports(page=page, limit=current_page_size)
+
+                # Add results to our collection
+                if hasattr(page_response, "results") and page_response.results:
+                    all_results.extend(page_response.results)
+
+                # Stop if we've collected enough records or hit the end
+                if len(all_results) >= records_to_fetch or not page_response.results:
+                    break
+
+            # Ensure we don't exceed the requested limit (if specified)
+            if limit and len(all_results) > limit:
+                all_results = all_results[:limit]
+
+            # Create a combined response
+            combined_response = {
+                "results": [
+                    result.model_dump() if hasattr(result, "model_dump") else result
+                    for result in all_results
+                ],
+                "page": 1,  # We present this as a single page of results
+                "limit": len(all_results),
+                "total": total_records,
+                "from_": 1,
+                "to": len(all_results),
+            }
+
+            return self._validate_lpc_report_response(combined_response)
 
         except Exception as e:
             logger.error(f"Error getting all landmarks: {e}")
-            return []
+            # Create an empty response for error cases
+            empty_response = {
+                "results": [],
+                "page": 1,
+                "limit": 100,
+                "total": 0,
+                "from_": 1,
+                "to": 0,
+            }
+            return self._validate_lpc_report_response(empty_response)
 
-    def search_landmarks(self, search_term: str) -> List[Dict[str, Any]]:
+    def search_landmarks(self, search_term: str) -> LpcReportResponse:
         """Search for landmarks by name or other attributes.
 
         Args:
             search_term: Search term
 
         Returns:
-            List of dictionaries containing landmark information
+            LpcReportResponse object containing landmark information matching the search term
         """
         try:
-            # Use the API's search functionality
-            response = self._make_request(
-                "GET",
-                "/api/LpcReport/10/1",  # Default to 10 results on page 1
-                params={"SearchText": search_term},
+            # Use the get_lpc_reports method which already returns LpcReportResponse
+            return self.get_lpc_reports(
+                page=1, limit=10, search_text=search_term  # Default to 10 results
             )
-
-            results = []
-            if isinstance(response, dict) and "results" in response:
-                # Convert the results to the format expected by the application
-                for item in response["results"]:
-                    if not isinstance(item, dict):
-                        continue
-                    landmark = {
-                        "id": item.get("lpNumber", ""),
-                        "name": item.get("name", ""),
-                        "location": item.get("street", ""),
-                        "borough": item.get("borough", ""),
-                        "type": item.get("objectType", ""),
-                        "designation_date": item.get("dateDesignated", ""),
-                        "description": "",  # API doesn't seem to provide a description field
-                        "architect": item.get("architect", ""),
-                        "style": item.get("style", ""),
-                        "neighborhood": item.get("neighborhood", ""),
-                        "pdfReportUrl": item.get("pdfReportUrl", ""),
-                        "photoUrl": item.get("photoUrl", ""),
-                    }
-                    results.append(landmark)
-
-            return results
-
         except Exception as e:
             logger.error(f"Error searching landmarks: {e}")
-            return []
+            # Create an empty response for error cases
+            empty_response = {
+                "results": [],
+                "page": 1,
+                "limit": 10,
+                "total": 0,
+                "from_": 1,
+                "to": 0,
+            }
+            return self._validate_lpc_report_response(empty_response)
 
     def get_landmark_metadata(self, landmark_id: str) -> Dict[str, Any]:
         """Get metadata for a landmark suitable for storing with vector embeddings.
@@ -691,14 +619,14 @@ class CoreDataStoreAPI:
         # Extract relevant metadata fields
         metadata = {
             "landmark_id": landmark_id,
-            "name": landmark.get("name", ""),
-            "location": landmark.get("location", ""),
-            "borough": landmark.get("borough", ""),
-            "type": landmark.get("type", ""),
-            "designation_date": str(landmark.get("designation_date", "")),
-            "architect": landmark.get("architect", ""),
-            "style": landmark.get("style", ""),
-            "neighborhood": landmark.get("neighborhood", ""),
+            "name": landmark.name,
+            "location": landmark.street or "",
+            "borough": landmark.borough or "",
+            "type": landmark.objectType or "",
+            "designation_date": str(landmark.dateDesignated or ""),
+            "architect": landmark.architect or "",
+            "style": landmark.style or "",
+            "neighborhood": landmark.neighborhood or "",
         }
 
         return metadata
@@ -1000,11 +928,45 @@ class CoreDataStoreAPI:
         """
         try:
             landmark = self.get_landmark_by_id(landmark_id)
-            if landmark and "pdfReportUrl" in landmark:
-                pdf_url = landmark["pdfReportUrl"]
-                # Ensure we're returning a string or None
-                return str(pdf_url) if pdf_url else None
+            if landmark and landmark.pdfReportUrl:
+                return landmark.pdfReportUrl
             return None
         except Exception as e:
             logger.error(f"Error getting PDF URL for landmark {landmark_id}: {e}")
             return None
+
+    def get_total_record_count(self) -> int:
+        """Get the total count of landmarks in the CoreDataStore.
+
+        Returns:
+            Total number of landmark records available
+        """
+        try:
+            # Make a request with minimal data (1 record on page 1)
+            # to get just the pagination metadata
+            response = self._make_request("GET", "/api/LpcReport/1/1")
+
+            if isinstance(response, dict):
+                if "total" in response:
+                    return response["total"]
+                elif "totalCount" in response:
+                    return response["totalCount"]
+
+                # If we have a dict but no obvious count, try to validate it
+                try:
+                    validated_response = self._validate_lpc_report_response(response)
+                    return validated_response.total
+                except Exception:
+                    # If validation fails, look for results and count them
+                    if "results" in response and isinstance(response["results"], list):
+                        return len(response["results"])
+
+            # If response is not a dict, we can't determine the count
+            logger.warning(
+                f"Unexpected response format for record count: {type(response)}"
+            )
+            return 0
+
+        except Exception as e:
+            logger.error(f"Error getting total landmark count: {e}")
+            return 0
