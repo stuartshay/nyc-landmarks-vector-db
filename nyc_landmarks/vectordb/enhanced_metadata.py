@@ -10,7 +10,7 @@ from typing import Dict, List
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.db_client import get_db_client
-from nyc_landmarks.models.landmark_models import LandmarkMetadata, PlutoDataModel
+from nyc_landmarks.models.landmark_models import LandmarkMetadata
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -37,13 +37,18 @@ class EnhancedMetadataCollector:
         """
         # Start with basic landmark metadata
         metadata = self.db_client.get_landmark_metadata(landmark_id)
+        # Ensure metadata is a dict for mutation, but will convert to LandmarkMetadata before returning
+        metadata_dict = dict(metadata) if not isinstance(metadata, dict) else metadata
 
         # If not using CoreDataStore API, return basic metadata
         if not self.using_api:
             logger.info(
                 f"Using basic metadata for landmark {landmark_id} (API calls disabled)"
             )
-            return metadata
+            # Ensure return type is LandmarkMetadata
+            if isinstance(metadata, LandmarkMetadata):
+                return metadata
+            return LandmarkMetadata(**metadata_dict)
 
         try:
             # Add rich metadata only available from the API
@@ -62,17 +67,21 @@ class EnhancedMetadataCollector:
                 if landmark_details:
                     # Extract fields regardless of whether landmark_details is a dictionary or an object
                     if isinstance(landmark_details, dict):
-                        metadata["architect"] = landmark_details.get("architect")
-                        metadata["neighborhood"] = landmark_details.get("neighborhood")
-                        metadata["style"] = landmark_details.get("style")
+                        metadata_dict["architect"] = landmark_details.get("architect")
+                        metadata_dict["neighborhood"] = landmark_details.get(
+                            "neighborhood"
+                        )
+                        metadata_dict["style"] = landmark_details.get("style")
                     else:
-                        metadata["architect"] = getattr(
+                        metadata_dict["architect"] = getattr(
                             landmark_details, "architect", None
                         )
-                        metadata["neighborhood"] = getattr(
+                        metadata_dict["neighborhood"] = getattr(
                             landmark_details, "neighborhood", None
                         )
-                        metadata["style"] = getattr(landmark_details, "style", None)
+                        metadata_dict["style"] = getattr(
+                            landmark_details, "style", None
+                        )
 
                     logger.info(
                         f"Added architect, neighborhood, and style metadata for landmark {landmark_id}"
@@ -84,18 +93,15 @@ class EnhancedMetadataCollector:
 
             # 2. Add building information - collect ALL buildings
             # Use direct API access instead of going through DB client to preserve BBL data
-            from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
-
             # We'll add the buildings key only if we find building data
 
             try:
-                direct_api = CoreDataStoreAPI()
-                buildings = direct_api.get_landmark_buildings(landmark_id)
+                buildings = self.db_client.get_landmark_buildings(landmark_id)
 
-                # Log what we're getting from the direct API call
-                logger.debug(f"Direct API returned {len(buildings)} buildings")
+                # Log what we're getting from the db_client call
+                logger.debug(f"db_client returned {len(buildings)} buildings")
                 if buildings and len(buildings) > 0:
-                    logger.debug(f"First building BBL: {buildings[0].get('bbl')}")
+                    logger.debug(f"First building BBL: {getattr(buildings[0], 'bbl', None) if not isinstance(buildings[0], dict) else buildings[0].get('bbl')}")
 
                 # Create a list to store all building data including BBLs
                 building_data = []
@@ -130,7 +136,7 @@ class EnhancedMetadataCollector:
 
                             # Debug logging
                             logger.debug(
-                                f"Building BBL from API: {bbl_value}, Type: {type(bbl_value)}"
+                                f"Building BBL from db_client: {bbl_value}, Type: {type(bbl_value)}"
                             )
                         else:
                             # Access as attributes for Pydantic model
@@ -155,7 +161,7 @@ class EnhancedMetadataCollector:
 
                             # Debug logging
                             logger.debug(
-                                f"Building BBL from Pydantic model: {bbl_value}, Type: {type(bbl_value)}"
+                                f"Building BBL from db_client (Pydantic model): {bbl_value}, Type: {type(bbl_value)}"
                             )
 
                         # Only add the building if it has valid data
@@ -164,7 +170,7 @@ class EnhancedMetadataCollector:
 
                 # Add building data to metadata only if we found buildings
                 if building_data:
-                    metadata["buildings"] = building_data
+                    metadata_dict["buildings"] = building_data
                 else:
                     # Skip building-related operations if no building data
                     logger.debug(f"No buildings found for landmark {landmark_id}")
@@ -172,7 +178,7 @@ class EnhancedMetadataCollector:
                 # Add the building from landmark details only if we have a valid BBL from landmark details
                 # and landmark_details was successfully retrieved AND we have a buildings list already
                 if (
-                    "buildings" in metadata
+                    "buildings" in metadata_dict
                     and landmark_details_found
                     and landmark_details
                 ):
@@ -186,10 +192,10 @@ class EnhancedMetadataCollector:
                     # Only add if we have a valid BBL and it's not already in the buildings list
                     if landmark_bbl_value and not any(
                         b.get("bbl") == landmark_bbl_value
-                        for b in metadata["buildings"]
+                        for b in metadata_dict["buildings"]
                     ):
                         # Add to buildings list
-                        metadata["buildings"].append(
+                        metadata_dict["buildings"].append(
                             {
                                 "bbl": landmark_bbl_value,
                                 "name": (
@@ -213,7 +219,7 @@ class EnhancedMetadataCollector:
                 if pluto_data:
                     # The pluto_data is now a list of PlutoDataModel instances
                     pluto_model = pluto_data[0]
-                    metadata.update(
+                    metadata_dict.update(
                         {
                             "has_pluto_data": True,
                             "year_built": pluto_model.yearBuilt or "",
@@ -223,18 +229,20 @@ class EnhancedMetadataCollector:
                         }
                     )
                 else:
-                    metadata["has_pluto_data"] = False
+                    metadata_dict["has_pluto_data"] = False
             except Exception as e:
                 logger.error(f"Error getting PLUTO data: {e}")
                 # Continue with other metadata even if PLUTO data fails
 
             logger.info(f"Collected enhanced metadata for landmark {landmark_id}")
-            return metadata
+            return LandmarkMetadata(**metadata_dict)
 
         except Exception as e:
             logger.error(f"Error collecting enhanced metadata: {e}")
             # Fall back to basic metadata
-            return metadata
+            if isinstance(metadata, LandmarkMetadata):
+                return metadata
+            return LandmarkMetadata(**metadata_dict)
 
     def collect_batch_metadata(
         self, landmark_ids: List[str]

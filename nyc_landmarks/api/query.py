@@ -672,14 +672,13 @@ async def search_landmarks_text(
     """
     try:
         # Search landmarks in database
-        landmarks_data = db_client.search_landmarks(q)
-
-        # Limit results
-        landmarks_data = landmarks_data[:limit]
+        lpc_report_response = db_client.search_landmarks(q)
+        # Use the .results attribute and limit the results
+        results = lpc_report_response.results[:limit]
 
         # Convert to LandmarkInfo objects
         landmarks: List[LandmarkInfo] = []
-        for landmark_data in landmarks_data:
+        for landmark_data in results:
             if isinstance(landmark_data, dict):
                 landmark = LandmarkInfo(
                     id=landmark_data.get("id", ""),

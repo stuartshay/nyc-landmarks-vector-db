@@ -6,18 +6,17 @@ with particular focus on the standardization of landmark IDs.
 """
 
 import unittest
-from unittest.mock import Mock, patch
 
-from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
+from nyc_landmarks.db._coredatastore_api import _CoreDataStoreAPI
 
 
 class TestCoreDataStoreAPI(unittest.TestCase):
-    """Tests for the CoreDataStoreAPI class."""
+    """Tests for the _CoreDataStoreAPI class (private, internal use only)."""
 
     def setUp(self) -> None:
         """Set up test fixtures before each test method."""
-        # Create a CoreDataStoreAPI instance
-        self.api = CoreDataStoreAPI()
+        # Create a _CoreDataStoreAPI instance (private API)
+        self.api = _CoreDataStoreAPI()
 
     def test_standardize_landmark_id_with_lp_prefix(self) -> None:
         """Test _standardize_landmark_id method with LP-prefixed IDs."""

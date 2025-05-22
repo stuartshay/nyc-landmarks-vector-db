@@ -9,15 +9,13 @@ import logging
 from typing import Any, Dict, List, Optional, Protocol, Union, cast
 
 from nyc_landmarks.config.settings import settings
-from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
-from nyc_landmarks.models.landmark_models import (
-    LpcReportResponse,  # Ensure LpcReportResponse is here
-)
+from nyc_landmarks.db._coredatastore_api import _CoreDataStoreAPI
 from nyc_landmarks.models.landmark_models import (
     LandmarkDetail,
     LandmarkMetadata,
     LpcReportDetailResponse,
     LpcReportModel,
+    LpcReportResponse,  # Ensure LpcReportResponse is here
     PlutoDataModel,
 )
 from nyc_landmarks.models.wikipedia_models import WikipediaArticleModel
@@ -46,11 +44,12 @@ class SupportsWikipedia(Protocol):
 class DbClient:
     """Database client interface for CoreDataStore API."""
 
-    client: CoreDataStoreAPI
+    client: "_CoreDataStoreAPI"
 
-    def __init__(self, client: CoreDataStoreAPI) -> None:
+    def __init__(self, client: Optional["_CoreDataStoreAPI"] = None) -> None:
         """Initialize the CoreDataStore API client."""
-        self.client = client
+        from nyc_landmarks.db._coredatastore_api import _CoreDataStoreAPI
+        self.client = client if client is not None else _CoreDataStoreAPI()
         pass  # Protocol method
 
     def _format_landmark_id(self, landmark_id: str) -> str:
@@ -459,7 +458,12 @@ class DbClient:
 
         # Fall back to the direct method if needed
         if hasattr(self.client, "get_landmark_pdf_url"):
-            return self.client.get_landmark_pdf_url(landmark_id)
+            result = self.client.get_landmark_pdf_url(landmark_id)
+            if isinstance(result, str) or result is None:
+                return result
+            # If result is not a string or None, log a warning and return None
+            logger.warning(f"get_landmark_pdf_url returned non-str value: {type(result)}")
+            return None
         return None
 
     def _map_borough_id_to_name(self, borough_id: Optional[str]) -> Optional[str]:
@@ -900,5 +904,5 @@ def get_db_client() -> DbClient:
         DbClient instance
     """
     logger.info("Using CoreDataStore API client")
-    api_client = CoreDataStoreAPI()
+    api_client = _CoreDataStoreAPI()
     return DbClient(api_client)

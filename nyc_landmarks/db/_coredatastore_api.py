@@ -1,9 +1,8 @@
-"""
-CoreDataStore API client module for NYC Landmarks Vector Database.
-
-This module handles connections to the CoreDataStore REST API
-that provides NYC landmark information and associated web content like Wikipedia articles.
-"""
+# _coredatastore_api.py
+#
+# Private implementation of the CoreDataStore API for direct CoreDataStore access.
+# This module is for internal use by the data access layer only (DbClient).
+# Do not import or use this class outside nyc_landmarks.db.db_client.
 
 import logging
 from typing import Any, Dict, List, Optional, Union, cast
@@ -22,21 +21,17 @@ from nyc_landmarks.models.wikipedia_models import WikipediaArticleModel
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=settings.LOG_LEVEL.value)
 
-
-class CoreDataStoreAPI:
-    """CoreDataStore API client for landmark operations."""
+class _CoreDataStoreAPI:
+    """CoreDataStore API client for landmark operations (private, internal use only)."""
 
     def __init__(self) -> None:
-        """Initialize the CoreDataStore API client."""
         self.base_url = "https://api.coredatastore.com"
         self.api_key = settings.COREDATASTORE_API_KEY
         self.headers: dict[str, str] = {}
-
-        # Set up authorization header if API key is provided
         if self.api_key:
             self.headers["Authorization"] = f"Bearer {self.api_key}"
-
         logger.info("Initialized CoreDataStore API client")
+
 
     def _make_request(
         self,
@@ -45,22 +40,7 @@ class CoreDataStoreAPI:
         params: Optional[Dict[str, Any]] = None,
         json_data: Optional[Dict[str, Any]] = None,
     ) -> Union[Dict[str, Any], List[Dict[str, Any]], List[str]]:
-        """Make a request to the CoreDataStore API.
-
-        Args:
-            method: HTTP method (GET, POST, etc.)
-            endpoint: API endpoint path
-            params: Query parameters (optional)
-            json_data: JSON data for POST/PUT requests (optional)
-
-        Returns:
-            Response data as dictionary or list
-
-        Raises:
-            Exception: If the request fails
-        """
         url = urljoin(self.base_url, endpoint)
-
         try:
             response = requests.request(
                 method=method,
@@ -70,91 +50,46 @@ class CoreDataStoreAPI:
                 json=json_data,
                 timeout=30,
             )
-
-            # Raise exception for error status codes
             response.raise_for_status()
-
-            # Return JSON response if available
             if response.content:
                 json_response = response.json()
-                # Ensure we return the correct type
                 if isinstance(json_response, (dict, list)):
                     return json_response
                 logger.warning(f"Unexpected response type: {type(json_response)}")
                 return {}
             return {}
-
         except requests.exceptions.RequestException as e:
             logger.error(f"API request error: {e}")
             raise Exception(f"Error making API request: {e}")
 
     def _standardize_landmark_id(self, landmark_id: str) -> List[str]:
-        """Standardize landmark ID to handle various formats and suffix variations.
-
-        This method creates multiple potential formats for a landmark ID to handle variations
-        like LP-02118A, ensuring we can find landmarks even with non-standard IDs.
-
-        Args:
-            landmark_id: The landmark ID in any format (with or without LP prefix)
-
-        Returns:
-            A list of possible standardized formats to try
-        """
-        # Start with an empty list of variations to try
         variations = []
-
-        # Ensure we have the basic LP format
         base_id = landmark_id
         if not landmark_id.startswith("LP-"):
-            # Format without the LP prefix - add it and zero-pad
             base_id = f"LP-{landmark_id.lstrip('0').zfill(5)}"
-
-        # Add the base ID as the primary version to try
         variations.append(base_id)
-
-        # Check if we have a suffix (like 'A' in LP-02118A)
         if any(c.isalpha() for c in base_id[3:]):
-            # Extract the numeric part and any suffix
             prefix = "LP-"
             suffix = ""
             number_part = ""
-
             for char in base_id[3:]:
                 if char.isdigit():
                     number_part += char
                 elif char.isalpha():
                     suffix += char
-
-            # Add variation without the suffix
             if suffix:
                 variations.append(f"{prefix}{number_part.zfill(5)}")
-
-            # Add variation with the base numeric ID
             clean_numeric = "".join(filter(str.isdigit, base_id))
             if clean_numeric:
                 variations.append(f"LP-{clean_numeric.zfill(5)}")
-
-        # Remove duplicates while preserving order
         return list(dict.fromkeys(variations))
 
     def _find_landmark_with_id_variations(
         self, landmark_id: str
     ) -> Optional[Dict[str, Any]]:
-        """Try to find a landmark using various ID format variations.
-
-        Args:
-            landmark_id: The original landmark ID to try variations for
-
-        Returns:
-            Response dictionary if found, None otherwise
-        """
-        # Get potential ID variations to try
         id_variations = self._standardize_landmark_id(landmark_id)
-
-        # Try each variation until we find a match
         for lpc_id in id_variations:
             try:
-                # Get detailed landmark data from the LpcReport endpoint
                 response = self._make_request("GET", f"/api/LpcReport/{lpc_id}")
                 if response and isinstance(response, dict):
                     logger.debug(f"Found landmark with ID: {lpc_id}")
@@ -162,69 +97,40 @@ class CoreDataStoreAPI:
             except Exception as e:
                 logger.debug(f"Attempted ID {lpc_id} resulted in error: {e}")
                 continue
-
         logger.warning(f"Landmark not found with ID: {landmark_id}")
         return None
 
     def _ensure_landmark_has_lp_number(self, response: dict, landmark_id: str) -> dict:
-        """Ensure the landmark response has an lpNumber field.
-
-        Args:
-            response: The landmark response dictionary
-            landmark_id: The original landmark ID
-
-        Returns:
-            Updated response dictionary with lpNumber field
-        """
         if "lpNumber" not in response and "id" in response:
             response["lpNumber"] = response["id"]
         elif "lpNumber" not in response:
-            # Use the landmark ID as a fallback
             id_variations = self._standardize_landmark_id(landmark_id)
             for lpc_id in id_variations:
                 if lpc_id.startswith("LP-"):
                     response["lpNumber"] = lpc_id
                     break
             else:
-                # If no LP- format ID was found, use the original ID
                 response["lpNumber"] = landmark_id
-
         return response
 
     def get_landmark_by_id(self, landmark_id: str) -> Optional[LpcReportDetailResponse]:
-        """Get landmark information by ID.
-
-        Args:
-            landmark_id: ID of the landmark (LP number, e.g., "LP-00001")
-
-        Returns:
-            LpcReportDetailResponse object containing landmark information, or None if not found
-        """
         try:
-            # Find the landmark using ID variations
             response = self._find_landmark_with_id_variations(landmark_id)
             if not response:
                 return None
-
-            # Check if response is a dictionary before processing
             if not isinstance(response, dict):
                 logger.error(
                     f"Expected dictionary response but got {type(response).__name__}"
                 )
                 return None
-
-            # Ensure lpNumber field is present
             response = self._ensure_landmark_has_lp_number(response, landmark_id)
-
             try:
-                # Convert to a Pydantic model
                 return LpcReportDetailResponse(**response)
             except Exception as e:
                 logger.error(
                     f"Failed to parse response as LpcReportDetailResponse: {e}"
                 )
                 return None
-
         except Exception as e:
             logger.error(f"Error getting landmark by ID: {e}")
             return None
@@ -1041,3 +947,4 @@ class CoreDataStoreAPI:
         except Exception as e:
             logger.error(f"Error getting total record count: {e}")
             return 0
+

@@ -13,7 +13,7 @@ import pypdf
 import requests
 
 from nyc_landmarks.config.settings import settings
-from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
+from nyc_landmarks.db.db_client import get_db_client
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ class PDFExtractor:
 
     def __init__(self) -> None:
         """Initialize the PDF extractor."""
-        self.api_client = CoreDataStoreAPI()
+        self.db_client = get_db_client()
         logger.info("Initialized PDF extractor with CoreDataStore API client")
 
     def download_pdf_from_url(self, url: str) -> Optional[bytes]:
@@ -120,7 +120,7 @@ class PDFExtractor:
         try:
             # Get PDF URL from API if not provided
             if not pdf_url:
-                pdf_url = self.api_client.get_landmark_pdf_url(landmark_id)
+                pdf_url = self.db_client.get_landmark_pdf_url(landmark_id)
 
             if not pdf_url:
                 error = "No PDF URL found for landmark"
