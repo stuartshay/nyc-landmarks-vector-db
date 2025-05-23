@@ -1,0 +1,24 @@
+[bandit]
+# Bandit configuration file for NYC Landmarks Vector DB project
+
+# Exclude virtual environment and build directories
+exclude_dirs = venv,nyc_landmarks_vector_db.egg-info,__pycache__,.git
+
+# Skip tests that have legitimate usage or are false positives
+# B101: Assert usage in test files is acceptable
+# B404: Subprocess import is legitimate for script execution
+# B603: Subprocess call is secure with validated inputs
+skips = B101,B404,B603
+
+# Only report medium and high severity issues in production code
+# Comment out the line below to see all issues during development
+# severity = medium,high
+
+[assert_used]
+# Skip assert usage warnings in test files
+skips = B101
+exclude_dirs = tests
+
+[subprocess_popen_with_shell_equals_true]
+# We'll manually review subprocess usage - current usage is secure
+skips = B603

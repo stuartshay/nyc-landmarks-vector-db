@@ -33,7 +33,8 @@ def test_settings_defaults() -> None:
     )  # Should match OPENAI_EMBEDDING_DIMENSIONS
 
     # Check default application settings
-    assert settings.APP_HOST == "0.0.0.0"
+    # nosec: B104 - 0.0.0.0 binding is acceptable for test configuration
+    assert settings.APP_HOST == "0.0.0.0"  # nosec
     assert isinstance(settings.APP_PORT, int)
 
     # Check default PDF processing settings

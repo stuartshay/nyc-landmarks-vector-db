@@ -295,8 +295,9 @@ def test_retry_logic(
                 use_fixed_ids=True,
                 delete_existing=True,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            # Expected to fail due to simulated exception - log for debugging
+            logger.debug(f"Expected exception in retry test: {e}")
 
         # Verify retry attempts
         assert mock_upsert.call_count == 3, "Retry logic failed to execute 3 attempts"

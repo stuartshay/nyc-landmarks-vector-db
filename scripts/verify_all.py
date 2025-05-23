@@ -6,6 +6,7 @@ to provide a comprehensive verification of the Pinecone database.
 """
 
 import os.path
+import re
 import subprocess
 import sys
 from typing import List, Tuple
@@ -20,13 +21,30 @@ def run_script(script_path: str) -> Tuple[int, List[str]]:
 
     Returns:
         Tuple of (exit code, output lines)
+
+    Raises:
+        ValueError: If script path is invalid or contains suspicious characters
     """
+    # Validate script path for security
+    if not os.path.isfile(script_path):
+        raise ValueError(f"Script file does not exist: {script_path}")
+
+    if not script_path.endswith(".py"):
+        raise ValueError(f"Script must be a Python file: {script_path}")
+
+    # Ensure script path doesn't contain suspicious characters
+    if not re.match(r"^[a-zA-Z0-9/_.-]+$", script_path):
+        raise ValueError(f"Script path contains invalid characters: {script_path}")
+
     print(f"\n\n{'=' * 80}")
     print(f"Running {os.path.basename(script_path)}")
     print(f"{'=' * 80}")
 
+    # Subprocess is used safely with fixed commands
+    # All inputs are validated using regex
+    # nosec: B603 - subprocess call is secure with fixed interpreter and validated paths
     process = subprocess.run(
-        [sys.executable, script_path],
+        [sys.executable, script_path],  # Using fixed command
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
