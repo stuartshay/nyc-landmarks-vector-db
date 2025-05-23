@@ -28,6 +28,10 @@ on:
         description: "Number of parallel workers (if parallel is true)"
         required: false
         default: "4"
+      batch_size:
+        description: "Batch size for each worker in the matrix (ignored if landmark_ids are specified)"
+        required: false
+        default: "100"
       index_name:
         description: "Pinecone index name (leave empty for default in settings)"
         required: false
@@ -42,16 +46,14 @@ on:
         required: false
         default: false
         type: boolean
-      verbose:
-        description: "Enable verbose logging"
-        required: false
-        default: true
-        type: boolean
 
 jobs:
-  process-wikipedia:
+  setup:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    outputs:
+      matrix: ${{ steps.create-matrix.outputs.matrix }}
+      total_records: ${{ steps.get-record-count.outputs.total_records }}
+      using_matrix: ${{ steps.create-matrix.outputs.using_matrix }}
 
     steps:
       - name: Checkout code
@@ -90,19 +92,114 @@ jobs:
             exit 1
           fi
 
+      - name: Get record count and create matrix
+        id: get-record-count
+        if: ${{ !github.event.inputs.landmark_ids }}
+        run: |
+          # Get the total record count using the db_client
+          TOTAL_RECORDS=$(python -c "from nyc_landmarks.db.db_client import get_db_client; print(get_db_client().get_total_record_count())")
+          echo "total_records=$TOTAL_RECORDS" >> $GITHUB_OUTPUT
+          echo "Total records: $TOTAL_RECORDS"
+
+      - name: Create processing matrix
+        id: create-matrix
+        run: |
+          if [[ -n "${{ github.event.inputs.landmark_ids }}" ]]; then
+            # If specific landmarks are provided, no matrix is needed
+            echo "matrix={\"batch\": [0]}" >> $GITHUB_OUTPUT
+            echo "using_matrix=false" >> $GITHUB_OUTPUT
+            echo "Using single job for specified landmark IDs"
+          else
+            # Calculate the number of batches
+            BATCH_SIZE="${{ github.event.inputs.batch_size }}"
+            TOTAL_RECORDS="${{ steps.get-record-count.outputs.total_records }}"
+
+            # Use limit if provided, otherwise use total records
+            if [[ "${{ github.event.inputs.limit }}" != "0" ]]; then
+              TOTAL_RECORDS=$(( ${{ github.event.inputs.limit }} < $TOTAL_RECORDS ? ${{ github.event.inputs.limit }} : $TOTAL_RECORDS ))
+            fi
+
+            # Calculate number of batches (ceil division)
+            NUM_BATCHES=$(( ($TOTAL_RECORDS + $BATCH_SIZE - 1) / $BATCH_SIZE ))
+
+            # Create matrix with batch indices (0 to NUM_BATCHES-1)
+            BATCHES="["
+            for ((i=0; i<$NUM_BATCHES; i++)); do
+              if [[ $i -gt 0 ]]; then
+                BATCHES="$BATCHES,"
+              fi
+              BATCHES="$BATCHES$i"
+            done
+            BATCHES="$BATCHES]"
+
+            echo "matrix={\"batch\": $BATCHES}" >> $GITHUB_OUTPUT
+            echo "using_matrix=true" >> $GITHUB_OUTPUT
+            echo "Created matrix with $NUM_BATCHES batches (batch size: $BATCH_SIZE, total records: $TOTAL_RECORDS)"
+          fi
+
+  process-wikipedia:
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install -r requirements.txt
+
+      - name: Configure environment
+        run: |
+          {
+            echo "PINECONE_API_KEY=${{ secrets.PINECONE_API_KEY }}"
+            echo "PINECONE_ENVIRONMENT=${{ secrets.PINECONE_ENVIRONMENT }}"
+            echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}"
+            echo "COREDATASTORE_API_KEY=${{ secrets.COREDATASTORE_API_KEY }}"
+
+            # Add custom index name if provided
+            if [[ -n "${{ github.event.inputs.index_name }}" ]]; then
+              echo "PINECONE_INDEX_NAME=${{ github.event.inputs.index_name }}"
+            fi
+          } >> "$GITHUB_ENV"
+
       - name: Process Wikipedia articles
         id: process_articles
         run: |
           # Build command arguments using array for proper handling
           ARGS=()
 
-          # Add landmark IDs if specified
-          if [[ -n "${{ github.event.inputs.landmark_ids }}" ]]; then
+          if [[ "${{ needs.setup.outputs.using_matrix }}" == "true" ]]; then
+            # Matrix mode - calculate batch range
+            BATCH_INDEX=${{ matrix.batch }}
+            BATCH_SIZE="${{ github.event.inputs.batch_size }}"
+            START_INDEX=$((BATCH_INDEX * BATCH_SIZE + 1))
+
+            # Use --all flag with proper pagination
+            ARGS+=(--all --page "$START_INDEX" --page-size "$BATCH_SIZE")
+            echo "Processing batch $BATCH_INDEX: Starting at record $START_INDEX with batch size $BATCH_SIZE"
+          elif [[ -n "${{ github.event.inputs.landmark_ids }}" ]]; then
+            # Specific landmark IDs mode
             ARGS+=(--landmark-ids "${{ github.event.inputs.landmark_ids }}")
+          else
+            # Fallback to simple --all mode (should not happen with current logic)
+            ARGS+=(--all)
           fi
 
-          # Add limit if specified
-          if [[ "${{ github.event.inputs.limit }}" != "0" ]]; then
+          # Add limit if specified (only for non-matrix mode)
+          if [[ "${{ needs.setup.outputs.using_matrix }}" != "true" && "${{ github.event.inputs.limit }}" != "0" ]]; then
             ARGS+=(--limit "${{ github.event.inputs.limit }}")
           fi
 
@@ -114,42 +211,95 @@ jobs:
 
           # Add parallel processing if enabled
           if [[ "${{ github.event.inputs.parallel }}" == "true" ]]; then
-            ARGS+=(--parallel --workers "${{ github.event.inputs.workers }}")
+            # Use fewer workers per matrix job
+            WORKERS="${{ github.event.inputs.workers }}"
+            ARGS+=(--parallel --workers "$WORKERS")
           fi
 
           # Add force reprocess if enabled
           if [[ "${{ github.event.inputs.force_reprocess }}" == "true" ]]; then
-            ARGS+=(--force-reprocess)
+            ARGS+=(--delete-existing)
           fi
 
-          # Add verbose flag if enabled
-          if [[ "${{ github.event.inputs.verbose }}" == "true" ]]; then
-            ARGS+=(--verbose)
-          fi
+          # Always enable verbose logging
+          ARGS+=(--verbose)
 
           # Run the processing script
           echo "Running: python scripts/ci/process_wikipedia_articles.py ${ARGS[*]}"
           python scripts/ci/process_wikipedia_articles.py "${ARGS[@]}"
 
+          # Create batch-specific summary file
+          BATCH_SUFFIX=""
+          if [[ "${{ needs.setup.outputs.using_matrix }}" == "true" ]]; then
+            BATCH_SUFFIX="-batch-${{ matrix.batch }}"
+          fi
+
           # Create a summary file for artifacts
           {
-            echo "# Wikipedia Processing Results"
+            echo "# Wikipedia Processing Results$BATCH_SUFFIX"
             echo "## Configuration"
-            echo "- Landmark IDs: ${{ github.event.inputs.landmark_ids || 'All landmarks' }}"
+            if [[ "${{ needs.setup.outputs.using_matrix }}" == "true" ]]; then
+              echo "- Batch: ${{ matrix.batch }}"
+              echo "- Start Index: $START_INDEX"
+              echo "- Batch Size: $BATCH_SIZE"
+            else
+              echo "- Landmark IDs: ${{ github.event.inputs.landmark_ids || 'All landmarks' }}"
+            fi
             echo "- Chunk size: ${{ github.event.inputs.chunk_size }}"
             echo "- Chunk overlap: ${{ github.event.inputs.chunk_overlap }}"
             echo "- Parallel processing: ${{ github.event.inputs.parallel }}"
-            echo "- Workers: ${{ github.event.inputs.workers }}"
-            echo "- Force reprocess: ${{ github.event.inputs.force_reprocess }}"
             if [[ -n "${{ github.event.inputs.index_name }}" ]]; then
               echo "- Pinecone index: ${{ github.event.inputs.index_name }}"
             fi
 
             echo "Processing completed successfully."
-          } > wiki_processing_summary.md
+          } > "wiki_processing_summary${BATCH_SUFFIX}.md"
+
+      - name: Upload processing results for batch
+        uses: actions/upload-artifact@v4
+        with:
+          name: wikipedia-processing-results${{ needs.setup.outputs.using_matrix == 'true' && format('-batch-{0}', matrix.batch) || '' }}
+          path: |
+            wiki_processing_summary*.md
+            logs/
+          if-no-files-found: warn
+
+  verify-wikipedia:
+    needs: process-wikipedia
+    if: ${{ github.event.inputs.skip_verification != 'true' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install -r requirements.txt
+
+      - name: Configure environment
+        run: |
+          {
+            echo "PINECONE_API_KEY=${{ secrets.PINECONE_API_KEY }}"
+            echo "PINECONE_ENVIRONMENT=${{ secrets.PINECONE_ENVIRONMENT }}"
+            echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}"
+            echo "COREDATASTORE_API_KEY=${{ secrets.COREDATASTORE_API_KEY }}"
+
+            # Add custom index name if provided
+            if [[ -n "${{ github.event.inputs.index_name }}" ]]; then
+              echo "PINECONE_INDEX_NAME=${{ github.event.inputs.index_name }}"
+            fi
+          } >> "$GITHUB_ENV"
 
       - name: Verify Wikipedia integration
-        if: ${{ github.event.inputs.skip_verification != 'true' }}
         run: |
           echo "Verifying Wikipedia integration..."
           # Create verification directory
@@ -158,18 +308,19 @@ jobs:
           # Run verification script
           python scripts/ci/verify_wikipedia_imports.py --verbose --coverage-report --output-dir verification_results
 
-          # Add verification results to summary
+          # Create summary file
           {
-            echo "## Verification Results"
+            echo "# Wikipedia Verification Results"
+            echo "## Verification Summary"
+            echo "Verification performed after processing all batches."
             echo "See attached verification report for details."
-          } >> wiki_processing_summary.md
+          } > verification_summary.md
 
-      - name: Upload processing results
+      - name: Upload verification results
         uses: actions/upload-artifact@v4
         with:
-          name: wikipedia-processing-results
+          name: wikipedia-verification-results
           path: |
-            wiki_processing_summary.md
+            verification_summary.md
             verification_results/
-            logs/
           if-no-files-found: warn
