@@ -10,9 +10,9 @@ This script:
 5. Stores the vectors in Pinecone
 
 
-python scripts/process_wikipedia_articles.py --page 2 --limit 5 --verbose
-python scripts/process_wikipedia_articles.py --landmark-ids LP-00079 --verbose
-python scripts/process_wikipedia_articles.py --all ---page-size 5 --verbose
+python scripts/ci/process_wikipedia_articles.py --page 2 --limit 5 --verbose
+python scripts/ci/process_wikipedia_articles.py --landmark-ids LP-00079 --verbose
+python scripts/ci/process_wikipedia_articles.py --all --verbose
 
 """
 
@@ -25,6 +25,7 @@ import time
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from tqdm import tqdm
+from transformers import PreTrainedTokenizer
 
 from nyc_landmarks.db.wikipedia_fetcher import WikipediaFetcher
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
@@ -35,6 +36,269 @@ from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
 # Configure logging
 logger = get_logger(__name__)
+
+
+def _initialize_components() -> (
+    Tuple[Any, WikipediaFetcher, EmbeddingGenerator, PineconeDB]
+):
+    """Initialize and return components needed for processing."""
+    from nyc_landmarks.db.db_client import get_db_client
+
+    db_client = get_db_client()
+    wiki_fetcher = WikipediaFetcher()
+    embedding_generator = EmbeddingGenerator()
+    pinecone_db = PineconeDB()
+
+    return db_client, wiki_fetcher, embedding_generator, pinecone_db
+
+
+def _fetch_wikipedia_articles(
+    db_client: Any, wiki_fetcher: WikipediaFetcher, landmark_id: str
+) -> List[Any]:
+    """
+    Fetch Wikipedia articles for the landmark.
+
+    Returns:
+        List of articles with content
+    """
+    # Get Wikipedia articles for the landmark
+    articles = db_client.get_wikipedia_articles(landmark_id)
+
+    if not articles:
+        logger.info(f"No Wikipedia articles found for landmark: {landmark_id}")
+        return []
+
+    logger.info(f"Found {len(articles)} Wikipedia articles for landmark: {landmark_id}")
+
+    # Fetch content for each article
+    for article in articles:
+        logger.info(f"- Article: {article.title}, URL: {article.url}")
+
+        # Fetch the actual content from Wikipedia
+        logger.info(f"Fetching content from Wikipedia for article: {article.title}")
+        article_content = wiki_fetcher.fetch_wikipedia_content(article.url)
+        if article_content:
+            article.content = article_content
+            logger.info(
+                f"Successfully fetched content for article: {article.title} ({len(article_content)} chars)"
+            )
+        else:
+            logger.warning(f"Failed to fetch content for article: {article.title}")
+
+    return list(articles)
+
+
+def _split_into_token_chunks(
+    text: Optional[str], max_tokens: int, tokenizer: PreTrainedTokenizer
+) -> List[str]:
+    """Split text into chunks based on token count."""
+    if text is None:
+        return []
+    tokens = tokenizer.encode(text)
+    chunks = []
+    for i in range(0, len(tokens), max_tokens):
+        chunks.append(tokenizer.decode(tokens[i : i + max_tokens]))
+    return chunks
+
+
+def _process_articles_into_chunks(
+    articles: List[Any], landmark_id: str
+) -> Tuple[List[WikipediaContentModel], int]:
+    """
+    Process articles into WikipediaContentModel objects with chunks.
+
+    Returns:
+        Tuple of (processed_articles, total_chunks)
+    """
+    # Initialize for token-based chunking
+    from transformers import GPT2Tokenizer
+
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    max_token_limit = 8192
+    token_limit_per_chunk = max_token_limit - 500  # Reserve tokens for metadata
+
+    logger.info(f"Using token limit of {token_limit_per_chunk} per chunk")
+
+    processed_articles = []
+    total_chunks = 0
+
+    for article in articles:
+        logger.debug(f"Processing article: {article.title}")
+
+        if article.content is None:
+            logger.error(f"Content is None for article: {article.title}")
+            continue
+
+        # Split the article into token-based chunks
+        token_chunks = _split_into_token_chunks(
+            article.content, token_limit_per_chunk, tokenizer
+        )
+        logger.info(
+            f"Split article '{article.title}' into {len(token_chunks)} token-based chunks"
+        )
+
+        # Create dictionary chunks for the WikipediaContentModel
+        dict_chunks = []
+        for i, chunk_text in enumerate(token_chunks):
+            token_count = len(tokenizer.encode(chunk_text))
+            logger.info(f"Processing chunk {i} with {token_count} tokens")
+
+            dict_chunks.append(
+                {
+                    "text": chunk_text,
+                    "chunk_index": i,
+                    "metadata": {
+                        "chunk_index": i,
+                        "article_title": article.title,
+                        "article_url": article.url,
+                        "source_type": SourceType.WIKIPEDIA.value,
+                        "landmark_id": landmark_id,
+                    },
+                    "total_chunks": len(token_chunks),
+                }
+            )
+
+        # Create a WikipediaContentModel with the chunks
+        content_model = WikipediaContentModel(
+            lpNumber=landmark_id,
+            url=article.url,
+            title=article.title,
+            content=article.content,
+            chunks=dict_chunks,
+        )
+
+        processed_articles.append(content_model)
+        total_chunks += len(dict_chunks)
+
+    return processed_articles, total_chunks
+
+
+def _add_metadata_to_chunks(
+    chunks_with_embeddings: List[Union[Dict[str, Any], Any]],
+    article_metadata: Dict[str, Any],
+) -> None:
+    """Helper function to add metadata to chunks."""
+    for chunk in chunks_with_embeddings:
+        if isinstance(chunk, dict):
+            chunk["metadata"]["wikipedia_metadata"] = article_metadata
+        else:
+            if hasattr(chunk, "metadata") and chunk.metadata is not None:
+                chunk.metadata["wikipedia_metadata"] = article_metadata
+
+
+def _enrich_chunks_with_article_metadata(
+    chunks_with_embeddings: List[Union[Dict[str, Any], Any]],
+    wiki_article: WikipediaContentModel,
+    current_time: str,
+) -> None:
+    """Add article metadata to chunks."""
+    for chunk in chunks_with_embeddings:
+        if isinstance(chunk, dict):
+            # Add article_metadata field which is used by PineconeDB._create_metadata_for_chunk
+            if "article_metadata" not in chunk:
+                chunk["article_metadata"] = {}
+            chunk["article_metadata"]["title"] = wiki_article.title
+            chunk["article_metadata"]["url"] = wiki_article.url
+
+            # Add processing_date to be picked up by PineconeDB._create_metadata_for_chunk
+            chunk["processing_date"] = current_time
+
+            # Also add directly to metadata for backwards compatibility
+            if "metadata" in chunk and chunk["metadata"] is not None:
+                chunk["metadata"]["article_title"] = wiki_article.title
+                chunk["metadata"]["article_url"] = wiki_article.url
+                chunk["metadata"]["processing_date"] = current_time
+                chunk["metadata"]["source_type"] = SourceType.WIKIPEDIA.value
+
+            logger.info(
+                f"Added article metadata to chunk: article_title={wiki_article.title}, article_url={wiki_article.url}, processing_date={current_time}"
+            )
+        else:
+            # Handle object-style chunks
+            # Add article_metadata field
+            if not hasattr(chunk, "article_metadata"):
+                setattr(chunk, "article_metadata", {})
+            chunk.article_metadata["title"] = wiki_article.title
+            chunk.article_metadata["url"] = wiki_article.url
+
+            # Add processing_date to be picked up by PineconeDB._create_metadata_for_chunk
+            setattr(chunk, "processing_date", current_time)
+
+            # Also add directly to metadata for backwards compatibility
+            if hasattr(chunk, "metadata") and chunk.metadata is not None:
+                chunk.metadata["article_title"] = wiki_article.title
+                chunk.metadata["article_url"] = wiki_article.url
+                chunk.metadata["processing_date"] = current_time
+                chunk.metadata["source_type"] = SourceType.WIKIPEDIA.value
+
+            logger.info(
+                f"Added article metadata to object-style chunk: {wiki_article.title} with processing_date={current_time}"
+            )
+
+
+def _generate_embeddings_and_store(
+    processed_articles: List[WikipediaContentModel],
+    embedding_generator: EmbeddingGenerator,
+    pinecone_db: PineconeDB,
+    landmark_id: str,
+    delete_existing: bool,
+) -> int:
+    """
+    Generate embeddings for chunks and store them in Pinecone.
+
+    Returns:
+        Total chunks embedded
+    """
+    total_chunks_embedded = 0
+
+    for wiki_article in processed_articles:
+        # Skip articles with no chunks
+        if not hasattr(wiki_article, "chunks") or not wiki_article.chunks:
+            logger.warning(f"No chunks to process for article: {wiki_article.title}")
+            continue
+
+        # Generate embeddings for the chunks
+        logger.info(
+            f"Generating embeddings for {len(wiki_article.chunks)} chunks from article: {wiki_article.title}"
+        )
+        chunks_with_embeddings = embedding_generator.process_chunks(wiki_article.chunks)
+
+        # Get current timestamp for processing_date
+        current_time = datetime.datetime.now().isoformat()
+
+        # Replace WikipediaMetadata with a dictionary for metadata
+        article_metadata = {
+            "title": wiki_article.title,
+            "url": wiki_article.url,
+            "processing_date": current_time,
+            "source_type": SourceType.WIKIPEDIA.value,
+        }
+
+        # Add metadata to each chunk
+        _add_metadata_to_chunks(chunks_with_embeddings, article_metadata)
+
+        # Add article metadata to chunks
+        _enrich_chunks_with_article_metadata(
+            chunks_with_embeddings, wiki_article, current_time
+        )
+
+        # Store in Pinecone with deterministic IDs
+        logger.info(f"Storing {len(chunks_with_embeddings)} vectors in Pinecone")
+        vector_ids = pinecone_db.store_chunks(
+            chunks=chunks_with_embeddings,
+            id_prefix=f"wiki-{wiki_article.title.replace(' ', '_')}-",
+            landmark_id=landmark_id,
+            use_fixed_ids=True,
+            delete_existing=delete_existing
+            and total_chunks_embedded == 0,  # Only delete on first article
+        )
+
+        total_chunks_embedded += len(vector_ids)
+        logger.info(
+            f"Stored {len(vector_ids)} vectors for article: {wiki_article.title}"
+        )
+
+    return total_chunks_embedded
 
 
 def process_landmark_wikipedia(
@@ -59,109 +323,19 @@ def process_landmark_wikipedia(
         logger.info(f"Processing Wikipedia articles for landmark: {landmark_id}")
 
         # Step 1: Initialize components
-        from nyc_landmarks.db.db_client import get_db_client
-
-        db_client = get_db_client()
-        wiki_fetcher = WikipediaFetcher()
-        embedding_generator = EmbeddingGenerator()
-        pinecone_db = PineconeDB()
+        db_client, wiki_fetcher, embedding_generator, pinecone_db = (
+            _initialize_components()
+        )
 
         # Step 2: Get Wikipedia articles for the landmark
-        articles = db_client.get_wikipedia_articles(landmark_id)
-
+        articles = _fetch_wikipedia_articles(db_client, wiki_fetcher, landmark_id)
         if not articles:
-            logger.info(f"No Wikipedia articles found for landmark: {landmark_id}")
             return False, 0, 0
 
-        logger.info(
-            f"Found {len(articles)} Wikipedia articles for landmark: {landmark_id}"
+        # Step 3: Process the articles into chunks
+        processed_articles, total_chunks = _process_articles_into_chunks(
+            articles, landmark_id
         )
-        for article in articles:
-            logger.info(f"- Article: {article.title}, URL: {article.url}")
-
-            # Fetch the actual content from Wikipedia
-            logger.info(f"Fetching content from Wikipedia for article: {article.title}")
-            article_content = wiki_fetcher.fetch_wikipedia_content(article.url)
-            if article_content:
-                article.content = article_content
-                logger.info(
-                    f"Successfully fetched content for article: {article.title} ({len(article_content)} chars)"
-                )
-            else:
-                logger.warning(f"Failed to fetch content for article: {article.title}")
-
-        # Step 3: Process the articles
-        # Initialize for token-based chunking
-        from transformers import GPT2Tokenizer
-
-        tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-        max_token_limit = 8192
-        token_limit_per_chunk = max_token_limit - 500  # Reserve tokens for metadata
-
-        logger.info(f"Using token limit of {token_limit_per_chunk} per chunk")
-
-        # Helper function for token-based chunking
-        def split_into_token_chunks(text: Optional[str], max_tokens: int) -> List[str]:
-            if text is None:
-                return []
-            tokens = tokenizer.encode(text)
-            chunks = []
-            for i in range(0, len(tokens), max_tokens):
-                chunks.append(tokenizer.decode(tokens[i : i + max_tokens]))
-            return chunks
-
-        # Process each article into WikipediaContentModel objects
-        processed_articles = []
-        total_chunks = 0
-
-        for article in articles:
-            logger.debug(f"Processing article: {article.title}")
-
-            if article.content is None:
-                logger.error(f"Content is None for article: {article.title}")
-                continue
-
-            # Split the article into token-based chunks
-            token_chunks = split_into_token_chunks(
-                article.content, token_limit_per_chunk
-            )
-            logger.info(
-                f"Split article '{article.title}' into {len(token_chunks)} token-based chunks"
-            )
-
-            # Create dictionary chunks for the WikipediaContentModel
-            dict_chunks = []
-            for i, chunk_text in enumerate(token_chunks):
-                token_count = len(tokenizer.encode(chunk_text))
-                logger.info(f"Processing chunk {i} with {token_count} tokens")
-
-                dict_chunks.append(
-                    {
-                        "text": chunk_text,
-                        "chunk_index": i,
-                        "metadata": {
-                            "chunk_index": i,
-                            "article_title": article.title,
-                            "article_url": article.url,
-                            "source_type": SourceType.WIKIPEDIA.value,
-                            "landmark_id": landmark_id,
-                        },
-                        "total_chunks": len(token_chunks),
-                    }
-                )
-
-            # Create a WikipediaContentModel with the chunks
-            content_model = WikipediaContentModel(
-                lpNumber=landmark_id,
-                url=article.url,
-                title=article.title,
-                content=article.content,
-                chunks=dict_chunks,
-            )
-
-            processed_articles.append(content_model)
-            total_chunks += len(dict_chunks)
-
         if not processed_articles:
             logger.warning(
                 f"No Wikipedia articles processed for landmark: {landmark_id}"
@@ -172,131 +346,14 @@ def process_landmark_wikipedia(
             f"Processed {len(processed_articles)} Wikipedia articles with {total_chunks} chunks"
         )
 
-        # Step 4: Generate embeddings and store in Pinecone for each article
-        total_chunks_embedded = 0
-
-        # Process each article to generate embeddings and store them
-        for wiki_article in processed_articles:
-            # Skip articles with no chunks
-            if not hasattr(wiki_article, "chunks") or not wiki_article.chunks:
-                logger.warning(
-                    f"No chunks to process for article: {wiki_article.title}"
-                )
-                continue
-
-            # Generate embeddings for the chunks
-            logger.info(
-                f"Generating embeddings for {len(wiki_article.chunks)} chunks from article: {wiki_article.title}"
-            )
-            chunks_with_embeddings = embedding_generator.process_chunks(
-                wiki_article.chunks
-            )
-
-            # Get current timestamp for processing_date
-            current_time = datetime.datetime.now().isoformat()
-
-            # Replace WikipediaMetadata with a dictionary for metadata
-            article_metadata = {
-                "title": wiki_article.title,
-                "url": wiki_article.url,
-                "processing_date": current_time,
-                "source_type": SourceType.WIKIPEDIA.value,
-            }
-
-            def add_metadata_to_chunks(
-                chunks_with_embeddings: List[Union[Dict[str, Any], Any]],
-                article_metadata: Dict[str, Any],
-            ) -> None:
-                """Helper function to add metadata to chunks."""
-                for chunk in chunks_with_embeddings:
-                    if isinstance(chunk, dict):
-                        chunk["metadata"]["wikipedia_metadata"] = article_metadata
-                    else:
-                        if hasattr(chunk, "metadata") and chunk.metadata is not None:
-                            chunk.metadata["wikipedia_metadata"] = article_metadata
-
-            # Add metadata to each chunk
-            add_metadata_to_chunks(chunks_with_embeddings, article_metadata)
-
-            # Add article title, URL, and processing date to metadata for each chunk
-            for chunk in chunks_with_embeddings:
-                # Ensure metadata structure is consistent
-                if isinstance(chunk, dict):
-                    # Add article_metadata field which is used by PineconeDB._create_metadata_for_chunk
-                    if "article_metadata" not in chunk:
-                        chunk["article_metadata"] = {}
-                    chunk["article_metadata"]["title"] = wiki_article.title
-                    chunk["article_metadata"]["url"] = wiki_article.url
-
-                    # Add processing_date to be picked up by PineconeDB._create_metadata_for_chunk
-                    chunk["processing_date"] = current_time
-
-                    # Also add directly to metadata for backwards compatibility
-                    if "metadata" in chunk and chunk["metadata"] is not None:
-                        chunk["metadata"]["article_title"] = wiki_article.title
-                        chunk["metadata"]["article_url"] = wiki_article.url
-                        chunk["metadata"]["processing_date"] = current_time
-
-                    # Debug log to verify metadata is being set
-                    logger.info(
-                        f"Added article metadata to chunk: article_title={wiki_article.title}, article_url={wiki_article.url}, processing_date={current_time}"
-                    )
-                else:
-                    # Handle object-style chunks
-                    # Add article_metadata field
-                    if not hasattr(chunk, "article_metadata"):
-                        setattr(chunk, "article_metadata", {})
-                    chunk.article_metadata["title"] = wiki_article.title
-                    chunk.article_metadata["url"] = wiki_article.url
-
-                    # Add processing_date to be picked up by PineconeDB._create_metadata_for_chunk
-                    setattr(chunk, "processing_date", current_time)
-
-                    # Also add directly to metadata for backwards compatibility
-                    if hasattr(chunk, "metadata") and chunk.metadata is not None:
-                        chunk.metadata["article_title"] = wiki_article.title
-                        chunk.metadata["article_url"] = wiki_article.url
-                        chunk.metadata["processing_date"] = current_time
-
-                    logger.info(
-                        f"Added article metadata to object-style chunk: {wiki_article.title} with processing_date={current_time}"
-                    )
-
-            # Add additional metadata for Wikipedia articles
-            for chunk in chunks_with_embeddings:
-                if isinstance(chunk, dict):
-                    chunk["metadata"]["article_title"] = wiki_article.title
-                    chunk["metadata"]["article_url"] = wiki_article.url
-                    chunk["metadata"]["processing_date"] = current_time
-                else:
-                    if hasattr(chunk, "metadata") and chunk.metadata is not None:
-                        chunk.metadata["article_title"] = wiki_article.title
-                        chunk.metadata["article_url"] = wiki_article.url
-                        chunk.metadata["processing_date"] = current_time
-
-            # Ensure metadata consistency for chunks by adding `source_type` explicitly
-            for chunk in chunks_with_embeddings:
-                if isinstance(chunk, dict):
-                    chunk["metadata"]["source_type"] = SourceType.WIKIPEDIA.value
-                else:
-                    if hasattr(chunk, "metadata") and chunk.metadata is not None:
-                        chunk.metadata["source_type"] = SourceType.WIKIPEDIA.value
-
-            # Store in Pinecone with deterministic IDs
-            logger.info(f"Storing {len(chunks_with_embeddings)} vectors in Pinecone")
-            vector_ids = pinecone_db.store_chunks(
-                chunks=chunks_with_embeddings,
-                id_prefix=f"wiki-{wiki_article.title.replace(' ', '_')}-",
-                landmark_id=landmark_id,
-                use_fixed_ids=True,
-                delete_existing=delete_existing
-                and total_chunks_embedded == 0,  # Only delete on first article
-            )
-
-            total_chunks_embedded += len(vector_ids)
-            logger.info(
-                f"Stored {len(vector_ids)} vectors for article: {wiki_article.title}"
-            )
+        # Step 4: Generate embeddings and store in Pinecone
+        total_chunks_embedded = _generate_embeddings_and_store(
+            processed_articles,
+            embedding_generator,
+            pinecone_db,
+            landmark_id,
+            delete_existing,
+        )
 
         logger.info(f"Total chunks embedded: {total_chunks_embedded}")
         return True, len(processed_articles), total_chunks_embedded
@@ -745,6 +802,63 @@ def calculate_statistics(
     )
 
 
+def _print_statistics(
+    landmarks_count: int,
+    successful_landmarks: int,
+    total_articles: int,
+    total_chunks: int,
+    elapsed_time: float,
+) -> None:
+    """Print main processing statistics."""
+    print("\n===== WIKIPEDIA PROCESSING RESULTS =====")
+    print(f"Total landmarks processed: {landmarks_count}")
+    print(f"Successful landmarks: {successful_landmarks}")
+    print(f"Total Wikipedia articles processed: {total_articles}")
+    print(f"Total chunks embedded: {total_chunks}")
+    print(f"Processing time: {elapsed_time:.2f} seconds")
+
+
+def _print_list_summary(title: str, items: List[str], limit: int = 10) -> None:
+    """Print a summary of a list with optional truncation.
+
+    Args:
+        title: Title describing the list
+        items: List of items to summarize
+        limit: Maximum number of items to display
+    """
+    if not items:
+        return
+
+    print(f"\n{title}: {len(items)}")
+    print(f"IDs: {', '.join(items[:limit])}")
+    if len(items) > limit:
+        print(f"...and {len(items) - limit} more")
+
+
+def _determine_exit_status(
+    successful_landmarks: int, missing_articles: List[str], failed_landmarks: List[str]
+) -> int:
+    """Determine exit code and print final status message.
+
+    Returns:
+        Exit code (0 for success/partial success, 1 for complete failure)
+    """
+    if successful_landmarks == 0:
+        print("\nError: No landmarks were successfully processed")
+        return 1
+    elif failed_landmarks:
+        print(
+            "\nWarning: Some landmarks failed to process (not due to missing articles)"
+        )
+        return 0  # Still exit with 0 to avoid failing CI jobs
+    else:
+        success_message = "Success: All landmarks successfully processed"
+        if missing_articles:
+            success_message += f" ({len(missing_articles)} had no Wikipedia articles)"
+        print(f"\n{success_message}")
+        return 0
+
+
 def print_results(
     landmarks_count: int,
     successful_landmarks: int,
@@ -771,50 +885,27 @@ def print_results(
         Exit code (0 for success/partial success, 1 for complete failure)
     """
     # Print main statistics
-    print("\n===== WIKIPEDIA PROCESSING RESULTS =====")
-    print(f"Total landmarks processed: {landmarks_count}")
-    print(f"Successful landmarks: {successful_landmarks}")
-    print(f"Total Wikipedia articles processed: {total_articles}")
-    print(f"Total chunks embedded: {total_chunks}")
-    print(f"Processing time: {elapsed_time:.2f} seconds")
+    _print_statistics(
+        landmarks_count,
+        successful_landmarks,
+        total_articles,
+        total_chunks,
+        elapsed_time,
+    )
 
     # Report chunk names
-    if chunk_names:
-        print("\nProcessed Chunk Names:")
-        for chunk_name in chunk_names[:10]:
-            print(f"- {chunk_name}")
-        if len(chunk_names) > 10:
-            print(f"...and {len(chunk_names) - 10} more")
+    _print_list_summary("Processed Chunk Names", chunk_names)
 
     # Report landmarks with missing articles
-    if missing_articles:
-        print(f"\nLandmarks with no Wikipedia articles: {len(missing_articles)}")
-        print(f"IDs: {', '.join(missing_articles[:10])}")
-        if len(missing_articles) > 10:
-            print(f"...and {len(missing_articles) - 10} more")
+    _print_list_summary("Landmarks with no Wikipedia articles", missing_articles)
 
     # Report failed landmarks
-    if failed_landmarks:
-        print(f"\nLandmarks that failed processing: {len(failed_landmarks)}")
-        print(f"Failed landmarks: {', '.join(failed_landmarks[:10])}")
-        if len(failed_landmarks) > 10:
-            print(f"...and {len(failed_landmarks) - 10} more")
+    _print_list_summary("Landmarks that failed processing", failed_landmarks)
 
     # Determine exit code and final message
-    if successful_landmarks == 0:
-        print("\nError: No landmarks were successfully processed")
-        return 1
-    elif failed_landmarks:
-        print(
-            "\nWarning: Some landmarks failed to process (not due to missing articles)"
-        )
-        return 0  # Still exit with 0 to avoid failing CI jobs
-    else:
-        success_message = "Success: All landmarks successfully processed"
-        if missing_articles:
-            success_message += f" ({len(missing_articles)} had no Wikipedia articles)"
-        print(f"\n{success_message}")
-        return 0
+    return _determine_exit_status(
+        successful_landmarks, missing_articles, failed_landmarks
+    )
 
 
 def main() -> None:

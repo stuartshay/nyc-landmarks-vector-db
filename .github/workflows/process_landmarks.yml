@@ -75,7 +75,7 @@ jobs:
 
           # Build command with array for proper argument handling
           CMD=(
-            "python" "scripts/generate_matrix.py"
+            "python" "scripts/ci/generate_matrix.py"
           )
 
           # Add optional parameters if provided
@@ -135,7 +135,7 @@ jobs:
           PINECONE_ENVIRONMENT: ${{ secrets.PINECONE_ENVIRONMENT }}
         run: |
           echo "Testing connection to Pinecone DB..."
-          if ! python scripts/test_pinecone_connection.py; then
+          if ! python scripts/ci/test_pinecone_connection.py; then
             echo "Failed to connect to Pinecone DB. Exiting workflow."
             exit 1
           fi
@@ -180,5 +180,5 @@ jobs:
           fi
 
           # Use "${ARGS[@]}" to properly expand the array with all arguments
-          python scripts/process_landmarks.py "${ARGS[@]}"
+          python scripts/ci/process_landmarks.py "${ARGS[@]}"
           echo "Landmark processing finished for pages ${{ matrix.start_page }}-${{ matrix.end_page }}."

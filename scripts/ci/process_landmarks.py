@@ -10,7 +10,7 @@ This script implements a processing pipeline for NYC landmarks data:
 6. Stores embeddings in Pinecone vector database with enhanced metadata
 
 Usage:
-  python scripts/process_landmarks.py --pages 2 --download
+  python scripts/ci/process_landmarks.py --pages 2 --download
 """
 
 import argparse

@@ -85,7 +85,7 @@ jobs:
 
       - name: Check API connections
         run: |
-          if ! python scripts/test_pinecone_connection.py; then
+          if ! python scripts/ci/test_pinecone_connection.py; then
             echo "Failed to connect to Pinecone API"
             exit 1
           fi
@@ -128,8 +128,8 @@ jobs:
           fi
 
           # Run the processing script
-          echo "Running: python scripts/process_wikipedia_articles.py ${ARGS[*]}"
-          python scripts/process_wikipedia_articles.py "${ARGS[@]}"
+          echo "Running: python scripts/ci/process_wikipedia_articles.py ${ARGS[*]}"
+          python scripts/ci/process_wikipedia_articles.py "${ARGS[@]}"
 
           # Create a summary file for artifacts
           {
@@ -156,7 +156,7 @@ jobs:
           mkdir -p verification_results
 
           # Run verification script
-          python scripts/verify_wikipedia_imports.py --verbose --coverage-report --output-dir verification_results
+          python scripts/ci/verify_wikipedia_imports.py --verbose --coverage-report --output-dir verification_results
 
           # Add verification results to summary
           {
