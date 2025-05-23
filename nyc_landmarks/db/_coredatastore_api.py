@@ -910,6 +910,9 @@ class _CoreDataStoreAPI:
                 url=item.get("url", ""),
                 title=item.get("title", ""),
                 recordType="Wikipedia",
+                content=item.get(
+                    "content", ""
+                ),  # Get content from the item or use empty string
             )
             logger.debug(f"Found Wikipedia article: {article.title}")
             return article
