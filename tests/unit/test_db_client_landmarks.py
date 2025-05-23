@@ -116,18 +116,11 @@ class TestDbClientLandmarkMethods(unittest.TestCase):
         # Verify result
         self.assertEqual(result, metadata)
 
-    def test_get_landmarks_page_with_all_landmarks_fallback(self) -> None:
-        """Test get_landmarks_page with fallback to get_all_landmarks when no other methods available."""
-        # Create a mock API
-        mock_api = Mock(spec=CoreDataStoreAPI)
+    def _create_test_landmark_models(self, count: int = 20) -> list:
+        """Helper method to create test landmark models."""
+        from nyc_landmarks.models.landmark_models import LpcReportModel
 
-        # Create a proper LpcReportResponse return value (if needed based on implementation)
-        from nyc_landmarks.models.landmark_models import (
-            LpcReportModel,
-            LpcReportResponse,
-        )
-
-        result_models = [
+        return [
             LpcReportModel(
                 lpNumber=f"LP-{i:05}",
                 name=f"Landmark {i}",
@@ -145,129 +138,86 @@ class TestDbClientLandmarkMethods(unittest.TestCase):
                 photoUrl=None,
                 pdfReportUrl=None,
             )
-            for i in range(1, 21)
+            for i in range(1, count + 1)
         ]
+
+    def _assert_landmark_id(self, item, expected_id: str) -> None:
+        """Helper method to assert landmark ID regardless of item type."""
+        if isinstance(item, dict):
+            if "id" in item:
+                self.assertEqual(item.get("id"), expected_id)
+            elif "lpNumber" in item:
+                self.assertEqual(item.get("lpNumber"), expected_id)
+            else:
+                self.fail(f"Item missing expected keys: {item}")
+        elif hasattr(item, "id"):
+            self.assertEqual(item.id, expected_id)
+        elif hasattr(item, "lpNumber"):
+            self.assertEqual(item.lpNumber, expected_id)
+        else:
+            self.fail(f"Unexpected type for result item: {type(item)}")
+
+    def _setup_fallback_mock_api(self):
+        """Helper to setup mock API for fallback testing."""
+        from nyc_landmarks.models.landmark_models import LpcReportResponse
+
+        mock_api = Mock(spec=CoreDataStoreAPI)
+        result_models = self._create_test_landmark_models(20)
         report_response = LpcReportResponse(
             total=20,
             page=1,
             limit=20,
-            **{"from": 1},  # Use unpacking for the "from" field
+            **{"from": 1},
             to=20,
             results=result_models,
         )
-
-        # Mock both implementations to test fallback path
         mock_api.get_all_landmarks.return_value = report_response
-
-        # Make get_lpc_reports raise an exception
         mock_api.get_lpc_reports.side_effect = Exception("API error")
+        return mock_api
 
-        # Create a client with our mocked API
+    def test_get_landmarks_page_fallback_first_page(self) -> None:
+        """Test get_landmarks_page fallback to get_all_landmarks for first page."""
+        mock_api = self._setup_fallback_mock_api()
         client = DbClient(mock_api)
 
-        # Test first page
         with patch(
             "builtins.hasattr",
             lambda obj, attr: False if attr == "get_landmarks_page" else True,
         ):
-            # Call the method to get first page with 5 items
             result = client.get_landmarks_page(page_size=5, page=1)
 
-            # Verify API was called correctly
             mock_api.get_all_landmarks.assert_called_once()
-
-            # Verify result - should have first 5 landmarks
             self.assertEqual(len(result), 5)
-            # Handle type-safely
-            first_item = result[0]
-            last_item = result[4]
+            self._assert_landmark_id(result[0], "LP-00001")
+            self._assert_landmark_id(result[4], "LP-00005")
 
-            if isinstance(first_item, dict):
-                if "id" in first_item:
-                    self.assertEqual(first_item.get("id"), "LP-00001")
-                elif "lpNumber" in first_item:
-                    self.assertEqual(first_item.get("lpNumber"), "LP-00001")
-                else:
-                    self.fail(f"Item missing expected keys: {first_item}")
-            elif hasattr(first_item, "id"):
-                self.assertEqual(first_item.id, "LP-00001")
-            elif hasattr(first_item, "lpNumber"):
-                self.assertEqual(first_item.lpNumber, "LP-00001")
-            else:
-                self.fail(f"Unexpected type for result item: {type(first_item)}")
+    def test_get_landmarks_page_fallback_second_page(self) -> None:
+        """Test get_landmarks_page fallback to get_all_landmarks for second page."""
+        mock_api = self._setup_fallback_mock_api()
+        client = DbClient(mock_api)
 
-            if isinstance(last_item, dict):
-                if "id" in last_item:
-                    self.assertEqual(last_item.get("id"), "LP-00005")
-                elif "lpNumber" in last_item:
-                    self.assertEqual(last_item.get("lpNumber"), "LP-00005")
-                else:
-                    self.fail(f"Item missing expected keys: {last_item}")
-            elif hasattr(last_item, "id"):
-                self.assertEqual(last_item.id, "LP-00005")
-            elif hasattr(last_item, "lpNumber"):
-                self.assertEqual(last_item.lpNumber, "LP-00005")
-            else:
-                self.fail(f"Unexpected type for result item: {type(last_item)}")
-
-        # Test second page
-        mock_api.get_all_landmarks.reset_mock()
         with patch(
             "builtins.hasattr",
             lambda obj, attr: False if attr == "get_landmarks_page" else True,
         ):
-            # Call the method to get second page with 5 items
             result = client.get_landmarks_page(page_size=5, page=2)
 
-            # Verify API was called correctly
             mock_api.get_all_landmarks.assert_called_once()
-
-            # Verify result - should have second 5 landmarks
             self.assertEqual(len(result), 5)
-            # Handle type-safely
-            first_item = result[0]
-            last_item = result[4]
+            self._assert_landmark_id(result[0], "LP-00006")
+            self._assert_landmark_id(result[4], "LP-00010")
 
-            if isinstance(first_item, dict):
-                if "id" in first_item:
-                    self.assertEqual(first_item.get("id"), "LP-00006")
-                elif "lpNumber" in first_item:
-                    self.assertEqual(first_item.get("lpNumber"), "LP-00006")
-                else:
-                    self.fail(f"Item missing expected keys: {first_item}")
-            elif hasattr(first_item, "id"):
-                self.assertEqual(first_item.id, "LP-00006")
-            elif hasattr(first_item, "lpNumber"):
-                self.assertEqual(first_item.lpNumber, "LP-00006")
-            else:
-                self.fail(f"Unexpected type for result item: {type(first_item)}")
-
-            if isinstance(last_item, dict):
-                if "id" in last_item:
-                    self.assertEqual(last_item.get("id"), "LP-00010")
-                elif "lpNumber" in last_item:
-                    self.assertEqual(last_item.get("lpNumber"), "LP-00010")
-                else:
-                    self.fail(f"Item missing expected keys: {last_item}")
-            elif hasattr(last_item, "id"):
-                self.assertEqual(last_item.id, "LP-00010")
-            elif hasattr(last_item, "lpNumber"):
-                self.assertEqual(last_item.lpNumber, "LP-00010")
-            else:
-                self.fail(f"Unexpected type for result item: {type(last_item)}")
-
-        # Test with API error
-        mock_api.get_all_landmarks.reset_mock()
+    def test_get_landmarks_page_fallback_api_error(self) -> None:
+        """Test get_landmarks_page fallback behavior when API returns error."""
+        mock_api = Mock(spec=CoreDataStoreAPI)
         mock_api.get_all_landmarks.side_effect = Exception("API error")
+        client = DbClient(mock_api)
 
         with patch(
             "builtins.hasattr",
             lambda obj, attr: False if attr == "get_landmarks_page" else True,
         ):
-            # Call the method - should return empty list for error case
             result = client.get_landmarks_page(page_size=5, page=1)
-
-            # Verify empty list is returned for error case
             self.assertEqual(result, [])
 
     def test_get_lpc_reports_direct_method(self) -> None:

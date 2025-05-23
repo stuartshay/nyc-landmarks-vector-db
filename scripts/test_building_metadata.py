@@ -158,9 +158,13 @@ def create_and_upload_test_vector(
     embedding_dimension = 1536  # Standard dimension for OpenAI embeddings
 
     # Format the vector as expected by Pinecone SDK
-    # Convert to the expected Vector type format
+    # Convert to the expected Vector type format with dictionary structure
     vectors_to_upsert = [
-        (test_vector_id, [0.5] * embedding_dimension, pinecone_metadata)
+        {
+            "id": test_vector_id,
+            "values": [0.5] * embedding_dimension,
+            "metadata": pinecone_metadata,
+        }
     ]
 
     pinecone_db.index.upsert(vectors=vectors_to_upsert)

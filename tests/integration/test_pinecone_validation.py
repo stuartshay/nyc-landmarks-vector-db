@@ -1,5 +1,3 @@
-from nyc_landmarks.vectordb.vector_id_validator import VectorIDValidator
-
 """
 Integration tests for validating Pinecone vectors.
 
@@ -25,6 +23,7 @@ import pytest
 
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
+from nyc_landmarks.vectordb.vector_id_validator import VectorIDValidator
 from tests.integration.test_pinecone_fixed_ids import (
     create_verification_summary,
     save_verification_results,
@@ -129,9 +128,6 @@ def test_deterministic_ids_consistency(
 
         if not vectors:
             pytest.skip(f"No vectors found for {landmark_id}, skipping test")
-
-        # Extract vector IDs and check for expected pattern
-        vector_ids: List[str] = [v.get("id", "") for v in vectors]
 
         # Check if IDs have the correct format (PDF, Wikipedia, or test)
         for vector in vectors:
