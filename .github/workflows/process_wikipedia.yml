@@ -48,28 +48,44 @@ on:
         type: boolean
 
 jobs:
+  build_image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        run: |
+          IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/nyc-landmarks-vector-db:latest
+          docker build -t $IMAGE_NAME .
+          docker push $IMAGE_NAME
+
   setup:
+    needs: build_image
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.create-matrix.outputs.matrix }}
       total_records: ${{ steps.get-record-count.outputs.total_records }}
       using_matrix: ${{ steps.create-matrix.outputs.using_matrix }}
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/nyc-landmarks-vector-db:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: "pip"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-          pip install -r requirements.txt
 
       - name: Configure environment
         run: |
@@ -144,22 +160,15 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
       fail-fast: false
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/nyc-landmarks-vector-db:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: "pip"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-          pip install -r requirements.txt
 
       - name: Configure environment
         run: |
@@ -211,7 +220,7 @@ jobs:
 
           # Add parallel processing if enabled
           if [[ "${{ github.event.inputs.parallel }}" == "true" ]]; then
-            # Use fewer workers per matrix job
+            # Use the specified number of workers
             WORKERS="${{ github.event.inputs.workers }}"
             ARGS+=(--parallel --workers "$WORKERS")
           fi
@@ -268,22 +277,15 @@ jobs:
     needs: process-wikipedia
     if: ${{ github.event.inputs.skip_verification != 'true' }}
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/nyc-landmarks-vector-db:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: "pip"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-          pip install -r requirements.txt
 
       - name: Configure environment
         run: |
