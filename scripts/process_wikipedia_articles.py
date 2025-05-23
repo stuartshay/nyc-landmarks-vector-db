@@ -12,6 +12,7 @@ This script:
 
 python scripts/process_wikipedia_articles.py --page 2 --limit 5 --verbose
 python scripts/process_wikipedia_articles.py --landmark-ids LP-00079 --verbose
+python scripts/process_wikipedia_articles.py --all ---page-size 5 --verbose
 
 """
 
@@ -402,12 +403,20 @@ def process_landmarks_parallel(
     return results
 
 
-def get_all_landmark_ids(limit: Optional[int] = None) -> List[str]:
+def get_all_landmark_ids(
+    limit: Optional[int] = None,
+    page: int = 1,
+    page_size: int = 100,
+    fetch_all_pages: bool = False,
+) -> List[str]:
     """
-    Fetch all landmark IDs using the `get_all_landmarks` method from `db_client`.
+    Fetch landmark IDs using the `get_lpc_reports` method from `db_client`.
 
     Args:
         limit: Maximum number of landmark IDs to return (optional).
+        page: Page number to fetch (starting from 1) if fetch_all_pages is False.
+        page_size: Number of landmarks per page.
+        fetch_all_pages: Whether to fetch all pages instead of just the specified page.
 
     Returns:
         List of landmark IDs.
@@ -417,18 +426,71 @@ def get_all_landmark_ids(limit: Optional[int] = None) -> List[str]:
     db_client = get_db_client()
 
     try:
-        # Fetch landmarks from the database
-        landmarks = db_client.get_all_landmarks(limit=limit)
+        all_landmark_ids = []
 
-        if not landmarks:
-            logger.warning("No landmarks found in the database.")
-            return []
+        if fetch_all_pages:
+            # Get total record count to determine how many pages to fetch
+            total_records = db_client.get_total_record_count()
+            total_pages = (
+                total_records + page_size - 1
+            ) // page_size  # Ceiling division
 
-        # Extract only the IDs from the landmarks
-        landmark_ids = [landmark["id"] for landmark in landmarks if "id" in landmark]
+            logger.info(
+                f"Fetching all {total_records} landmarks across {total_pages} pages with page size {page_size}..."
+            )
 
-        logger.info(f"Fetched {len(landmark_ids)} landmark IDs.")
-        return landmark_ids
+            # Fetch landmarks page by page
+            for current_page in range(1, total_pages + 1):
+                response = db_client.get_lpc_reports(page=current_page, limit=page_size)
+
+                if not response or not response.results:
+                    logger.warning(
+                        f"No landmarks found on page {current_page} with page size {page_size}."
+                    )
+                    continue
+
+                # Extract only the IDs (lpNumber) from the landmarks on this page
+                page_landmark_ids = [
+                    report.lpNumber for report in response.results if report.lpNumber
+                ]
+                all_landmark_ids.extend(page_landmark_ids)
+
+                logger.info(
+                    f"Fetched {len(page_landmark_ids)} landmark IDs from page {current_page}/{total_pages}."
+                )
+
+                # If we've reached the limit, stop fetching more pages
+                if limit is not None and len(all_landmark_ids) >= limit:
+                    all_landmark_ids = all_landmark_ids[:limit]
+                    logger.info(f"Reached limit of {limit} landmarks. Stopping fetch.")
+                    break
+
+            logger.info(f"Total landmarks fetched: {len(all_landmark_ids)}")
+
+        else:
+            # Fetch just the specified page
+            response = db_client.get_lpc_reports(page=page, limit=page_size)
+
+            if not response or not response.results:
+                logger.warning(
+                    f"No landmarks found on page {page} with page size {page_size}."
+                )
+                return []
+
+            # Extract only the IDs (lpNumber) from the landmarks
+            all_landmark_ids = [
+                report.lpNumber for report in response.results if report.lpNumber
+            ]
+
+            # Apply additional limit if specified
+            if limit is not None and limit < len(all_landmark_ids):
+                all_landmark_ids = all_landmark_ids[:limit]
+
+            logger.info(
+                f"Fetched {len(all_landmark_ids)} landmark IDs from page {page}."
+            )
+
+        return all_landmark_ids
 
     except Exception as e:
         logger.error(f"Error fetching landmark IDs: {e}")
@@ -573,13 +635,21 @@ def get_landmarks_to_process(
         )
 
         # When process_all is True, we always start from page 1 (due to mutual exclusivity)
-        # Fetch all landmark IDs with the effective limit
-        landmarks_to_process = get_all_landmark_ids(effective_limit)
-        logger.info(f"Will process {len(landmarks_to_process)} landmarks")
+        # Set fetch_all_pages=True to fetch all pages of landmark IDs
+        landmarks_to_process = get_all_landmark_ids(
+            limit=effective_limit, page=1, page_size=page_size, fetch_all_pages=True
+        )
+        logger.info(
+            f"Will process {len(landmarks_to_process)} landmarks from all available pages"
+        )
     else:
-        # Fetch landmark IDs with the specified limit
-        landmarks_to_process = get_all_landmark_ids(limit)
-        logger.info(f"Will process {len(landmarks_to_process)} landmarks")
+        # Fetch landmark IDs with the specified limit, page, and page_size
+        landmarks_to_process = get_all_landmark_ids(
+            limit=limit, page=page, page_size=page_size
+        )
+        logger.info(
+            f"Will process {len(landmarks_to_process)} landmarks (page {page}, page_size {page_size})"
+        )
 
     return landmarks_to_process
 

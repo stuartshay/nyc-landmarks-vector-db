@@ -15,8 +15,9 @@ import logging
 import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
-from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
-from nyc_landmarks.models.landmark_models import LandmarkMetadata
+from nyc_landmarks.db._coredatastore_api import _CoreDataStoreAPI as CoreDataStoreAPI
+from nyc_landmarks.models.landmark_models import LpcReportDetailResponse
+from nyc_landmarks.models.metadata_models import LandmarkMetadata
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.enhanced_metadata import EnhancedMetadataCollector
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
@@ -37,7 +38,7 @@ def initialize_components() -> (
 
 def get_landmark_info(
     api_client: CoreDataStoreAPI, landmark_id: str
-) -> Tuple[Optional[Dict[str, Any]], List[Dict[str, Any]]]:
+) -> Tuple[Optional[LpcReportDetailResponse], List[Dict[str, Any]]]:
     """Retrieve landmark information and buildings from the API."""
     # Get landmark details
     landmark = api_client.get_landmark_by_id(landmark_id)
@@ -45,7 +46,7 @@ def get_landmark_info(
         logger.error(f"Landmark not found: {landmark_id}")
         return None, []
 
-    logger.info(f"Found landmark: {landmark['name']}")
+    logger.info(f"Found landmark: {landmark.name}")
 
     # Get buildings for the landmark
     buildings = api_client.get_landmark_buildings(landmark_id)
@@ -157,12 +158,9 @@ def create_and_upload_test_vector(
     embedding_dimension = 1536  # Standard dimension for OpenAI embeddings
 
     # Format the vector as expected by Pinecone SDK
+    # Convert to the expected Vector type format
     vectors_to_upsert = [
-        {
-            "id": test_vector_id,
-            "values": [0.5] * embedding_dimension,
-            "metadata": pinecone_metadata,
-        }
+        (test_vector_id, [0.5] * embedding_dimension, pinecone_metadata)
     ]
 
     pinecone_db.index.upsert(vectors=vectors_to_upsert)

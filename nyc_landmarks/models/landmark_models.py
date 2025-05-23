@@ -8,7 +8,7 @@ and ensure consistent data validation and access patterns.
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class LpcReportModel(BaseModel):

@@ -204,4 +204,5 @@ class EmbeddingGenerator:
         Returns:
             Embedding vector as a list of floats
         """
-        return self.generate_embedding(chunk)
+        embedding = self.generate_embedding(chunk)
+        return [float(value) for value in embedding]  # Ensure List[float] return type

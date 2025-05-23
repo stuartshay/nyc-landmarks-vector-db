@@ -163,6 +163,8 @@ class DbClient:
             )
             return []
 
+    # THIS MIGHT BE DUPLICATED
+
     def get_landmarks_page(
         self, page_size: int = 10, page: int = 1
     ) -> List[Dict[str, Any]]:
