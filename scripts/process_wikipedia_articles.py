@@ -8,21 +8,28 @@ This script:
 3. Processes the articles into chunks
 4. Generates embeddings for the chunks
 5. Stores the vectors in Pinecone
+
+
+python scripts/process_wikipedia_articles.py --page 2 --limit 5 --verbose
+python scripts/process_wikipedia_articles.py --landmark-ids LP-00079 --verbose
+python scripts/process_wikipedia_articles.py --all ---page-size 5 --verbose
+
 """
 
 import argparse
 import concurrent.futures
+import datetime
 import logging
 import sys
 import time
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from tqdm import tqdm
 
-from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
-from nyc_landmarks.db.db_client import DbClient
 from nyc_landmarks.db.wikipedia_fetcher import WikipediaFetcher
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
+from nyc_landmarks.models.metadata_models import SourceType
+from nyc_landmarks.models.wikipedia_models import WikipediaContentModel
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
@@ -52,13 +59,15 @@ def process_landmark_wikipedia(
         logger.info(f"Processing Wikipedia articles for landmark: {landmark_id}")
 
         # Step 1: Initialize components
-        api_client = CoreDataStoreAPI()
+        from nyc_landmarks.db.db_client import get_db_client
+
+        db_client = get_db_client()
         wiki_fetcher = WikipediaFetcher()
         embedding_generator = EmbeddingGenerator()
         pinecone_db = PineconeDB()
 
         # Step 2: Get Wikipedia articles for the landmark
-        articles = api_client.get_wikipedia_articles(landmark_id)
+        articles = db_client.get_wikipedia_articles(landmark_id)
 
         if not articles:
             logger.info(f"No Wikipedia articles found for landmark: {landmark_id}")
@@ -70,12 +79,89 @@ def process_landmark_wikipedia(
         for article in articles:
             logger.info(f"- Article: {article.title}, URL: {article.url}")
 
-        # Step 3: Process the articles
-        processed_articles, result = wiki_fetcher.process_landmark_wikipedia_articles(
-            articles, chunk_size, chunk_overlap
-        )
+            # Fetch the actual content from Wikipedia
+            logger.info(f"Fetching content from Wikipedia for article: {article.title}")
+            article_content = wiki_fetcher.fetch_wikipedia_content(article.url)
+            if article_content:
+                article.content = article_content
+                logger.info(
+                    f"Successfully fetched content for article: {article.title} ({len(article_content)} chars)"
+                )
+            else:
+                logger.warning(f"Failed to fetch content for article: {article.title}")
 
-        # No cast needed - processed_articles is already a List[WikipediaContentModel]
+        # Step 3: Process the articles
+        # Initialize for token-based chunking
+        from transformers import GPT2Tokenizer
+
+        tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+        max_token_limit = 8192
+        token_limit_per_chunk = max_token_limit - 500  # Reserve tokens for metadata
+
+        logger.info(f"Using token limit of {token_limit_per_chunk} per chunk")
+
+        # Helper function for token-based chunking
+        def split_into_token_chunks(text: Optional[str], max_tokens: int) -> List[str]:
+            if text is None:
+                return []
+            tokens = tokenizer.encode(text)
+            chunks = []
+            for i in range(0, len(tokens), max_tokens):
+                chunks.append(tokenizer.decode(tokens[i : i + max_tokens]))
+            return chunks
+
+        # Process each article into WikipediaContentModel objects
+        processed_articles = []
+        total_chunks = 0
+
+        for article in articles:
+            logger.debug(f"Processing article: {article.title}")
+
+            if article.content is None:
+                logger.error(f"Content is None for article: {article.title}")
+                continue
+
+            # Split the article into token-based chunks
+            token_chunks = split_into_token_chunks(
+                article.content, token_limit_per_chunk
+            )
+            logger.info(
+                f"Split article '{article.title}' into {len(token_chunks)} token-based chunks"
+            )
+
+            # Create dictionary chunks for the WikipediaContentModel
+            dict_chunks = []
+            for i, chunk_text in enumerate(token_chunks):
+                token_count = len(tokenizer.encode(chunk_text))
+                logger.info(f"Processing chunk {i} with {token_count} tokens")
+
+                dict_chunks.append(
+                    {
+                        "text": chunk_text,
+                        "chunk_index": i,
+                        "metadata": {
+                            "chunk_index": i,
+                            "article_title": article.title,
+                            "article_url": article.url,
+                            "source_type": SourceType.WIKIPEDIA.value,
+                            "landmark_id": landmark_id,
+                        },
+                        "total_chunks": len(token_chunks),
+                    }
+                )
+
+            # Create a WikipediaContentModel with the chunks
+            content_model = WikipediaContentModel(
+                lpNumber=landmark_id,
+                url=article.url,
+                title=article.title,
+                content=article.content,
+                chunks=dict_chunks,
+            )
+
+            processed_articles.append(content_model)
+            total_chunks += len(dict_chunks)
+
         if not processed_articles:
             logger.warning(
                 f"No Wikipedia articles processed for landmark: {landmark_id}"
@@ -83,7 +169,7 @@ def process_landmark_wikipedia(
             return False, 0, 0
 
         logger.info(
-            f"Processed {len(processed_articles)} Wikipedia articles with {result.total_chunks} chunks"
+            f"Processed {len(processed_articles)} Wikipedia articles with {total_chunks} chunks"
         )
 
         # Step 4: Generate embeddings and store in Pinecone for each article
@@ -105,6 +191,96 @@ def process_landmark_wikipedia(
             chunks_with_embeddings = embedding_generator.process_chunks(
                 wiki_article.chunks
             )
+
+            # Get current timestamp for processing_date
+            current_time = datetime.datetime.now().isoformat()
+
+            # Replace WikipediaMetadata with a dictionary for metadata
+            article_metadata = {
+                "title": wiki_article.title,
+                "url": wiki_article.url,
+                "processing_date": current_time,
+                "source_type": SourceType.WIKIPEDIA.value,
+            }
+
+            def add_metadata_to_chunks(
+                chunks_with_embeddings: List[Union[Dict[str, Any], Any]],
+                article_metadata: Dict[str, Any],
+            ) -> None:
+                """Helper function to add metadata to chunks."""
+                for chunk in chunks_with_embeddings:
+                    if isinstance(chunk, dict):
+                        chunk["metadata"]["wikipedia_metadata"] = article_metadata
+                    else:
+                        if hasattr(chunk, "metadata") and chunk.metadata is not None:
+                            chunk.metadata["wikipedia_metadata"] = article_metadata
+
+            # Add metadata to each chunk
+            add_metadata_to_chunks(chunks_with_embeddings, article_metadata)
+
+            # Add article title, URL, and processing date to metadata for each chunk
+            for chunk in chunks_with_embeddings:
+                # Ensure metadata structure is consistent
+                if isinstance(chunk, dict):
+                    # Add article_metadata field which is used by PineconeDB._create_metadata_for_chunk
+                    if "article_metadata" not in chunk:
+                        chunk["article_metadata"] = {}
+                    chunk["article_metadata"]["title"] = wiki_article.title
+                    chunk["article_metadata"]["url"] = wiki_article.url
+
+                    # Add processing_date to be picked up by PineconeDB._create_metadata_for_chunk
+                    chunk["processing_date"] = current_time
+
+                    # Also add directly to metadata for backwards compatibility
+                    if "metadata" in chunk and chunk["metadata"] is not None:
+                        chunk["metadata"]["article_title"] = wiki_article.title
+                        chunk["metadata"]["article_url"] = wiki_article.url
+                        chunk["metadata"]["processing_date"] = current_time
+
+                    # Debug log to verify metadata is being set
+                    logger.info(
+                        f"Added article metadata to chunk: article_title={wiki_article.title}, article_url={wiki_article.url}, processing_date={current_time}"
+                    )
+                else:
+                    # Handle object-style chunks
+                    # Add article_metadata field
+                    if not hasattr(chunk, "article_metadata"):
+                        setattr(chunk, "article_metadata", {})
+                    chunk.article_metadata["title"] = wiki_article.title
+                    chunk.article_metadata["url"] = wiki_article.url
+
+                    # Add processing_date to be picked up by PineconeDB._create_metadata_for_chunk
+                    setattr(chunk, "processing_date", current_time)
+
+                    # Also add directly to metadata for backwards compatibility
+                    if hasattr(chunk, "metadata") and chunk.metadata is not None:
+                        chunk.metadata["article_title"] = wiki_article.title
+                        chunk.metadata["article_url"] = wiki_article.url
+                        chunk.metadata["processing_date"] = current_time
+
+                    logger.info(
+                        f"Added article metadata to object-style chunk: {wiki_article.title} with processing_date={current_time}"
+                    )
+
+            # Add additional metadata for Wikipedia articles
+            for chunk in chunks_with_embeddings:
+                if isinstance(chunk, dict):
+                    chunk["metadata"]["article_title"] = wiki_article.title
+                    chunk["metadata"]["article_url"] = wiki_article.url
+                    chunk["metadata"]["processing_date"] = current_time
+                else:
+                    if hasattr(chunk, "metadata") and chunk.metadata is not None:
+                        chunk.metadata["article_title"] = wiki_article.title
+                        chunk.metadata["article_url"] = wiki_article.url
+                        chunk.metadata["processing_date"] = current_time
+
+            # Ensure metadata consistency for chunks by adding `source_type` explicitly
+            for chunk in chunks_with_embeddings:
+                if isinstance(chunk, dict):
+                    chunk["metadata"]["source_type"] = SourceType.WIKIPEDIA.value
+                else:
+                    if hasattr(chunk, "metadata") and chunk.metadata is not None:
+                        chunk.metadata["source_type"] = SourceType.WIKIPEDIA.value
 
             # Store in Pinecone with deterministic IDs
             logger.info(f"Storing {len(chunks_with_embeddings)} vectors in Pinecone")
@@ -227,43 +403,98 @@ def process_landmarks_parallel(
     return results
 
 
-def get_all_landmark_ids(limit: Optional[int] = None) -> List[str]:
+def get_all_landmark_ids(
+    limit: Optional[int] = None,
+    page: int = 1,
+    page_size: int = 100,
+    fetch_all_pages: bool = False,
+) -> List[str]:
     """
-    Get all landmark IDs from the CoreDataStore API.
+    Fetch landmark IDs using the `get_lpc_reports` method from `db_client`.
 
     Args:
-        limit: Maximum number of landmarks to return
+        limit: Maximum number of landmark IDs to return (optional).
+        page: Page number to fetch (starting from 1) if fetch_all_pages is False.
+        page_size: Number of landmarks per page.
+        fetch_all_pages: Whether to fetch all pages instead of just the specified page.
 
     Returns:
-        List of landmark IDs
+        List of landmark IDs.
     """
-    logger.info("Fetching all landmark IDs from CoreDataStore API")
-    db_client = DbClient(CoreDataStoreAPI())
+    from nyc_landmarks.db.db_client import get_db_client
 
-    # Get all landmarks
-    landmarks = db_client.get_all_landmarks()
+    db_client = get_db_client()
 
-    # Extract IDs
-    landmark_ids = []
-    for landmark in landmarks:
-        if isinstance(landmark, dict):
-            landmark_id = landmark.get("id") or landmark.get("lpc_id")
-        else:
-            landmark_id = getattr(landmark, "id", None) or getattr(
-                landmark, "lpc_id", None
+    try:
+        all_landmark_ids = []
+
+        if fetch_all_pages:
+            # Get total record count to determine how many pages to fetch
+            total_records = db_client.get_total_record_count()
+            total_pages = (
+                total_records + page_size - 1
+            ) // page_size  # Ceiling division
+
+            logger.info(
+                f"Fetching all {total_records} landmarks across {total_pages} pages with page size {page_size}..."
             )
 
-        if landmark_id:
-            landmark_ids.append(landmark_id)
+            # Fetch landmarks page by page
+            for current_page in range(1, total_pages + 1):
+                response = db_client.get_lpc_reports(page=current_page, limit=page_size)
 
-    logger.info(f"Found {len(landmark_ids)} total landmarks")
+                if not response or not response.results:
+                    logger.warning(
+                        f"No landmarks found on page {current_page} with page size {page_size}."
+                    )
+                    continue
 
-    # Apply limit if specified
-    if limit is not None and limit > 0:
-        landmark_ids = landmark_ids[:limit]
-        logger.info(f"Limited to {len(landmark_ids)} landmarks")
+                # Extract only the IDs (lpNumber) from the landmarks on this page
+                page_landmark_ids = [
+                    report.lpNumber for report in response.results if report.lpNumber
+                ]
+                all_landmark_ids.extend(page_landmark_ids)
 
-    return landmark_ids
+                logger.info(
+                    f"Fetched {len(page_landmark_ids)} landmark IDs from page {current_page}/{total_pages}."
+                )
+
+                # If we've reached the limit, stop fetching more pages
+                if limit is not None and len(all_landmark_ids) >= limit:
+                    all_landmark_ids = all_landmark_ids[:limit]
+                    logger.info(f"Reached limit of {limit} landmarks. Stopping fetch.")
+                    break
+
+            logger.info(f"Total landmarks fetched: {len(all_landmark_ids)}")
+
+        else:
+            # Fetch just the specified page
+            response = db_client.get_lpc_reports(page=page, limit=page_size)
+
+            if not response or not response.results:
+                logger.warning(
+                    f"No landmarks found on page {page} with page size {page_size}."
+                )
+                return []
+
+            # Extract only the IDs (lpNumber) from the landmarks
+            all_landmark_ids = [
+                report.lpNumber for report in response.results if report.lpNumber
+            ]
+
+            # Apply additional limit if specified
+            if limit is not None and limit < len(all_landmark_ids):
+                all_landmark_ids = all_landmark_ids[:limit]
+
+            logger.info(
+                f"Fetched {len(all_landmark_ids)} landmark IDs from page {page}."
+            )
+
+        return all_landmark_ids
+
+    except Exception as e:
+        logger.error(f"Error fetching landmark IDs: {e}")
+        return []
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -314,13 +545,42 @@ def parse_arguments() -> argparse.Namespace:
         help="Maximum number of landmarks to process (only used when no landmark IDs specified)",
     )
     parser.add_argument(
+        "--page-size",
+        type=int,
+        default=100,
+        help="Number of landmarks to fetch per API request (default: 100)",
+    )
+
+    # Create mutually exclusive group for processing mode
+    mode_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument(
+        "--all",
+        action="store_true",
+        help="Process all available landmarks in the database (cannot be used with --page)",
+    )
+    mode_group.add_argument(
+        "--page",
+        type=int,
+        default=1,
+        help="Page number to start fetching landmarks from (default: 1, cannot be used with --all)",
+    )
+
+    parser.add_argument(
         "--verbose",
         "-v",
         action="store_true",
         help="Enable verbose logging",
     )
 
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    # Additional validation: if someone uses --page with default value and --all
+    if args.all and args.page != 1:
+        parser.error(
+            "Argument --all cannot be used with --page (use either --all or --page N, not both)"
+        )
+
+    return args
 
 
 def setup_logging(verbose: bool) -> None:
@@ -336,13 +596,20 @@ def setup_logging(verbose: bool) -> None:
 
 
 def get_landmarks_to_process(
-    landmark_ids: Optional[str], limit: Optional[int]
+    landmark_ids: Optional[str],
+    limit: Optional[int],
+    page: int = 1,
+    process_all: bool = False,
+    page_size: int = 100,
 ) -> List[str]:
     """Determine which landmarks to process.
 
     Args:
         landmark_ids: Comma-separated list of landmark IDs to process
         limit: Maximum number of landmarks to process
+        page: Page number to start fetching landmarks from (not used if process_all is True)
+        process_all: Whether to process all available landmarks in the database
+        page_size: Number of landmarks to fetch per API request
 
     Returns:
         List of landmark IDs to process
@@ -351,10 +618,38 @@ def get_landmarks_to_process(
         # Process specific landmarks
         landmarks_to_process = [lid.strip() for lid in landmark_ids.split(",")]
         logger.info(f"Will process {len(landmarks_to_process)} specified landmarks")
+    elif process_all:
+        # Process all available landmarks
+        from nyc_landmarks.db.db_client import get_db_client
+
+        db_client = get_db_client()
+        total_records = db_client.get_total_record_count()
+        logger.info(f"Retrieved total record count: {total_records}")
+
+        # If limit is provided, use the smaller of limit or total_records
+        effective_limit = (
+            min(limit, total_records) if limit is not None else total_records
+        )
+        logger.info(
+            f"Will process up to {effective_limit} landmarks of {total_records} total"
+        )
+
+        # When process_all is True, we always start from page 1 (due to mutual exclusivity)
+        # Set fetch_all_pages=True to fetch all pages of landmark IDs
+        landmarks_to_process = get_all_landmark_ids(
+            limit=effective_limit, page=1, page_size=page_size, fetch_all_pages=True
+        )
+        logger.info(
+            f"Will process {len(landmarks_to_process)} landmarks from all available pages"
+        )
     else:
-        # Process all landmarks (or limited set)
-        landmarks_to_process = get_all_landmark_ids(limit)
-        logger.info(f"Will process {len(landmarks_to_process)} landmarks")
+        # Fetch landmark IDs with the specified limit, page, and page_size
+        landmarks_to_process = get_all_landmark_ids(
+            limit=limit, page=page, page_size=page_size
+        )
+        logger.info(
+            f"Will process {len(landmarks_to_process)} landmarks (page {page}, page_size {page_size})"
+        )
 
     return landmarks_to_process
 
@@ -458,6 +753,7 @@ def print_results(
     elapsed_time: float,
     missing_articles: List[str],
     failed_landmarks: List[str],
+    chunk_names: List[str],
 ) -> int:
     """Print results and determine exit code.
 
@@ -469,6 +765,7 @@ def print_results(
         elapsed_time: Time taken for processing
         missing_articles: List of landmarks with no Wikipedia articles
         failed_landmarks: List of landmarks that failed processing
+        chunk_names: List of chunk names processed
 
     Returns:
         Exit code (0 for success/partial success, 1 for complete failure)
@@ -480,6 +777,14 @@ def print_results(
     print(f"Total Wikipedia articles processed: {total_articles}")
     print(f"Total chunks embedded: {total_chunks}")
     print(f"Processing time: {elapsed_time:.2f} seconds")
+
+    # Report chunk names
+    if chunk_names:
+        print("\nProcessed Chunk Names:")
+        for chunk_name in chunk_names[:10]:
+            print(f"- {chunk_name}")
+        if len(chunk_names) > 10:
+            print(f"...and {len(chunk_names) - 10} more")
 
     # Report landmarks with missing articles
     if missing_articles:
@@ -519,7 +824,9 @@ def main() -> None:
     setup_logging(args.verbose)
 
     # Get landmarks to process
-    landmarks_to_process = get_landmarks_to_process(args.landmark_ids, args.limit)
+    landmarks_to_process = get_landmarks_to_process(
+        args.landmark_ids, args.limit, args.page, args.all, args.page_size
+    )
     if not landmarks_to_process:
         logger.error("No landmarks to process")
         sys.exit(1)
@@ -546,6 +853,21 @@ def main() -> None:
         missing_articles,
         failed_landmarks,
     ) = stats
+
+    # Collect chunk names for reporting
+    chunk_names: List[str] = []
+    for result in results.values():
+        if isinstance(result, tuple) and len(result) == 3:
+            success, articles_processed, chunks_embedded = result
+            if success and isinstance(chunks_embedded, list):
+                for chunk in chunks_embedded:
+                    if (
+                        isinstance(chunk, dict)
+                        and "metadata" in chunk
+                        and "article_title" in chunk["metadata"]
+                    ):
+                        chunk_names.append(chunk["metadata"]["article_title"])
+
     exit_code = print_results(
         len(landmarks_to_process),
         successful_landmarks,
@@ -554,6 +876,7 @@ def main() -> None:
         elapsed_time,
         missing_articles,
         failed_landmarks,
+        chunk_names,
     )
 
     sys.exit(exit_code)

@@ -1,109 +1,71 @@
-# NYC Landmarks Vector Database - Progress
+# Project Progress
 
 ## What Works
 
-- Core landmarks data fetching from CoreDataStore API
+### Core Features
 
-- PDF text extraction from landmark reports
+- Vector database integration (Pinecone)
+- PDF processing pipeline for landmarks
+- API for landmark queries
+- Chat API for conversational interaction
+- Wikipedia integration for landmark data enrichment
+- Jupyter notebook interfaces for data exploration
 
-- Text chunking for optimal embedding
+### User Interface
 
-- Embedding generation using OpenAI's text-embedding models
+- Jupyter notebook widget-based interfaces for data exploration
+- Pagination controls for exploring large datasets
+- Query interfaces for vector database testing
 
-- Pinecone vector database storage and retrieval
+### Testing & Validation
 
-- Query API with filtering capabilities
+- Unit and integration test suites
+- Vector database validation tools
+- Metadata consistency checking
 
-- Chat API with conversation memory
+## Recent Improvements
 
-- End-to-end pipeline from data extraction to vector storage
+### 2025-05-23: Notebook UI Enhancement
 
-- Support for filtering by landmark ID
+- Fixed pagination layout in `wikipedia_integration_testing.ipynb`
+- Improved usability by placing pager on top and reorganizing controls
+- Created a reusable pattern for widget organization that can be applied to other notebooks
+- Developed a script to automate notebook cell modifications for standardization
 
-- Integration with CoreDataStore API as the data source
+### Previous Updates
 
-  - Storage in vector database
+- Standardized vector ID format across the system
+- Improved error handling in database client
+- Enhanced type checking for better code reliability
+- Created comprehensive test suite for database operations
+- Added Wikipedia article integration to enrich landmark data
 
-- **Vector Database Integration**
+## What's Left to Build
 
-  - Pinecone index configuration and management
-  - Vector storage with metadata
-  - Query capability with filters
-  - Vector ID management for updates
+### Short-term Tasks
 
-- **Landmark Processing**
+- Standardize pagination widget layout across all notebooks
+- Create helper functions for common widget patterns
+- Test notebooks in various environments to ensure consistent rendering
+- Review and update notebook documentation standards
 
-  - Batch processing for all NYC landmarks
-  - Incremental processing (only new/updated landmarks)
-  - Progress tracking and reporting
-  - Error handling with detailed logging
-  - Robust attribute access for both dictionary and object responses
-  - Modular code structure with focused helper functions
+### Medium-term Tasks
 
-- **Wikipedia Integration**
+- Improve performance of vector querying for large datasets
+- Enhance Wikipedia content processing for better semantic search
+- Develop more sophisticated vector filtering options
+- Create advanced visualization tools for data exploration
 
-  - Article fetching based on landmark names
-  - Content filtering and cleaning
-  - Embedding generation for article chunks
-  - Storage alongside PDF content
+### Long-term Goals
 
-## Work In Progress
-
-- **Query API Enhancement**
-
-  - Semantic search across landmark content
-  - Combined search with metadata filters
-  - Relevance scoring for results
-  - Response formatting for API consumers
-
-- **Chat Interface**
-
-  - Basic conversation management
-  - Context tracking between messages
-  - LLM integration for responses
-  - Knowledge grounding in landmark data
+- Develop a web-based frontend for easier access to the data
+- Implement user authentication and permission system
+- Create automated data refresh pipelines
+- Build a comprehensive dashboard for system monitoring
 
 ## Known Issues
 
-- Some landmarks have minimal PDF content
-- Embedding quality varies based on text content
-- Wikipedia content may not always match landmarks perfectly
-- Test coverage for edge cases needs expansion
-
-## Recent Completions
-
-- Fixed Pyright error in `check_landmark_processing.py`
-
-  - Resolved the "Pyright comments used to control file-level settings must appear on
-    their own line" error
-  - Ensured the `# pyright: reportMissingImports=false` directive appears on its own
-    line
-  - Improved code compliance with Pyright's static analysis requirements
-
-- Fixed attribute access errors in landmark processing
-
-  - Implemented `safe_get_attribute()` function to handle both dictionary and object
-    access patterns
-  - Successfully processed previously problematic landmarks (LP-00048, LP-00112,
-    LP-00012)
-  - Added improved logging for debugging and monitoring
-  - Fixed type checking issues to ensure code reliability
-
-- Improved code maintainability through refactoring
-
-  - Reduced complexity in key functions by breaking them down into smaller units
-  - Created specialized helper functions for common operations
-  - Made code more testable and easier to reason about
-  - Enhanced readability with focused functions that have clear responsibilities
-
-- Added Wikipedia integration
-
-  - Implemented article fetching and processing
-  - Created embeddings for article content
-  - Connected to landmark metadata for combined search
-
-- Improved error handling and logging
-
-  - Added detailed error messages for failed landmarks
-  - Implemented structured logging for pipeline stages
-  - Created result summaries for batch processing
+- Some Jupyter notebook compatibility issues with VS Code
+- Potential performance bottlenecks with large datasets
+- Wikipedia article coverage is incomplete for some landmarks
+- Test suite occasionally encounters timeout issues with API calls

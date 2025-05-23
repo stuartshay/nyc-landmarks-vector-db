@@ -23,6 +23,7 @@ import pytest
 
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
+from nyc_landmarks.vectordb.vector_id_validator import VectorIDValidator
 from tests.integration.test_pinecone_fixed_ids import (
     create_verification_summary,
     save_verification_results,
@@ -98,13 +99,14 @@ def test_common_landmarks_have_vectors(
         assert vectors, f"No vectors found for landmark {landmark_id}"
         logger.info(f"Found {len(vectors)} vectors for landmark {landmark_id}")
 
-        # Check vector IDs follow the pattern
+        # Check vector IDs follow the pattern (PDF, Wikipedia, or test)
         for vector in vectors:
             vector_id: str = vector.get("id", "")
-
-            assert vector_id.startswith(
-                f"{landmark_id}-chunk-"
-            ), f"Vector ID {vector_id} does not follow pattern {landmark_id}-chunk-X"
+            metadata = vector.get("metadata", {})
+            chunk_index = metadata.get("chunk_index", -1)
+            assert VectorIDValidator.is_valid(
+                vector_id, landmark_id, int(chunk_index)
+            ), f"Vector ID {vector_id} does not follow any accepted pattern for {landmark_id} (chunk_index={chunk_index})"
 
 
 @pytest.mark.integration
@@ -127,21 +129,20 @@ def test_deterministic_ids_consistency(
         if not vectors:
             pytest.skip(f"No vectors found for {landmark_id}, skipping test")
 
-        # Extract vector IDs and check for expected pattern
-        vector_ids: List[str] = [v.get("id", "") for v in vectors]
-
-        # Check if IDs have the correct format
-        for vid in vector_ids:
-            assert vid.startswith(
-                f"{landmark_id}-chunk-"
-            ), f"Vector ID {vid} does not start with {landmark_id}-chunk-"
-
+        # Check if IDs have the correct format (PDF, Wikipedia, or test)
+        for vector in vectors:
+            vid = vector.get("id", "")
+            metadata = vector.get("metadata", {})
+            chunk_index = metadata.get("chunk_index", -1)
+            assert VectorIDValidator.is_valid(
+                vid, landmark_id, int(chunk_index)
+            ), f"Vector ID {vid} does not follow any accepted pattern for {landmark_id} (chunk_index={chunk_index})"
             # Extract chunk index and verify it's a number
             try:
-                chunk_index = int(vid.split("-chunk-")[1])
+                chunk_index_val = int(vid.split("-chunk-")[1])
                 assert (
-                    0 <= chunk_index < 100
-                ), f"Chunk index {chunk_index} out of expected range"
+                    0 <= chunk_index_val < 100
+                ), f"Chunk index {chunk_index_val} out of expected range"
             except (ValueError, IndexError):
                 assert False, f"Vector ID {vid} does not contain a valid chunk index"
 

@@ -40,7 +40,6 @@ def check_packages() -> bool:
         "pinecone",
         "pypdf",
         "pytest",
-        "pre-commit",
         "black",
         "isort",
         "flake8",
@@ -101,23 +100,39 @@ def check_pre_commit() -> bool:
 
 def check_development_tools() -> bool:
     """Check that development tools are working."""
+    all_tools_working = True
+
+    # Check pytest
     try:
-        # Check pytest
         subprocess.run(
             ["pytest", "--version"], capture_output=True, check=True
         )  # nosec B603, B607 - Using fixed command
         print("✅ pytest is working")
+    except (subprocess.SubprocessError, FileNotFoundError):
+        print("❌ pytest is not installed properly")
+        all_tools_working = False
 
-        # Check black
+    # Check black
+    try:
         subprocess.run(
             ["black", "--version"], capture_output=True, check=True
         )  # nosec B603, B607 - Using fixed command
         print("✅ black formatter is working")
-
-        return True
     except (subprocess.SubprocessError, FileNotFoundError):
-        print("❌ Some development tools are not installed properly")
-        return False
+        print("❌ black formatter is not installed properly")
+        all_tools_working = False
+
+    # Check pyright
+    try:
+        result = subprocess.run(
+            ["pyright", "--version"], capture_output=True, text=True, check=True
+        )  # nosec B603, B607 - Using fixed command
+        print(f"✅ pyright is working: {result.stdout.strip()}")
+    except (subprocess.SubprocessError, FileNotFoundError):
+        print("❌ pyright is not installed or not working")
+        all_tools_working = False
+
+    return all_tools_working
 
 
 def main() -> int:

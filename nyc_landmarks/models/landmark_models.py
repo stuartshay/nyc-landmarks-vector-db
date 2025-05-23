@@ -1,8 +1,8 @@
 """
-Pydantic models for NYC Landmarks Vector Database.
+Pydantic models for landmark-related data structures.
 
-This module contains data models for various aspects of the NYC Landmarks
-system, particularly focused on landmark reports and their metadata.
+These models provide type-safe structures for the landmark information
+and ensure consistent data validation and access patterns.
 """
 
 from datetime import datetime
@@ -210,8 +210,8 @@ class LpcReportDetailResponse(BaseModel):
     )
     photoUrl: Optional[str] = Field(None, description="URL to a photo of the landmark")
     pdfReportUrl: Optional[str] = Field(None, description="URL to the PDF report")
-    bbl: Optional[int] = Field(
-        None, description="Borough-Block-Lot identifier as integer"
+    bbl: Optional[Union[int, str]] = Field(
+        None, description="Borough-Block-Lot identifier (can be int, str, or None)"
     )
     bin: Optional[int] = Field(None, description="Building Identification Number")
     objectId: Optional[int] = Field(None, description="Object identifier")
@@ -232,6 +232,8 @@ class LpcReportDetailResponse(BaseModel):
         if v is not None and not v.startswith(("http://", "https://")):
             raise ValueError("URL must be a valid HTTP or HTTPS URL")
         return v
+
+    # No helper methods needed, we'll use the fields directly
 
 
 class PdfInfo(BaseModel):
@@ -273,6 +275,22 @@ class ProcessingResult(BaseModel):
     def __str__(self) -> str:
         """Return a string representation of the processing result."""
         return f"Total reports: {self.total_reports}, Reports with PDFs: {self.reports_with_pdfs}"
+
+
+class PlutoDataModel(BaseModel):
+    """
+    Model representing PLUTO (Primary Land Use Tax Lot Output) data for a landmark.
+
+    This model captures key property information from the NYC Department of City Planning's
+    PLUTO database, which provides extensive land use and geographic data.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    yearBuilt: Optional[str] = Field(None, description="Year the structure was built")
+    landUse: Optional[str] = Field(None, description="Land use category")
+    historicDistrict: Optional[str] = Field(None, description="Historic district name")
+    zoneDist1: Optional[str] = Field(None, description="Primary zoning district")
 
 
 class ApiError(BaseModel):

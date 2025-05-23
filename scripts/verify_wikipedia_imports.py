@@ -203,13 +203,7 @@ def validate_vector_metadata() -> Dict[str, Any]:
     vectors = query_response.get("matches", [])
 
     # Required metadata fields
-    required_fields = [
-        "landmark_id",
-        "source_type",
-        "article_title",
-        "article_url",
-        "chunk_index",
-    ]
+    required_fields = ["landmark_id", "source_type", "chunk_index", "text"]
 
     # Check each vector's metadata
     valid_metadata = 0

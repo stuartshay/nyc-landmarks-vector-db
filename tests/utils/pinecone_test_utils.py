@@ -7,7 +7,7 @@ production data.
 """
 
 import os
-import random
+import secrets
 import string
 import sys
 import time
@@ -35,12 +35,16 @@ DEFAULT_TEST_INDEX_PREFIX = "nyc-landmarks-test"
 def generate_session_id() -> str:
     """
     Generate a unique session identifier based on timestamp and random string.
+    Uses cryptographically secure random generator for better security.
 
     Returns:
         str: A unique session identifier
     """
     timestamp = time.strftime("%Y%m%d-%H%M%S")
-    random_part = "".join(random.choices(string.ascii_lowercase + string.digits, k=6))
+    # Use secrets module for cryptographically secure random generation
+    random_part = "".join(
+        secrets.choice(string.ascii_lowercase + string.digits) for _ in range(6)
+    )
     return f"{timestamp}-{random_part}"
 
 

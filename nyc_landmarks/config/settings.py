@@ -11,7 +11,17 @@ from enum import Enum
 from typing import Optional
 
 from dotenv import load_dotenv
-from google.cloud import secretmanager
+
+# Add error handling for Google Cloud Secret Manager import
+try:
+    from google.cloud import secretmanager
+
+    GOOGLE_CLOUD_AVAILABLE = True
+except ImportError:
+    GOOGLE_CLOUD_AVAILABLE = False
+    print(
+        "Warning: google.cloud.secretmanager not available - will use environment variables only"
+    )
 from pydantic import Field, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -115,6 +125,9 @@ class SecretManager:
         Args:
             project_id: GCP project ID
         """
+        if not GOOGLE_CLOUD_AVAILABLE:
+            raise ImportError("Google Cloud Secret Manager is not available")
+
         self.client = secretmanager.SecretManagerServiceClient()
         self.project_id = project_id
 
@@ -193,6 +206,13 @@ def load_settings_from_secrets(settings: Settings) -> Settings:
 # Load settings
 settings = Settings()
 
-# Try to load from Google Cloud Secret Manager if enabled
-if settings.USE_SECRET_MANAGER and settings.GCP_PROJECT_ID:
-    settings = load_settings_from_secrets(settings)
+# Try to load from Google Cloud Secret Manager if enabled and available
+if settings.USE_SECRET_MANAGER and settings.GCP_PROJECT_ID and GOOGLE_CLOUD_AVAILABLE:
+    try:
+        settings = load_settings_from_secrets(settings)
+    except Exception as e:
+        print(f"Failed to load settings from Secret Manager: {e}")
+        print("Using environment variables instead.")
+elif settings.USE_SECRET_MANAGER and not GOOGLE_CLOUD_AVAILABLE:
+    print("Secret Manager is enabled but google.cloud package is not available.")
+    print("Using environment variables instead.")

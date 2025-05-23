@@ -104,6 +104,7 @@ setup(
         "matplotlib",  # Added for notebooks
         "folium",  # Added for map visualizations in notebooks
         "scikit-learn",  # Added for clustering in notebooks
+        "transformers>=4.52.3",
     ],
     extras_require={
         "dev": [

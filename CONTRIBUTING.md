@@ -120,6 +120,17 @@ pre-commit install
 pre-commit run --all-files
 ```
 
+### Security Scanning
+
+The project includes automated security scanning with Bandit:
+
+- **Pre-commit integration**: Security scans run automatically before each commit
+- **Configuration**: Security settings are defined in `pyproject.toml` and `.bandit`
+- **Excluded issues**: Legitimate usage patterns are excluded (assert in tests, subprocess with validation)
+- **Manual scan**: Run `bandit -r . -x ./venv,./nyc_landmarks_vector_db.egg-info` for direct scanning
+
+See `docs/security_ci_integration.md` for complete security documentation.
+
 ## License
 
 By contributing, you agree that your contributions will be licensed under the project's

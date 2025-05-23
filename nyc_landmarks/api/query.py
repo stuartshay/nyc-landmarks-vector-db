@@ -439,9 +439,15 @@ def _get_landmark_name(landmark_id: str, db_client: DbClient) -> Optional[str]:
 
     # Handle both dict and Pydantic model objects
     if isinstance(landmark, dict):
-        return landmark.get("name")
+        name = landmark.get("name")
+        if isinstance(name, str) or name is None:
+            return name
+        return str(name)
     else:
-        return getattr(landmark, "name", None)
+        name = getattr(landmark, "name", None)
+        if isinstance(name, str) or name is None:
+            return name
+        return str(name)
 
 
 def _get_source_info(metadata: Dict[str, Any]) -> Tuple[str, str]:
@@ -672,14 +678,13 @@ async def search_landmarks_text(
     """
     try:
         # Search landmarks in database
-        landmarks_data = db_client.search_landmarks(q)
-
-        # Limit results
-        landmarks_data = landmarks_data[:limit]
+        lpc_report_response = db_client.search_landmarks(q)
+        # Use the .results attribute and limit the results
+        results = lpc_report_response.results[:limit]
 
         # Convert to LandmarkInfo objects
         landmarks: List[LandmarkInfo] = []
-        for landmark_data in landmarks_data:
+        for landmark_data in results:
             if isinstance(landmark_data, dict):
                 landmark = LandmarkInfo(
                     id=landmark_data.get("id", ""),

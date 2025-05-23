@@ -23,3 +23,13 @@ max-line-length = 88
 # Mypy configuration is centralized in mypy.ini
 
 # All mypy overrides are now in mypy.ini
+
+[tool.bandit]
+# Exclude virtual environment and build directories
+exclude_dirs = ["venv", "nyc_landmarks_vector_db.egg-info", "__pycache__", ".git"]
+
+# Skip tests that have legitimate usage or are false positives
+# B101: Assert usage in test files is acceptable
+# B404: Subprocess import is legitimate for script execution
+# B603: Subprocess call is secure with validated inputs
+skips = ["B101", "B404", "B603"]
