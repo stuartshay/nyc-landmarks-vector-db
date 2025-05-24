@@ -11,12 +11,10 @@ from typing import Any, Dict, List, Optional, Protocol, Union, cast
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db._coredatastore_api import _CoreDataStoreAPI
 from nyc_landmarks.models.landmark_models import (
-    LpcReportResponse,  # Ensure LpcReportResponse is here
-)
-from nyc_landmarks.models.landmark_models import (
     LandmarkDetail,
     LpcReportDetailResponse,
     LpcReportModel,
+    LpcReportResponse,  # Ensure LpcReportResponse is here
     PlutoDataModel,
 )
 from nyc_landmarks.models.metadata_models import LandmarkMetadata
@@ -237,52 +235,54 @@ class DbClient:
         elif isinstance(response, list):
             # If the API returns a list directly, convert it to LpcReportResponse
             model_results: List[LpcReportModel] = []
-            for item in response:
+            for item_dict in cast(List[Dict[str, Any]], response):
                 try:
-                    model_results.append(LpcReportModel(**item))
+                    model_results.append(LpcReportModel(**item_dict))
                 except Exception as e:
                     logger.warning(f"Error converting item to LpcReportModel: {e}")
                     # Create a minimal model with required fields and fallback values
                     model_results.append(
                         LpcReportModel(
-                            name=item.get("name", "Unknown"),
-                            lpNumber=item.get("lpNumber", "Unknown"),
-                            lpcId=item.get("lpcId", ""),
-                            objectType=item.get("objectType", ""),
-                            architect=item.get("architect", ""),
-                            style=item.get("style", ""),
-                            street=item.get("street", ""),
-                            borough=item.get("borough", ""),
-                            dateDesignated=item.get("dateDesignated", ""),
-                            photoStatus=item.get("photoStatus", False),
-                            mapStatus=item.get("mapStatus", False),
-                            neighborhood=item.get("neighborhood", ""),
-                            zipCode=item.get("zipCode", ""),
-                            photoUrl=item.get("photoUrl"),
-                            pdfReportUrl=item.get("pdfReportUrl"),
+                            name=item_dict.get("name", "Unknown"),
+                            lpNumber=item_dict.get("lpNumber", "Unknown"),
+                            lpcId=item_dict.get("lpcId", ""),
+                            objectType=item_dict.get("objectType", ""),
+                            architect=item_dict.get("architect", ""),
+                            style=item_dict.get("style", ""),
+                            street=item_dict.get("street", ""),
+                            borough=item_dict.get("borough", ""),
+                            dateDesignated=item_dict.get("dateDesignated", ""),
+                            photoStatus=item_dict.get("photoStatus", False),
+                            mapStatus=item_dict.get("mapStatus", False),
+                            neighborhood=item_dict.get("neighborhood", ""),
+                            zipCode=item_dict.get("zipCode", ""),
+                            photoUrl=item_dict.get("photoUrl"),
+                            pdfReportUrl=item_dict.get("pdfReportUrl"),
                         )
                     )
-            # Create the LpcReportResponse with proper field names
+            # Create the LpcReportResponse with proper field names using kwargs
+            from_dict: Dict[str, Any] = {"from": 1}
             return LpcReportResponse(
                 results=model_results,
                 total=len(model_results),
                 page=1,
                 limit=len(model_results),
-                **{"from": 1},  # Use dict expansion for the reserved keyword
                 to=len(model_results),
+                **from_dict,
             )
         else:
             logger.warning(
                 f"Unexpected response type from search_landmarks: {type(response)}"
             )
-            # Return an empty LpcReportResponse
+            # Return an empty LpcReportResponse using kwargs
+            from_dict_empty: Dict[str, Any] = {"from": 1}
             return LpcReportResponse(
                 results=[],
                 total=0,
                 page=1,
                 limit=0,
-                **{"from": 1},  # Use dict expansion for the reserved keyword
                 to=0,
+                **from_dict_empty,
             )
 
     def get_landmark_metadata(
@@ -370,73 +370,70 @@ class DbClient:
                 sort_column=sort_column,
                 sort_order=sort_order,
             )
+        return self._get_lpc_reports_fallback(
+            page=page,
+            limit=limit,
+        )
 
-        # Fallback implementation if client doesn't support get_lpc_reports
+    def _get_lpc_reports_fallback(
+        self, page: int = 1, limit: int = 10
+    ) -> LpcReportResponse:
+        """Fallback implementation for get_lpc_reports if not supported by client."""
         try:
-            # If not available, try a more generic approach
             if hasattr(self.client, "get_landmarks_page"):
                 response = self.client.get_landmarks_page(limit, page)
-
-                # Handle response based on its type
                 landmarks: List[Dict[str, Any]] = []
-
-                # If response is a LpcReportResponse object
                 if hasattr(response, "results"):
                     landmarks = [model.model_dump() for model in response.results]
-                # If response is a list (older API format)
                 elif isinstance(response, list):
                     landmarks = response
                 else:
                     logger.warning(
                         f"Unexpected response type from get_landmarks_page: {type(response)}"
                     )
-                    # Create an empty list to prevent further errors
                     landmarks = []
 
-                # Convert to models if needed to satisfy type checker
+                def safe_lpc_report_model(item: Dict[str, Any]) -> LpcReportModel:
+                    return LpcReportModel(
+                        name=item.get("name", "Unknown"),
+                        lpcId=item.get("lpcId", ""),
+                        lpNumber=item.get("lpNumber", "Unknown"),
+                        objectType=item.get("objectType", ""),
+                        architect=item.get("architect", ""),
+                        style=item.get("style", ""),
+                        street=item.get("street", ""),
+                        borough=item.get("borough", ""),
+                        dateDesignated=item.get("dateDesignated", ""),
+                        photoStatus=item.get("photoStatus", False),
+                        mapStatus=item.get("mapStatus", False),
+                        neighborhood=item.get("neighborhood", ""),
+                        zipCode=item.get("zipCode", ""),
+                        photoUrl=item.get("photoUrl"),
+                        pdfReportUrl=item.get("pdfReportUrl"),
+                    )
+
                 model_results: List[LpcReportModel] = []
                 for item in landmarks:
-                    # item is always a dict here based on get_landmarks_page signature
-                    try:
-                        model_results.append(LpcReportModel(**item))
-                    except Exception as conversion_error:
-                        logger.warning(
-                            f"Error converting item to LpcReportModel: {conversion_error}"
-                        )
-                        # Create a minimal model with required fields
-                        model_results.append(
-                            LpcReportModel(
-                                name="Unknown",
-                                lpNumber="Unknown",
-                                lpcId="",
-                                objectType="",
-                                architect="",
-                                style="",
-                                street="",
-                                borough="",
-                                dateDesignated="",
-                                photoStatus=False,
-                                mapStatus=False,
-                                neighborhood="",
-                                zipCode="",
-                                photoUrl=None,
-                                pdfReportUrl=None,
+                    if isinstance(item, dict):
+                        try:
+                            model_results.append(safe_lpc_report_model(item))
+                        except Exception as conversion_error:
+                            logger.warning(
+                                f"Error converting item to LpcReportModel: {conversion_error}"
                             )
-                        )
-
-                # Use "from" parameter via dictionary unpacking to avoid naming issues
+                    else:
+                        logger.warning(f"Skipping non-dict item in landmarks: {item}")
                 start_record = int((page - 1) * limit + 1)
                 end_record = int(
                     min((page - 1) * limit + len(landmarks), len(landmarks))
                 )
-
                 return LpcReportResponse(
                     total=len(landmarks),
                     page=page,
                     limit=limit,
-                    **{"from": start_record},  # Use unpacking for the "from" field
                     to=end_record,
                     results=model_results,
+                    **{"from": start_record},
                 )
             else:
                 raise ValueError("Client does not support getting landmarks page")

@@ -16,7 +16,7 @@ Usage:
 import argparse
 import json
 import time
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.db_client import get_db_client
@@ -100,11 +100,9 @@ def update_and_verify_landmark(landmark_id: str, verbose: bool = False) -> None:
         logger.info(f"Upserting test vector to Pinecone with ID: {test_vector_id}")
         if namespace:
             logger.info(f"Using namespace: {namespace}")
-            pinecone_db.index.upsert(
-                vectors=cast(List[Any], vectors_to_upsert), namespace=namespace
-            )
+            pinecone_db.index.upsert(vectors=vectors_to_upsert, namespace=namespace)
         else:
-            pinecone_db.index.upsert(vectors=cast(List[Any], vectors_to_upsert))
+            pinecone_db.index.upsert(vectors=vectors_to_upsert)
 
         logger.info("Uploaded test vector to Pinecone")
 
