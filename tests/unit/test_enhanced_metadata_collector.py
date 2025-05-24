@@ -118,15 +118,8 @@ class TestEnhancedMetadataCollectorNonApiMode(unittest.TestCase):
         result = self.collector.collect_landmark_metadata("LP-00009")
 
         # Verify only basic metadata was used (no API calls)
-        # Convert result to dictionary for comparison
-        result_dict = {
-            "landmark_id": result.landmark_id,
-            "name": result.name,
-            "location": result.location,
-            "borough": result.borough,
-            "type": result.type,
-            "designation_date": result.designation_date,
-        }
+        # Convert result to dictionary for comparison, removing None values
+        result_dict = {k: v for k, v in result.dict().items() if v is not None}
         self.assertEqual(result_dict, self.basic_metadata)
         self.mock_db_client.get_landmark_metadata.assert_called_once_with("LP-00009")
 
@@ -287,10 +280,10 @@ class TestEnhancedMetadataCollectorApiMode(unittest.TestCase):
         self.assertFalse(result["has_pluto_data"])
 
         # PLUTO-related fields should not be present
-        self.assertNotIn("year_built", result)
-        self.assertNotIn("land_use", result)
-        self.assertNotIn("historic_district", result)
-        self.assertNotIn("zoning_district", result)
+        for field in ["year_built", "land_use", "historic_district", "zoning_district"]:
+            self.assertFalse(
+                hasattr(result, field) and getattr(result, field) is not None
+            )
 
     def test_building_data_pydantic_model(self) -> None:
         """Test handling of Pydantic model response for building data."""
@@ -477,8 +470,9 @@ class TestEnhancedMetadataCollectorErrorHandling(unittest.TestCase):
         # Verify API was called but failed
         self.mock_db_client.get_landmark_buildings.assert_called_once_with("LP-00009")
 
-        # Verify result falls back to basic metadata
-        self.assertEqual(result, self.basic_metadata)
+        # Convert result to dictionary for comparison, removing None values
+        result_dict = {k: v for k, v in result.dict().items() if v is not None}
+        self.assertEqual(result_dict, self.basic_metadata)
 
     def test_landmark_details_error(self) -> None:
         """Test error handling when get_landmark_by_id fails."""

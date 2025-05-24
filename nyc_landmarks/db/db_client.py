@@ -415,10 +415,31 @@ class DbClient:
 
     @staticmethod
     def _safe_lpc_report_model(item: Dict[str, Any]) -> LpcReportModel:
+        # If lpNumber is missing or empty, treat as invalid and set name to 'Unknown'
+        lp_number = item.get("lpNumber")
+        if not lp_number or not isinstance(lp_number, str) or not lp_number.strip():
+            return LpcReportModel(
+                name="Unknown",
+                lpcId=item.get("lpcId", ""),
+                lpNumber="Unknown",
+                objectType=item.get("objectType", ""),
+                architect=item.get("architect", ""),
+                style=item.get("style", ""),
+                street=item.get("street", ""),
+                borough=item.get("borough", ""),
+                dateDesignated=item.get("dateDesignated", ""),
+                photoStatus=item.get("photoStatus", False),
+                mapStatus=item.get("mapStatus", False),
+                neighborhood=item.get("neighborhood", ""),
+                zipCode=item.get("zipCode", ""),
+                photoUrl=item.get("photoUrl"),
+                pdfReportUrl=item.get("pdfReportUrl"),
+            )
+        # Otherwise, use the provided name (or 'Unknown' if missing)
         return LpcReportModel(
             name=item.get("name", "Unknown"),
             lpcId=item.get("lpcId", ""),
-            lpNumber=item.get("lpNumber", "Unknown"),
+            lpNumber=lp_number,
             objectType=item.get("objectType", ""),
             architect=item.get("architect", ""),
             style=item.get("style", ""),

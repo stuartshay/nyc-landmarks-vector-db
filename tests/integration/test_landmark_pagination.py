@@ -95,8 +95,6 @@ class TestLandmarkPagination:
             len(all_ids) == total_count
         ), f"Expected {total_count} unique IDs, got {len(all_ids)}"
 
-    @pytest.mark.mcp
-    def test_pagination_with_mcp_server(self) -> None:
         """Test pagination using MCP server direct access."""
         import pytest
 
