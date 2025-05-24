@@ -25,7 +25,7 @@ import time
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from tqdm import tqdm
-from transformers import PreTrainedTokenizer
+from transformers.tokenization_utils import PreTrainedTokenizer
 
 from nyc_landmarks.db.wikipedia_fetcher import WikipediaFetcher
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator

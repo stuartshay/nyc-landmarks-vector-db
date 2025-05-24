@@ -7,9 +7,8 @@ This script checks multiple Wikipedia vectors to ensure they have the required m
 
 from typing import Dict, List
 
-from check_specific_vector import check_vector
-
 from nyc_landmarks.utils.logger import get_logger
+from scripts.check_specific_vector import check_wiki_vector as check_vector
 
 logger = get_logger(__name__)
 
