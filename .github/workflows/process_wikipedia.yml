@@ -211,11 +211,12 @@ jobs:
             # Matrix mode - calculate batch range
             BATCH_INDEX=${{ matrix.batch }}
             BATCH_SIZE="${{ github.event.inputs.batch_size }}"
-            START_INDEX=$((BATCH_INDEX * BATCH_SIZE + 1))
+            # Use page numbers (1-indexed) not record indices
+            PAGE_NUMBER=$((BATCH_INDEX + 1))
 
             # Use pagination without --all flag (they're mutually exclusive)
-            ARGS="$ARGS --page $START_INDEX --page-size $BATCH_SIZE"
-            echo "Processing batch $BATCH_INDEX: Starting at record $START_INDEX with batch size $BATCH_SIZE"
+            ARGS="$ARGS --page $PAGE_NUMBER --page-size $BATCH_SIZE"
+            echo "Processing batch $BATCH_INDEX: Page $PAGE_NUMBER with batch size $BATCH_SIZE"
           elif [ -n "${{ github.event.inputs.landmark_ids }}" ]; then
             # Specific landmark IDs mode
             ARGS="$ARGS --landmark-ids ${{ github.event.inputs.landmark_ids }}"
@@ -263,7 +264,7 @@ jobs:
             echo "## Configuration"
             if [ "${{ needs.setup.outputs.using_matrix }}" = "true" ]; then
               echo "- Batch: ${{ matrix.batch }}"
-              echo "- Start Index: $START_INDEX"
+              echo "- Page: $PAGE_NUMBER"
               echo "- Batch Size: $BATCH_SIZE"
             else
               echo "- Landmark IDs: ${{ github.event.inputs.landmark_ids || 'All landmarks' }}"
