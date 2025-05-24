@@ -13,7 +13,7 @@ import argparse
 import json
 import logging
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, TypedDict, cast
 
 from nyc_landmarks.db._coredatastore_api import _CoreDataStoreAPI as CoreDataStoreAPI
 from nyc_landmarks.models.landmark_models import LpcReportDetailResponse
@@ -21,6 +21,14 @@ from nyc_landmarks.models.metadata_models import LandmarkMetadata
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.enhanced_metadata import EnhancedMetadataCollector
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
+
+
+# TypedDict for Pinecone vector structure
+class PineconeVector(TypedDict):
+    id: str
+    values: List[float]
+    metadata: Dict[str, Any]
+
 
 # Configure logging
 logger = get_logger(__name__)
@@ -159,7 +167,7 @@ def create_and_upload_test_vector(
 
     # Format the vector as expected by Pinecone SDK
     # Convert to the expected Vector type format with dictionary structure
-    vectors_to_upsert = [
+    vectors_to_upsert: List[Dict[str, Any]] = [
         {
             "id": test_vector_id,
             "values": [0.5] * embedding_dimension,
@@ -167,7 +175,7 @@ def create_and_upload_test_vector(
         }
     ]
 
-    pinecone_db.index.upsert(vectors=vectors_to_upsert)
+    pinecone_db.index.upsert(vectors=cast(List[Any], vectors_to_upsert))
     logger.info(f"Uploaded test vector to Pinecone with ID: {test_vector_id}")
 
     return test_vector_id

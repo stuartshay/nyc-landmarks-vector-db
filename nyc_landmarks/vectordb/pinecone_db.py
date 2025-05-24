@@ -602,6 +602,15 @@ class PineconeDB:
         Store a batch of vectors in Pinecone using the low-level API.
 
         Args:
+            vectors: List of tuples (id, embedding, metadata). This is NOT the same as the format for upsert, which expects a list of dicts.
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        """
+        Store a batch of vectors in Pinecone using the low-level API.
+
+        Args:
             vectors: List of tuples containing (id, embedding, metadata)
 
         Returns:
@@ -613,7 +622,7 @@ class PineconeDB:
 
         try:
             # Convert to format expected by upsert
-            pinecone_vectors = []
+            pinecone_vectors: List[Dict[str, Any]] = []
             for vector_id, embedding, metadata in vectors:
                 pinecone_vectors.append(
                     {"id": vector_id, "values": embedding, "metadata": metadata}
@@ -623,6 +632,7 @@ class PineconeDB:
             batch_size = 100
             for i in range(0, len(pinecone_vectors), batch_size):
                 batch = pinecone_vectors[i : i + batch_size]
+                # upsert expects a list of dicts, not tuples
                 self.index.upsert(vectors=batch)
 
             logger.info(f"Successfully stored {len(pinecone_vectors)} vectors")

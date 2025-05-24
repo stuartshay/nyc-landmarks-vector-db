@@ -113,9 +113,9 @@ def get_vector_db() -> PineconeDB:
 
 def get_db_client() -> DbClient:
     """Get an instance of DbClient."""
-    from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
+    from nyc_landmarks.db.db_client import get_db_client
 
-    return DbClient(CoreDataStoreAPI())
+    return get_db_client()
 
 
 # --- API endpoints ---
@@ -395,9 +395,9 @@ def _initialize_components(
     if vector_db is None:
         vector_db = PineconeDB()
     if db_client is None:
-        from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
+        from nyc_landmarks.db.db_client import get_db_client
 
-        db_client = DbClient(CoreDataStoreAPI())
+        db_client = get_db_client()
     return embedding_generator, vector_db, db_client
 
 

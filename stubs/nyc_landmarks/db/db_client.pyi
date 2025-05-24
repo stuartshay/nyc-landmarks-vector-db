@@ -4,7 +4,8 @@ Type stub file for db_client.py to satisfy mypy.
 
 from typing import Any, Dict, List, Optional, Union
 
-from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
+# Import directly from implementation module
+from nyc_landmarks.db._coredatastore_api import _CoreDataStoreAPI
 from nyc_landmarks.models.landmark_models import (
     LpcReportDetailResponse,
     LpcReportModel,
@@ -15,9 +16,9 @@ from nyc_landmarks.models.wikipedia_models import WikipediaArticleModel
 class DbClient:
     """Database client interface for CoreDataStore API."""
 
-    client: CoreDataStoreAPI
+    client: _CoreDataStoreAPI
 
-    def __init__(self, client: CoreDataStoreAPI) -> None:
+    def __init__(self, client: _CoreDataStoreAPI) -> None:
         """Initialize the CoreDataStore API client."""
         ...
 
