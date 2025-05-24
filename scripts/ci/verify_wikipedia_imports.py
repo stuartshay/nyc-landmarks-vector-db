@@ -19,7 +19,7 @@ from typing import Any, Dict, Tuple
 import pandas as pd
 from tabulate import tabulate
 
-from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
+from nyc_landmarks.db._coredatastore_api import _CoreDataStoreAPI as CoreDataStoreAPI
 from nyc_landmarks.db.db_client import DbClient
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
