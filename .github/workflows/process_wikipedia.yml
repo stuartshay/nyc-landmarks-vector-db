@@ -213,8 +213,8 @@ jobs:
             BATCH_SIZE="${{ github.event.inputs.batch_size }}"
             START_INDEX=$((BATCH_INDEX * BATCH_SIZE + 1))
 
-            # Use --all flag with proper pagination
-            ARGS="$ARGS --all --page $START_INDEX --page-size $BATCH_SIZE"
+            # Use pagination without --all flag (they're mutually exclusive)
+            ARGS="$ARGS --page $START_INDEX --page-size $BATCH_SIZE"
             echo "Processing batch $BATCH_INDEX: Starting at record $START_INDEX with batch size $BATCH_SIZE"
           elif [ -n "${{ github.event.inputs.landmark_ids }}" ]; then
             # Specific landmark IDs mode
