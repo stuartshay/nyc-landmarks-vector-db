@@ -19,7 +19,7 @@ from typing import Any, Dict, Tuple
 import pandas as pd
 from tabulate import tabulate
 
-from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
+from nyc_landmarks.db._coredatastore_api import _CoreDataStoreAPI as CoreDataStoreAPI
 from nyc_landmarks.db.db_client import DbClient
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
@@ -99,7 +99,7 @@ def check_wikipedia_coverage() -> Tuple[Dict[str, Any], pd.DataFrame]:
         "total_landmarks": len(landmark_ids),
         "landmarks_with_wiki": len(landmarks_with_wiki),
         "coverage_percentage": round(
-            len(landmarks_with_wiki) / len(landmark_ids) * 100, 2
+            (len(landmarks_with_wiki) / len(landmark_ids) * 100) if len(landmark_ids) > 0 else 0, 2
         ),
         "total_wiki_vectors": len(vectors),
         "unique_articles": len(article_counts),
@@ -294,7 +294,7 @@ def report_article_distribution() -> Dict[str, Any]:
         ),
         "avg_landmarks_per_article": (
             round(sum([a[1] for a in article_counts]) / len(article_counts), 2)
-            if article_counts
+            if article_counts and len(article_counts) > 0
             else 0
         ),
         "top_articles": top_articles,
