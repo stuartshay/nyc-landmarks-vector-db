@@ -9,16 +9,17 @@ from multiple standalone scripts into a single, unified command-line tool.
 
 The following scripts have been deprecated and their functionality has been integrated into `vector_utility.py`:
 
-| Deprecated Script | Replacement Command | Description |
-|-------------------|---------------------|-------------|
-| `fetch_pinecone_vector.py` | `vector_utility.py fetch` | Fetch a specific vector by ID |
-| `check_landmark_vectors.py` | `vector_utility.py check-landmark` | Check all vectors for a specific landmark ID |
-| `list_pinecone_vectors.py` | `vector_utility.py list-vectors` | List vectors in Pinecone with optional filtering |
-| `check_specific_vector.py` | `vector_utility.py validate` | Validate a specific vector against requirements |
+| Deprecated Script           | Replacement Command                | Description                                      |
+| --------------------------- | ---------------------------------- | ------------------------------------------------ |
+| `fetch_pinecone_vector.py`  | `vector_utility.py fetch`          | Fetch a specific vector by ID                    |
+| `check_landmark_vectors.py` | `vector_utility.py check-landmark` | Check all vectors for a specific landmark ID     |
+| `list_pinecone_vectors.py`  | `vector_utility.py list-vectors`   | List vectors in Pinecone with optional filtering |
+| `check_specific_vector.py`  | `vector_utility.py validate`       | Validate a specific vector against requirements  |
 
 ## Commands
 
 ### fetch
+
 Fetch a specific vector by ID from Pinecone.
 
 ```bash
@@ -26,6 +27,7 @@ python scripts/vector_utility.py fetch <vector_id> [--pretty] [--namespace NAMES
 ```
 
 ### check-landmark
+
 Check all vectors for a specific landmark ID.
 
 ```bash
@@ -33,6 +35,7 @@ python scripts/vector_utility.py check-landmark <landmark_id> [--verbose] [--nam
 ```
 
 ### list-vectors
+
 List vectors in Pinecone with optional filtering.
 
 ```bash
@@ -40,6 +43,7 @@ python scripts/vector_utility.py list-vectors [--prefix PREFIX] [--limit LIMIT] 
 ```
 
 ### validate
+
 Validate a specific vector against metadata requirements.
 
 ```bash
@@ -47,6 +51,7 @@ python scripts/vector_utility.py validate <vector_id> [--verbose] [--namespace N
 ```
 
 ### compare-vectors
+
 Compare metadata between two vectors.
 
 ```bash
@@ -54,6 +59,7 @@ python scripts/vector_utility.py compare-vectors <first_vector_id> <second_vecto
 ```
 
 ### verify-vectors
+
 Verify the integrity of vectors in Pinecone.
 
 ```bash
@@ -61,6 +67,7 @@ python scripts/vector_utility.py verify-vectors [--namespace NAMESPACE] [--limit
 ```
 
 ### verify-batch
+
 Verify a batch of specific vectors by their IDs.
 
 ```bash
@@ -101,7 +108,7 @@ python scripts/vector_utility.py verify-batch --file vector_ids.txt --verbose
 ## Benefits of the Unified Approach
 
 1. **Consistent Interface**: All vector-related operations follow the same command structure and parameter conventions.
-2. **Reduced Cognitive Load**: Users only need to remember one script name instead of multiple separate scripts.
-3. **Shared Code**: Common functionality like namespace handling and output formatting is shared across all commands.
-4. **Easier Maintenance**: Changes to shared functionality automatically apply to all commands.
-5. **Extensibility**: New vector-related commands can be easily added to the unified framework.
+1. **Reduced Cognitive Load**: Users only need to remember one script name instead of multiple separate scripts.
+1. **Shared Code**: Common functionality like namespace handling and output formatting is shared across all commands.
+1. **Easier Maintenance**: Changes to shared functionality automatically apply to all commands.
+1. **Extensibility**: New vector-related commands can be easily added to the unified framework.

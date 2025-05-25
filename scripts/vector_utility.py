@@ -44,7 +44,7 @@ Example usage:
 
 import argparse
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.utils.logger import get_logger
@@ -67,6 +67,86 @@ WIKI_ID_PATTERN = r"^wiki-(.+)-(LP-\d{5})-chunk-(\d+)$"
 
 # =============== Fetch Vector Command Functions ===============
 
+
+def _setup_pinecone_client(namespace: Optional[str] = None) -> PineconeDB:
+    """
+    Set up and configure a Pinecone client.
+
+    Args:
+        namespace: Optional Pinecone namespace to use
+
+    Returns:
+        Configured PineconeDB instance
+    """
+    pinecone_db = PineconeDB()
+
+    if namespace is not None:
+        pinecone_db.namespace = namespace
+        logger.info(f"Using custom namespace: {namespace}")
+    else:
+        logger.info(f"Using default namespace: {pinecone_db.namespace}")
+
+    return pinecone_db
+
+
+def _print_vector_metadata(vector_data: Any, vector_id: str) -> None:
+    """
+    Print vector metadata in a structured format.
+
+    Args:
+        vector_data: Vector data object
+        vector_id: ID of the vector
+    """
+    print("=" * 80)
+    print(f"VECTOR ID: {vector_id}")
+    print("=" * 80)
+
+    # Print metadata in a structured way
+    if hasattr(vector_data, "metadata") and vector_data.metadata:
+        print("\nMETADATA:")
+        print("-" * 80)
+        # Sort metadata keys for consistent output
+        for key in sorted(vector_data.metadata.keys()):
+            value = vector_data.metadata[key]
+            # Format long text values specially
+            if isinstance(value, str) and len(value) > 80:
+                print(f"{key}:")
+                print(f"  {value[:77]}...")
+                print(f"  [Total length: {len(value)} characters]")
+            else:
+                print(f"{key}: {value}")
+
+    # Print vector values (first few only to avoid cluttering the console)
+    if hasattr(vector_data, "values") and vector_data.values:
+        values = vector_data.values
+        print("\nVECTOR VALUES:")
+        print("-" * 80)
+        print(f"Dimension: {len(values)}")
+        print(f"First 10 values: {values[:10]}")
+        print("...")
+
+    print("=" * 80)
+
+
+def _convert_vector_data_to_dict(vector_data: Any) -> Dict[str, Any]:
+    """
+    Convert vector data object to dictionary.
+
+    Args:
+        vector_data: Vector data object
+
+    Returns:
+        Dictionary representation of vector data
+    """
+    return_data: Dict[str, Any] = {}
+
+    # Copy all attributes from vector_data to return_data
+    for key, value in vector_data.__dict__.items():
+        return_data[key] = value
+
+    return return_data
+
+
 def fetch_vector(
     vector_id: str, pretty_print: bool = False, namespace: Optional[str] = None
 ) -> Optional[Dict[str, Any]]:
@@ -86,17 +166,10 @@ def fetch_vector(
         The vector data as a dictionary if found
     """
     try:
-        # Initialize Pinecone client
-        pinecone_db = PineconeDB()
+        # Initialize and configure Pinecone client
+        pinecone_db = _setup_pinecone_client(namespace)
 
-        # Override namespace if provided
-        if namespace is not None:
-            pinecone_db.namespace = namespace
-            logger.info(f"Using custom namespace: {namespace}")
-        else:
-            logger.info(f"Using default namespace: {pinecone_db.namespace}")
-
-        # Access the Pinecone index directly
+        # Access the Pinecone index and fetch the vector
         logger.info(f"Fetching vector with ID: {vector_id}")
         index = pinecone_db.index
 
@@ -104,13 +177,13 @@ def fetch_vector(
         from typing import Any as TypeAny
         from typing import cast
 
-        # Fetch the vector by ID using the fetch method with namespace
+        # Fetch the vector by ID
         result = cast(TypeAny, index).fetch(
             ids=[vector_id],
-            namespace=pinecone_db.namespace if pinecone_db.namespace else None
+            namespace=pinecone_db.namespace if pinecone_db.namespace else None,
         )
 
-        # Handle the fetch response properly
+        # Check if vector was found
         if (
             not result
             or not hasattr(result, "vectors")
@@ -121,50 +194,14 @@ def fetch_vector(
 
         vector_data = result.vectors[vector_id]
 
-        # Format and print the result in a more readable way
+        # Print formatted output if requested
         if pretty_print:
-            # Format vector data for better readability
-            print("=" * 80)
-            print(f"VECTOR ID: {vector_id}")
-            print("=" * 80)
-
-            # Print metadata in a structured way
-            if hasattr(vector_data, "metadata") and vector_data.metadata:
-                print("\nMETADATA:")
-                print("-" * 80)
-                # Sort metadata keys for consistent output
-                for key in sorted(vector_data.metadata.keys()):
-                    value = vector_data.metadata[key]
-                    # Format long text values specially
-                    if isinstance(value, str) and len(value) > 80:
-                        print(f"{key}:")
-                        print(f"  {value[:77]}...")
-                        print(f"  [Total length: {len(value)} characters]")
-                    else:
-                        print(f"{key}: {value}")
-
-            # Print vector values (first few only to avoid cluttering the console)
-            if hasattr(vector_data, "values") and vector_data.values:
-                values = vector_data.values
-                print("\nVECTOR VALUES:")
-                print("-" * 80)
-                print(f"Dimension: {len(values)}")
-                print(f"First 10 values: {values[:10]}")
-                print("...")
-
-            print("=" * 80)
+            _print_vector_metadata(vector_data, vector_id)
         else:
-            # For non-pretty mode, use default representation
             print(vector_data)
 
-        # Convert the result to the expected return type
-        return_data: Dict[str, Any] = {}
-
-        # Copy all attributes from vector_data to return_data
-        for key, value in vector_data.__dict__.items():
-            return_data[key] = value
-
-        return return_data
+        # Convert to dictionary and return
+        return _convert_vector_data_to_dict(vector_data)
 
     except Exception as e:
         logger.error(f"Error fetching vector: {e}")
@@ -173,7 +210,10 @@ def fetch_vector(
 
 # =============== Check Landmark Vectors Command Functions ===============
 
-def query_landmark_vectors(pinecone_db: PineconeDB, landmark_id: str, namespace: Optional[str] = None) -> List[Any]:
+
+def query_landmark_vectors(
+    pinecone_db: PineconeDB, landmark_id: str, namespace: Optional[str] = None
+) -> List[Any]:
     """
     Query Pinecone for vectors related to a landmark.
 
@@ -201,7 +241,7 @@ def query_landmark_vectors(pinecone_db: PineconeDB, landmark_id: str, namespace:
         filter={"landmark_id": landmark_id},
         top_k=100,  # Increase if needed
         include_metadata=True,
-        namespace=pinecone_db.namespace if pinecone_db.namespace else None
+        namespace=pinecone_db.namespace if pinecone_db.namespace else None,
     )
 
     # Access matches safely
@@ -346,8 +386,12 @@ def check_landmark_vectors(
 
 # =============== List Vectors Command Functions ===============
 
+
 def query_pinecone_index(
-    pinecone_db: PineconeDB, limit: int, namespace: Optional[str] = None, prefix: Optional[str] = None
+    pinecone_db: PineconeDB,
+    limit: int,
+    namespace: Optional[str] = None,
+    prefix: Optional[str] = None,
 ) -> Any:
     """
     Query the Pinecone index and retrieve vectors.
@@ -379,10 +423,14 @@ def query_pinecone_index(
         # For prefix filtering, retrieve a larger number of vectors
         # Minimum 100, but scale with the requested limit
         effective_limit = max(limit * 20, 100)
-        logger.info(f"Using effective limit of {effective_limit} to ensure prefix matches for '{prefix}'")
+        logger.info(
+            f"Using effective limit of {effective_limit} to ensure prefix matches for '{prefix}'"
+        )
 
     # Log the query parameters
-    logger.info(f"Querying with top_k: {effective_limit}, namespace: {pinecone_db.namespace}")
+    logger.info(
+        f"Querying with top_k: {effective_limit}, namespace: {pinecone_db.namespace}"
+    )
 
     # Query the index
     result = pinecone_db.index.query(
@@ -390,7 +438,7 @@ def query_pinecone_index(
         top_k=effective_limit,
         include_metadata=True,
         include_values=False,
-        namespace=pinecone_db.namespace if pinecone_db.namespace else None
+        namespace=pinecone_db.namespace if pinecone_db.namespace else None,
     )
 
     # Log the total number of matches received
@@ -400,48 +448,30 @@ def query_pinecone_index(
     return result
 
 
-def filter_matches_by_prefix(matches: List[Any], prefix: Optional[str]) -> List[Any]:
+def _analyze_vector_prefixes(
+    matches: List[Any], sample_size: int = 100
+) -> Tuple[Dict[str, int], Dict[str, str]]:
     """
-    Filter match results by prefix.
+    Analyze vector IDs to find common prefixes.
 
     Args:
         matches: List of match objects from Pinecone
-        prefix: Optional prefix to filter vector IDs
+        sample_size: Number of vectors to analyze
 
     Returns:
-        Filtered list of matches
+        Tuple of (prefix_distribution, id_examples)
     """
-    if not prefix:
-        return matches
-
-    total_matches = len(matches)
-    logger.info(f"Filtering {total_matches} matches with prefix: '{prefix}'")
-
-    if total_matches == 0:
-        print("No vectors retrieved from Pinecone to filter.")
-        return []
-
-    # Normalize the prefix for case-insensitive matching
-    prefix_lower = prefix.lower()
-
-    # Debug: print first few match IDs to see what we're filtering
-    print(f"\nFirst {min(5, total_matches)} matches before filtering:")
-    for i, match in enumerate(matches[:5]):
-        match_id = getattr(match, "id", "Unknown")
-        print(f"  {i+1}. {match_id}")
-
-    # Collect and analyze prefixes to help with debugging
     prefix_distribution = {}
     id_examples = {}
 
-    # Analyze up to 100 vectors to find common prefixes
-    sample_size = min(len(matches), 100)
-    for match in matches[:sample_size]:
+    # Analyze up to sample_size vectors to find common prefixes
+    actual_sample = min(len(matches), sample_size)
+    for match in matches[:actual_sample]:
         match_id = getattr(match, "id", "")
         if match_id:
-            parts = match_id.split('-')
+            parts = match_id.split("-")
             if len(parts) > 1:
-                # Get the first part or first two parts as common prefixes
+                # Get the first part as common prefix
                 first_part = parts[0]
                 if first_part not in prefix_distribution:
                     prefix_distribution[first_part] = 1
@@ -458,53 +488,108 @@ def filter_matches_by_prefix(matches: List[Any], prefix: Optional[str]) -> List[
                     else:
                         prefix_distribution[combined] += 1
 
+    return prefix_distribution, id_examples
+
+
+def _print_filter_diagnostics(
+    prefix: str, prefix_distribution: Dict[str, int], id_examples: Dict[str, str]
+) -> None:
+    """
+    Print helpful diagnostics for prefix filtering.
+
+    Args:
+        prefix: The prefix that was used for filtering
+        prefix_distribution: Dictionary of prefix counts
+        id_examples: Dictionary of example IDs for each prefix
+    """
+    print("\nNo matches found with the specified prefix.")
+
+    # Show the most common prefixes found in the data
+    if prefix_distribution:
+        print("\nCommon prefixes found in the data (with examples):")
+        # Sort by frequency, most common first
+        sorted_prefixes = sorted(
+            prefix_distribution.items(), key=lambda x: x[1], reverse=True
+        )
+
+        # Show top 5 common prefixes
+        for i, (common_prefix, count) in enumerate(sorted_prefixes[:5]):
+            example = id_examples.get(common_prefix, "")
+            print(
+                f"  {i + 1}. '{common_prefix}' ({count} vectors) - Example: {example}"
+            )
+
+        print("\nSuggestions:")
+        print("  - Check if your prefix matches exactly how vector IDs are stored")
+        print("  - Try using one of the common prefixes shown above")
+        print("  - Use a shorter prefix or check for case sensitivity")
+
+        # Check if the prefix is close to any of the common prefixes
+        close_matches = [
+            p for p in prefix_distribution.keys() if prefix.lower() in p.lower()
+        ]
+        if close_matches:
+            print("\nSimilar prefixes found that contain your search term:")
+            for i, similar in enumerate(close_matches[:3]):
+                print(f"  - '{similar}' (example: {id_examples.get(similar, '')})")
+
+
+def filter_matches_by_prefix(matches: List[Any], prefix: Optional[str]) -> List[Any]:
+    """
+    Filter match results by prefix.
+
+    Args:
+        matches: List of match objects from Pinecone
+        prefix: Optional prefix to filter vector IDs
+
+    Returns:
+        Filtered list of matches
+    """
+    # Return all matches if no prefix is specified
+    if not prefix:
+        return matches
+
+    total_matches = len(matches)
+    logger.info(f"Filtering {total_matches} matches with prefix: '{prefix}'")
+
+    if total_matches == 0:
+        print("No vectors retrieved from Pinecone to filter.")
+        return []
+
+    # Normalize the prefix for case-insensitive matching
+    prefix_lower = prefix.lower()
+
+    # Debug: print first few match IDs
+    print(f"\nFirst {min(5, total_matches)} matches before filtering:")
+    for i, match in enumerate(matches[:5]):
+        match_id = getattr(match, "id", "Unknown")
+        print(f"  {i + 1}. {match_id}")
+
+    # Analyze prefixes for potential diagnostic information
+    prefix_distribution, id_examples = _analyze_vector_prefixes(matches)
+
     # Filter matches by prefix (case insensitive)
-    filtered_matches = []
-    for match in matches:
-        match_id = getattr(match, "id", None)
-        if match_id and match_id.lower().startswith(prefix_lower):
-            filtered_matches.append(match)
+    filtered_matches = [
+        match
+        for match in matches
+        if getattr(match, "id", "")
+        and getattr(match, "id", "").lower().startswith(prefix_lower)
+    ]
 
     # Report results
     filtered_count = len(filtered_matches)
-    print(f"\nFound {filtered_count} matches out of {total_matches} after filtering with prefix: '{prefix}'")
+    print(
+        f"\nFound {filtered_count} matches out of {total_matches} after filtering with prefix: '{prefix}'"
+    )
 
-    # If filtered matches found, show examples
+    # Show examples or diagnostics based on results
     if filtered_matches:
         print("\nMatched vector IDs (first 5):")
         for i, match in enumerate(filtered_matches[:5]):
             match_id = getattr(match, "id", "Unknown")
-            print(f"  {i+1}. {match_id}")
-    # If no matches, provide helpful diagnostics
+            print(f"  {i + 1}. {match_id}")
     else:
-        print("\nNo matches found with the specified prefix.")
-
-        # Show the most common prefixes found in the data
-        if prefix_distribution:
-            print("\nCommon prefixes found in the data (with examples):")
-            # Sort by frequency, most common first
-            sorted_prefixes = sorted(
-                prefix_distribution.items(),
-                key=lambda x: x[1],
-                reverse=True
-            )
-
-            # Show top 5 common prefixes
-            for i, (common_prefix, count) in enumerate(sorted_prefixes[:5]):
-                example = id_examples.get(common_prefix, "")
-                print(f"  {i+1}. '{common_prefix}' ({count} vectors) - Example: {example}")
-
-            print("\nSuggestions:")
-            print("  - Check if your prefix matches exactly how vector IDs are stored")
-            print("  - Try using one of the common prefixes shown above")
-            print("  - Use a shorter prefix or check for case sensitivity")
-
-            # Check if the prefix is close to any of the common prefixes
-            close_matches = [p for p in prefix_distribution.keys() if prefix.lower() in p.lower()]
-            if close_matches:
-                print("\nSimilar prefixes found that contain your search term:")
-                for i, similar in enumerate(close_matches[:3]):
-                    print(f"  - '{similar}' (example: {id_examples.get(similar, '')})")
+        _print_filter_diagnostics(prefix, prefix_distribution, id_examples)
 
     return filtered_matches
 
@@ -536,11 +621,92 @@ def convert_matches_to_dicts(matches: List[Any]) -> List[Dict[str, Any]]:
     return result
 
 
+def _print_vector_details_pretty(matches_data: List[Dict[str, Any]]) -> None:
+    """
+    Print vector details in a pretty format with detailed metadata.
+
+    Args:
+        matches_data: List of vector match dictionaries
+    """
+    print("\n" + "=" * 80)
+    print(f"VECTORS IN PINECONE ({len(matches_data)} found)")
+    print("=" * 80)
+
+    # Process each vector individually for better formatting
+    for i, match_data in enumerate(matches_data):
+        print(f"\nVector {i + 1}:")
+        print("-" * 40)
+        print(f"ID: {match_data.get('id', 'Unknown')}")
+        print(f"Score: {match_data.get('score', 0.0)}")
+
+        # Format metadata if present
+        metadata = match_data.get("metadata", {})
+        if metadata:
+            print("\nMetadata:")
+            # Format each metadata field
+            for key in sorted(metadata.keys()):
+                value = metadata[key]
+                # Format text fields specially
+                if isinstance(value, str) and len(value) > 80:
+                    print(f"  {key}:")
+                    print(f"    {value[:77]}...")
+                    print(f"    [Total length: {len(value)} characters]")
+                else:
+                    print(f"  {key}: {value}")
+
+
+def _print_vector_details_compact(matches_data: List[Dict[str, Any]]) -> None:
+    """
+    Print vector details in a compact format with key metadata only.
+
+    Args:
+        matches_data: List of vector match dictionaries
+    """
+    for i, match_data in enumerate(matches_data):
+        print(f"\nVector {i + 1}:")
+        print(f"  ID: {match_data.get('id', 'Unknown')}")
+        print(f"  Score: {match_data.get('score', 0.0)}")
+
+        # Print a few key metadata fields if available
+        metadata = match_data.get("metadata", {})
+        if metadata:
+            landmark_id = metadata.get("landmark_id", "Unknown")
+            source_type = metadata.get("source_type", "Unknown")
+            chunk_index = metadata.get("chunk_index", "Unknown")
+            print(f"  Landmark ID: {landmark_id}")
+            print(f"  Source Type: {source_type}")
+            print(f"  Chunk Index: {chunk_index}")
+
+
+def _prepare_query_results(filtered_matches: List[Any], limit: int) -> List[Any]:
+    """
+    Prepare query results by applying limits and converting to dictionaries.
+
+    Args:
+        filtered_matches: List of filtered match objects
+        limit: Maximum number of results to return
+
+    Returns:
+        List of matches limited to the requested count
+    """
+    # If we have more matches than the limit, truncate
+    if len(filtered_matches) > limit:
+        print(
+            f"\nFound {len(filtered_matches)} matches, showing first {limit} as requested"
+        )
+        filtered_matches = filtered_matches[:limit]
+        logger.info(f"Limited results to {limit} matches")
+    else:
+        print(f"\nFound {len(filtered_matches)} matches")
+
+    return filtered_matches
+
+
 def list_vectors(
     prefix: Optional[str] = None,
     limit: int = 10,
     pretty_print: bool = False,
-    namespace: Optional[str] = None
+    namespace: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
     List vectors in Pinecone with optional prefix filtering.
@@ -564,11 +730,13 @@ def list_vectors(
 
         # Display query information
         print("\nQuerying Pinecone database for vectors")
-        print(f"  Namespace: {namespace if namespace else pinecone_db.namespace or 'default'}")
+        print(
+            f"  Namespace: {namespace if namespace else pinecone_db.namespace or 'default'}"
+        )
         print(f"  Prefix filter: {prefix if prefix else 'None'}")
         print(f"  Result limit: {limit}")
 
-        # Query the Pinecone index with the prefix parameter
+        # Query the Pinecone index
         result = query_pinecone_index(pinecone_db, limit, namespace, prefix)
 
         # Handle the result safely
@@ -584,71 +752,111 @@ def list_vectors(
             logger.warning(f"No vectors found with prefix: '{prefix}'")
             return []
 
-        # If we have more matches than the limit after filtering, truncate
-        if len(filtered_matches) > limit:
-            print(f"\nFound {len(filtered_matches)} matches, showing first {limit} as requested")
-            filtered_matches = filtered_matches[:limit]
-            logger.info(f"Limited results to {limit} matches")
-        else:
-            print(f"\nFound {len(filtered_matches)} matches")
+        # Prepare and limit the results
+        filtered_matches = _prepare_query_results(filtered_matches, limit)
 
         # Convert matches to dictionaries for display
         matches_data = convert_matches_to_dicts(filtered_matches)
 
-        # Print the results
+        # Print the results in the appropriate format
         if pretty_print:
-            print("\n" + "=" * 80)
-            print(f"VECTORS IN PINECONE ({len(matches_data)} found)")
-            print("=" * 80)
-
-            # Process each vector individually for better formatting
-            for i, match_data in enumerate(matches_data):
-                print(f"\nVector {i+1}:")
-                print("-" * 40)
-                print(f"ID: {match_data.get('id', 'Unknown')}")
-                print(f"Score: {match_data.get('score', 0.0)}")
-
-                # Format metadata if present
-                metadata = match_data.get('metadata', {})
-                if metadata:
-                    print("\nMetadata:")
-                    # Format each metadata field
-                    for key in sorted(metadata.keys()):
-                        value = metadata[key]
-                        # Format text fields specially
-                        if isinstance(value, str) and len(value) > 80:
-                            print(f"  {key}:")
-                            print(f"    {value[:77]}...")
-                            print(f"    [Total length: {len(value)} characters]")
-                        else:
-                            print(f"  {key}: {value}")
+            _print_vector_details_pretty(matches_data)
         else:
-            for i, match_data in enumerate(matches_data):
-                print(f"\nVector {i+1}:")
-                print(f"  ID: {match_data.get('id', 'Unknown')}")
-                print(f"  Score: {match_data.get('score', 0.0)}")
-                # Print a few key metadata fields if available
-                metadata = match_data.get('metadata', {})
-                if metadata:
-                    landmark_id = metadata.get('landmark_id', 'Unknown')
-                    source_type = metadata.get('source_type', 'Unknown')
-                    chunk_index = metadata.get('chunk_index', 'Unknown')
-                    print(f"  Landmark ID: {landmark_id}")
-                    print(f"  Source Type: {source_type}")
-                    print(f"  Chunk Index: {chunk_index}")
+            _print_vector_details_compact(matches_data)
 
         return matches_data
 
     except Exception as e:
         logger.error(f"Error listing vectors: {e}")
         import traceback
+
         traceback.print_exc()
         return []
 
 
 # =============== Validate Vector Command Functions ===============
 
-def validate_vector_metadata(vector_data: Dict[str, Any], verbose: bool = False) -> bool:
+
+def _print_validation_header(
+    vector_id: str, metadata: Dict[str, Any], verbose: bool
+) -> None:
+    """
+    Print header information for vector validation.
+
+    Args:
+        vector_id: ID of the vector being validated
+        metadata: Vector metadata dictionary
+        verbose: Whether to print detailed information
+    """
+    if verbose:
+        print("\n" + "=" * 80)
+        print(f"VALIDATING VECTOR: {vector_id}")
+        print("=" * 80)
+        print(f"\nMetadata keys: {list(metadata.keys()) if metadata else 'None'}")
+        if metadata:
+            print(f"\nFull metadata:\n{json.dumps(metadata, indent=2, default=str)}")
+
+
+def _check_missing_fields(metadata: Dict[str, Any], vector_id: str) -> List[str]:
+    """
+    Check for missing required metadata fields.
+
+    Args:
+        metadata: Vector metadata dictionary
+        vector_id: ID of the vector being validated
+
+    Returns:
+        List of missing field names
+    """
+    missing_fields = []
+
+    # Check for common required fields
+    for field in REQUIRED_METADATA:
+        if field not in metadata:
+            missing_fields.append(field)
+
+    # Check for Wikipedia-specific fields if applicable
+    if vector_id.startswith("wiki-"):
+        for field in REQUIRED_WIKI_METADATA:
+            if field not in metadata:
+                missing_fields.append(field)
+
+    return missing_fields
+
+
+def _print_vector_details(
+    metadata: Dict[str, Any], vector_id: str, verbose: bool
+) -> None:
+    """
+    Print additional vector details for verbose output.
+
+    Args:
+        metadata: Vector metadata dictionary
+        vector_id: ID of the vector
+        verbose: Whether to print details
+    """
+    if not verbose:
+        return
+
+    source_type = metadata.get("source_type", "Unknown")
+    chunk_index = metadata.get("chunk_index", "Unknown")
+    landmark_id = metadata.get("landmark_id", "Unknown")
+
+    print("\nVector Details:")
+    print(f"  Source Type: {source_type}")
+    print(f"  Chunk Index: {chunk_index}")
+    print(f"  Landmark ID: {landmark_id}")
+
+    if vector_id.startswith("wiki-"):
+        article_title = metadata.get("article_title", "Unknown")
+        article_url = metadata.get("article_url", "Unknown")
+        print(f"  Article Title: {article_title}")
+        print(f"  Article URL: {article_url}")
+
+
+def validate_vector_metadata(
+    vector_data: Dict[str, Any], verbose: bool = False
+) -> bool:
     """
     Validate a vector's metadata against requirements.
 
@@ -662,48 +870,23 @@ def validate_vector_metadata(vector_data: Dict[str, Any], verbose: bool = False)
     metadata = vector_data.get("metadata", {})
     vector_id = vector_data.get("id", "Unknown")
 
-    if verbose:
-        print("\n" + "=" * 80)
-        print(f"VALIDATING VECTOR: {vector_id}")
-        print("=" * 80)
-        print(f"\nMetadata keys: {list(metadata.keys()) if metadata else 'None'}")
-        if metadata:
-            print(f"\nFull metadata:\n{json.dumps(metadata, indent=2, default=str)}")
+    # Print header information if verbose
+    _print_validation_header(vector_id, metadata, verbose)
 
-    # Check for required fields first
-    missing_fields = []
-    for field in REQUIRED_METADATA:
-        if field not in metadata:
-            missing_fields.append(field)
-
-    # Check for Wikipedia-specific fields if this is a Wikipedia vector
-    if vector_id.startswith("wiki-"):
-        for field in REQUIRED_WIKI_METADATA:
-            if field not in metadata:
-                missing_fields.append(field)
+    # Check for missing required fields
+    missing_fields = _check_missing_fields(metadata, vector_id)
 
     # Print validation results
     if missing_fields:
-        print(f"\nERROR: Vector {vector_id} is missing required fields: {missing_fields}")
+        print(
+            f"\nERROR: Vector {vector_id} is missing required fields: {missing_fields}"
+        )
         return False
     else:
         print(f"\nVector {vector_id} has all required metadata fields")
 
-        # Print additional validation checks for important fields
-        if verbose:
-            source_type = metadata.get("source_type", "Unknown")
-            chunk_index = metadata.get("chunk_index", "Unknown")
-            landmark_id = metadata.get("landmark_id", "Unknown")
-            print("\nVector Details:")
-            print(f"  Source Type: {source_type}")
-            print(f"  Chunk Index: {chunk_index}")
-            print(f"  Landmark ID: {landmark_id}")
-
-            if vector_id.startswith("wiki-"):
-                article_title = metadata.get("article_title", "Unknown")
-                article_url = metadata.get("article_url", "Unknown")
-                print(f"  Article Title: {article_title}")
-                print(f"  Article URL: {article_url}")
+        # Print additional details if verbose
+        _print_vector_details(metadata, vector_id, verbose)
 
         return True
 
@@ -721,16 +904,134 @@ def validate_vector_command(args: argparse.Namespace) -> None:
     except Exception as e:
         logger.error(f"Error validating vector: {e}")
         import traceback
+
         traceback.print_exc()
 
 
 # =============== Compare Vectors Command Functions ===============
 
+
+def _categorize_metadata_differences(
+    all_keys: set, first_metadata: Dict[str, Any], second_metadata: Dict[str, Any]
+) -> Tuple[List[str], List[str], List[str], List[str]]:
+    """
+    Categorize metadata keys into different types of differences.
+
+    Args:
+        all_keys: Set of all keys from both metadata dictionaries
+        first_metadata: Metadata from first vector
+        second_metadata: Metadata from second vector
+
+    Returns:
+        Tuple of (differences, similarities, unique_to_first, unique_to_second)
+    """
+    differences = []
+    similarities = []
+    unique_to_first = []
+    unique_to_second = []
+
+    for key in sorted(all_keys):
+        if key not in first_metadata:
+            unique_to_second.append(key)
+        elif key not in second_metadata:
+            unique_to_first.append(key)
+        elif first_metadata[key] != second_metadata[key]:
+            differences.append(key)
+        else:
+            similarities.append(key)
+
+    return differences, similarities, unique_to_first, unique_to_second
+
+
+def _print_text_comparison(
+    differences: List[str],
+    unique_to_first: List[str],
+    unique_to_second: List[str],
+    similarities: List[str],
+    first_metadata: Dict[str, Any],
+    second_metadata: Dict[str, Any],
+) -> None:
+    """
+    Print comparison results in text format.
+
+    Args:
+        differences: List of keys with different values
+        unique_to_first: List of keys unique to first vector
+        unique_to_second: List of keys unique to second vector
+        similarities: List of keys with identical values
+        first_metadata: Metadata from first vector
+        second_metadata: Metadata from second vector
+    """
+    # Print fields that differ
+    if differences:
+        print("\nDifferent Values:")
+        for key in differences:
+            print(f"  {key}:")
+            print(f"    First:  {first_metadata[key]}")
+            print(f"    Second: {second_metadata[key]}")
+            print()
+
+    # Print fields unique to first vector
+    if unique_to_first:
+        print("\nUnique to First Vector:")
+        for key in unique_to_first:
+            print(f"  {key}: {first_metadata[key]}")
+
+    # Print fields unique to second vector
+    if unique_to_second:
+        print("\nUnique to Second Vector:")
+        for key in unique_to_second:
+            print(f"  {key}: {second_metadata[key]}")
+
+    # Print similar fields summary
+    if similarities:
+        print(f"\nIdentical Fields: {len(similarities)} fields match")
+
+
+def _print_json_comparison(
+    first_vector_id: str,
+    second_vector_id: str,
+    differences: List[str],
+    unique_to_first: List[str],
+    unique_to_second: List[str],
+    similarities: List[str],
+    first_metadata: Dict[str, Any],
+    second_metadata: Dict[str, Any],
+) -> None:
+    """
+    Print comparison results in JSON format.
+
+    Args:
+        first_vector_id: ID of first vector
+        second_vector_id: ID of second vector
+        differences: List of keys with different values
+        unique_to_first: List of keys unique to first vector
+        unique_to_second: List of keys unique to second vector
+        similarities: List of keys with identical values
+        first_metadata: Metadata from first vector
+        second_metadata: Metadata from second vector
+    """
+    comparison = {
+        "vectors": {"first": first_vector_id, "second": second_vector_id},
+        "differences": {
+            key: {
+                "first": first_metadata.get(key),
+                "second": second_metadata.get(key),
+            }
+            for key in differences
+        },
+        "unique_to_first": {key: first_metadata[key] for key in unique_to_first},
+        "unique_to_second": {key: second_metadata[key] for key in unique_to_second},
+        "identical_field_count": len(similarities),
+    }
+    print(json.dumps(comparison, indent=2, default=str))
+
+
 def compare_vectors(
     first_vector_id: str,
     second_vector_id: str,
     output_format: str = "text",
-    namespace: Optional[str] = None
+    namespace: Optional[str] = None,
 ) -> bool:
     """
     Compare metadata and optionally embeddings between two vectors.
@@ -758,98 +1059,59 @@ def compare_vectors(
             print(f"ERROR: Second vector with ID '{second_vector_id}' not found")
             return False
 
-        # Compare metadata
+        # Extract metadata
         first_metadata = first_vector.get("metadata", {})
         second_metadata = second_vector.get("metadata", {})
-
-        # Find all unique keys across both metadata
         all_keys = set(first_metadata.keys()).union(set(second_metadata.keys()))
 
-        # Output header
+        # Print header
         print("=" * 80)
         print("COMPARING VECTORS")
         print(f"First:  {first_vector_id}")
         print(f"Second: {second_vector_id}")
         print("=" * 80)
-
-        # Compare and display differences
         print("\nMETADATA COMPARISON:")
         print("-" * 40)
 
-        differences = []
-        similarities = []
-        unique_to_first = []
-        unique_to_second = []
-
-        for key in sorted(all_keys):
-            if key not in first_metadata:
-                unique_to_second.append(key)
-            elif key not in second_metadata:
-                unique_to_first.append(key)
-            elif first_metadata[key] != second_metadata[key]:
-                differences.append(key)
-            else:
-                similarities.append(key)
+        # Categorize differences
+        differences, similarities, unique_to_first, unique_to_second = (
+            _categorize_metadata_differences(all_keys, first_metadata, second_metadata)
+        )
 
         # Print results based on format
         if output_format == "text":
-            # Print fields that differ
-            if differences:
-                print("\nDifferent Values:")
-                for key in differences:
-                    print(f"  {key}:")
-                    print(f"    First:  {first_metadata[key]}")
-                    print(f"    Second: {second_metadata[key]}")
-                    print()
-
-            # Print fields unique to first vector
-            if unique_to_first:
-                print("\nUnique to First Vector:")
-                for key in unique_to_first:
-                    print(f"  {key}: {first_metadata[key]}")
-
-            # Print fields unique to second vector
-            if unique_to_second:
-                print("\nUnique to Second Vector:")
-                for key in unique_to_second:
-                    print(f"  {key}: {second_metadata[key]}")
-
-            # Print similar fields if requested
-            if similarities:
-                print(f"\nIdentical Fields: {len(similarities)} fields match")
-                # We don't print all identical fields to avoid cluttering the output
-
-        elif output_format == "json":
-            comparison = {
-                "vectors": {
-                    "first": first_vector_id,
-                    "second": second_vector_id
-                },
-                "differences": {
-                    key: {
-                        "first": first_metadata.get(key),
-                        "second": second_metadata.get(key)
-                    } for key in differences
-                },
-                "unique_to_first": {key: first_metadata[key] for key in unique_to_first},
-                "unique_to_second": {key: second_metadata[key] for key in unique_to_second},
-                "identical_field_count": len(similarities)
-            }
-            print(json.dumps(comparison, indent=2, default=str))
-
-        # Provide a summary
-        if output_format == "text":
+            _print_text_comparison(
+                differences,
+                unique_to_first,
+                unique_to_second,
+                similarities,
+                first_metadata,
+                second_metadata,
+            )
+            # Print summary
             print("\nSUMMARY:")
             print(f"  Fields with different values: {len(differences)}")
             print(f"  Fields unique to first vector: {len(unique_to_first)}")
             print(f"  Fields unique to second vector: {len(unique_to_second)}")
             print(f"  Fields with identical values: {len(similarities)}")
+        elif output_format == "json":
+            _print_json_comparison(
+                first_vector_id,
+                second_vector_id,
+                differences,
+                unique_to_first,
+                unique_to_second,
+                similarities,
+                first_metadata,
+                second_metadata,
+            )
 
         return True
 
     except Exception as e:
         logger.error(f"Error comparing vectors: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -860,11 +1122,12 @@ def compare_vectors_command(args: argparse.Namespace) -> None:
         first_vector_id=args.first_vector_id,
         second_vector_id=args.second_vector_id,
         output_format=args.format,
-        namespace=args.namespace
+        namespace=args.namespace,
     )
 
 
 # =============== Verify Vectors Command Functions ===============
+
 
 def verify_id_format(vector_id: str, source_type: str, landmark_id: str) -> bool:
     """
@@ -951,12 +1214,142 @@ def verify_article_title(vector_id: str, metadata: Dict[str, Any]) -> bool:
     return False
 
 
+def _check_required_metadata_fields(
+    vector_id: str, metadata: Dict[str, Any]
+) -> List[str]:
+    """
+    Check for missing required metadata fields.
+
+    Args:
+        vector_id: Vector ID
+        metadata: Vector metadata
+
+    Returns:
+        List of missing field names
+    """
+    missing_fields = []
+
+    # Check basic required fields
+    for field in REQUIRED_METADATA:
+        if field not in metadata:
+            missing_fields.append(field)
+
+    # Check Wiki-specific fields if this is a Wiki vector
+    if vector_id.startswith("wiki-"):
+        for field in REQUIRED_WIKI_METADATA:
+            if field not in metadata:
+                missing_fields.append(field)
+
+    return missing_fields
+
+
+def _check_id_format(
+    vector_id: str, metadata: Dict[str, Any], verbose: bool
+) -> Optional[str]:
+    """Check vector ID format and return error message if invalid."""
+    source_type = metadata.get("source_type", "unknown")
+    landmark_id = metadata.get("landmark_id", "unknown")
+
+    if not verify_id_format(vector_id, source_type, landmark_id):
+        if verbose:
+            print(f"  ✗ Invalid ID format for {source_type} vector")
+        return f"Invalid ID format for {source_type} vector"
+    elif verbose:
+        print(f"  ✓ Valid ID format for {source_type} vector")
+    return None
+
+
+def _check_article_title(
+    vector_id: str, metadata: Dict[str, Any], verbose: bool
+) -> Optional[str]:
+    """Check article title for Wikipedia vectors and return error message if invalid."""
+    if not vector_id.startswith("wiki-"):
+        return None
+
+    if not verify_article_title(vector_id, metadata):
+        if verbose:
+            print("  ✗ Article title in ID does not match metadata")
+        return "Article title in ID does not match metadata"
+    elif verbose:
+        print("  ✓ Article title in ID matches metadata")
+    return None
+
+
+def _check_embeddings(
+    vector_id: str, namespace: Optional[str], verbose: bool
+) -> Optional[str]:
+    """Check vector embeddings and return error message if invalid."""
+    full_vector = fetch_vector(vector_id, namespace=namespace)
+    if full_vector and check_vector_has_embeddings(full_vector):
+        if verbose:
+            print("  ✓ Valid embeddings found")
+        return None
+    else:
+        if verbose:
+            print("  ✗ Missing or invalid embeddings")
+        return "Missing or invalid embeddings"
+
+
+def _verify_single_vector(
+    vector_data: Dict[str, Any],
+    check_embeddings: bool,
+    namespace: Optional[str],
+    verbose: bool,
+) -> List[str]:
+    """
+    Verify a single vector and return list of issues.
+
+    Args:
+        vector_data: Vector data to verify
+        check_embeddings: Whether to check embeddings
+        namespace: Namespace for fetching full vector data
+        verbose: Whether to print verbose output
+
+    Returns:
+        List of issues found with the vector
+    """
+    vector_id = vector_data.get("id", "unknown")
+    metadata = vector_data.get("metadata", {})
+    vector_issues = []
+
+    if verbose:
+        print(f"\nVerifying vector: {vector_id}")
+
+    # 1. Check required metadata fields
+    missing_fields = _check_required_metadata_fields(vector_id, metadata)
+    if missing_fields:
+        issue = f"Missing required metadata fields: {missing_fields}"
+        vector_issues.append(issue)
+        if verbose:
+            print(f"  ✗ {issue}")
+    elif verbose:
+        print("  ✓ All required metadata fields present")
+
+    # 2. Check ID format
+    id_issue = _check_id_format(vector_id, metadata, verbose)
+    if id_issue:
+        vector_issues.append(id_issue)
+
+    # 3. Check article title for Wikipedia vectors
+    title_issue = _check_article_title(vector_id, metadata, verbose)
+    if title_issue:
+        vector_issues.append(title_issue)
+
+    # 4. Check embeddings if requested
+    if check_embeddings:
+        embedding_issue = _check_embeddings(vector_id, namespace, verbose)
+        if embedding_issue:
+            vector_issues.append(embedding_issue)
+
+    return vector_issues
+
+
 def verify_vectors(
     namespace: Optional[str] = None,
     limit: int = 100,
     prefix: Optional[str] = None,
     check_embeddings: bool = False,
-    verbose: bool = False
+    verbose: bool = False,
 ) -> Dict[str, Any]:
     """
     Verify the integrity of vectors in Pinecone.
@@ -977,16 +1370,6 @@ def verify_vectors(
         Dictionary with verification results
     """
     try:
-        # Initialize Pinecone client
-        pinecone_db = PineconeDB()
-
-        # Override namespace if provided
-        if namespace is not None:
-            pinecone_db.namespace = namespace
-            logger.info(f"Using custom namespace: {namespace}")
-        else:
-            logger.info(f"Using default namespace: {pinecone_db.namespace}")
-
         # Query vectors
         logger.info(f"Querying up to {limit} vectors for verification")
         vectors = list_vectors(prefix=prefix, limit=limit, namespace=namespace)
@@ -1002,7 +1385,7 @@ def verify_vectors(
             print(f"Total vectors to verify: {len(vectors)}")
             print("=" * 80)
 
-        # Track results as dictionaries with integer values
+        # Initialize results tracking
         results: Dict[str, Any] = {
             "total": len(vectors),
             "passed": 0,
@@ -1013,76 +1396,16 @@ def verify_vectors(
         # Check each vector
         for vector_data in vectors:
             vector_id = vector_data.get("id", "unknown")
-            metadata = vector_data.get("metadata", {})
-
-            if verbose:
-                print(f"\nVerifying vector: {vector_id}")
-
-            # Track issues for this vector
-            vector_issues = []
-
-            # 1. Check required metadata fields
-            missing_fields = []
-            for field in REQUIRED_METADATA:
-                if field not in metadata:
-                    missing_fields.append(field)
-
-            # Check Wiki-specific fields if this is a Wiki vector
-            if vector_id.startswith("wiki-"):
-                for field in REQUIRED_WIKI_METADATA:
-                    if field not in metadata:
-                        missing_fields.append(field)
-
-            if missing_fields:
-                issue = f"Missing required metadata fields: {missing_fields}"
-                vector_issues.append(issue)
-                if verbose:
-                    print(f"  ✗ {issue}")
-            elif verbose:
-                print("  ✓ All required metadata fields present")
-
-            # 2. Check ID format
-            source_type = metadata.get("source_type", "unknown")
-            landmark_id = metadata.get("landmark_id", "unknown")
-
-            if not verify_id_format(vector_id, source_type, landmark_id):
-                issue = f"Invalid ID format for {source_type} vector"
-                vector_issues.append(issue)
-                if verbose:
-                    print(f"  ✗ {issue}")
-            elif verbose:
-                print(f"  ✓ Valid ID format for {source_type} vector")
-
-            # 3. For Wikipedia vectors, check article title
-            if vector_id.startswith("wiki-"):
-                if not verify_article_title(vector_id, metadata):
-                    issue = "Article title in ID does not match metadata"
-                    vector_issues.append(issue)
-                    if verbose:
-                        print(f"  ✗ {issue}")
-                elif verbose:
-                    print("  ✓ Article title in ID matches metadata")
-
-            # 4. Check embeddings if requested
-            if check_embeddings:
-                # We need to fetch the full vector with embeddings
-                full_vector = fetch_vector(vector_id, namespace=namespace)
-                if full_vector and check_vector_has_embeddings(full_vector):
-                    if verbose:
-                        print("  ✓ Valid embeddings found")
-                else:
-                    issue = "Missing or invalid embeddings"
-                    vector_issues.append(issue)
-                    if verbose:
-                        print(f"  ✗ {issue}")
+            vector_issues = _verify_single_vector(
+                vector_data, check_embeddings, namespace, verbose
+            )
 
             # Update overall results
             if vector_issues:
                 results["failed"] += 1
-                results["issues"].append({
-                    "vector_id": vector_id,
-                    "issues": vector_issues
-                })
+                results["issues"].append(
+                    {"vector_id": vector_id, "issues": vector_issues}
+                )
             else:
                 results["passed"] += 1
 
@@ -1100,6 +1423,7 @@ def verify_vectors(
     except Exception as e:
         logger.error(f"Error verifying vectors: {e}")
         import traceback
+
         traceback.print_exc()
         return {"error": str(e), "total": 0}
 
@@ -1109,7 +1433,7 @@ def verify_batch_command(args: argparse.Namespace) -> None:
     # Read vector IDs from file if provided
     if args.file:
         try:
-            with open(args.file, 'r') as f:
+            with open(args.file, "r") as f:
                 vector_ids = [line.strip() for line in f if line.strip()]
             logger.info(f"Loaded {len(vector_ids)} vector IDs from {args.file}")
         except Exception as e:
@@ -1123,15 +1447,94 @@ def verify_batch_command(args: argparse.Namespace) -> None:
         vector_ids=vector_ids,
         namespace=args.namespace,
         check_embeddings=args.check_embeddings,
-        verbose=args.verbose
+        verbose=args.verbose,
     )
+
+
+def _check_batch_metadata_fields(
+    vector_id: str, metadata: Dict[str, Any], verbose: bool
+) -> Optional[str]:
+    """Check metadata fields for batch verification."""
+    missing_fields = _check_required_metadata_fields(vector_id, metadata)
+    if missing_fields:
+        if verbose:
+            print(f"  ✗ Missing required metadata fields: {missing_fields}")
+        return f"Missing fields: {missing_fields}"
+    elif verbose:
+        print("  ✓ All required metadata fields present")
+    return None
+
+
+def _check_batch_embeddings(vector: Dict[str, Any], verbose: bool) -> Optional[str]:
+    """Check embeddings for batch verification."""
+    if check_vector_has_embeddings(vector):
+        if verbose:
+            print("  ✓ Valid embeddings found")
+        return None
+    else:
+        if verbose:
+            print("  ✗ Missing or invalid embeddings")
+        return "Invalid embeddings"
+
+
+def _verify_single_vector_in_batch(
+    vector_id: str, namespace: Optional[str], check_embeddings: bool, verbose: bool
+) -> Dict[str, Any]:
+    """
+    Verify a single vector in batch processing.
+
+    Args:
+        vector_id: ID of vector to verify
+        namespace: Optional namespace
+        check_embeddings: Whether to check embeddings
+        verbose: Whether to print verbose output
+
+    Returns:
+        Dictionary with verification results for the vector
+    """
+    if verbose:
+        print(f"\nChecking vector: {vector_id}")
+
+    # Fetch the vector
+    vector = fetch_vector(vector_id, namespace=namespace)
+    if not vector:
+        if verbose:
+            print("  ✗ Vector not found")
+        return {"found": False}
+
+    # Initialize result tracking
+    vector_result: Dict[str, Any] = {"found": True, "issues": []}
+    metadata = vector.get("metadata", {})
+
+    # Check required metadata fields
+    metadata_issue = _check_batch_metadata_fields(vector_id, metadata, verbose)
+    if metadata_issue:
+        vector_result["issues"].append(metadata_issue)
+
+    # Check ID format
+    id_issue = _check_id_format(vector_id, metadata, verbose)
+    if id_issue:
+        vector_result["issues"].append("Invalid ID format")
+
+    # Check article title for Wikipedia vectors
+    title_issue = _check_article_title(vector_id, metadata, verbose)
+    if title_issue:
+        vector_result["issues"].append("Article title mismatch")
+
+    # Check embeddings if requested
+    if check_embeddings:
+        embedding_issue = _check_batch_embeddings(vector, verbose)
+        if embedding_issue:
+            vector_result["issues"].append(embedding_issue)
+
+    return vector_result
 
 
 def verify_batch(
     vector_ids: List[str],
     namespace: Optional[str] = None,
     check_embeddings: bool = False,
-    verbose: bool = False
+    verbose: bool = False,
 ) -> Dict[str, Any]:
     """
     Verify a batch of specific vectors by their IDs.
@@ -1152,87 +1555,31 @@ def verify_batch(
         print(f"Verifying {len(vector_ids)} vectors...")
         print("=" * 80)
 
+    # Initialize results tracking
     results: Dict[str, Any] = {
         "total": len(vector_ids),
         "found": 0,
         "not_found": 0,
         "valid": 0,
         "invalid": 0,
-        "details": {}
+        "details": {},
     }
 
+    # Process each vector
     for vector_id in vector_ids:
-        if verbose:
-            print(f"\nChecking vector: {vector_id}")
+        vector_result = _verify_single_vector_in_batch(
+            vector_id, namespace, check_embeddings, verbose
+        )
 
-        # Fetch the vector
-        vector = fetch_vector(vector_id, namespace=namespace)
-        if not vector:
+        # Update aggregate results
+        if not vector_result["found"]:
             results["not_found"] += 1
-            results["details"][vector_id] = {"found": False}
-            if verbose:
-                print("  ✗ Vector not found")
-            continue
-
-        results["found"] += 1
-        vector_result: Dict[str, Any] = {"found": True, "issues": []}
-
-        # Validate the vector
-        metadata = vector.get("metadata", {})
-        source_type = metadata.get("source_type", "unknown")
-        landmark_id = metadata.get("landmark_id", "unknown")
-
-        # 1. Check required metadata fields
-        missing_fields = []
-        for field in REQUIRED_METADATA:
-            if field not in metadata:
-                missing_fields.append(field)
-
-        # Check Wiki-specific fields if this is a Wiki vector
-        if vector_id.startswith("wiki-"):
-            for field in REQUIRED_WIKI_METADATA:
-                if field not in metadata:
-                    missing_fields.append(field)
-
-        if missing_fields:
-            vector_result["issues"].append(f"Missing fields: {missing_fields}")
-            if verbose:
-                print(f"  ✗ Missing required metadata fields: {missing_fields}")
-        elif verbose:
-            print("  ✓ All required metadata fields present")
-
-        # 2. Check ID format
-        if not verify_id_format(vector_id, source_type, landmark_id):
-            vector_result["issues"].append("Invalid ID format")
-            if verbose:
-                print(f"  ✗ Invalid ID format for {source_type} vector")
-        elif verbose:
-            print(f"  ✓ Valid ID format for {source_type} vector")
-
-        # 3. For Wikipedia vectors, check article title
-        if vector_id.startswith("wiki-"):
-            if not verify_article_title(vector_id, metadata):
-                vector_result["issues"].append("Article title mismatch")
-                if verbose:
-                    print("  ✗ Article title in ID does not match metadata")
-            elif verbose:
-                print("  ✓ Article title in ID matches metadata")
-
-        # 4. Check embeddings if requested
-        if check_embeddings:
-            if check_vector_has_embeddings(vector):
-                if verbose:
-                    print("  ✓ Valid embeddings found")
-            else:
-                vector_result["issues"].append("Invalid embeddings")
-                if verbose:
-                    print("  ✗ Missing or invalid embeddings")
-
-        # Update results
-        if vector_result["issues"]:
-            results["invalid"] += 1
         else:
-            results["valid"] += 1
+            results["found"] += 1
+            if vector_result["issues"]:
+                results["invalid"] += 1
+            else:
+                results["valid"] += 1
 
         results["details"][vector_id] = vector_result
 
@@ -1257,7 +1604,7 @@ def verify_vectors_command(args: argparse.Namespace) -> None:
         limit=args.limit,
         prefix=args.prefix,
         check_embeddings=args.check_embeddings,
-        verbose=args.verbose
+        verbose=args.verbose,
     )
 
 
@@ -1266,7 +1613,7 @@ def batch_verify_command(args: argparse.Namespace) -> None:
     # Read vector IDs from file if provided
     if args.file:
         try:
-            with open(args.file, 'r') as f:
+            with open(args.file, "r") as f:
                 vector_ids = [line.strip() for line in f if line.strip()]
             logger.info(f"Loaded {len(vector_ids)} vector IDs from {args.file}")
         except Exception as e:
@@ -1280,11 +1627,12 @@ def batch_verify_command(args: argparse.Namespace) -> None:
         vector_ids=vector_ids,
         namespace=args.namespace,
         check_embeddings=args.check_embeddings,
-        verbose=args.verbose
+        verbose=args.verbose,
     )
 
 
 # =============== Command Line Interface ===============
+
 
 def fetch_command(args: argparse.Namespace) -> None:
     """Handle the fetch command."""
@@ -1302,7 +1650,7 @@ def list_vectors_command(args: argparse.Namespace) -> None:
         prefix=args.prefix,
         limit=args.limit,
         pretty_print=args.pretty,
-        namespace=args.namespace
+        namespace=args.namespace,
     )
 
 
@@ -1311,7 +1659,7 @@ def setup_fetch_parser(subparsers: Any) -> None:
     fetch_parser = subparsers.add_parser(
         "fetch",
         help="Fetch a specific vector by ID",
-        description="Retrieve and display a specific vector by its ID"
+        description="Retrieve and display a specific vector by its ID",
     )
     fetch_parser.add_argument(
         "vector_id",
@@ -1319,12 +1667,14 @@ def setup_fetch_parser(subparsers: Any) -> None:
         help="ID of the vector to fetch (e.g., wiki-Wyckoff_House-LP-00001-chunk-0)",
     )
     fetch_parser.add_argument(
-        "--pretty", "-p",
+        "--pretty",
+        "-p",
         action="store_true",
         help="Format output with clear sections and truncated text",
     )
     fetch_parser.add_argument(
-        "--namespace", "-n",
+        "--namespace",
+        "-n",
         type=str,
         help="Pinecone namespace to search in (defaults to configured namespace)",
     )
@@ -1336,19 +1686,21 @@ def setup_check_landmark_parser(subparsers: Any) -> None:
     check_parser = subparsers.add_parser(
         "check-landmark",
         help="Check all vectors for a specific landmark ID",
-        description="Find and validate all vectors for a given landmark ID"
+        description="Find and validate all vectors for a given landmark ID",
     )
     check_parser.add_argument(
         "landmark_id",
         help="The ID of the landmark to check (e.g., LP-00001)",
     )
     check_parser.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Print full metadata details",
     )
     check_parser.add_argument(
-        "--namespace", "-n",
+        "--namespace",
+        "-n",
         type=str,
         help="Pinecone namespace to search in (defaults to configured namespace)",
     )
@@ -1360,15 +1712,17 @@ def setup_list_vectors_parser(subparsers: Any) -> None:
     list_parser = subparsers.add_parser(
         "list-vectors",
         help="List vectors in Pinecone with optional filtering",
-        description="List and filter vectors stored in the Pinecone database"
+        description="List and filter vectors stored in the Pinecone database",
     )
     list_parser.add_argument(
-        "--prefix", "-p",
+        "--prefix",
+        "-p",
         type=str,
         help="Prefix to filter vector IDs",
     )
     list_parser.add_argument(
-        "--limit", "-l",
+        "--limit",
+        "-l",
         type=int,
         default=10,
         help="Maximum number of vectors to return (default: 10)",
@@ -1379,7 +1733,8 @@ def setup_list_vectors_parser(subparsers: Any) -> None:
         help="Pretty-print JSON output",
     )
     list_parser.add_argument(
-        "--namespace", "-n",
+        "--namespace",
+        "-n",
         type=str,
         help="Pinecone namespace to search in (defaults to configured namespace)",
     )
@@ -1391,19 +1746,21 @@ def setup_validate_parser(subparsers: Any) -> None:
     validate_parser = subparsers.add_parser(
         "validate",
         help="Validate a specific vector against requirements",
-        description="Check if a vector has all required metadata fields"
+        description="Check if a vector has all required metadata fields",
     )
     validate_parser.add_argument(
         "vector_id",
         help="The ID of the vector to validate",
     )
     validate_parser.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Print detailed validation information",
     )
     validate_parser.add_argument(
-        "--namespace", "-n",
+        "--namespace",
+        "-n",
         type=str,
         help="Pinecone namespace to search in (defaults to configured namespace)",
     )
@@ -1415,7 +1772,7 @@ def setup_compare_vectors_parser(subparsers: Any) -> None:
     compare_parser = subparsers.add_parser(
         "compare-vectors",
         help="Compare metadata between two vectors",
-        description="Compare metadata and optionally embeddings between two vectors"
+        description="Compare metadata and optionally embeddings between two vectors",
     )
     compare_parser.add_argument(
         "first_vector_id",
@@ -1426,13 +1783,15 @@ def setup_compare_vectors_parser(subparsers: Any) -> None:
         help="The ID of the second vector to compare",
     )
     compare_parser.add_argument(
-        "--format", "-f",
+        "--format",
+        "-f",
         choices=["text", "json"],
         default="text",
         help="Output format for comparison results (default: text)",
     )
     compare_parser.add_argument(
-        "--namespace", "-n",
+        "--namespace",
+        "-n",
         type=str,
         help="Pinecone namespace to search in (defaults to configured namespace)",
     )
@@ -1444,31 +1803,36 @@ def setup_verify_vectors_parser(subparsers: Any) -> None:
     verify_parser = subparsers.add_parser(
         "verify-vectors",
         help="Verify the integrity of vectors in Pinecone",
-        description="Perform comprehensive validation of vectors in Pinecone"
+        description="Perform comprehensive validation of vectors in Pinecone",
     )
     verify_parser.add_argument(
-        "--namespace", "-n",
+        "--namespace",
+        "-n",
         type=str,
         help="Pinecone namespace to check (defaults to configured namespace)",
     )
     verify_parser.add_argument(
-        "--limit", "-l",
+        "--limit",
+        "-l",
         type=int,
         default=100,
         help="Maximum number of vectors to verify (default: 100)",
     )
     verify_parser.add_argument(
-        "--prefix", "-p",
+        "--prefix",
+        "-p",
         type=str,
         help="Prefix to filter vector IDs",
     )
     verify_parser.add_argument(
-        "--check-embeddings", "-e",
+        "--check-embeddings",
+        "-e",
         action="store_true",
         help="Check vector embeddings (requires more bandwidth)",
     )
     verify_parser.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Print detailed verification information",
     )
@@ -1480,7 +1844,7 @@ def setup_verify_batch_parser(subparsers: Any) -> None:
     batch_parser = subparsers.add_parser(
         "verify-batch",
         help="Verify a batch of specific vectors by their IDs",
-        description="Verify multiple vectors by providing a list of vector IDs"
+        description="Verify multiple vectors by providing a list of vector IDs",
     )
     id_group = batch_parser.add_mutually_exclusive_group(required=True)
     id_group.add_argument(
@@ -1490,22 +1854,26 @@ def setup_verify_batch_parser(subparsers: Any) -> None:
         help="List of vector IDs to verify",
     )
     id_group.add_argument(
-        "--file", "-f",
+        "--file",
+        "-f",
         type=str,
         help="File containing vector IDs (one per line)",
     )
     batch_parser.add_argument(
-        "--namespace", "-n",
+        "--namespace",
+        "-n",
         type=str,
         help="Pinecone namespace to check (defaults to configured namespace)",
     )
     batch_parser.add_argument(
-        "--check-embeddings", "-e",
+        "--check-embeddings",
+        "-e",
         action="store_true",
         help="Check vector embeddings (requires more bandwidth)",
     )
     batch_parser.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Print detailed verification information",
     )
@@ -1525,9 +1893,7 @@ def main() -> None:
 
     # Create subparsers for different commands
     subparsers = parser.add_subparsers(
-        title="commands",
-        dest="command",
-        help="Vector operations"
+        title="commands", dest="command", help="Vector operations"
     )
     subparsers.required = True
 
