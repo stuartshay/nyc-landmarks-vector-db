@@ -613,10 +613,10 @@ class PineconeDB:
             return False
 
         try:
-            # Initialize direct Pinecone client for index operations
-            from pinecone import Pinecone, ServerlessSpec
+            # Use existing Pinecone client for index operations
+            from pinecone import ServerlessSpec
 
-            pc = Pinecone(api_key=self.api_key)
+            pc = self.pc
 
             # Delete the existing index if it exists
             try:
@@ -705,10 +705,8 @@ class PineconeDB:
             return False
 
         try:
-            # Initialize direct Pinecone client for index operations
-            from pinecone import Pinecone
-
-            pc = Pinecone(api_key=self.api_key)
+            # Use existing Pinecone client for index operations
+            pc = self.pc
 
             # Delete the index
             pc.delete_index(self.index_name)
@@ -889,3 +887,113 @@ class PineconeDB:
         except Exception as e:
             logger.error(f"Error querying vectors by landmark: {e}")
             return []
+
+    def list_indexes(self) -> List[str]:
+        """
+        List all available Pinecone indexes.
+
+        Returns:
+            List of index names
+        """
+        try:
+            indexes = self.pc.list_indexes()
+            index_names = (
+                [idx.name for idx in indexes]
+                if hasattr(indexes, "__iter__")
+                else getattr(indexes, "names", [])
+            )
+            return index_names
+        except Exception as e:
+            logger.error(f"Failed to list indexes: {e}")
+            return []
+
+    def check_index_exists(self, index_name: Optional[str] = None) -> bool:
+        """
+        Check if a specific index exists.
+
+        Args:
+            index_name: Name of index to check (defaults to current index)
+
+        Returns:
+            True if index exists, False otherwise
+        """
+        target_index = index_name or self.index_name
+        if not target_index:
+            return False
+
+        index_names = self.list_indexes()
+        return target_index in index_names
+
+    def test_connection(self) -> bool:
+        """
+        Test the Pinecone connection and return success status.
+
+        Returns:
+            True if connection successful, False otherwise
+        """
+        try:
+            stats = self.get_index_stats()
+            return "error" not in stats
+        except Exception as e:
+            logger.error(f"Connection test failed: {e}")
+            return False
+
+    def create_index_if_not_exists(
+        self,
+        index_name: Optional[str] = None,
+        dimensions: Optional[int] = None,
+        metric: str = "cosine",
+    ) -> bool:
+        """
+        Create a Pinecone index if it doesn't already exist.
+
+        Args:
+            index_name: Name of index to create (defaults to current index)
+            dimensions: Vector dimensions (defaults to settings)
+            metric: Distance metric to use
+
+        Returns:
+            True if index exists or was created successfully, False otherwise
+        """
+        target_index = index_name or self.index_name
+        target_dimensions = dimensions or self.dimensions
+
+        if not target_index:
+            logger.error("No index name provided")
+            return False
+
+        # Check if index already exists
+        if self.check_index_exists(target_index):
+            logger.info(f"Index '{target_index}' already exists")
+            return True
+
+        try:
+            from pinecone import ServerlessSpec
+
+            logger.info(
+                f"Creating index '{target_index}' with {target_dimensions} dimensions"
+            )
+
+            # Create the index
+            self.pc.create_index(
+                name=target_index,
+                dimension=target_dimensions,
+                metric=metric,
+                spec=ServerlessSpec(cloud="gcp", region="us-central1"),
+            )
+
+            # Wait for index to be ready
+            logger.info("Waiting for index to initialize (30 seconds)...")
+            time.sleep(30)
+
+            # Verify index was created
+            if self.check_index_exists(target_index):
+                logger.info(f"Successfully created index: {target_index}")
+                return True
+            else:
+                logger.error(f"Failed to verify index creation: {target_index}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Error creating index: {e}")
+            return False

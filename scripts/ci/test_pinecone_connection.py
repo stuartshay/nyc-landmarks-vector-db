@@ -15,23 +15,22 @@ Environment:
     Requires the PINECONE_API_KEY environment variable to be set.
 """
 
-import os
 import sys
 
 try:
-    from pinecone import Pinecone
+    from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
-    print("Initializing Pinecone connection...")
-    pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
-    print("Listing Pinecone indexes to verify connectivity...")
-    indexes = pc.list_indexes()
-    index_names = (
-        [idx.name for idx in indexes]
-        if hasattr(indexes, "__iter__")
-        else getattr(indexes, "names", [])
-    )
-    print(f"Successfully connected to Pinecone. Available indexes: {index_names}")
-    sys.exit(0)
+    print("Initializing PineconeDB connection...")
+    pinecone_db = PineconeDB()
+
+    print("Testing Pinecone connection...")
+    if pinecone_db.test_connection():
+        index_names = pinecone_db.list_indexes()
+        print(f"Successfully connected to Pinecone. Available indexes: {index_names}")
+        sys.exit(0)
+    else:
+        print("Failed to connect to Pinecone index")
+        sys.exit(1)
 except Exception as e:
     print(f"Failed to connect to Pinecone: {str(e)}")
     sys.exit(1)
