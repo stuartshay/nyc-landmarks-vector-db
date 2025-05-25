@@ -5,7 +5,7 @@ PineconeDB class that handles vector operations in Pinecone.
 import os
 import time
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from pinecone import Pinecone
 
@@ -278,9 +278,9 @@ class PineconeDB:
                 try:
                     # Convert to the expected type for the Pinecone SDK
                     self.index.upsert(
-                        vectors=batch,
+                        vectors=cast(List[Any], batch),
                         namespace=self.namespace if self.namespace else None,
-                    )  # pyright: ignore
+                    )
                     break
                 except Exception as e:
                     retry_count += 1
@@ -691,8 +691,9 @@ class PineconeDB:
                 batch = pinecone_vectors[i : i + batch_size]
                 # upsert expects a list of dicts, not tuples
                 self.index.upsert(
-                    vectors=batch, namespace=self.namespace if self.namespace else None
-                )  # pyright: ignore
+                    vectors=cast(List[Any], batch),
+                    namespace=self.namespace if self.namespace else None,
+                )
 
             logger.info(f"Successfully stored {len(pinecone_vectors)} vectors")
             return True
