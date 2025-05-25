@@ -54,7 +54,7 @@ class EnhancedMetadataCollector:
     def _add_landmark_details(
         self, landmark_id: str, metadata_dict: dict
     ) -> tuple[Optional[dict[str, Any]], bool]:
-        """Fetch and add architect, neighborhood, and style to metadata_dict."""
+        """Fetch and add architect, neighborhood, style, and has_pluto_data to metadata_dict."""
         try:
             landmark_details = self.db_client.get_landmark_by_id(landmark_id)
             if landmark_details:
@@ -62,8 +62,11 @@ class EnhancedMetadataCollector:
                     metadata_dict["architect"] = landmark_details.get("architect")
                     metadata_dict["neighborhood"] = landmark_details.get("neighborhood")
                     metadata_dict["style"] = landmark_details.get("style")
+                    metadata_dict["has_pluto_data"] = landmark_details.get(
+                        "plutoStatus", False
+                    )
                     logger.info(
-                        f"Added architect, neighborhood, and style metadata for landmark {landmark_id}"
+                        f"Added architect, neighborhood, style, and has_pluto_data metadata for landmark {landmark_id}"
                     )
                     return landmark_details, True
                 else:
@@ -72,10 +75,13 @@ class EnhancedMetadataCollector:
                         "architect": getattr(landmark_details, "architect", None),
                         "neighborhood": getattr(landmark_details, "neighborhood", None),
                         "style": getattr(landmark_details, "style", None),
+                        "has_pluto_data": getattr(
+                            landmark_details, "plutoStatus", False
+                        ),
                     }
                     metadata_dict.update(details_dict)
                     logger.info(
-                        f"Added architect, neighborhood, and style metadata for landmark {landmark_id}"
+                        f"Added architect, neighborhood, style, and has_pluto_data metadata for landmark {landmark_id}"
                     )
                     return details_dict, True
         except Exception as e:
@@ -154,22 +160,32 @@ class EnhancedMetadataCollector:
             logger.error(f"Error getting building information: {e}")
 
     def _add_pluto_data(self, landmark_id: str, metadata_dict: dict) -> None:
-        """Fetch and add PLUTO data to metadata_dict."""
+        """Fetch and add PLUTO data to metadata_dict if has_pluto_data is True."""
         try:
-            pluto_data = self.db_client.get_landmark_pluto_data(landmark_id)
-            if pluto_data:
-                pluto_model = pluto_data[0]
-                metadata_dict.update(
-                    {
-                        "has_pluto_data": True,
-                        "year_built": pluto_model.yearBuilt or "",
-                        "land_use": pluto_model.landUse or "",
-                        "historic_district": pluto_model.historicDistrict or "",
-                        "zoning_district": pluto_model.zoneDist1 or "",
-                    }
-                )
+            # Only call get_landmark_pluto_data() if has_pluto_data is True from get_landmark_by_id()
+            if metadata_dict.get("has_pluto_data", False):
+                pluto_data = self.db_client.get_landmark_pluto_data(landmark_id)
+                if pluto_data:
+                    pluto_model = pluto_data[0]
+                    metadata_dict.update(
+                        {
+                            "year_built": pluto_model.yearBuilt or "",
+                            "land_use": pluto_model.landUse or "",
+                            "historic_district": pluto_model.historicDistrict or "",
+                            "zoning_district": pluto_model.zoneDist1 or "",
+                        }
+                    )
+                    logger.info(f"Added PLUTO data fields for landmark {landmark_id}")
+                else:
+                    # If plutoStatus was True but no actual data found, set has_pluto_data to False
+                    metadata_dict["has_pluto_data"] = False
+                    logger.warning(
+                        f"has_pluto_data was True but no PLUTO data found for landmark {landmark_id}"
+                    )
             else:
-                metadata_dict["has_pluto_data"] = False
+                logger.debug(
+                    f"Skipping PLUTO data fetch for landmark {landmark_id} (has_pluto_data=False)"
+                )
         except Exception as e:
             logger.error(f"Error getting PLUTO data: {e}")
 

@@ -194,6 +194,10 @@ class PineconeDB:
             for k, v in enhanced_metadata.items():
                 if v is None:
                     continue
+                # Skip source_type from enhanced metadata to preserve the correct source_type
+                # that was set based on the chunk's actual source (line 171)
+                if k == "source_type":
+                    continue
                 # Add additional checks for unsupported data types
                 if isinstance(v, (list, dict)) and k != "buildings":
                     logger.warning(f"Skipping unsupported metadata field: {k}")
@@ -205,14 +209,27 @@ class PineconeDB:
         metadata.update(filtered_metadata)
 
         # Add Wikipedia-specific metadata
-        if source_type == "wikipedia" and "article_metadata" in chunk:
-            article_meta = chunk.get("article_metadata", {})
-            # Filter out null values from article metadata
-            article_data = {
-                "article_title": article_meta.get("title", ""),
-                "article_url": article_meta.get("url", ""),
-            }
-            metadata.update({k: v for k, v in article_data.items() if v is not None})
+        if source_type == "wikipedia":
+            # Check for article metadata in chunk.metadata (new format)
+            chunk_metadata = chunk.get("metadata", {})
+            if chunk_metadata.get("article_title") or chunk_metadata.get("article_url"):
+                article_data = {
+                    "article_title": chunk_metadata.get("article_title", ""),
+                    "article_url": chunk_metadata.get("article_url", ""),
+                }
+                metadata.update(
+                    {k: v for k, v in article_data.items() if v is not None}
+                )
+            # Fallback: check for article_metadata in chunk (legacy format)
+            elif "article_metadata" in chunk:
+                article_meta = chunk.get("article_metadata", {})
+                article_data = {
+                    "article_title": article_meta.get("title", ""),
+                    "article_url": article_meta.get("url", ""),
+                }
+                metadata.update(
+                    {k: v for k, v in article_data.items() if v is not None}
+                )
 
         return metadata
 
@@ -232,7 +249,10 @@ class PineconeDB:
             while retry_count < 3:
                 try:
                     # Convert to the expected type for the Pinecone SDK
-                    self.index.upsert(vectors=batch)  # pyright: ignore
+                    self.index.upsert(
+                        vectors=batch,
+                        namespace=self.namespace if self.namespace else None,
+                    )  # pyright: ignore
                     break
                 except Exception as e:
                     retry_count += 1
@@ -251,6 +271,7 @@ class PineconeDB:
         landmark_id: Optional[str] = None,
         use_fixed_ids: bool = True,
         delete_existing: bool = False,
+        enhanced_metadata: Optional[Dict[str, Any]] = None,
     ) -> List[str]:
         """
         Store chunks in Pinecone index.
@@ -261,6 +282,7 @@ class PineconeDB:
             landmark_id: ID of the landmark for metadata and filtering
             use_fixed_ids: Create deterministic IDs for vectors based on content and landmark
             delete_existing: Delete existing vectors for the landmark before storing new ones
+            enhanced_metadata: Pre-built enhanced metadata dict (optional, will fetch if not provided)
 
         Returns:
             List of vector IDs stored in Pinecone
@@ -279,9 +301,14 @@ class PineconeDB:
         vector_ids = []
 
         # Get enhanced metadata for the landmark if ID is provided
-        enhanced_metadata = {}
-        if landmark_id:
-            enhanced_metadata = self._get_enhanced_metadata(landmark_id)
+        if enhanced_metadata is not None:
+            # Use pre-built enhanced metadata
+            landmark_enhanced_metadata = enhanced_metadata
+        elif landmark_id:
+            # Fetch enhanced metadata if not provided
+            landmark_enhanced_metadata = self._get_enhanced_metadata(landmark_id)
+        else:
+            landmark_enhanced_metadata = {}
 
         # Determine source type based on prefix
         source_type = self._get_source_type_from_prefix(id_prefix)
@@ -298,7 +325,7 @@ class PineconeDB:
 
             # Create metadata
             metadata = self._create_metadata_for_chunk(
-                chunk, source_type, i, landmark_id, enhanced_metadata
+                chunk, source_type, i, landmark_id, landmark_enhanced_metadata
             )
 
             # Remove _extra_fields from LandmarkMetadata to avoid Pinecone errors
@@ -362,6 +389,7 @@ class PineconeDB:
                 top_k=top_k,
                 include_metadata=True,
                 filter=filter_dict,
+                namespace=self.namespace if self.namespace else None,
             )
 
             # Process the response to extract matches
@@ -634,7 +662,9 @@ class PineconeDB:
             for i in range(0, len(pinecone_vectors), batch_size):
                 batch = pinecone_vectors[i : i + batch_size]
                 # upsert expects a list of dicts, not tuples
-                self.index.upsert(vectors=batch)  # pyright: ignore
+                self.index.upsert(
+                    vectors=batch, namespace=self.namespace if self.namespace else None
+                )  # pyright: ignore
 
             logger.info(f"Successfully stored {len(pinecone_vectors)} vectors")
             return True
@@ -677,7 +707,8 @@ class PineconeDB:
         try:
             vector_id = str(uuid.uuid4())  # Generate a unique ID for the vector
             self.index.upsert(
-                vectors=[{"id": vector_id, "values": embedding, "metadata": metadata}]
+                vectors=[{"id": vector_id, "values": embedding, "metadata": metadata}],
+                namespace=self.namespace if self.namespace else None,
             )
             logger.info(f"Stored embedding with ID: {vector_id}")
         except Exception as e:

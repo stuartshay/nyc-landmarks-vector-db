@@ -205,6 +205,9 @@ class LpcReportDetailResponse(BaseModel):
     pdfStatus: Optional[bool] = Field(
         None, description="Indicates if PDF report is available"
     )
+    plutoStatus: Optional[bool] = Field(
+        None, description="Indicates if PLUTO data is available for this landmark"
+    )
     neighborhood: Optional[str] = Field(
         None, description="Neighborhood of the landmark"
     )
