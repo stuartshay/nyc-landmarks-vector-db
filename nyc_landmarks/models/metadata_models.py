@@ -58,7 +58,7 @@ class RootMetadataModel(BaseModel):
 
     def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
         """Return a dictionary including the processing_date field."""
-        result = super().model_dump(**kwargs)
+        result: Dict[str, Any] = super().model_dump(**kwargs)
         # Ensure processing_date and source_type are always included in the output
         if "processing_date" not in result:
             result["processing_date"] = self.processing_date
@@ -125,7 +125,7 @@ class LandmarkMetadata(RootMetadataModel):
 
     def __init__(self, **data: Any):
         # Get the full list of model fields including inherited ones from RootMetadataModel
-        all_model_fields = set()
+        all_model_fields: set[str] = set()
         for cls in self.__class__.__mro__:
             if hasattr(cls, "__annotations__"):
                 all_model_fields.update(cls.__annotations__.keys())
