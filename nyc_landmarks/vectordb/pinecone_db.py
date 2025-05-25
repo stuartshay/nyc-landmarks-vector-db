@@ -397,28 +397,79 @@ class PineconeDB:
 
     def query_vectors(
         self,
-        query_vector: List[float],
+        query_vector: Optional[List[float]] = None,
         top_k: int = 5,
         filter_dict: Optional[Dict[str, Any]] = None,
+        landmark_id: Optional[str] = None,
+        source_type: Optional[str] = None,
+        id_prefix: Optional[str] = None,
+        include_values: bool = False,
+        namespace_override: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
-        Query vectors from Pinecone index.
+        Enhanced query method that consolidates all vector querying functionality.
+
+        This method supports:
+        - Semantic similarity search (with query_vector)
+        - Metadata filtering (landmark_id, source_type, custom filters)
+        - ID prefix filtering
+        - Listing operations (when query_vector is None)
 
         Args:
-            query_vector: Embedding of the query text
+            query_vector: Embedding vector for semantic search. If None, performs listing operation
             top_k: Number of results to return
-            filter_dict: Dictionary of metadata filters
+            filter_dict: Custom metadata filters (combined with other filters)
+            landmark_id: Filter by specific landmark ID
+            source_type: Filter by source type ("wikipedia", "pdf", "test")
+            id_prefix: Filter vector IDs by prefix (case-insensitive)
+            include_values: Whether to include embedding values in results
+            namespace_override: Override the instance namespace for this query
 
         Returns:
-            List of matching vectors with metadata
+            List of matching vectors with metadata and optionally embedding values
         """
         try:
+            # Determine the namespace to use
+            query_namespace = (
+                namespace_override if namespace_override is not None else self.namespace
+            )
+
+            # Build the combined filter dictionary
+            combined_filter: Dict[str, Any] = {}
+            if filter_dict:
+                combined_filter.update(filter_dict)
+            if landmark_id:
+                combined_filter["landmark_id"] = landmark_id
+            if source_type:
+                combined_filter["source_type"] = source_type
+
+            # Use query vector or create dummy vector for listing operations
+            if query_vector is None:
+                # For listing operations, use zero vector
+                dimension = self.dimensions
+                vector = [0.0] * dimension
+                logger.debug("Using dummy vector for listing operation")
+            else:
+                vector = query_vector
+                logger.debug("Using provided query vector for semantic search")
+
+            # Adjust top_k for prefix filtering to ensure we get enough matches
+            effective_top_k = top_k
+            if id_prefix:
+                # When filtering by prefix, retrieve more results to account for filtering
+                effective_top_k = max(top_k * 20, 100)
+                logger.debug(
+                    f"Increased top_k to {effective_top_k} for prefix filtering"
+                )
+
+            # Execute the query
             response = self.index.query(
-                vector=query_vector,
-                top_k=top_k,
+                vector=vector,
+                top_k=effective_top_k,
                 include_metadata=True,
-                filter=filter_dict,
-                namespace=self.namespace if self.namespace else None,
+                include_values=include_values,
+                filter=combined_filter if combined_filter else None,
+                namespace=query_namespace if query_namespace else None,
             )
 
             # Process the response to extract matches
@@ -433,8 +484,21 @@ class PineconeDB:
 
             # Access matches safely
             matches = getattr(response_dict, "matches", [])
+
+            # Apply prefix filtering if specified
+            if id_prefix:
+                prefix_lower = id_prefix.lower()
+                filtered_matches = [
+                    match
+                    for match in matches
+                    if hasattr(match, "id")
+                    and match.id
+                    and match.id.lower().startswith(prefix_lower)
+                ]
+                matches = filtered_matches[:top_k]
+
+            # Convert matches to standardized format
             for match in matches:
-                # Handle match objects
                 match_dict: Dict[str, Any] = {}
 
                 # Extract ID if available
@@ -449,13 +513,85 @@ class PineconeDB:
                 if hasattr(match, "metadata"):
                     match_dict["metadata"] = match.metadata
 
+                # Extract values if requested and available
+                if include_values and hasattr(match, "values"):
+                    match_dict["values"] = match.values
+
                 result_list.append(match_dict)
 
+            logger.debug(f"Returned {len(result_list)} vectors after processing")
             return result_list
 
         except Exception as e:
             logger.error(f"Failed to query vectors: {e}")
             return []
+
+    # Convenience methods for common query patterns
+
+    def query_semantic_search(
+        self,
+        query_vector: List[float],
+        top_k: int = 5,
+        filter_dict: Optional[Dict[str, Any]] = None,
+        landmark_id: Optional[str] = None,
+        source_type: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Perform semantic similarity search with optional metadata filtering.
+
+        Args:
+            query_vector: Embedding vector for semantic search
+            top_k: Number of results to return
+            filter_dict: Custom metadata filters
+            landmark_id: Filter by specific landmark ID
+            source_type: Filter by source type
+
+        Returns:
+            List of semantically similar vectors
+        """
+        return self.query_vectors(
+            query_vector=query_vector,
+            top_k=top_k,
+            filter_dict=filter_dict,
+            landmark_id=landmark_id,
+            source_type=source_type,
+        )
+
+    def list_vectors(
+        self,
+        limit: int = 100,
+        filter_dict: Optional[Dict[str, Any]] = None,
+        landmark_id: Optional[str] = None,
+        source_type: Optional[str] = None,
+        id_prefix: Optional[str] = None,
+        include_values: bool = False,
+        namespace_override: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        List vectors without semantic search (listing operation).
+
+        Args:
+            limit: Maximum number of vectors to return
+            filter_dict: Custom metadata filters
+            landmark_id: Filter by specific landmark ID
+            source_type: Filter by source type
+            id_prefix: Filter vector IDs by prefix
+            include_values: Whether to include embedding values
+            namespace_override: Override namespace for this query
+
+        Returns:
+            List of vectors matching the filters
+        """
+        return self.query_vectors(
+            query_vector=None,  # Use None for listing operations
+            top_k=limit,
+            filter_dict=filter_dict,
+            landmark_id=landmark_id,
+            source_type=source_type,
+            id_prefix=id_prefix,
+            include_values=include_values,
+            namespace_override=namespace_override,
+        )
 
     def delete_vectors(self, vector_ids: List[str]) -> int:
         """
@@ -513,6 +649,9 @@ class PineconeDB:
         """
         List vectors by source type.
 
+        .. deprecated::
+            Use query_vectors() or list_vectors() instead for enhanced functionality.
+
         Args:
             source_type: Source type to filter by ("wikipedia", "pdf", or "test")
             limit: Maximum number of vectors to return
@@ -521,52 +660,25 @@ class PineconeDB:
         Returns:
             Dictionary with matches containing vectors and metadata
         """
-        try:
-            # Create filter dictionary
-            filter_dict: Dict[str, Any] = {"source_type": source_type}
-            if landmark_id:
-                filter_dict["landmark_id"] = landmark_id
+        import warnings
 
-            # Query with dummy vector to get metadata
-            dimension = self.dimensions
-            dummy_vector = [0.0] * dimension
-            response = self.index.query(
-                vector=dummy_vector,
-                top_k=limit,
-                filter=filter_dict,
-                include_metadata=True,
-                include_values=True,  # Explicitly request embedding values
-            )
+        warnings.warn(
+            "list_vectors_by_source is deprecated. Use query_vectors() or list_vectors() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
-            # Process the response to create a standardized return format
-            result: Dict[str, Any] = {"matches": []}
+        # Delegate to the enhanced query_vectors method
+        matches = self.query_vectors(
+            query_vector=None,  # Listing operation
+            top_k=limit,
+            landmark_id=landmark_id,
+            source_type=source_type,
+            include_values=True,  # Match original behavior
+        )
 
-            # Cast response to Any to handle different return types from Pinecone SDK
-            from typing import Any as TypeAny
-            from typing import cast
-
-            response_dict = cast(TypeAny, response)
-
-            # Extract matches from the response safely
-            matches = getattr(response_dict, "matches", [])
-            matches_list = []
-            for match in matches:
-                match_dict = {
-                    "id": getattr(match, "id", ""),
-                    "score": getattr(match, "score", 0.0),
-                    "metadata": getattr(match, "metadata", {}),
-                    "values": getattr(
-                        match, "values", []
-                    ),  # Include the embedding values
-                }
-                matches_list.append(match_dict)
-            result["matches"] = matches_list
-
-            return result
-
-        except Exception as e:
-            logger.error(f"Failed to list vectors by source: {e}")
-            return {"matches": []}
+        # Return in the original format for backward compatibility
+        return {"matches": matches}
 
     def get_index_stats(self) -> Dict[str, Any]:
         """
@@ -774,6 +886,9 @@ class PineconeDB:
         """
         List vectors in Pinecone with optional prefix filtering.
 
+        .. deprecated::
+            Use query_vectors() or list_vectors() instead for enhanced functionality.
+
         Args:
             prefix: Optional prefix to filter vector IDs
             limit: Maximum number of vectors to return
@@ -782,68 +897,31 @@ class PineconeDB:
         Returns:
             List of vector data
         """
-        try:
-            # Use provided namespace or instance default
-            query_namespace = namespace if namespace is not None else self.namespace
+        import warnings
 
-            # Use a standard dimension for embeddings
-            vector_dimension = 1536  # Common dimension for embeddings
-            zero_vector = [0.0] * vector_dimension
+        warnings.warn(
+            "list_vectors_with_filter is deprecated. Use query_vectors() or list_vectors() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
-            # If prefix is provided, we'll need to retrieve more vectors to ensure we get matches
-            effective_limit = limit
-            if prefix:
-                # For prefix filtering, retrieve a larger number of vectors
-                effective_limit = max(limit * 20, 100)
-
-            logger.info(f"Querying vectors with limit: {effective_limit}")
-
-            # Query the index
-            result = self.index.query(
-                vector=zero_vector,
-                top_k=effective_limit,
-                include_metadata=True,
-                include_values=False,
-                namespace=query_namespace if query_namespace else None,
-            )
-
-            # Extract matches safely
-            matches = getattr(result, "matches", [])
-
-            # Filter by prefix if provided
-            if prefix:
-                prefix_lower = prefix.lower()
-                filtered_matches = [
-                    match
-                    for match in matches
-                    if getattr(match, "id", "")
-                    and getattr(match, "id", "").lower().startswith(prefix_lower)
-                ]
-                matches = filtered_matches[:limit]
-            else:
-                matches = matches[:limit]
-
-            # Convert to standardized format
-            result_list = []
-            for match in matches:
-                match_dict = {
-                    "id": getattr(match, "id", ""),
-                    "score": getattr(match, "score", 0.0),
-                    "metadata": getattr(match, "metadata", {}),
-                }
-                result_list.append(match_dict)
-
-            return result_list
-
-        except Exception as e:
-            logger.error(f"Error listing vectors: {e}")
-            return []
+        # Delegate to the enhanced query_vectors method
+        return self.query_vectors(
+            query_vector=None,  # Listing operation
+            top_k=limit,
+            id_prefix=prefix,
+            namespace_override=namespace,
+            include_values=False,  # Match original behavior
+        )
 
     def query_vectors_by_landmark(
         self, landmark_id: str, namespace: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         Query Pinecone for vectors related to a landmark.
+
+        .. deprecated::
+            Use query_vectors() or list_vectors() instead for enhanced functionality.
 
         Args:
             landmark_id: The ID of the landmark to check
@@ -852,41 +930,22 @@ class PineconeDB:
         Returns:
             List of vector matches
         """
-        try:
-            # Use provided namespace or instance default
-            query_namespace = namespace if namespace is not None else self.namespace
+        import warnings
 
-            # Use a dimension of 1536 for OpenAI embeddings
-            dimension = settings.OPENAI_EMBEDDING_DIMENSIONS
-            dummy_vector = [0.0] * dimension
+        warnings.warn(
+            "query_vectors_by_landmark is deprecated. Use query_vectors() or list_vectors() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
-            # Query all vectors for this landmark
-            query_response = self.index.query(
-                vector=dummy_vector,
-                filter={"landmark_id": landmark_id},
-                top_k=100,  # Increase if needed
-                include_metadata=True,
-                namespace=query_namespace if query_namespace else None,
-            )
-
-            # Access matches safely
-            matches = getattr(query_response, "matches", [])
-
-            # Convert to standardized format
-            result_list = []
-            for match in matches:
-                match_dict = {
-                    "id": getattr(match, "id", ""),
-                    "score": getattr(match, "score", 0.0),
-                    "metadata": getattr(match, "metadata", {}),
-                }
-                result_list.append(match_dict)
-
-            return result_list
-
-        except Exception as e:
-            logger.error(f"Error querying vectors by landmark: {e}")
-            return []
+        # Delegate to the enhanced query_vectors method
+        return self.query_vectors(
+            query_vector=None,  # Listing operation
+            top_k=100,  # Match original behavior
+            landmark_id=landmark_id,
+            namespace_override=namespace,
+            include_values=False,  # Match original behavior
+        )
 
     def list_indexes(self) -> List[str]:
         """

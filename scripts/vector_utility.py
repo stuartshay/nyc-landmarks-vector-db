@@ -219,6 +219,9 @@ def query_landmark_vectors(
     """
     Query Pinecone for vectors related to a landmark.
 
+    .. deprecated::
+        Use PineconeDB.query_vectors() or PineconeDB.list_vectors() instead.
+
     Args:
         pinecone_db: PineconeDB instance
         landmark_id: The ID of the landmark to check
@@ -227,33 +230,22 @@ def query_landmark_vectors(
     Returns:
         List of vector matches
     """
-    # Set namespace if provided
-    if namespace is not None:
-        pinecone_db.namespace = namespace
-        logger.info(f"Using custom namespace: {namespace}")
-    else:
-        logger.info(f"Using default namespace: {pinecone_db.namespace}")
+    import warnings
 
-    # Use a dimension of 1536 for OpenAI embeddings
-    dimension = settings.OPENAI_EMBEDDING_DIMENSIONS
-
-    # Query all vectors for this landmark
-    query_response = pinecone_db.index.query(
-        vector=[0.0] * dimension,  # Dummy vector
-        filter={"landmark_id": landmark_id},
-        top_k=100,  # Increase if needed
-        include_metadata=True,
-        namespace=pinecone_db.namespace if pinecone_db.namespace else None,
+    warnings.warn(
+        "query_landmark_vectors is deprecated. Use PineconeDB.query_vectors() or PineconeDB.list_vectors() instead.",
+        DeprecationWarning,
+        stacklevel=2,
     )
 
-    # Access matches safely
-    matches = []
-    if hasattr(query_response, "matches"):
-        matches = getattr(query_response, "matches")
-    elif isinstance(query_response, dict) and "matches" in query_response:
-        matches = query_response["matches"]
-
-    return matches
+    # Delegate to the enhanced query_vectors method
+    return pinecone_db.query_vectors(
+        query_vector=None,  # Listing operation
+        top_k=100,  # Match original behavior
+        landmark_id=landmark_id,
+        namespace_override=namespace,
+        include_values=False,
+    )
 
 
 def extract_metadata(match: Any) -> Dict[str, Any]:
@@ -398,6 +390,9 @@ def query_pinecone_index(
     """
     Query the Pinecone index and retrieve vectors.
 
+    .. deprecated::
+        Use PineconeDB.query_vectors() or PineconeDB.list_vectors() instead.
+
     Args:
         pinecone_db: PineconeDB instance
         limit: Maximum number of vectors to return
@@ -405,49 +400,31 @@ def query_pinecone_index(
         prefix: Optional prefix to filter vector IDs (will increase limit internally)
 
     Returns:
-        Query result from Pinecone
+        Query result from Pinecone (in legacy format for backward compatibility)
     """
-    # Use a standard dimension for embeddings
-    vector_dimension = 1536  # Common dimension for embeddings
-    zero_vector = [0.0] * vector_dimension
+    import warnings
 
-    # Set the namespace if provided
-    if namespace is not None:
-        pinecone_db.namespace = namespace
-        logger.info(f"Using custom namespace: {namespace}")
-    else:
-        logger.info(f"Using default namespace: {pinecone_db.namespace}")
-
-    # If prefix is provided, we'll need to retrieve more vectors to ensure we get matches
-    # We'll retrieve a larger number of vectors when filtering by prefix
-    effective_limit = limit
-    if prefix:
-        # For prefix filtering, retrieve a larger number of vectors
-        # Minimum 100, but scale with the requested limit
-        effective_limit = max(limit * 20, 100)
-        logger.info(
-            f"Using effective limit of {effective_limit} to ensure prefix matches for '{prefix}'"
-        )
-
-    # Log the query parameters
-    logger.info(
-        f"Querying with top_k: {effective_limit}, namespace: {pinecone_db.namespace}"
+    warnings.warn(
+        "query_pinecone_index is deprecated. Use PineconeDB.query_vectors() or PineconeDB.list_vectors() instead.",
+        DeprecationWarning,
+        stacklevel=2,
     )
 
-    # Query the index
-    result = pinecone_db.index.query(
-        vector=zero_vector,
-        top_k=effective_limit,
-        include_metadata=True,
+    # Get results using the enhanced method
+    results = pinecone_db.query_vectors(
+        query_vector=None,  # Listing operation
+        top_k=limit,
+        id_prefix=prefix,
+        namespace_override=namespace,
         include_values=False,
-        namespace=pinecone_db.namespace if pinecone_db.namespace else None,
     )
 
-    # Log the total number of matches received
-    match_count = len(getattr(result, "matches", []))
-    logger.info(f"Retrieved {match_count} vectors from Pinecone")
+    # Create a mock result object for backward compatibility
+    class MockResult:
+        def __init__(self, matches: List[Dict[str, Any]]) -> None:
+            self.matches = matches
 
-    return result
+    return MockResult(results)
 
 
 def _analyze_vector_prefixes(
@@ -738,27 +715,31 @@ def list_vectors(
         print(f"  Prefix filter: {prefix if prefix else 'None'}")
         print(f"  Result limit: {limit}")
 
-        # Query the Pinecone index
-        result = query_pinecone_index(pinecone_db, limit, namespace, prefix)
+        # Query the Pinecone index using the enhanced method
+        matches = pinecone_db.list_vectors(
+            limit=limit,
+            id_prefix=prefix,
+            namespace_override=namespace,
+            include_values=False,
+        )
 
         # Handle the result safely
-        matches = getattr(result, "matches", None)
         if not matches:
             logger.warning("No vectors found in Pinecone")
             print("\nNo vectors found in the database.")
             return []
 
-        # Filter results if prefix is provided
-        filtered_matches = filter_matches_by_prefix(matches, prefix)
-        if not filtered_matches:
-            logger.warning(f"No vectors found with prefix: '{prefix}'")
-            return []
+        print(f"\nFound {len(matches)} matches")
 
-        # Prepare and limit the results
-        filtered_matches = _prepare_query_results(filtered_matches, limit)
-
-        # Convert matches to dictionaries for display
-        matches_data = convert_matches_to_dicts(filtered_matches)
+        # Convert matches to the expected format for display
+        matches_data = []
+        for match in matches:
+            match_dict = {
+                "id": match.get("id", "Unknown"),
+                "score": match.get("score", 0.0),
+                "metadata": match.get("metadata", {}),
+            }
+            matches_data.append(match_dict)
 
         # Print the results in the appropriate format
         if pretty_print:
