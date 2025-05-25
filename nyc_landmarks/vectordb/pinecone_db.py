@@ -3,19 +3,16 @@ PineconeDB class that handles vector operations in Pinecone.
 """
 
 import os
-import re
 import time
 import uuid
 from typing import Any, Dict, List, Optional, Tuple, cast
 
-import numpy as np
 from pinecone import Pinecone
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.models.metadata_models import LandmarkMetadata
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.enhanced_metadata import EnhancedMetadataCollector
-from nyc_landmarks.vectordb.vector_id_validator import VectorIDValidator
 
 logger = get_logger(__name__)
 
@@ -892,94 +889,3 @@ class PineconeDB:
         except Exception as e:
             logger.error(f"Error querying vectors by landmark: {e}")
             return []
-
-    def validate_vector_metadata(
-        self, vector_id: str, namespace: Optional[str] = None
-    ) -> Tuple[bool, List[str]]:
-        """
-        Validate a vector's metadata against requirements.
-
-        Args:
-            vector_id: The ID of the vector to validate
-            namespace: Optional namespace to search in
-
-        Returns:
-            Tuple of (is_valid, list_of_issues)
-        """
-        # Required metadata fields for all vectors
-        REQUIRED_METADATA = ["landmark_id", "source_type", "chunk_index", "text"]
-
-        # Additional required metadata fields for Wikipedia vectors
-        REQUIRED_WIKI_METADATA = ["article_title", "article_url"]
-
-        try:
-            # Fetch the vector
-            vector_data = self.fetch_vector_by_id(vector_id, namespace)
-            if not vector_data:
-                return False, [f"Vector with ID '{vector_id}' not found"]
-
-            metadata = vector_data.get("metadata", {})
-            issues = []
-
-            # Check for missing required fields
-            for field in REQUIRED_METADATA:
-                if field not in metadata:
-                    issues.append(f"Missing required field: {field}")
-
-            # Check for Wikipedia-specific fields if applicable
-            if vector_id.startswith("wiki-"):
-                for field in REQUIRED_WIKI_METADATA:
-                    if field not in metadata:
-                        issues.append(f"Missing required Wikipedia field: {field}")
-
-            # Validate ID format using VectorIDValidator
-            if not VectorIDValidator.validate_format(vector_id):
-                issues.append("Invalid vector ID format")
-
-            # Get source type from vector ID and validate against metadata
-            id_source_type = VectorIDValidator.get_source_type(vector_id)
-            metadata_source_type = metadata.get("source_type", "unknown")
-
-            if id_source_type != "unknown" and metadata_source_type != id_source_type:
-                issues.append(
-                    f"Source type mismatch: ID indicates '{id_source_type}' but metadata has '{metadata_source_type}'"
-                )
-
-            # Validate landmark_id and chunk_index consistency using VectorIDValidator
-            landmark_info = VectorIDValidator.extract_landmark_info(vector_id)
-            if landmark_info:
-                id_landmark_id, id_chunk_index = landmark_info
-                metadata_landmark_id = metadata.get("landmark_id", "")
-                metadata_chunk_index = metadata.get("chunk_index", -1)
-
-                if metadata_landmark_id != id_landmark_id:
-                    issues.append(
-                        f"Landmark ID mismatch: ID has '{id_landmark_id}' but metadata has '{metadata_landmark_id}'"
-                    )
-
-                if int(metadata_chunk_index) != id_chunk_index:
-                    issues.append(
-                        f"Chunk index mismatch: ID has '{id_chunk_index}' but metadata has '{metadata_chunk_index}'"
-                    )
-
-            # Check if article title matches for Wikipedia vectors
-            if vector_id.startswith("wiki-"):
-                parts = vector_id.split("-")
-                if len(parts) >= 4:
-                    article_title_from_id = parts[1].replace("_", " ")
-                    if "article_title" in metadata:
-                        if metadata["article_title"] != article_title_from_id:
-                            issues.append("Article title in ID does not match metadata")
-
-            # Check if vector has valid embeddings
-            values = vector_data.get("values", [])
-            if not values:
-                issues.append("Missing or empty embeddings")
-            elif np.allclose(np.array(values), 0):
-                issues.append("All-zero embeddings detected")
-
-            return len(issues) == 0, issues
-
-        except Exception as e:
-            logger.error(f"Error validating vector metadata: {e}")
-            return False, [f"Validation error: {str(e)}"]
