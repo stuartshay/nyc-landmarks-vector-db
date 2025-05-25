@@ -124,92 +124,136 @@ def create_mock_db_client() -> Mock:
     """
     mock_client = Mock()
 
-    # Mock the get_wikipedia_articles method
+    # Assign all mock methods to the client
+    mock_client.get_wikipedia_articles = _create_mock_get_wikipedia_articles()
+    mock_client.get_landmark_metadata = _create_mock_get_landmark_metadata()
+    mock_client.get_landmark_by_id = _create_mock_get_landmark_by_id()
+    mock_client.get_landmark_buildings = _create_mock_get_landmark_buildings()
+    mock_client.get_landmark_pluto_data = _create_mock_get_landmark_pluto_data()
+
+    return mock_client
+
+
+def _create_mock_get_wikipedia_articles():
+    """Create mock implementation for get_wikipedia_articles method."""
+
     def mock_get_wikipedia_articles(landmark_id: str) -> List[WikipediaArticleModel]:
         """Mock implementation that returns articles for specific landmark IDs."""
         mock_articles = get_mock_wikipedia_articles()
         return [article for article in mock_articles if article.lpNumber == landmark_id]
 
-    # Mock the get_landmark_metadata method
+    return mock_get_wikipedia_articles
+
+
+def _create_mock_get_landmark_metadata():
+    """Create mock implementation for get_landmark_metadata method."""
+
     def mock_get_landmark_metadata(landmark_id: str) -> Dict[str, Any]:
         """Mock implementation that returns basic landmark metadata."""
         if landmark_id == "LP-01973":
             return get_mock_landmark_metadata_lp01973()
         elif landmark_id == "LP-00009":
-            # Return basic data for LP-00009 for backward compatibility
-            return {
-                "landmark_id": "LP-00009",
-                "name": "Federal Hall National Memorial",
-                "location": "26 Wall Street",
-                "borough": "Manhattan",
-                "type": "Individual Landmark",
-                "designation_date": "1965-12-21",
-            }
+            return _get_mock_landmark_metadata_lp00009()
         return {}
 
-    # Mock the get_landmark_by_id method
+    return mock_get_landmark_metadata
+
+
+def _get_mock_landmark_metadata_lp00009() -> Dict[str, Any]:
+    """Get mock landmark metadata for LP-00009."""
+    return {
+        "landmark_id": "LP-00009",
+        "name": "Federal Hall National Memorial",
+        "location": "26 Wall Street",
+        "borough": "Manhattan",
+        "type": "Individual Landmark",
+        "designation_date": "1965-12-21",
+    }
+
+
+def _create_mock_get_landmark_by_id():
+    """Create mock implementation for get_landmark_by_id method."""
+
     def mock_get_landmark_by_id(landmark_id: str) -> Dict[str, Any]:
         """Mock implementation that returns detailed landmark information."""
         if landmark_id == "LP-01973":
             return get_mock_landmark_details_lp01973()
         elif landmark_id == "LP-00009":
-            return {
-                "architect": "Town & Davis",
-                "neighborhood": "Financial District",
-                "style": "Greek Revival",
-                "landmark_id": "LP-00009",
-                "name": "Federal Hall National Memorial",
-                "location": "26 Wall Street",
-                "borough": "Manhattan",
-                "type": "Individual Landmark",
-                "designation_date": "1965-12-21",
-            }
+            return _get_mock_landmark_details_lp00009()
         return {}
 
-    # Mock the get_landmark_buildings method
+    return mock_get_landmark_by_id
+
+
+def _get_mock_landmark_details_lp00009() -> Dict[str, Any]:
+    """Get mock landmark details for LP-00009."""
+    return {
+        "architect": "Town & Davis",
+        "neighborhood": "Financial District",
+        "style": "Greek Revival",
+        "landmark_id": "LP-00009",
+        "name": "Federal Hall National Memorial",
+        "location": "26 Wall Street",
+        "borough": "Manhattan",
+        "type": "Individual Landmark",
+        "designation_date": "1965-12-21",
+    }
+
+
+def _create_mock_get_landmark_buildings():
+    """Create mock implementation for get_landmark_buildings method."""
+
     def mock_get_landmark_buildings(landmark_id: str) -> List[Dict[str, Any]]:
         """Mock implementation that returns building data."""
         if landmark_id == "LP-01973":
             return get_mock_landmark_buildings_lp01973()
         elif landmark_id == "LP-00009":
-            return [
-                {
-                    "bbl": "1000050001",
-                    "bin": "1000001",
-                    "block": "5",
-                    "lot": "1",
-                    "latitude": 40.7071,
-                    "longitude": -74.0101,
-                    "address": "26 Wall Street",
-                    "name": "Federal Hall National Memorial",
-                }
-            ]
+            return _get_mock_landmark_buildings_lp00009()
         return []
 
-    # Mock the get_landmark_pluto_data method
+    return mock_get_landmark_buildings
+
+
+def _get_mock_landmark_buildings_lp00009() -> List[Dict[str, Any]]:
+    """Get mock landmark buildings for LP-00009."""
+    return [
+        {
+            "bbl": "1000050001",
+            "bin": "1000001",
+            "block": "5",
+            "lot": "1",
+            "latitude": 40.7071,
+            "longitude": -74.0101,
+            "address": "26 Wall Street",
+            "name": "Federal Hall National Memorial",
+        }
+    ]
+
+
+def _create_mock_get_landmark_pluto_data():
+    """Create mock implementation for get_landmark_pluto_data method."""
+
     def mock_get_landmark_pluto_data(landmark_id: str) -> List[PlutoDataModel]:
         """Mock implementation that returns PLUTO data."""
         if landmark_id == "LP-01973":
             return get_mock_landmark_pluto_data_lp01973()
         elif landmark_id == "LP-00009":
-            return [
-                PlutoDataModel(
-                    yearBuilt="1842",
-                    landUse="08",  # Educational/Cultural
-                    historicDistrict="Stone Street Historic District",
-                    zoneDist1="C5-1",
-                )
-            ]
+            return _get_mock_landmark_pluto_data_lp00009()
         return []
 
-    # Assign all mock methods to the client
-    mock_client.get_wikipedia_articles = mock_get_wikipedia_articles
-    mock_client.get_landmark_metadata = mock_get_landmark_metadata
-    mock_client.get_landmark_by_id = mock_get_landmark_by_id
-    mock_client.get_landmark_buildings = mock_get_landmark_buildings
-    mock_client.get_landmark_pluto_data = mock_get_landmark_pluto_data
+    return mock_get_landmark_pluto_data
 
-    return mock_client
+
+def _get_mock_landmark_pluto_data_lp00009() -> List[PlutoDataModel]:
+    """Get mock PLUTO data for LP-00009."""
+    return [
+        PlutoDataModel(
+            yearBuilt="1842",
+            landUse="08",  # Educational/Cultural
+            historicDistrict="Stone Street Historic District",
+            zoneDist1="C5-1",
+        )
+    ]
 
 
 def create_mock_db_client_with_errors() -> Mock:

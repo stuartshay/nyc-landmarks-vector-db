@@ -306,6 +306,7 @@ def _generate_embeddings_and_store(
             use_fixed_ids=True,
             delete_existing=delete_existing
             and total_chunks_embedded == 0,  # Only delete on first article
+            enhanced_metadata=enhanced_metadata_dict,
         )
 
         total_chunks_embedded += len(vector_ids)

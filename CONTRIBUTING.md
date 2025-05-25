@@ -135,4 +135,3 @@ See `docs/security_ci_integration.md` for complete security documentation.
 
 By contributing, you agree that your contributions will be licensed under the project's
 MIT License.
-

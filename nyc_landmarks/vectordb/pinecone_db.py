@@ -166,39 +166,69 @@ class PineconeDB:
         Returns:
             Metadata dictionary
         """
-        # Basic metadata
+        # Build basic metadata
+        metadata = self._build_basic_metadata(
+            chunk, source_type, chunk_index, landmark_id
+        )
+
+        # Add processing date from chunk
+        self._add_processing_date(metadata, chunk)
+
+        # Add enhanced metadata (filtered)
+        filtered_enhanced = self._filter_enhanced_metadata(enhanced_metadata)
+        metadata.update(filtered_enhanced)
+
+        # Add source-specific metadata
+        if source_type == "wikipedia":
+            self._add_wikipedia_metadata(metadata, chunk)
+
+        return metadata
+
+    def _build_basic_metadata(
+        self,
+        chunk: Dict[str, Any],
+        source_type: str,
+        chunk_index: int,
+        landmark_id: Optional[str],
+    ) -> Dict[str, Any]:
+        """Build basic metadata fields for a chunk."""
         metadata = {
             "text": chunk.get("text", ""),
             "source_type": source_type,
             "chunk_index": chunk_index,
         }
 
-        # Add landmark ID if provided
         if landmark_id:
             metadata["landmark_id"] = landmark_id
 
-        # Add processing_date if present in chunk
+        return metadata
+
+    def _add_processing_date(
+        self, metadata: Dict[str, Any], chunk: Dict[str, Any]
+    ) -> None:
+        """Add processing date to metadata from chunk if available."""
+        # Check direct chunk processing_date
         if chunk.get("processing_date"):
             metadata["processing_date"] = chunk.get("processing_date")
-
-        # Add processing_date from chunk metadata if available
-        if chunk.get("metadata", {}).get("processing_date"):
+        # Check chunk metadata processing_date
+        elif chunk.get("metadata", {}).get("processing_date"):
             metadata["processing_date"] = chunk.get("metadata", {}).get(
                 "processing_date"
             )
 
-        # Filter out null values and complex objects from enhanced metadata before adding
-        # We need to handle the buildings list specially for Pinecone compatibility
+    def _filter_enhanced_metadata(
+        self, enhanced_metadata: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Filter enhanced metadata to remove unsupported types and null values."""
         filtered_metadata = {}
         try:
             for k, v in enhanced_metadata.items():
                 if v is None:
                     continue
-                # Skip source_type from enhanced metadata to preserve the correct source_type
-                # that was set based on the chunk's actual source (line 171)
+                # Skip source_type to preserve the correct source_type from chunk
                 if k == "source_type":
                     continue
-                # Add additional checks for unsupported data types
+                # Skip unsupported data types (except buildings list)
                 if isinstance(v, (list, dict)) and k != "buildings":
                     logger.warning(f"Skipping unsupported metadata field: {k}")
                     continue
@@ -206,32 +236,30 @@ class PineconeDB:
         except Exception as e:
             logger.error(f"Error processing enhanced metadata: {e}")
 
-        metadata.update(filtered_metadata)
+        return filtered_metadata
 
-        # Add Wikipedia-specific metadata
-        if source_type == "wikipedia":
-            # Check for article metadata in chunk.metadata (new format)
-            chunk_metadata = chunk.get("metadata", {})
-            if chunk_metadata.get("article_title") or chunk_metadata.get("article_url"):
-                article_data = {
-                    "article_title": chunk_metadata.get("article_title", ""),
-                    "article_url": chunk_metadata.get("article_url", ""),
-                }
-                metadata.update(
-                    {k: v for k, v in article_data.items() if v is not None}
-                )
-            # Fallback: check for article_metadata in chunk (legacy format)
-            elif "article_metadata" in chunk:
-                article_meta = chunk.get("article_metadata", {})
-                article_data = {
-                    "article_title": article_meta.get("title", ""),
-                    "article_url": article_meta.get("url", ""),
-                }
-                metadata.update(
-                    {k: v for k, v in article_data.items() if v is not None}
-                )
+    def _add_wikipedia_metadata(
+        self, metadata: Dict[str, Any], chunk: Dict[str, Any]
+    ) -> None:
+        """Add Wikipedia-specific metadata to the metadata dictionary."""
+        # Try new format first (chunk.metadata)
+        chunk_metadata = chunk.get("metadata", {})
+        if chunk_metadata.get("article_title") or chunk_metadata.get("article_url"):
+            article_data = {
+                "article_title": chunk_metadata.get("article_title", ""),
+                "article_url": chunk_metadata.get("article_url", ""),
+            }
+            metadata.update({k: v for k, v in article_data.items() if v})
+            return
 
-        return metadata
+        # Fallback to legacy format (chunk.article_metadata)
+        if "article_metadata" in chunk:
+            article_meta = chunk.get("article_metadata", {})
+            article_data = {
+                "article_title": article_meta.get("title", ""),
+                "article_url": article_meta.get("url", ""),
+            }
+            metadata.update({k: v for k, v in article_data.items() if v})
 
     def _upsert_vectors_in_batches(
         self, vectors: List[Dict[str, Any]], batch_size: int = 100
