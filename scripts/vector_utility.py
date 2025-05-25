@@ -47,7 +47,6 @@ import argparse
 import json
 from typing import Any, Dict, List, Optional, Tuple
 
-from nyc_landmarks.config.settings import settings
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
