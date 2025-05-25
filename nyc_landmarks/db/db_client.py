@@ -31,13 +31,6 @@ logging.basicConfig(level=settings.LOG_LEVEL.value)
 class SupportsWikipedia(Protocol):
     """Protocol for clients that support Wikipedia article operations."""
 
-    def get_wikipedia_article_by_title(
-        self, title: str
-    ) -> Optional[Union[Dict[str, Any], WikipediaArticleModel]]:
-        """Get Wikipedia article by title."""
-        # Not implemented in this base class
-        return None
-
     def get_wikipedia_articles(self, landmark_id: str) -> List[WikipediaArticleModel]:
         """Get Wikipedia articles for a landmark."""
         return []  # Protocol requires an actual return value
@@ -617,94 +610,6 @@ class DbClient:
             return f"LP-{landmark_id.zfill(5)}"
         return landmark_id
 
-    def _fetch_buildings_from_client(
-        self, lp_number: str, limit: int
-    ) -> List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]]:
-        """Fetch buildings using the client's dedicated method.
-
-        Args:
-            lp_number: Standardized LP number
-            limit: Maximum number of buildings to return
-
-        Returns:
-            List of building data (as Dict, LandmarkDetail, or LpcReportModel)
-        """
-        if not hasattr(self.client, "get_landmark_buildings"):
-            # Return empty list of the correct Union type
-            return []
-
-        try:
-            # The client.get_landmark_buildings result needs to be properly typed as a Union
-            buildings = self.client.get_landmark_buildings(lp_number, limit)
-            # Use type annotation to ensure we have the right return type
-            return cast(
-                List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]], buildings
-            )
-        except Exception as e:
-            logger.error(
-                f"Error calling client.get_landmark_buildings for {lp_number}: {e}"
-            )
-            # Return empty list of the correct Union type
-            return []
-
-    def _fetch_buildings_from_landmark_detail(
-        self, lp_number: str, limit: int
-    ) -> List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]]:
-        """Fetch buildings from the landmark detail response.
-
-        Args:
-            lp_number: Standardized LP number
-            limit: Maximum number of buildings to return
-
-        Returns:
-            List of building data (as Dict, LandmarkDetail, or LpcReportModel)
-        """
-        landmark_detail_response = self.get_landmark_by_id(lp_number)
-        if not isinstance(landmark_detail_response, LpcReportDetailResponse):
-            logger.info(
-                f"Could not retrieve LpcReportDetailResponse for {lp_number} to extract buildings."
-            )
-            # Return empty list of the correct Union type
-            return cast(List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]], [])
-
-        # Get the landmarks list attribute
-        landmarks_list = getattr(landmark_detail_response, "landmarks", None)
-        if not isinstance(landmarks_list, list):
-            logger.info(
-                f"landmark_detail_response for {lp_number} has no 'landmarks' list or it's not a list."
-            )
-            # Return empty list of the correct Union type
-            return cast(List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]], [])
-
-        # Filter valid LandmarkDetail objects
-        valid_details: List[LandmarkDetail] = []
-        for item in landmarks_list:
-            if isinstance(item, LandmarkDetail):
-                valid_details.append(item)
-            elif isinstance(item, dict):
-                try:
-                    # Try to convert dict to LandmarkDetail
-                    valid_details.append(LandmarkDetail(**item))
-                except Exception as e:
-                    logger.debug(
-                        f"Could not convert item to LandmarkDetail: {e} for LP {lp_number}"
-                    )
-            else:
-                logger.debug(
-                    f"Item in landmarks list is not of type LandmarkDetail: {type(item)} for LP {lp_number}"
-                )
-
-        # Limit the number of results
-        limited_results = valid_details[:limit]
-        logger.info(
-            f"Fetched {len(limited_results)} building items from landmarks for {lp_number}."
-        )
-
-        # Cast the list to the expected return type
-        return cast(
-            List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]], limited_results
-        )
-
     def _convert_building_items_to_models(
         self,
         items: List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]],
@@ -737,7 +642,7 @@ class DbClient:
 
     def get_landmark_buildings(
         self, landmark_id: str, limit: int = 50
-    ) -> List[LpcReportModel]:
+    ) -> List[LandmarkDetail]:
         """Get buildings associated with a landmark.
 
         Args:
@@ -745,77 +650,10 @@ class DbClient:
             limit: Maximum number of buildings to return
 
         Returns:
-            List of buildings (as LpcReportModel objects)
+            List of buildings (as LandmarkDetail objects)
         """
-        # Standardize the LP number format
-        lp_number = self._standardize_lp_number(landmark_id)
-
-        # Try dedicated client method first
-        building_items = self._fetch_buildings_from_client(lp_number, limit)
-
-        # If no buildings found, try fallback via landmark details
-        if not building_items:
-            logger.info(
-                f"No buildings from get_landmark_buildings for {lp_number}, trying fallback."
-            )
-            building_items = self._fetch_buildings_from_landmark_detail(
-                lp_number, limit
-            )
-
-        # Convert the building items to LpcReportModel objects
-        return self._convert_building_items_to_models(building_items, lp_number)
-
-    def get_wikipedia_article_by_title(
-        self, title: str
-    ) -> Optional[WikipediaArticleModel]:
-        """Get a Wikipedia article by title.
-
-        Args:
-            title: Title of the Wikipedia article
-
-        Returns:
-            WikipediaArticleModel object if found, None otherwise
-        """
-        if hasattr(self.client, "get_wikipedia_article_by_title"):
-            try:
-                # Cast to the protocol that defines the method
-                client_with_wiki_methods = cast(SupportsWikipedia, self.client)
-                article_data = client_with_wiki_methods.get_wikipedia_article_by_title(
-                    title
-                )
-
-                if isinstance(article_data, dict):
-                    try:
-                        return WikipediaArticleModel(**article_data)
-                    except (
-                        Exception
-                    ) as e:  # Consider more specific PydanticValidationError if applicable
-                        logger.warning(
-                            f"Error converting Wikipedia article dict to model for title '{title}': {e}"
-                        )
-                        return None
-                elif isinstance(article_data, WikipediaArticleModel):
-                    return article_data
-                elif article_data is None:
-                    # This is an expected outcome if the article is not found by the client method
-                    return None
-                else:
-                    # Log if the type is unexpected
-                    logger.warning(
-                        f"Received unexpected data type from get_wikipedia_article_by_title for title '{title}': {type(article_data)}"
-                    )
-                    return None
-            except Exception as e:
-                # Catch potential errors during the cast or method call itself
-                logger.error(
-                    f"Error accessing or processing get_wikipedia_article_by_title for title '{title}': {e}"
-                )
-                return None
-        else:
-            logger.debug(
-                f"Client does not have get_wikipedia_article_by_title method for title '{title}'."
-            )
-        return None
+        # Use the CoreDataStore API directly which returns LandmarkDetail objects
+        return self.client.get_landmark_buildings(landmark_id, limit)
 
     def get_wikipedia_articles(self, landmark_id: str) -> List[WikipediaArticleModel]:
         """Get Wikipedia articles associated with a landmark.

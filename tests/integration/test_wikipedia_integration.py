@@ -189,6 +189,22 @@ def _log_enhanced_metadata(enhanced_metadata):
         logger.info(f"  Land use: {enhanced_metadata.land_use}")
         logger.info(f"  Zoning district: {enhanced_metadata.zoning_district}")
 
+    # Log buildings data
+    if hasattr(enhanced_metadata, "buildings") and enhanced_metadata.buildings:
+        logger.info(f"  Buildings count: {len(enhanced_metadata.buildings)}")
+        for i, building in enumerate(enhanced_metadata.buildings):
+            logger.info(f"    Building {i + 1}:")
+            logger.info(f"      Name: {building.get('name', 'N/A')}")
+            logger.info(f"      Address: {building.get('address', 'N/A')}")
+            logger.info(f"      BBL: {building.get('bbl', 'N/A')}")
+            logger.info(f"      BIN Number: {building.get('binNumber', 'N/A')}")
+            logger.info(f"      Block: {building.get('block', 'N/A')}")
+            logger.info(f"      Lot: {building.get('lot', 'N/A')}")
+            logger.info(f"      Latitude: {building.get('latitude', 'N/A')}")
+            logger.info(f"      Longitude: {building.get('longitude', 'N/A')}")
+    else:
+        logger.info("  No buildings data found")
+
 
 def _process_wikipedia_content(fetcher, article):
     """Step 3: Process Wikipedia article with mocked HTTP response."""

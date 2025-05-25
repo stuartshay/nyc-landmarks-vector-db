@@ -82,18 +82,38 @@ def get_mock_landmark_buildings_lp01973() -> List[Dict[str, Any]]:
     Returns mock building data for LP-01973 (Harlem YMCA).
 
     This simulates the response from get_landmark_buildings() API call,
-    providing BBL, BIN, coordinates, and address information.
+    matching the real API response structure exactly.
     """
     return [
         {
-            "bbl": "1018510001",
-            "bin": "1234567",
-            "block": "1851",
-            "lot": "1",
-            "latitude": 40.8126,
-            "longitude": -73.9441,
-            "address": "180 West 135th Street",
-            "name": "Harlem YMCA",
+            "name": "YMCA Building, 135th Street Branch",
+            "lpNumber": "LP-01973",
+            "bbl": "1019190053",
+            "binNumber": 1058250,
+            "boroughId": "MN",
+            "objectType": "Individual Landmark",
+            "block": 1919,
+            "lot": 53,
+            "plutoAddress": "180 WEST 135 STREET",
+            "designatedAddress": "180 WEST 135 STREET",
+            "number": "180",
+            "street": "WEST 135 STREET",
+            "city": "Bronx",
+            "designatedDate": "1998-02-10T00:00:00",
+            "calendaredDate": None,
+            "publicHearingDate": "9/16/1997; 10/21/1997; 12/9/1997",
+            "historicDistrict": "No",
+            "otherHearingDate": None,
+            "isCurrent": False,
+            "status": "DESIGNATED",
+            "lastAction": None,
+            "priorStatus": None,
+            "recordType": None,
+            "isBuilding": False,
+            "isVacantLot": False,
+            "isSecondaryBuilding": False,
+            "latitude": 40.8146846005876,
+            "longitude": -73.9429903860595,
         }
     ]
 
@@ -215,17 +235,37 @@ def _create_mock_get_landmark_buildings():
 
 
 def _get_mock_landmark_buildings_lp00009() -> List[Dict[str, Any]]:
-    """Get mock landmark buildings for LP-00009."""
+    """Get mock landmark buildings for LP-00009 (matches real API response)."""
     return [
         {
-            "bbl": "1000050001",
-            "bin": "1000001",
-            "block": "5",
-            "lot": "1",
-            "latitude": 40.7071,
-            "longitude": -74.0101,
-            "address": "26 Wall Street",
-            "name": "Federal Hall National Memorial",
+            "name": "Salmagundi Club",
+            "lpNumber": "LP-00009",
+            "bbl": "1005690004",
+            "binNumber": 1009274,
+            "boroughId": "MN",
+            "objectType": "Individual Landmark",
+            "block": 569,
+            "lot": 4,
+            "plutoAddress": "47 5 AVENUE",
+            "designatedAddress": "47 5 AVENUE",
+            "number": "47",
+            "street": "5 AVENUE",
+            "city": "Bronx",
+            "designatedDate": "1969-09-09T00:00:00",
+            "calendaredDate": None,
+            "publicHearingDate": "9/21/1965",
+            "historicDistrict": "No",
+            "otherHearingDate": None,
+            "isCurrent": False,
+            "status": "DESIGNATED",
+            "lastAction": None,
+            "priorStatus": None,
+            "recordType": None,
+            "isBuilding": False,
+            "isVacantLot": False,
+            "isSecondaryBuilding": False,
+            "latitude": 40.7342490239599,
+            "longitude": -73.9944453559693,
         }
     ]
 

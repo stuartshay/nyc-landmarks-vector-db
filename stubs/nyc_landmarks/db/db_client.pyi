@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Union
 # Import directly from implementation module
 from nyc_landmarks.db._coredatastore_api import _CoreDataStoreAPI
 from nyc_landmarks.models.landmark_models import (
+    LandmarkDetail,
     LpcReportDetailResponse,
     LpcReportModel,
     LpcReportResponse,
@@ -48,7 +49,7 @@ class DbClient:
     def get_landmark_pdf_url(self, landmark_id: str) -> Optional[str]: ...
     def get_landmark_buildings(
         self, landmark_id: str, limit: int = 50
-    ) -> List[LpcReportModel]: ...
+    ) -> List[LandmarkDetail]: ...
     def get_wikipedia_articles(
         self, landmark_id: str
     ) -> List[WikipediaArticleModel]: ...

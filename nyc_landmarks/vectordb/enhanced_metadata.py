@@ -6,7 +6,7 @@ the CoreDataStore API to enhance vector database entries.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.db_client import get_db_client
@@ -91,73 +91,54 @@ class EnhancedMetadataCollector:
     def _add_building_data(
         self,
         landmark_id: str,
-        metadata_dict: Dict[str, List[Dict[str, Optional[Union[str, float]]]]],
+        metadata_dict: Dict[str, Any],
         landmark_details: Optional[dict[str, Any]],
         landmark_details_found: bool,
-    ) -> None:
-        """Fetch and add building data to metadata_dict."""
+    ) -> List[Dict[str, Any]]:
+        """Fetch and add building data to metadata_dict.
+
+        Returns:
+            List of building dictionaries with the required fields:
+            bbl, binNumber, block, lot, latitude, longitude, address, name
+        """
         try:
             logger.debug(f"Entering _add_building_data for landmark {landmark_id}")
             buildings = self.db_client.get_landmark_buildings(landmark_id)
-            metadata_dict["buildings"] = []
             building_data = []
-            primary_bbl = None
+
             if buildings:
                 for building in buildings:
-                    building_info = {}
-                    bbl_value = (
-                        building.get("bbl")
-                        if isinstance(building, dict)
-                        else getattr(building, "bbl", None)
-                    )
-                    if bbl_value == "":
-                        bbl_value = None
+                    # buildings is now guaranteed to be List[LandmarkDetail]
+                    # Clean up empty string values for BBL
+                    bbl_value = building.bbl if building.bbl != "" else None
+
                     building_info = {
                         "bbl": bbl_value,
-                        "bin": (
-                            building.get("bin", "")
-                            if isinstance(building, dict)
-                            else getattr(building, "bin", "")
-                        ),
-                        "block": (
-                            building.get("block", "")
-                            if isinstance(building, dict)
-                            else getattr(building, "block", "")
-                        ),
-                        "lot": (
-                            building.get("lot", "")
-                            if isinstance(building, dict)
-                            else getattr(building, "lot", "")
-                        ),
-                        "latitude": (
-                            building.get("latitude", 0.0)
-                            if isinstance(building, dict)
-                            else getattr(building, "latitude", 0.0)
-                        ),
-                        "longitude": (
-                            building.get("longitude", 0.0)
-                            if isinstance(building, dict)
-                            else getattr(building, "longitude", 0.0)
-                        ),
-                        "address": (
-                            building.get("address", "")
-                            if isinstance(building, dict)
-                            else getattr(building, "address", "")
-                        ),
-                        "name": (
-                            building.get("name", "")
-                            if isinstance(building, dict)
-                            else getattr(building, "name", "")
-                        ),
+                        "binNumber": building.binNumber,
+                        "block": building.block,
+                        "lot": building.lot,
+                        "latitude": building.latitude,
+                        "longitude": building.longitude,
+                        "address": building.designatedAddress or "",
+                        "name": building.name or "",
                     }
-                    if primary_bbl is None and bbl_value:
-                        primary_bbl = bbl_value
-                    if any(building_info.values()):
+
+                    # Only add building if it has meaningful data
+                    if any(v is not None and v != "" for v in building_info.values()):
                         building_data.append(building_info)
+
+            # Add to metadata_dict only if we have building data
             if building_data:
                 metadata_dict["buildings"] = building_data
+                logger.info(
+                    f"Added {len(building_data)} buildings for landmark {landmark_id}"
+                )
+
+            return building_data
+
         except Exception as e:
             logger.error(f"Error getting building information: {e}")
+            return []
 
     def _add_pluto_data(self, landmark_id: str, metadata_dict: dict) -> None:
         """Fetch and add PLUTO data to metadata_dict if has_pluto_data is True."""
@@ -221,7 +202,7 @@ class EnhancedMetadataCollector:
             landmark_details, landmark_details_found = self._add_landmark_details(
                 landmark_id, metadata_dict
             )
-            self._add_building_data(
+            _ = self._add_building_data(
                 landmark_id, metadata_dict, landmark_details, landmark_details_found
             )
             self._add_pluto_data(landmark_id, metadata_dict)
