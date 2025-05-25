@@ -16,7 +16,7 @@ import uuid
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, cast
 
 from nyc_landmarks.db._coredatastore_api import _CoreDataStoreAPI as CoreDataStoreAPI
-from nyc_landmarks.models.landmark_models import LpcReportDetailResponse
+from nyc_landmarks.models.landmark_models import LandmarkDetail, LpcReportDetailResponse
 from nyc_landmarks.models.metadata_models import LandmarkMetadata
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.enhanced_metadata import EnhancedMetadataCollector
@@ -46,7 +46,7 @@ def initialize_components() -> (
 
 def get_landmark_info(
     api_client: CoreDataStoreAPI, landmark_id: str
-) -> Tuple[Optional[LpcReportDetailResponse], List[Dict[str, Any]]]:
+) -> Tuple[Optional[LpcReportDetailResponse], List[LandmarkDetail]]:
     """Retrieve landmark information and buildings from the API."""
     # Get landmark details
     landmark = api_client.get_landmark_by_id(landmark_id)
@@ -63,12 +63,14 @@ def get_landmark_info(
     return landmark, buildings
 
 
-def print_building_details(buildings: List[Dict[str, Any]], verbose: bool) -> None:
+def print_building_details(buildings: List[LandmarkDetail], verbose: bool) -> None:
     """Print detailed information about buildings if verbose mode is enabled."""
     if verbose:
         for i, building in enumerate(buildings):
             logger.info(f"Building {i + 1}:")
-            for key, value in building.items():
+            # Convert LandmarkDetail to dict for iteration
+            building_dict = building.model_dump()
+            for key, value in building_dict.items():
                 if value:  # Only show non-empty fields
                     logger.info(f"  {key}: {value}")
 
@@ -76,7 +78,7 @@ def print_building_details(buildings: List[Dict[str, Any]], verbose: bool) -> No
 def print_enhanced_metadata(enhanced_metadata: LandmarkMetadata, verbose: bool) -> None:
     """Print information about enhanced metadata structure."""
     logger.info("Enhanced Metadata Structure:")
-    if "buildings" in enhanced_metadata:
+    if "buildings" in enhanced_metadata and enhanced_metadata["buildings"]:
         logger.info(f"- Number of buildings: {len(enhanced_metadata['buildings'])}")
 
         # Print BBL values from buildings

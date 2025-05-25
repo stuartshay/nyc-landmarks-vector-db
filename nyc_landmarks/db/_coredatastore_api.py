@@ -631,8 +631,8 @@ class _CoreDataStoreAPI:
                     # Create LandmarkDetail object from API response
                     try:
                         landmark_detail = LandmarkDetail(
-                            name=building.get("name", ""),
-                            lpNumber=building.get("lpNumber", ""),
+                            name=building.get("name") or "Unknown Building",
+                            lpNumber=building.get("lpNumber") or lpc_number,
                             bbl=building.get("bbl") if building.get("bbl") else None,
                             binNumber=building.get("binNumber"),
                             boroughId=building.get("boroughId"),

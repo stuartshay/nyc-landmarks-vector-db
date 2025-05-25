@@ -49,21 +49,6 @@ class LpcReportModel(BaseModel):
     photoUrl: Optional[str] = Field(None, description="URL to a photo of the landmark")
     pdfReportUrl: Optional[str] = Field(None, description="URL to the PDF report")
 
-    # Building-specific fields from API
-    bbl: Optional[str] = Field(None, description="Borough-Block-Lot identifier")
-    binNumber: Optional[int] = Field(None, description="Building Identification Number")
-    block: Optional[int] = Field(None, description="Block number")
-    lot: Optional[int] = Field(None, description="Lot number")
-    latitude: Optional[float] = Field(None, description="Latitude coordinate")
-    longitude: Optional[float] = Field(None, description="Longitude coordinate")
-    designatedAddress: Optional[str] = Field(
-        None, description="Official designated address"
-    )
-    plutoAddress: Optional[str] = Field(None, description="PLUTO database address")
-    number: Optional[str] = Field(None, description="Building number")
-    city: Optional[str] = Field(None, description="City name")
-    boroughId: Optional[str] = Field(None, description="Borough identifier code")
-
     @field_validator("pdfReportUrl", "photoUrl", mode="after")  # type: ignore[misc]
     @classmethod
     def validate_url(cls, v: Optional[str]) -> Optional[str]:
