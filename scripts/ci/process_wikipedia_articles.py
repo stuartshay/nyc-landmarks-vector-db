@@ -141,7 +141,13 @@ def _process_articles_into_chunks(
         dict_chunks = []
         for i, chunk_text in enumerate(token_chunks):
             token_count = len(tokenizer.encode(chunk_text))
-            logger.info(f"Processing chunk {i} with {token_count} tokens")
+            # Generate the vector ID that will be used for this chunk
+            vector_id = (
+                f"wiki-{article.title.replace(' ', '_')}-{landmark_id}-chunk-{i}"
+            )
+            logger.info(
+                f"Processing chunk {i} with {token_count} tokens (Vector ID: {vector_id})"
+            )
 
             dict_chunks.append(
                 {

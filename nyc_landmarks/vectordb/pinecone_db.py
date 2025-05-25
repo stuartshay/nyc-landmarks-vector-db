@@ -63,6 +63,7 @@ class PineconeDB:
 
         self.index = self.pc.Index(self.index_name)
         logger.info(f"Connected to Pinecone index: {self.index_name}")
+        logger.info(f"Using Pinecone namespace: {self.namespace}")
 
     def _get_source_type_from_prefix(self, id_prefix: str) -> str:
         """

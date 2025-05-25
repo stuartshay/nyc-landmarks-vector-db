@@ -15,7 +15,7 @@ These models are designed to be flexible and support dictionary-like access
 and mutation to maintain compatibility with existing code.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -36,7 +36,7 @@ class RootMetadataModel(BaseModel):
     """
 
     processing_date: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat(),
+        default_factory=lambda: datetime.utcnow().isoformat(),
         description="UTC timestamp when the metadata was processed",
     )
     source_type: SourceType = Field(
