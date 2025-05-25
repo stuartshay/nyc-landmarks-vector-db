@@ -2,47 +2,89 @@
 
 ## Current Focus
 
-The current focus is on improving the user interface and functionality of Jupyter notebooks used for data exploration and analysis, specifically addressing pagination layout issues in the Wikipedia integration testing notebook.
+The current focus is on refactoring and consolidating code duplication between `scripts/vector_utility.py` and `nyc_landmarks/vectordb/pinecone_db.py` to improve maintainability and reduce redundancy.
 
 ## Recent Changes
 
-### Notebook UI Improvements (2025-05-23)
+### PineconeDB Enhancement - Phase 1 Complete (2025-05-25)
 
-- Fixed pagination layout in the `wikipedia_integration_testing.ipynb` notebook, Section 1 (Exploring Landmark Data)
-- Rearranged widget layout to place pagination controls in a more logical order with the pager on top
-- Updated the dashboard layout structure to follow a more intuitive pattern:
-  ```
-  status_label   (top)
-  controls       (middle)
-  output_area    (bottom)
-  ```
-- Improved code organization for better maintainability
+Successfully enhanced the `PineconeDB` class with four new methods to consolidate functionality from `scripts/vector_utility.py`:
 
-### Created Debugging/Testing Tools
+1. **`fetch_vector_by_id()`** - Consolidated vector fetching logic
 
-- Developed a script (`fix_pagination.py`) to automate notebook cell modifications
-- Created backup of original notebook (`notebooks/backup/wikipedia_integration_testing_original.ipynb`)
-- Generated reference code for future pagination fixes
+   - Replaces manual Pinecone index operations from utility script
+   - Supports optional namespace parameter
+   - Returns standardized dictionary format
+   - Includes proper error handling and logging
+
+1. **`list_vectors_with_filter()`** - Enhanced vector listing with prefix filtering
+
+   - Supports optional prefix filtering for vector IDs
+   - Implements smart limit adjustment for prefix searches
+   - Returns standardized list of vector dictionaries
+   - Case-insensitive prefix matching
+
+1. **`query_vectors_by_landmark()`** - Landmark-specific vector queries
+
+   - Filters vectors by landmark_id metadata
+   - Uses dummy vector approach for metadata-only queries
+   - Supports optional namespace parameter
+   - Returns standardized match format
+
+1. **`validate_vector_metadata()`** - Comprehensive vector validation
+
+   - Validates required metadata fields for all vectors
+   - Checks Wikipedia-specific fields for wiki vectors
+   - Validates vector ID format patterns
+   - Checks for valid embeddings (non-zero, non-empty)
+   - Returns tuple of (is_valid, list_of_issues)
+
+### Technical Implementation Details
+
+- Added necessary imports: `re` for regex patterns, `numpy` for embedding validation
+- All methods support optional namespace parameters with fallback to instance default
+- Consistent error handling and logging throughout
+- Methods return standardized data formats for easy consumption
+- Proper type annotations and documentation
 
 ## Active Decisions and Considerations
 
-1. **Widget Layout Structure**: The standard layout for data pagination in notebooks should follow the pattern of status information at the top, controls below it, and data display at the bottom. This creates a more intuitive user flow.
+1. **Code Consolidation Strategy**: Move from duplicated Pinecone operations in scripts to centralized methods in `PineconeDB` class, making the utility script a thin CLI wrapper.
 
-1. **Widget Initialization Order**: To ensure proper widget rendering, we maintain a logical order of widget creation, display, and event binding:
+1. **Namespace Flexibility**: All new methods accept optional namespace parameters while falling back to instance defaults, providing maximum flexibility for different use cases.
 
-   - Create all widget objects first
-   - Set up event handlers
-   - Initialize with data
-   - Display the dashboard composite widget
+1. **Standardized Return Formats**: All methods return consistent dictionary formats to ensure compatibility across the codebase.
 
-1. **Error Handling**: All widget interactions include proper error handling to accommodate environments where widgets may not render correctly (like VS Code without the Jupyter extension).
+1. **Validation Patterns**: Comprehensive validation includes both metadata structure and content validation (embeddings), following established patterns from the utility script.
 
 ## Next Steps
 
-1. **Verify notebook execution**: Test the modified notebook through manual execution to confirm the pagination controls work as expected.
+### Phase 2: Refactor Vector Utility Script
 
-1. **Review similar notebooks**: Identify and update other notebooks with pagination interfaces to ensure consistent UI patterns across the project.
+1. **Replace duplicated functions** in `scripts/vector_utility.py`:
 
-1. **Standardize widget layouts**: Consider creating helper functions for standard widget layouts to promote consistency across all notebooks.
+   - Replace `_setup_pinecone_client()` with direct `PineconeDB` instantiation
+   - Replace `fetch_vector()` with `PineconeDB.fetch_vector_by_id()`
+   - Replace `query_landmark_vectors()` with `PineconeDB.query_vectors_by_landmark()`
+   - Replace `list_vectors()` logic with `PineconeDB.list_vectors_with_filter()`
+   - Replace validation functions with `PineconeDB.validate_vector_metadata()`
 
-- Verified functionality with various landmark records across multiple pages
+1. **Simplify script architecture**:
+
+   - Focus on CLI interface and output formatting
+   - Remove ~400 lines of duplicated Pinecone operations
+   - Preserve specialized command-line handling and pretty-printing logic
+
+1. **Test enhanced functionality**:
+
+   - Verify all utility script commands work with new PineconeDB methods
+   - Ensure output formatting remains consistent
+   - Test error handling and edge cases
+
+### Expected Benefits
+
+- **Reduced Code Duplication**: Eliminate ~30% of code in vector_utility.py
+- **Single Source of Truth**: All Pinecone operations centralized in PineconeDB class
+- **Improved Maintainability**: Changes to Pinecone logic only need to happen once
+- **Better Reusability**: Other parts of codebase can use enhanced PineconeDB methods
+- **Consistent Error Handling**: Unified approach to Pinecone error management

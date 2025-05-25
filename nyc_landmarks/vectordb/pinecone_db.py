@@ -3,10 +3,12 @@ PineconeDB class that handles vector operations in Pinecone.
 """
 
 import os
+import re
 import time
 import uuid
 from typing import Any, Dict, List, Optional, Tuple, cast
 
+import numpy as np
 from pinecone import Pinecone
 
 from nyc_landmarks.config.settings import settings
@@ -665,15 +667,6 @@ class PineconeDB:
         Returns:
             bool: True if successful, False otherwise
         """
-        """
-        Store a batch of vectors in Pinecone using the low-level API.
-
-        Args:
-            vectors: List of tuples containing (id, embedding, metadata)
-
-        Returns:
-            bool: True if successful, False otherwise
-        """
         if not self.index:
             logger.error("Index not initialized")
             return False
@@ -727,20 +720,249 @@ class PineconeDB:
             logger.error(f"Failed to delete index: {e}")
             return False
 
-    def store_embedding(self, embedding: List[float], metadata: Dict[str, Any]) -> None:
-        """Store an embedding in the Pinecone index.
+    def fetch_vector_by_id(
+        self, vector_id: str, namespace: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Fetch a specific vector from Pinecone by ID using query approach.
 
         Args:
-            embedding: The embedding vector to store
-            metadata: Metadata associated with the embedding
+            vector_id: The ID of the vector to fetch
+            namespace: Optional Pinecone namespace to search in
+
+        Returns:
+            The vector data as a dictionary if found, None otherwise
         """
         try:
-            vector_id = str(uuid.uuid4())  # Generate a unique ID for the vector
-            self.index.upsert(
-                vectors=[{"id": vector_id, "values": embedding, "metadata": metadata}],
-                namespace=self.namespace if self.namespace else None,
+            # Use provided namespace or instance default
+            fetch_namespace = namespace if namespace is not None else self.namespace
+
+            logger.info(f"Fetching vector with ID: {vector_id}")
+
+            # Use query approach to fetch by ID since fetch() is not available
+            dimension = 1536  # Standard OpenAI embedding dimension
+            dummy_vector = [0.0] * dimension
+
+            # Query with a large limit to search for the specific vector ID
+            result = self.index.query(
+                vector=dummy_vector,
+                top_k=1000,  # Large number to ensure we find the vector
+                include_metadata=True,
+                include_values=True,
+                namespace=fetch_namespace if fetch_namespace else None,
             )
-            logger.info(f"Stored embedding with ID: {vector_id}")
+
+            # Search through results for matching ID
+            matches = getattr(result, "matches", [])
+            for match in matches:
+                if getattr(match, "id", "") == vector_id:
+                    return {
+                        "id": vector_id,
+                        "values": getattr(match, "values", []),
+                        "metadata": getattr(match, "metadata", {}),
+                    }
+
+            logger.error(f"Vector with ID '{vector_id}' not found in Pinecone")
+            return None
+
         except Exception as e:
-            logger.error(f"Failed to store embedding: {e}")
-            raise
+            logger.error(f"Error fetching vector: {e}")
+            return None
+
+    def list_vectors_with_filter(
+        self,
+        prefix: Optional[str] = None,
+        limit: int = 10,
+        namespace: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        List vectors in Pinecone with optional prefix filtering.
+
+        Args:
+            prefix: Optional prefix to filter vector IDs
+            limit: Maximum number of vectors to return
+            namespace: Optional Pinecone namespace to search in
+
+        Returns:
+            List of vector data
+        """
+        try:
+            # Use provided namespace or instance default
+            query_namespace = namespace if namespace is not None else self.namespace
+
+            # Use a standard dimension for embeddings
+            vector_dimension = 1536  # Common dimension for embeddings
+            zero_vector = [0.0] * vector_dimension
+
+            # If prefix is provided, we'll need to retrieve more vectors to ensure we get matches
+            effective_limit = limit
+            if prefix:
+                # For prefix filtering, retrieve a larger number of vectors
+                effective_limit = max(limit * 20, 100)
+
+            logger.info(f"Querying vectors with limit: {effective_limit}")
+
+            # Query the index
+            result = self.index.query(
+                vector=zero_vector,
+                top_k=effective_limit,
+                include_metadata=True,
+                include_values=False,
+                namespace=query_namespace if query_namespace else None,
+            )
+
+            # Extract matches safely
+            matches = getattr(result, "matches", [])
+
+            # Filter by prefix if provided
+            if prefix:
+                prefix_lower = prefix.lower()
+                filtered_matches = [
+                    match
+                    for match in matches
+                    if getattr(match, "id", "")
+                    and getattr(match, "id", "").lower().startswith(prefix_lower)
+                ]
+                matches = filtered_matches[:limit]
+            else:
+                matches = matches[:limit]
+
+            # Convert to standardized format
+            result_list = []
+            for match in matches:
+                match_dict = {
+                    "id": getattr(match, "id", ""),
+                    "score": getattr(match, "score", 0.0),
+                    "metadata": getattr(match, "metadata", {}),
+                }
+                result_list.append(match_dict)
+
+            return result_list
+
+        except Exception as e:
+            logger.error(f"Error listing vectors: {e}")
+            return []
+
+    def query_vectors_by_landmark(
+        self, landmark_id: str, namespace: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Query Pinecone for vectors related to a landmark.
+
+        Args:
+            landmark_id: The ID of the landmark to check
+            namespace: Optional namespace to query
+
+        Returns:
+            List of vector matches
+        """
+        try:
+            # Use provided namespace or instance default
+            query_namespace = namespace if namespace is not None else self.namespace
+
+            # Use a dimension of 1536 for OpenAI embeddings
+            dimension = settings.OPENAI_EMBEDDING_DIMENSIONS
+            dummy_vector = [0.0] * dimension
+
+            # Query all vectors for this landmark
+            query_response = self.index.query(
+                vector=dummy_vector,
+                filter={"landmark_id": landmark_id},
+                top_k=100,  # Increase if needed
+                include_metadata=True,
+                namespace=query_namespace if query_namespace else None,
+            )
+
+            # Access matches safely
+            matches = getattr(query_response, "matches", [])
+
+            # Convert to standardized format
+            result_list = []
+            for match in matches:
+                match_dict = {
+                    "id": getattr(match, "id", ""),
+                    "score": getattr(match, "score", 0.0),
+                    "metadata": getattr(match, "metadata", {}),
+                }
+                result_list.append(match_dict)
+
+            return result_list
+
+        except Exception as e:
+            logger.error(f"Error querying vectors by landmark: {e}")
+            return []
+
+    def validate_vector_metadata(
+        self, vector_id: str, namespace: Optional[str] = None
+    ) -> Tuple[bool, List[str]]:
+        """
+        Validate a vector's metadata against requirements.
+
+        Args:
+            vector_id: The ID of the vector to validate
+            namespace: Optional namespace to search in
+
+        Returns:
+            Tuple of (is_valid, list_of_issues)
+        """
+        # Required metadata fields for all vectors
+        REQUIRED_METADATA = ["landmark_id", "source_type", "chunk_index", "text"]
+
+        # Additional required metadata fields for Wikipedia vectors
+        REQUIRED_WIKI_METADATA = ["article_title", "article_url"]
+
+        # Vector ID format patterns for validation
+        PDF_ID_PATTERN = r"^(LP-\d{5})-chunk-(\d+)$"
+        WIKI_ID_PATTERN = r"^wiki-(.+)-(LP-\d{5})-chunk-(\d+)$"
+
+        try:
+            # Fetch the vector
+            vector_data = self.fetch_vector_by_id(vector_id, namespace)
+            if not vector_data:
+                return False, [f"Vector with ID '{vector_id}' not found"]
+
+            metadata = vector_data.get("metadata", {})
+            issues = []
+
+            # Check for missing required fields
+            for field in REQUIRED_METADATA:
+                if field not in metadata:
+                    issues.append(f"Missing required field: {field}")
+
+            # Check for Wikipedia-specific fields if applicable
+            if vector_id.startswith("wiki-"):
+                for field in REQUIRED_WIKI_METADATA:
+                    if field not in metadata:
+                        issues.append(f"Missing required Wikipedia field: {field}")
+
+            # Validate ID format
+            source_type = metadata.get("source_type", "unknown")
+
+            if source_type == "wikipedia":
+                if not re.match(WIKI_ID_PATTERN, vector_id):
+                    issues.append("Invalid ID format for Wikipedia vector")
+            else:
+                if not re.match(PDF_ID_PATTERN, vector_id):
+                    issues.append("Invalid ID format for PDF vector")
+
+            # Check if article title matches for Wikipedia vectors
+            if vector_id.startswith("wiki-"):
+                parts = vector_id.split("-")
+                if len(parts) >= 4:
+                    article_title_from_id = parts[1].replace("_", " ")
+                    if "article_title" in metadata:
+                        if metadata["article_title"] != article_title_from_id:
+                            issues.append("Article title in ID does not match metadata")
+
+            # Check if vector has valid embeddings
+            values = vector_data.get("values", [])
+            if not values:
+                issues.append("Missing or empty embeddings")
+            elif np.allclose(np.array(values), 0):
+                issues.append("All-zero embeddings detected")
+
+            return len(issues) == 0, issues
+
+        except Exception as e:
+            logger.error(f"Error validating vector metadata: {e}")
+            return False, [f"Validation error: {str(e)}"]
