@@ -723,7 +723,9 @@ class _CoreDataStoreAPI:
                         standardized_record = {
                             "yearBuilt": record.get("yearBuilt"),
                             "landUse": record.get("landUse"),
-                            "historicDistrict": record.get("historicDistrict"),
+                            "historicDistrict": record.get(
+                                "histdist"
+                            ),  # Map histdist to historicDistrict
                             "zoneDist1": record.get("zoneDist1"),
                         }
                         standardized_records.append(standardized_record)

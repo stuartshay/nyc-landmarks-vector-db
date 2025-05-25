@@ -7,8 +7,6 @@ production data.
 """
 
 import os
-import secrets
-import string
 import sys
 import time
 from pathlib import Path
@@ -34,18 +32,13 @@ DEFAULT_TEST_INDEX_PREFIX = "nyc-landmarks-test"
 
 def generate_session_id() -> str:
     """
-    Generate a unique session identifier based on timestamp and random string.
-    Uses cryptographically secure random generator for better security.
+    Generate a unique session identifier based on date only for easier debugging.
 
     Returns:
-        str: A unique session identifier
+        str: A date-based session identifier (e.g., "20250524")
     """
-    timestamp = time.strftime("%Y%m%d-%H%M%S")
-    # Use secrets module for cryptographically secure random generation
-    random_part = "".join(
-        secrets.choice(string.ascii_lowercase + string.digits) for _ in range(6)
-    )
-    return f"{timestamp}-{random_part}"
+    timestamp = time.strftime("%Y%m%d")
+    return timestamp
 
 
 # Generate a unique session ID when this module is imported
@@ -60,6 +53,21 @@ def get_default_test_index_name() -> str:
         str: The default test index name for this session
     """
     return f"{DEFAULT_TEST_INDEX_PREFIX}-{SESSION_ID}"
+
+
+def get_custom_test_index_name(custom_suffix: Optional[str] = None) -> str:
+    """
+    Get a test index name with optional custom suffix.
+
+    Args:
+        custom_suffix: Optional custom suffix to append instead of session ID
+
+    Returns:
+        str: Test index name with custom suffix or default session ID
+    """
+    if custom_suffix:
+        return f"{DEFAULT_TEST_INDEX_PREFIX}-{custom_suffix}"
+    return get_default_test_index_name()
 
 
 def get_pinecone_client() -> Pinecone:
@@ -150,23 +158,28 @@ def create_pod_index(pc: Pinecone, index_name: str, dimensions: int) -> bool:
     """
     try:
         logger.info(f"Attempting fallback to pod-based index '{index_name}'")
-        # In Pinecone v6.0+, use PodSpec from pinecone.model namespace
+        # In Pinecone v6.0+, PodSpec is available as pinecone.PodSpec
         try:
-            from pinecone.model import PodSpec
+            # Using pinecone module that's already imported at the top
+            import pinecone
+
+            pod_spec = pinecone.PodSpec(environment="us-east-1-aws", pod_type="starter")  # type: ignore
 
             pc.create_index(  # pyright: ignore
                 name=index_name,
                 dimension=dimensions,
                 metric="cosine",
-                spec=PodSpec(environment="us-east-1-aws", pod_type="starter"),
+                spec=pod_spec,
             )
-        except ImportError:
-            # Fallback for older pinecone versions
+        except (AttributeError, Exception):
+            # Fallback - try with minimal parameters (this may fail in newer versions)
+            logger.warning(
+                "PodSpec not available, attempting simplified index creation"
+            )
             pc.create_index(  # pyright: ignore
                 name=index_name,
                 dimension=dimensions,
                 metric="cosine",
-                environment="us-east-1-aws",
             )
         return True
     except Exception as e:

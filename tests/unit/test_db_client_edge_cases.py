@@ -318,6 +318,7 @@ class TestWikipediaMethods(unittest.TestCase):
             url="https://en.wikipedia.org/wiki/Test_Article",
             lpNumber="LP-12345",
             recordType="Wikipedia",
+            content=None,  # Explicitly set content to None as it's an optional field
             id=None,  # Explicitly set id to None as it's an optional field
         )
         self.mock_api.get_wikipedia_article_by_title.return_value = article_model

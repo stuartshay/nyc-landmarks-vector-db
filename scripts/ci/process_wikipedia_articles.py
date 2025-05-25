@@ -249,6 +249,21 @@ def _generate_embeddings_and_store(
     Returns:
         Total chunks embedded
     """
+    # Collect enhanced metadata once for this landmark
+    from nyc_landmarks.vectordb.enhanced_metadata import EnhancedMetadataCollector
+
+    enhanced_metadata_dict = {}
+    try:
+        collector = EnhancedMetadataCollector()
+        enhanced_metadata_obj = collector.collect_landmark_metadata(landmark_id)
+        enhanced_metadata_dict = (
+            enhanced_metadata_obj.model_dump() if enhanced_metadata_obj else {}
+        )
+        logger.info(f"Collected enhanced metadata for landmark {landmark_id}")
+    except Exception as e:
+        logger.warning(f"Could not collect enhanced metadata for {landmark_id}: {e}")
+        enhanced_metadata_dict = {}
+
     total_chunks_embedded = 0
 
     for wiki_article in processed_articles:
