@@ -36,7 +36,7 @@ Example usage:
     python scripts/vector_utility.py compare-vectors wiki-Wyckoff_House-LP-00001-chunk-0 wiki-Wyckoff_House-LP-00001-chunk-1 --namespace landmarks
 
     # Verify vector integrity in Pinecone:
-    python scripts/vector_utility.py verify-vectors --prefix wiki-Wyckoff --limit 20 --verbose
+    python scripts/vector_utility.py verify-vectors --prefix wiki-Wyckoff --namespace landmarks --limit 20 --verbose
 
     # Verify a batch of specific vectors:
     python scripts/vector_utility.py verify-batch wiki-Wyckoff_House-LP-00001-chunk-0 wiki-Wyckoff_House-LP-00001-chunk-1
@@ -61,6 +61,7 @@ REQUIRED_METADATA = ["landmark_id", "source_type", "chunk_index", "text"]
 # Additional required metadata fields for Wikipedia vectors
 REQUIRED_WIKI_METADATA = ["article_title", "article_url"]
 
+# TODO - Use anyc_landmarks/vectordb/vector_id_validator.py
 # Vector ID format patterns for validation
 PDF_ID_PATTERN = r"^(LP-\d{5})-chunk-(\d+)$"
 WIKI_ID_PATTERN = r"^wiki-(.+)-(LP-\d{5})-chunk-(\d+)$"
