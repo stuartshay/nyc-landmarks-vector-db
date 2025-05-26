@@ -629,82 +629,6 @@ def _print_vector_details_compact(matches_data: List[Dict[str, Any]]) -> None:
             print(f"  Chunk Index: {chunk_index}")
 
 
-def list_vectors(
-    prefix: Optional[str] = None,
-    limit: int = 10,
-    pretty_print: bool = False,
-    namespace: Optional[str] = None,
-) -> List[Dict[str, Any]]:
-    """
-    List vectors in Pinecone with optional prefix filtering.
-
-    Connects to the Pinecone database and retrieves vectors, optionally filtered
-    by a prefix on the vector ID.
-
-    Args:
-        prefix: Optional prefix to filter vector IDs
-        limit: Maximum number of vectors to return
-        pretty_print: Whether to format the output nicely
-        namespace: Optional Pinecone namespace to search in
-
-    Returns:
-        List of vector data
-    """
-    try:
-        # Initialize Pinecone client
-        pinecone_db = PineconeDB()
-        logger.info(f"Listing vectors with prefix: '{prefix if prefix else 'all'}'")
-
-        # Display query information
-        print("\nQuerying Pinecone database for vectors")
-        print(
-            f"  Namespace: {namespace if namespace else pinecone_db.namespace or 'default'}"
-        )
-        print(f"  Prefix filter: {prefix if prefix else 'None'}")
-        print(f"  Result limit: {limit}")
-
-        # Query the Pinecone index using the enhanced method
-        matches = pinecone_db.list_vectors(
-            limit=limit,
-            id_prefix=prefix,
-            namespace_override=namespace,
-            include_values=False,
-        )
-
-        # Handle the result safely
-        if not matches:
-            logger.warning("No vectors found in Pinecone")
-            print("\nNo vectors found in the database.")
-            return []
-
-        print(f"\nFound {len(matches)} matches")
-
-        # Convert matches to the expected format for display
-        matches_data = []
-        for match in matches:
-            match_dict = {
-                "id": match.get("id", "Unknown"),
-                "score": match.get("score", 0.0),
-                "metadata": match.get("metadata", {}),
-            }
-            matches_data.append(match_dict)
-
-        # Print the results in the appropriate format
-        if pretty_print:
-            _print_vector_details_pretty(matches_data)
-        else:
-            _print_vector_details_compact(matches_data)
-
-        return matches_data
-
-    except Exception as e:
-        logger.error(f"Error listing vectors: {e}")
-        import traceback
-
-        traceback.print_exc()
-        return []
-
-
 # =============== Validate Vector Command Functions ===============
 
 
@@ -1301,13 +1225,34 @@ def verify_vectors(
         Dictionary with verification results
     """
     try:
+        # Initialize Pinecone client
+        pinecone_db = PineconeDB()
+
+        if namespace is not None:
+            pinecone_db.namespace = namespace
+
         # Query vectors
         logger.info(f"Querying up to {limit} vectors for verification")
-        vectors = list_vectors(prefix=prefix, limit=limit, namespace=namespace)
+        matches = pinecone_db.list_vectors(
+            limit=limit,
+            id_prefix=prefix,
+            namespace_override=namespace,
+            include_values=False,
+        )
 
-        if not vectors:
+        if not matches:
             logger.warning("No vectors found to verify")
             return {"error": "No vectors found", "total": 0}
+
+        # Convert matches to the expected format
+        vectors = []
+        for match in matches:
+            vector_dict = {
+                "id": match.get("id", "Unknown"),
+                "score": match.get("score", 0.0),
+                "metadata": match.get("metadata", {}),
+            }
+            vectors.append(vector_dict)
 
         # Print header
         if verbose:
@@ -1577,12 +1522,66 @@ def check_landmark_command(args: argparse.Namespace) -> None:
 
 def list_vectors_command(args: argparse.Namespace) -> None:
     """Handle the list-vectors command."""
-    list_vectors(
-        prefix=args.prefix,
-        limit=args.limit,
-        pretty_print=args.pretty,
-        namespace=args.namespace,
-    )
+    try:
+        # Initialize Pinecone client
+        pinecone_db = PineconeDB()
+
+        if args.namespace is not None:
+            pinecone_db.namespace = args.namespace
+            logger.info(f"Using custom namespace: {args.namespace}")
+        else:
+            logger.info(f"Using default namespace: {pinecone_db.namespace}")
+
+        logger.info(
+            f"Listing vectors with prefix: '{args.prefix if args.prefix else 'all'}'"
+        )
+
+        # Display query information
+        print("\nQuerying Pinecone database for vectors")
+        print(
+            f"  Namespace: {args.namespace if args.namespace else pinecone_db.namespace or 'default'}"
+        )
+        print(f"  Prefix filter: {args.prefix if args.prefix else 'None'}")
+        print(f"  Result limit: {args.limit}")
+
+        # Query the Pinecone index using PineconeDB.list_vectors()
+        matches = pinecone_db.list_vectors(
+            limit=args.limit,
+            id_prefix=args.prefix,
+            namespace_override=args.namespace,
+            include_values=False,
+        )
+
+        # Handle the result safely
+        if not matches:
+            logger.warning("No vectors found in Pinecone")
+            print("\nNo vectors found in the database.")
+            return
+
+        print(f"\nFound {len(matches)} matches")
+
+        # Convert matches to the expected format for display
+        matches_data = []
+        for match in matches:
+            match_dict = {
+                "id": match.get("id", "Unknown"),
+                "score": match.get("score", 0.0),
+                "metadata": match.get("metadata", {}),
+            }
+            matches_data.append(match_dict)
+
+        # Print the results in the appropriate format
+        if args.pretty:
+            _print_vector_details_pretty(matches_data)
+        else:
+            _print_vector_details_compact(matches_data)
+
+    except Exception as e:
+        logger.error(f"Error listing vectors: {e}")
+        print(f"\nError: Failed to list vectors - {str(e)}")
+        import traceback
+
+        traceback.print_exc()
 
 
 def setup_fetch_parser(subparsers: Any) -> None:
