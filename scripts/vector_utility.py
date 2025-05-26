@@ -1412,6 +1412,78 @@ def batch_verify_command(args: argparse.Namespace) -> None:
 # =============== Command Line Interface ===============
 
 
+def _fetch_from_specific_namespace(
+    pinecone_db: PineconeDB, vector_id: str, namespace: str
+) -> Optional[Dict[str, Any]]:
+    """
+    Fetch a vector from a specific namespace.
+
+    Args:
+        pinecone_db: The PineconeDB instance
+        vector_id: The ID of the vector to fetch
+        namespace: The namespace to fetch from
+
+    Returns:
+        Vector data dictionary or None if not found
+    """
+    # Skip "__default__" namespace which causes API errors
+    if namespace == "__default__":
+        logger.info("Skipping '__default__' namespace due to API limitations")
+        return None
+    logger.info(f"Trying namespace: {namespace}")
+    try:
+        temp_vector = pinecone_db.fetch_vector_by_id(vector_id, namespace)
+        if temp_vector:
+            logger.info(f"Found vector in namespace: {namespace}")
+            return temp_vector
+        return None
+    except Exception as e:
+        logger.warning(f"Error fetching from namespace {namespace}: {e}")
+        return None
+
+
+def _search_all_namespaces(
+    pinecone_db: PineconeDB, vector_id: str
+) -> Optional[Dict[str, Any]]:
+    """
+    Search for a vector across all available namespaces.
+
+    Args:
+        pinecone_db: The PineconeDB instance
+        vector_id: The ID of the vector to fetch
+
+    Returns:
+        Vector data dictionary or None if not found in any namespace
+    """
+    # Get index statistics to find available namespaces
+    logger.info("No namespace specified, checking all available namespaces")
+    stats = pinecone_db.get_index_stats()
+    namespaces = stats.get("namespaces", {})
+
+    if not namespaces:
+        logger.info("No namespaces found, trying with default namespace")
+        return pinecone_db.fetch_vector_by_id(vector_id, None)
+
+    logger.info(f"Found {len(namespaces)} namespaces: {', '.join(namespaces.keys())}")
+
+    # Try each namespace until we find the vector
+    for namespace_name in namespaces.keys():
+        vector_data = _fetch_from_specific_namespace(pinecone_db, vector_id, namespace_name)
+        if vector_data:
+            return vector_data
+    return None
+
+
+class VectorData:
+    """Mock vector object for compatibility with existing print functions."""
+
+    def __init__(self, data_dict: Dict[str, Any]):
+        """Initialize with data from dictionary."""
+        self.id = data_dict.get("id", "")
+        self.values = data_dict.get("values", [])
+        self.metadata = data_dict.get("metadata", {})
+
+
 def fetch_command(args: argparse.Namespace) -> None:
     """Handle the fetch command."""
     try:
@@ -1420,77 +1492,19 @@ def fetch_command(args: argparse.Namespace) -> None:
 
         # Handle namespace parameter
         if args.namespace is None:
-            # Try the Pinecone default namespace first (None)
-            logger.info(
-                "No namespace specified, trying Pinecone default namespace first"
-            )
-            namespace_to_use = None
-        else:
-            namespace_to_use = args.namespace
-            logger.info(f"Using specified namespace: {namespace_to_use}")
-
-        # Fetch vector directly using PineconeDB
-        logger.info(f"Fetching vector with ID: {args.vector_id}")
-        vector_data_dict = None
-
-        # If no specific namespace is provided, try to find one that has the vector
-        if args.namespace is None:
-            # Get index statistics to find available namespaces
-            logger.info("No namespace specified, checking all available namespaces")
-            stats = pinecone_db.get_index_stats()
-            namespaces = stats.get("namespaces", {})
-
-            if namespaces:
-                logger.info(
-                    f"Found {len(namespaces)} namespaces: {', '.join(namespaces.keys())}"
-                )
-
-                # Try each namespace until we find the vector
-                for namespace_name in namespaces.keys():
-                    # Skip "__default__" namespace which causes API errors
-                    if namespace_name == "__default__":
-                        logger.info(
-                            "Skipping '__default__' namespace due to API limitations"
-                        )
-                        continue
-
-                    logger.info(f"Trying namespace: {namespace_name}")
-                    try:
-                        temp_vector = pinecone_db.fetch_vector_by_id(
-                            args.vector_id, namespace_name
-                        )
-                        if temp_vector:
-                            logger.info(f"Found vector in namespace: {namespace_name}")
-                            vector_data_dict = temp_vector
-                            break
-                    except Exception as e:
-                        logger.warning(
-                            f"Error fetching from namespace {namespace_name}: {e}"
-                        )
-            else:
-                # If no namespaces found, try with default
-                vector_data_dict = pinecone_db.fetch_vector_by_id(
-                    args.vector_id, namespace_to_use
-                )
+            # Try to find the vector in any available namespace
+            vector_data_dict = _search_all_namespaces(pinecone_db, args.vector_id)
         else:
             # Use specified namespace
-            vector_data_dict = pinecone_db.fetch_vector_by_id(
-                args.vector_id, namespace_to_use
-            )
+            logger.info(f"Using specified namespace: {args.namespace}")
+            vector_data_dict = pinecone_db.fetch_vector_by_id(args.vector_id, args.namespace)
 
         if vector_data_dict is None:
             logger.error(f"Vector with ID '{args.vector_id}' not found in Pinecone")
             return
 
-        # Create a mock vector object for compatibility with existing print functions
-        class VectorData:
-            def __init__(self, data_dict: Dict[str, Any]):
-                self.id = data_dict.get("id", "")
-                self.values = data_dict.get("values", [])
-                self.metadata = data_dict.get("metadata", {})
-
+        # Create a mock vector object and display results
         vector_data = VectorData(vector_data_dict)
-
         # Print formatted output if requested
         if args.pretty:
             _print_vector_metadata(vector_data, args.vector_id)
