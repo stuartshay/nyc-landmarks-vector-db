@@ -129,25 +129,6 @@ def _print_vector_metadata(vector_data: Any, vector_id: str) -> None:
     print("=" * 80)
 
 
-def _convert_vector_data_to_dict(vector_data: Any) -> Dict[str, Any]:
-    """
-    Convert vector data object to dictionary.
-
-    Args:
-        vector_data: Vector data object
-
-    Returns:
-        Dictionary representation of vector data
-    """
-    return_data: Dict[str, Any] = {}
-
-    # Copy all attributes from vector_data to return_data
-    for key, value in vector_data.__dict__.items():
-        return_data[key] = value
-
-    return return_data
-
-
 def fetch_vector(
     vector_id: str, pretty_print: bool = False, namespace: Optional[str] = None
 ) -> Optional[Dict[str, Any]]:
@@ -646,30 +627,6 @@ def _print_vector_details_compact(matches_data: List[Dict[str, Any]]) -> None:
             print(f"  Landmark ID: {landmark_id}")
             print(f"  Source Type: {source_type}")
             print(f"  Chunk Index: {chunk_index}")
-
-
-def _prepare_query_results(filtered_matches: List[Any], limit: int) -> List[Any]:
-    """
-    Prepare query results by applying limits and converting to dictionaries.
-
-    Args:
-        filtered_matches: List of filtered match objects
-        limit: Maximum number of results to return
-
-    Returns:
-        List of matches limited to the requested count
-    """
-    # If we have more matches than the limit, truncate
-    if len(filtered_matches) > limit:
-        print(
-            f"\nFound {len(filtered_matches)} matches, showing first {limit} as requested"
-        )
-        filtered_matches = filtered_matches[:limit]
-        logger.info(f"Limited results to {limit} matches")
-    else:
-        print(f"\nFound {len(filtered_matches)} matches")
-
-    return filtered_matches
 
 
 def list_vectors(
