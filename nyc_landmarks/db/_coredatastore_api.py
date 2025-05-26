@@ -12,6 +12,7 @@ import requests
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.models.landmark_models import (
+    LandmarkDetail,
     LpcReportDetailResponse,
     LpcReportResponse,
 )
@@ -590,7 +591,7 @@ class _CoreDataStoreAPI:
 
     def get_landmark_buildings(
         self, landmark_id: str, limit: int = 50
-    ) -> List[Dict[str, Any]]:
+    ) -> List[LandmarkDetail]:
         """Get buildings associated with a landmark.
 
         Args:
@@ -598,9 +599,11 @@ class _CoreDataStoreAPI:
             limit: Maximum number of buildings to return
 
         Returns:
-            List of dictionaries containing building information
+            List of LandmarkDetail objects containing building information
         """
         try:
+            from nyc_landmarks.models.landmark_models import LandmarkDetail
+
             # Ensure landmark_id is properly formatted with LP prefix
             if not landmark_id.startswith("LP-"):
                 lpc_number = f"LP-{landmark_id.zfill(5)}"
@@ -624,23 +627,45 @@ class _CoreDataStoreAPI:
                 for building in response:
                     if not isinstance(building, dict):
                         continue
-                    # Get BBL value and handle empty/none values properly
-                    bbl_value = building.get("bbl")
-                    building_info = {
-                        "name": building.get("name", ""),
-                        "address": building.get("designatedAddress", ""),
-                        "bbl": (
-                            bbl_value if bbl_value else None
-                        ),  # Use None if BBL is empty or missing
-                        "bin": building.get("binNumber", None),
-                        "block": building.get("block", None),
-                        "lot": building.get("lot", None),
-                        "borough": building.get("boroughId", ""),
-                        "latitude": building.get("latitude", None),
-                        "longitude": building.get("longitude", None),
-                        "designated_date": building.get("designatedDate", ""),
-                    }
-                    buildings.append(building_info)
+
+                    # Create LandmarkDetail object from API response
+                    try:
+                        landmark_detail = LandmarkDetail(
+                            name=building.get("name") or "Unknown Building",
+                            lpNumber=building.get("lpNumber") or lpc_number,
+                            bbl=building.get("bbl") if building.get("bbl") else None,
+                            binNumber=building.get("binNumber"),
+                            boroughId=building.get("boroughId"),
+                            objectType=building.get("objectType"),
+                            block=building.get("block"),
+                            lot=building.get("lot"),
+                            plutoAddress=building.get("plutoAddress"),
+                            designatedAddress=building.get("designatedAddress"),
+                            number=building.get("number"),
+                            street=building.get("street"),
+                            city=building.get("city"),
+                            designatedDate=building.get("designatedDate"),
+                            calendaredDate=building.get("calendaredDate"),
+                            publicHearingDate=building.get("publicHearingDate"),
+                            historicDistrict=building.get("historicDistrict"),
+                            otherHearingDate=building.get("otherHearingDate"),
+                            isCurrent=building.get("isCurrent"),
+                            status=building.get("status"),
+                            lastAction=building.get("lastAction"),
+                            priorStatus=building.get("priorStatus"),
+                            recordType=building.get("recordType"),
+                            isBuilding=building.get("isBuilding"),
+                            isVacantLot=building.get("isVacantLot"),
+                            isSecondaryBuilding=building.get("isSecondaryBuilding"),
+                            latitude=building.get("latitude"),
+                            longitude=building.get("longitude"),
+                        )
+                        buildings.append(landmark_detail)
+                    except Exception as e:
+                        logger.warning(
+                            f"Error creating LandmarkDetail for building {building.get('name', 'unknown')}: {e}"
+                        )
+                        continue
 
             return buildings
 
@@ -723,7 +748,9 @@ class _CoreDataStoreAPI:
                         standardized_record = {
                             "yearBuilt": record.get("yearBuilt"),
                             "landUse": record.get("landUse"),
-                            "historicDistrict": record.get("historicDistrict"),
+                            "historicDistrict": record.get(
+                                "histdist"
+                            ),  # Map histdist to historicDistrict
                             "zoneDist1": record.get("zoneDist1"),
                         }
                         standardized_records.append(standardized_record)

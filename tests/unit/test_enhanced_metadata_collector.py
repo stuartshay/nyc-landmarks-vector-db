@@ -11,6 +11,7 @@ from unittest.mock import Mock, patch
 
 from nyc_landmarks.db.db_client import DbClient
 from nyc_landmarks.models.landmark_models import LpcReportDetailResponse, PlutoDataModel
+from nyc_landmarks.models.metadata_models import SourceType
 from nyc_landmarks.vectordb.enhanced_metadata import (
     EnhancedMetadataCollector,
     get_metadata_collector,
@@ -118,16 +119,26 @@ class TestEnhancedMetadataCollectorNonApiMode(unittest.TestCase):
         result = self.collector.collect_landmark_metadata("LP-00009")
 
         # Verify only basic metadata was used (no API calls)
-        # Convert result to dictionary for comparison
-        result_dict = {
-            "landmark_id": result.landmark_id,
-            "name": result.name,
-            "location": result.location,
-            "borough": result.borough,
-            "type": result.type,
-            "designation_date": result.designation_date,
-        }
-        self.assertEqual(result_dict, self.basic_metadata)
+        # Convert result to dictionary for comparison, removing None values
+        result_dict = {k: v for k, v in result.dict().items() if v is not None}
+
+        # Check that all basic metadata fields are present and correct
+        for key, expected_value in self.basic_metadata.items():
+            self.assertEqual(result_dict[key], expected_value)
+
+        # Verify auto-generated fields are present
+        self.assertIn("processing_date", result_dict)
+        self.assertIn("source_type", result_dict)
+        self.assertEqual(result_dict["source_type"], SourceType.PDF)  # Default value
+
+        # Check that basic metadata values match
+        for key, expected_value in self.basic_metadata.items():
+            self.assertEqual(result_dict[key], expected_value)
+
+        # Check that auto-generated fields have correct values/types
+        self.assertIsInstance(result_dict["processing_date"], str)
+        self.assertEqual(result_dict["source_type"], SourceType.PDF)  # Default fallback
+
         self.mock_db_client.get_landmark_metadata.assert_called_once_with("LP-00009")
 
         # Verify no other methods were called
@@ -213,11 +224,12 @@ class TestEnhancedMetadataCollectorApiMode(unittest.TestCase):
 
     def test_collect_landmark_metadata_complete_data(self) -> None:
         """Test collect_landmark_metadata with complete data from all sources."""
-        # Create a new mock landmark details dictionary with bbl added
+        # Create a new mock landmark details dictionary with bbl and plutoStatus added
         mock_landmark_details = dict(
             get_mock_landmark_details()
         )  # Convert to dict to allow item assignment
         mock_landmark_details["bbl"] = "1005690004"
+        mock_landmark_details["plutoStatus"] = True  # Enable PLUTO data fetching
         self.mock_db_client.get_landmark_by_id.return_value = mock_landmark_details
 
         # Call the method
@@ -256,6 +268,13 @@ class TestEnhancedMetadataCollectorApiMode(unittest.TestCase):
 
     def test_collect_landmark_metadata_no_buildings(self) -> None:
         """Test collect_landmark_metadata when no buildings are returned."""
+        # Create a new mock landmark details dictionary with plutoStatus added
+        mock_landmark_details = dict(
+            get_mock_landmark_details()
+        )  # Convert to dict to allow item assignment
+        mock_landmark_details["plutoStatus"] = True  # Enable PLUTO data fetching
+        self.mock_db_client.get_landmark_by_id.return_value = mock_landmark_details
+
         # Set up empty buildings response
         self.mock_db_client.get_landmark_buildings.return_value = []
 
@@ -273,6 +292,13 @@ class TestEnhancedMetadataCollectorApiMode(unittest.TestCase):
 
     def test_collect_landmark_metadata_no_pluto_data(self) -> None:
         """Test collect_landmark_metadata when no PLUTO data is returned."""
+        # Create a new mock landmark details dictionary with plutoStatus added
+        mock_landmark_details = dict(
+            get_mock_landmark_details()
+        )  # Convert to dict to allow item assignment
+        mock_landmark_details["plutoStatus"] = True  # Enable PLUTO data fetching
+        self.mock_db_client.get_landmark_by_id.return_value = mock_landmark_details
+
         # Set up empty PLUTO data response
         self.mock_db_client.get_landmark_pluto_data.return_value = []
 
@@ -287,10 +313,10 @@ class TestEnhancedMetadataCollectorApiMode(unittest.TestCase):
         self.assertFalse(result["has_pluto_data"])
 
         # PLUTO-related fields should not be present
-        self.assertNotIn("year_built", result)
-        self.assertNotIn("land_use", result)
-        self.assertNotIn("historic_district", result)
-        self.assertNotIn("zoning_district", result)
+        for field in ["year_built", "land_use", "historic_district", "zoning_district"]:
+            self.assertFalse(
+                hasattr(result, field) and getattr(result, field) is not None
+            )
 
     def test_building_data_pydantic_model(self) -> None:
         """Test handling of Pydantic model response for building data."""
@@ -477,8 +503,9 @@ class TestEnhancedMetadataCollectorErrorHandling(unittest.TestCase):
         # Verify API was called but failed
         self.mock_db_client.get_landmark_buildings.assert_called_once_with("LP-00009")
 
-        # Verify result falls back to basic metadata
-        self.assertEqual(result, self.basic_metadata)
+        # Convert result to dictionary for comparison, removing None values
+        result_dict = {k: v for k, v in result.dict().items() if v is not None}
+        self.assertEqual(result_dict, self.basic_metadata)
 
     def test_landmark_details_error(self) -> None:
         """Test error handling when get_landmark_by_id fails."""

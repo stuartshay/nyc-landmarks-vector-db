@@ -19,8 +19,7 @@ import pandas as pd
 from tabulate import tabulate
 
 from nyc_landmarks.api.query import compare_source_results, search_combined_sources
-from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
-from nyc_landmarks.db.db_client import DbClient
+from nyc_landmarks.db.db_client import DbClient, get_db_client
 from nyc_landmarks.db.wikipedia_fetcher import WikipediaFetcher
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.utils.logger import get_logger
@@ -30,13 +29,13 @@ from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 logger = get_logger(__name__)
 
 
-def _get_landmark_details(landmark_id: str, api_client: CoreDataStoreAPI) -> Any:
+def _get_landmark_details(landmark_id: str, api_client: DbClient) -> Any:
     """
-    Get landmark details from the API.
+    Get landmark details from the database client.
 
     Args:
         landmark_id: The landmark ID to fetch
-        api_client: The CoreDataStoreAPI client
+        api_client: The DbClient instance
 
     Returns:
         Landmark details or None if not found
@@ -109,7 +108,7 @@ def fetch_and_display_wikipedia_articles(landmark_id: str) -> None:
     Args:
         landmark_id: The landmark ID to fetch articles for
     """
-    api_client = CoreDataStoreAPI()
+    api_client = get_db_client()
 
     # Get landmark details
     landmark = _get_landmark_details(landmark_id, api_client)
@@ -151,7 +150,7 @@ def process_wikipedia_article(
     try:
         print(f"\n=== PROCESSING WIKIPEDIA ARTICLES FOR LANDMARK: {landmark_id} ===\n")
 
-        api_client = CoreDataStoreAPI()
+        api_client = get_db_client()
         wiki_fetcher = WikipediaFetcher()
         embedding_generator = EmbeddingGenerator()
         pinecone_db = PineconeDB()
@@ -323,7 +322,7 @@ def search_landmark_content(
         print(f"\n=== SEARCHING FOR: '{query}' in LANDMARK: {landmark_id} ===\n")
 
         # Get landmark details
-        db_client = DbClient(CoreDataStoreAPI())
+        db_client = get_db_client()
         landmark = _get_landmark_with_db_client(landmark_id, db_client)
 
         if not landmark:

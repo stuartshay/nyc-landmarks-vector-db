@@ -35,6 +35,7 @@ def get_mock_landmark_details() -> LpcReportDetailResponse:
         photoArchiveStatus=True,
         mapStatus=True,
         pdfStatus=True,
+        plutoStatus=True,
         neighborhood="Greenwich Village",
         photoUrl="https://cdn.informationcart.com/images/0009.jpg",
         pdfReportUrl="https://cdn.informationcart.com/pdf/0009.pdf",

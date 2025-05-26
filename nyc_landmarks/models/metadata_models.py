@@ -32,19 +32,42 @@ class RootMetadataModel(BaseModel):
     Root metadata model for all metadata types.
 
     This model serves as a base for other metadata models, providing common fields.
+    All records automatically get processing_date and source_type set.
     """
 
-    _processing_date: str = PrivateAttr(
-        default_factory=lambda: datetime.utcnow().isoformat()
+    processing_date: str = Field(
+        default_factory=lambda: datetime.utcnow().isoformat(),
+        description="UTC timestamp when the metadata was processed",
     )
-    source_type: SourceType = Field(..., description="Source type of the metadata")
+    source_type: SourceType = Field(
+        default_factory=lambda: SourceType.PDF,  # Default fallback
+        description="Source type of the metadata",
+    )
 
-    @property
-    def processing_date(self) -> str:
-        return self._processing_date
+    def __init__(self, **data: Any):
+        # Auto-detect source_type if not provided
+        if "source_type" not in data:
+            class_name = self.__class__.__name__.lower()
+            if "wikipedia" in class_name:
+                data["source_type"] = SourceType.WIKIPEDIA
+            elif "pdr" in class_name or "pdf" in class_name:
+                data["source_type"] = SourceType.PDF
+            # For LandmarkMetadata, keep the provided source_type or use default
+
+        super().__init__(**data)
+
+    def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
+        """Return a dictionary including the processing_date field."""
+        result: Dict[str, Any] = super().model_dump(**kwargs)
+        # Ensure processing_date and source_type are always included in the output
+        if "processing_date" not in result:
+            result["processing_date"] = self.processing_date
+        if "source_type" not in result:
+            result["source_type"] = self.source_type
+        return result
 
 
-class LandmarkMetadata(BaseModel):
+class LandmarkMetadata(RootMetadataModel):
     """
     Model representing landmark metadata used for vector database storage.
 
@@ -53,6 +76,8 @@ class LandmarkMetadata(BaseModel):
 
     The model supports dictionary-like access and mutation to maintain
     compatibility with existing code that expects a dictionary.
+
+    Inherits from RootMetadataModel to automatically include source_type and processing_date.
     """
 
     model_config = ConfigDict(from_attributes=True, extra="allow")
@@ -99,12 +124,18 @@ class LandmarkMetadata(BaseModel):
     _extra_fields: Dict[str, Any] = PrivateAttr(default_factory=dict)
 
     def __init__(self, **data: Any):
-        # Extract fields that are defined in the model
-        model_fields = {k: v for k, v in data.items() if k in self.__annotations__}
-        # Store extra fields that are not defined in the model
-        extra_fields = {k: v for k, v in data.items() if k not in self.__annotations__}
+        # Get the full list of model fields including inherited ones from RootMetadataModel
+        all_model_fields: set[str] = set()
+        for cls in self.__class__.__mro__:
+            if hasattr(cls, "__annotations__"):
+                all_model_fields.update(cls.__annotations__.keys())
 
-        # Initialize with model fields
+        # Extract fields that are defined in the model (including inherited)
+        model_fields = {k: v for k, v in data.items() if k in all_model_fields}
+        # Store extra fields that are not defined in the model
+        extra_fields = {k: v for k, v in data.items() if k not in all_model_fields}
+
+        # Initialize with model fields (this will call RootMetadataModel.__init__)
         super().__init__(**model_fields)
         # Store extra fields
         self._extra_fields = extra_fields

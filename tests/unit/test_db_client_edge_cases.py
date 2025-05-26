@@ -15,7 +15,6 @@ from nyc_landmarks.models.landmark_models import (
     LpcReportResponse,
     PlutoDataModel,
 )
-from nyc_landmarks.models.wikipedia_models import WikipediaArticleModel
 
 
 class TestSupportsWikipediaProtocol(unittest.TestCase):
@@ -32,7 +31,6 @@ class TestSupportsWikipediaProtocol(unittest.TestCase):
         client = MinimalWikipediaClient()
 
         # Test default implementations
-        self.assertIsNone(client.get_wikipedia_article_by_title("Test Article"))
         self.assertEqual(client.get_wikipedia_articles("LP-12345"), [])
 
 
@@ -281,114 +279,10 @@ class TestWikipediaMethods(unittest.TestCase):
         """Set up test fixtures before each test method."""
         # Create a mock CoreDataStoreAPI instance with Wikipedia methods
         self.mock_api = Mock(spec=CoreDataStoreAPI)
-        self.mock_api.get_wikipedia_article_by_title = Mock()
         self.mock_api.get_wikipedia_articles = Mock()
 
         # Create a DbClient instance with the mock API
         self.client = DbClient(self.mock_api)
-
-    def test_get_wikipedia_article_by_title_with_dict(self) -> None:
-        """Test get_wikipedia_article_by_title with dict response."""
-        # Set up mock to return a dict
-        article_dict = {
-            "title": "Test Article",
-            "url": "https://en.wikipedia.org/wiki/Test_Article",
-            "lpNumber": "LP-12345",
-            "recordType": "Wikipedia",
-        }
-        self.mock_api.get_wikipedia_article_by_title.return_value = article_dict
-
-        # Call the method
-        result = self.client.get_wikipedia_article_by_title("Test Article")
-
-        # Verify result is a WikipediaArticleModel
-        self.assertIsNotNone(result)
-        self.assertIsInstance(result, WikipediaArticleModel)
-        assert (
-            result is not None
-        )  # Help mypy understand result can't be None after the assertion
-        self.assertEqual(result.title, "Test Article")
-        self.assertEqual(result.url, "https://en.wikipedia.org/wiki/Test_Article")
-
-    def test_get_wikipedia_article_by_title_with_model(self) -> None:
-        """Test get_wikipedia_article_by_title with model response."""
-        # Set up mock to return a WikipediaArticleModel
-        article_model = WikipediaArticleModel(
-            title="Test Article",
-            url="https://en.wikipedia.org/wiki/Test_Article",
-            lpNumber="LP-12345",
-            recordType="Wikipedia",
-            id=None,  # Explicitly set id to None as it's an optional field
-        )
-        self.mock_api.get_wikipedia_article_by_title.return_value = article_model
-
-        # Call the method
-        result = self.client.get_wikipedia_article_by_title("Test Article")
-
-        # Verify result is passed through
-        self.assertIs(result, article_model)
-
-    def test_get_wikipedia_article_by_title_with_none(self) -> None:
-        """Test get_wikipedia_article_by_title with None response."""
-        # Set up mock to return None
-        self.mock_api.get_wikipedia_article_by_title.return_value = None
-
-        # Call the method
-        result = self.client.get_wikipedia_article_by_title("Test Article")
-
-        # Verify result is None
-        self.assertIsNone(result)
-
-    def test_get_wikipedia_article_by_title_with_invalid_dict(self) -> None:
-        """Test get_wikipedia_article_by_title with invalid dict response."""
-        # Set up mock to return an invalid dict (missing required fields)
-        self.mock_api.get_wikipedia_article_by_title.return_value = {
-            "title": "Test Article"
-        }
-
-        # Call the method
-        result = self.client.get_wikipedia_article_by_title("Test Article")
-
-        # Verify result is None (conversion failed)
-        self.assertIsNone(result)
-
-    def test_get_wikipedia_article_by_title_with_unexpected_type(self) -> None:
-        """Test get_wikipedia_article_by_title with unexpected response type."""
-        # Set up mock to return a string
-        self.mock_api.get_wikipedia_article_by_title.return_value = (
-            "Not a model or dict"
-        )
-
-        # Call the method
-        result = self.client.get_wikipedia_article_by_title("Test Article")
-
-        # Verify result is None
-        self.assertIsNone(result)
-
-    def test_get_wikipedia_article_by_title_with_exception(self) -> None:
-        """Test get_wikipedia_article_by_title with exception."""
-        # Set up mock to raise exception
-        self.mock_api.get_wikipedia_article_by_title.side_effect = Exception(
-            "API error"
-        )
-
-        # Call the method
-        result = self.client.get_wikipedia_article_by_title("Test Article")
-
-        # Verify result is None
-        self.assertIsNone(result)
-
-    def test_get_wikipedia_article_by_title_client_lacks_method(self) -> None:
-        """Test get_wikipedia_article_by_title when client lacks the method."""
-        # Create a client with a mock API without get_wikipedia_article_by_title
-        limited_mock_api = Mock(spec=[])
-        limited_client = DbClient(limited_mock_api)
-
-        # Call the method
-        result = limited_client.get_wikipedia_article_by_title("Test Article")
-
-        # Verify result is None
-        self.assertIsNone(result)
 
     def test_get_wikipedia_articles_with_exception(self) -> None:
         """Test get_wikipedia_articles with exception handling."""

@@ -12,9 +12,8 @@ import pytest
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
-from tests.utils.pinecone_test_utils import (
+from tests.utils.pinecone_test_utils import (  # delete_test_index,  # Commented out since we're keeping indexes for debugging
     create_test_index,
-    delete_test_index,
     get_default_test_index_name,
     get_test_db,
 )
@@ -61,16 +60,17 @@ def pinecone_test_db() -> Generator[Optional[PineconeDB], None, None]:
         yield test_db
 
     finally:
-        # Clean up: Delete the test index after all tests are done (if it exists)
-        # Note: We keep this code for safety, but with unique session indexes
-        # there's less risk of affecting other parallel test sessions
-        try:
-            logger.info(
-                f"Deleting test index {test_index_name} - #### Commented out ###"
-            )
-            delete_test_index(index_name=test_index_name)
-        except Exception as e:
-            logger.warning(f"Failed to delete test index {test_index_name}: {e}")
+        # Keep test index for debugging - DO NOT DELETE
+        # This allows manual inspection of test data in Pinecone dashboard
+        logger.info(f"KEEPING test index {test_index_name} for debugging - NOT DELETED")
+        logger.info(
+            f"You can inspect this index manually in Pinecone dashboard: {test_index_name}"
+        )
+        # Commented out the deletion to keep test data for inspection
+        # try:
+        #     delete_test_index(index_name=test_index_name)
+        # except Exception as e:
+        #     logger.warning(f"Failed to delete test index {test_index_name}: {e}")
 
 
 @pytest.fixture

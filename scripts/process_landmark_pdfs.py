@@ -18,7 +18,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import modules after modifying the path
 from nyc_landmarks.config.settings import settings
-from nyc_landmarks.db.coredatastore_api import CoreDataStoreAPI
+from nyc_landmarks.db.db_client import DbClient, get_db_client
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.pdf.extractor import PDFExtractor
 from nyc_landmarks.pdf.text_chunker import TextChunker
@@ -42,7 +42,7 @@ def process_landmark(
     text_chunker: TextChunker,
     embedding_generator: EmbeddingGenerator,
     vector_db: PineconeDB,
-    api_client: CoreDataStoreAPI,
+    api_client: DbClient,
     delete_existing: bool = False,
 ) -> Dict[str, Any]:
     """Process a landmark PDF and store embeddings.
@@ -53,7 +53,7 @@ def process_landmark(
         text_chunker: TextChunker instance
         embedding_generator: EmbeddingGenerator instance
         vector_db: PineconeDB instance
-        api_client: CoreDataStoreAPI instance
+        api_client: DbClient instance
         delete_existing: Whether to delete existing vectors for this landmark
 
     Returns:
@@ -89,10 +89,22 @@ def process_landmark(
 
         # Chunk text
         text = pdf_result.get("text", "")
+
+        # Convert LandmarkMetadata to dict if needed
+        from nyc_landmarks.models.metadata_models import LandmarkMetadata
+
+        metadata_dict: Dict[str, Any]
+        if isinstance(landmark_metadata, LandmarkMetadata):
+            metadata_dict = landmark_metadata.model_dump()
+        elif isinstance(landmark_metadata, dict):
+            metadata_dict = landmark_metadata
+        else:
+            metadata_dict = {}  # Fallback to empty dict if type is unknown
+
         chunks = text_chunker.process_landmark_text(
             text=text,
             landmark_id=landmark_id,
-            additional_metadata=landmark_metadata,
+            additional_metadata=metadata_dict,
         )
 
         result["chunks_count"] = len(chunks)
@@ -150,7 +162,7 @@ def process_all_landmarks(
     text_chunker = TextChunker()
     embedding_generator = EmbeddingGenerator()
     vector_db = PineconeDB()
-    api_client = CoreDataStoreAPI()
+    api_client = get_db_client()
 
     results: Dict[str, Any] = {
         "total_landmarks": 0,
@@ -226,7 +238,7 @@ def process_specific_landmark(
     text_chunker = TextChunker()
     embedding_generator = EmbeddingGenerator()
     vector_db = PineconeDB()
-    api_client = CoreDataStoreAPI()
+    api_client = get_db_client()
 
     # Process landmark
     return process_landmark(

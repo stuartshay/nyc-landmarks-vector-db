@@ -7,75 +7,44 @@ This script creates a Pinecone index with the correct settings for the NYC Landm
 
 import os
 import sys
-import time
 from pathlib import Path
 
 # Add the project root to the path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-# Use type ignore for ServerlessSpec as it might not be available in all Pinecone versions
-# This still allows the script to run with different versions of the Pinecone SDK
-# mypy will ignore this potential import error
-# Import needed modules - update imports for the new Pinecone API
-from pinecone import Pinecone, ServerlessSpec
-
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.utils.logger import get_logger
+from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
 # Configure logger
 logger = get_logger(name="create_pinecone_index")
 
 
 def create_nyc_landmarks_index() -> bool:
-    """Create the NYC Landmarks index in Pinecone using the updated API."""
+    """Create the NYC Landmarks index in Pinecone using PineconeDB."""
 
     # Get settings from configuration
-    api_key = settings.PINECONE_API_KEY
     index_name = settings.PINECONE_INDEX_NAME
     dimensions = settings.PINECONE_DIMENSIONS
     metric = settings.PINECONE_METRIC
 
-    # Environment for GCP index creation
-    environment = "us-central1-gcp"  # GCP environment for index creation
+    logger.info(f"Creating Pinecone index: {index_name}")
 
-    logger.info(f"Initializing Pinecone with environment: {environment}")
-
-    # Initialize Pinecone with new API
-    pc = Pinecone(api_key=api_key)
-
-    # Check if index already exists
-    indexes = pc.list_indexes()
-    index_names = (
-        [idx.name for idx in indexes]
-        if hasattr(indexes, "__iter__")
-        else getattr(indexes, "names", [])
-    )
-    if index_name in index_names:
-        logger.info(f"Index '{index_name}' already exists")
-        return True
-
-    # Create index with the appropriate settings
+    # Use PineconeDB for index creation
     try:
-        logger.info(f"Creating index '{index_name}' with {dimensions} dimensions")
-
-        # Create the index with new API
-        pc.create_index(
-            name=index_name,
-            dimension=dimensions,
-            metric=metric,
-            spec=ServerlessSpec(cloud="gcp", region="us-central1"),
+        pinecone_db = PineconeDB()
+        success = pinecone_db.create_index_if_not_exists(
+            index_name=index_name, dimensions=dimensions, metric=metric
         )
 
-        # Wait for index to be ready
-        logger.info("Waiting for index to initialize (30 seconds)...")
-        time.sleep(30)
+        if success:
+            # Verify connection works
+            stats = pinecone_db.get_index_stats()
+            logger.info(f"Index verification successful. Stats: {stats}")
+            return True
+        else:
+            return False
 
-        # Connect to index to verify it works
-        index = pc.Index(index_name)
-        stats = index.describe_index_stats()
-        logger.info(f"Successfully connected to index. Current stats: {stats}")
-
-        return True
     except Exception as e:
         logger.error(f"Error creating index: {e}")
         return False

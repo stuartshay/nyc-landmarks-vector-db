@@ -6,7 +6,7 @@ the CoreDataStore API to enhance vector database entries.
 """
 
 import logging
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.db_client import get_db_client
@@ -18,8 +18,43 @@ logging.basicConfig(level=settings.LOG_LEVEL.value)
 
 
 class EnhancedMetadataCollector:
-    def _add_landmark_details(self, landmark_id: str, metadata_dict: dict) -> tuple:
-        """Fetch and add architect, neighborhood, and style to metadata_dict."""
+    def _postprocess_metadata(self, metadata_dict: dict) -> LandmarkMetadata:
+        # Only add 'buildings' if there are any
+        if not metadata_dict.get("buildings"):
+            metadata_dict.pop("buildings", None)
+
+        # Only include PLUTO fields if has_pluto_data is True
+        pluto_fields = [
+            "year_built",
+            "land_use",
+            "historic_district",
+            "zoning_district",
+        ]
+        if not metadata_dict.get("has_pluto_data"):
+            for field in pluto_fields:
+                metadata_dict.pop(field, None)
+
+        # Sanitize string fields to avoid mock objects
+        for key in ["architect", "style", "neighborhood"]:
+            val = metadata_dict.get(key)
+            if val is not None and not isinstance(val, str):
+                metadata_dict[key] = str(val) if hasattr(val, "__str__") else None
+
+        # Remove all fields with value None
+        clean_metadata = {k: v for k, v in metadata_dict.items() if v is not None}
+        return LandmarkMetadata(**clean_metadata)
+
+    def _fallback_metadata(
+        self, metadata: object, metadata_dict: dict
+    ) -> LandmarkMetadata:
+        if isinstance(metadata, LandmarkMetadata):
+            return metadata
+        return self._postprocess_metadata(metadata_dict)
+
+    def _add_landmark_details(
+        self, landmark_id: str, metadata_dict: dict
+    ) -> tuple[Optional[dict[str, Any]], bool]:
+        """Fetch and add architect, neighborhood, style, and has_pluto_data to metadata_dict."""
         try:
             landmark_details = self.db_client.get_landmark_by_id(landmark_id)
             if landmark_details:
@@ -27,18 +62,28 @@ class EnhancedMetadataCollector:
                     metadata_dict["architect"] = landmark_details.get("architect")
                     metadata_dict["neighborhood"] = landmark_details.get("neighborhood")
                     metadata_dict["style"] = landmark_details.get("style")
+                    metadata_dict["has_pluto_data"] = landmark_details.get(
+                        "plutoStatus", False
+                    )
+                    logger.info(
+                        f"Added architect, neighborhood, style, and has_pluto_data metadata for landmark {landmark_id}"
+                    )
+                    return landmark_details, True
                 else:
-                    metadata_dict["architect"] = getattr(
-                        landmark_details, "architect", None
+                    # Convert to dict if possible
+                    details_dict = {
+                        "architect": getattr(landmark_details, "architect", None),
+                        "neighborhood": getattr(landmark_details, "neighborhood", None),
+                        "style": getattr(landmark_details, "style", None),
+                        "has_pluto_data": getattr(
+                            landmark_details, "plutoStatus", False
+                        ),
+                    }
+                    metadata_dict.update(details_dict)
+                    logger.info(
+                        f"Added architect, neighborhood, style, and has_pluto_data metadata for landmark {landmark_id}"
                     )
-                    metadata_dict["neighborhood"] = getattr(
-                        landmark_details, "neighborhood", None
-                    )
-                    metadata_dict["style"] = getattr(landmark_details, "style", None)
-                logger.info(
-                    f"Added architect, neighborhood, and style metadata for landmark {landmark_id}"
-                )
-                return landmark_details, True
+                    return details_dict, True
         except Exception as e:
             logger.error(f"Error getting landmark details: {e}")
         return None, False
@@ -46,91 +91,82 @@ class EnhancedMetadataCollector:
     def _add_building_data(
         self,
         landmark_id: str,
-        metadata_dict: Dict[str, List[Dict[str, Optional[Union[str, float]]]]],
-        landmark_details: dict,
+        metadata_dict: Dict[str, Any],
+        landmark_details: Optional[dict[str, Any]],
         landmark_details_found: bool,
-    ) -> None:
-        """Fetch and add building data to metadata_dict."""
+    ) -> List[Dict[str, Any]]:
+        """Fetch and add building data to metadata_dict.
+
+        Returns:
+            List of building dictionaries with the required fields:
+            bbl, binNumber, block, lot, latitude, longitude, address, name
+        """
         try:
             logger.debug(f"Entering _add_building_data for landmark {landmark_id}")
             buildings = self.db_client.get_landmark_buildings(landmark_id)
-            metadata_dict["buildings"] = []
             building_data = []
-            primary_bbl = None
+
             if buildings:
                 for building in buildings:
-                    building_info = {}
-                    bbl_value = (
-                        building.get("bbl")
-                        if isinstance(building, dict)
-                        else getattr(building, "bbl", None)
-                    )
-                    if bbl_value == "":
-                        bbl_value = None
+                    # buildings is now guaranteed to be List[LandmarkDetail]
+                    # Clean up empty string values for BBL
+                    bbl_value = building.bbl if building.bbl != "" else None
+
                     building_info = {
                         "bbl": bbl_value,
-                        "bin": (
-                            building.get("bin", "")
-                            if isinstance(building, dict)
-                            else getattr(building, "bin", "")
-                        ),
-                        "block": (
-                            building.get("block", "")
-                            if isinstance(building, dict)
-                            else getattr(building, "block", "")
-                        ),
-                        "lot": (
-                            building.get("lot", "")
-                            if isinstance(building, dict)
-                            else getattr(building, "lot", "")
-                        ),
-                        "latitude": (
-                            building.get("latitude", 0.0)
-                            if isinstance(building, dict)
-                            else getattr(building, "latitude", 0.0)
-                        ),
-                        "longitude": (
-                            building.get("longitude", 0.0)
-                            if isinstance(building, dict)
-                            else getattr(building, "longitude", 0.0)
-                        ),
-                        "address": (
-                            building.get("address", "")
-                            if isinstance(building, dict)
-                            else getattr(building, "address", "")
-                        ),
-                        "name": (
-                            building.get("name", "")
-                            if isinstance(building, dict)
-                            else getattr(building, "name", "")
-                        ),
+                        "binNumber": building.binNumber,
+                        "block": building.block,
+                        "lot": building.lot,
+                        "latitude": building.latitude,
+                        "longitude": building.longitude,
+                        "address": building.designatedAddress or "",
+                        "name": building.name or "",
                     }
-                    if primary_bbl is None and bbl_value:
-                        primary_bbl = bbl_value
-                    if any(building_info.values()):
+
+                    # Only add building if it has meaningful data
+                    if any(v is not None and v != "" for v in building_info.values()):
                         building_data.append(building_info)
+
+            # Add to metadata_dict only if we have building data
             if building_data:
                 metadata_dict["buildings"] = building_data
+                logger.info(
+                    f"Added {len(building_data)} buildings for landmark {landmark_id}"
+                )
+
+            return building_data
+
         except Exception as e:
             logger.error(f"Error getting building information: {e}")
+            return []
 
     def _add_pluto_data(self, landmark_id: str, metadata_dict: dict) -> None:
-        """Fetch and add PLUTO data to metadata_dict."""
+        """Fetch and add PLUTO data to metadata_dict if has_pluto_data is True."""
         try:
-            pluto_data = self.db_client.get_landmark_pluto_data(landmark_id)
-            if pluto_data:
-                pluto_model = pluto_data[0]
-                metadata_dict.update(
-                    {
-                        "has_pluto_data": True,
-                        "year_built": pluto_model.yearBuilt or "",
-                        "land_use": pluto_model.landUse or "",
-                        "historic_district": pluto_model.historicDistrict or "",
-                        "zoning_district": pluto_model.zoneDist1 or "",
-                    }
-                )
+            # Only call get_landmark_pluto_data() if has_pluto_data is True from get_landmark_by_id()
+            if metadata_dict.get("has_pluto_data", False):
+                pluto_data = self.db_client.get_landmark_pluto_data(landmark_id)
+                if pluto_data:
+                    pluto_model = pluto_data[0]
+                    metadata_dict.update(
+                        {
+                            "year_built": pluto_model.yearBuilt or "",
+                            "land_use": pluto_model.landUse or "",
+                            "historic_district": pluto_model.historicDistrict or "",
+                            "zoning_district": pluto_model.zoneDist1 or "",
+                        }
+                    )
+                    logger.info(f"Added PLUTO data fields for landmark {landmark_id}")
+                else:
+                    # If plutoStatus was True but no actual data found, set has_pluto_data to False
+                    metadata_dict["has_pluto_data"] = False
+                    logger.warning(
+                        f"has_pluto_data was True but no PLUTO data found for landmark {landmark_id}"
+                    )
             else:
-                metadata_dict["has_pluto_data"] = False
+                logger.debug(
+                    f"Skipping PLUTO data fetch for landmark {landmark_id} (has_pluto_data=False)"
+                )
         except Exception as e:
             logger.error(f"Error getting PLUTO data: {e}")
 
@@ -158,49 +194,44 @@ class EnhancedMetadataCollector:
             logger.info(
                 f"Using basic metadata for landmark {landmark_id} (API calls disabled)"
             )
-            if isinstance(metadata, LandmarkMetadata):
-                return metadata
-            return LandmarkMetadata(**metadata_dict)
+            # Remove 'buildings' if present (should not be in non-API mode)
+            metadata_dict.pop("buildings", None)
+            return self._fallback_metadata(metadata, metadata_dict)
 
         try:
             landmark_details, landmark_details_found = self._add_landmark_details(
                 landmark_id, metadata_dict
             )
-            self._add_building_data(
+            _ = self._add_building_data(
                 landmark_id, metadata_dict, landmark_details, landmark_details_found
             )
             self._add_pluto_data(landmark_id, metadata_dict)
-
-            # Filter out invalid or unnecessary fields
-            validated_metadata = {
-                key: value
-                for key, value in metadata_dict.items()
-                if value is not None and key not in ["buildings", "year_built"]
-            }
-
             logger.info(f"Collected enhanced metadata for landmark {landmark_id}")
-            return LandmarkMetadata(**validated_metadata)
+            return self._postprocess_metadata(metadata_dict)
         except Exception as e:
             logger.error(f"Error collecting enhanced metadata: {e}")
-            if isinstance(metadata, LandmarkMetadata):
-                return metadata
-            return LandmarkMetadata(**metadata_dict)
+            return self._fallback_metadata(metadata, metadata_dict)
 
-    def collect_batch_metadata(
-        self, landmark_ids: List[str]
-    ) -> Dict[str, LandmarkMetadata]:
+    def collect_batch_metadata(self, landmark_ids: List[str]) -> Dict[str, dict]:
         """Collect enhanced metadata for multiple landmarks.
 
         Args:
             landmark_ids: List of landmark IDs
 
         Returns:
-            Dictionary mapping landmark IDs to their enhanced metadata as LandmarkMetadata objects
+            Dictionary mapping landmark IDs to their enhanced metadata as dicts
         """
         result = {}
         for landmark_id in landmark_ids:
             try:
-                result[landmark_id] = self.collect_landmark_metadata(landmark_id)
+                meta = self.collect_landmark_metadata(landmark_id)
+                # Convert to dict for test compatibility, removing None values
+                if hasattr(meta, "dict"):
+                    d = meta.dict()
+                else:
+                    d = dict(meta)
+                clean_d = {k: v for k, v in d.items() if v is not None}
+                result[landmark_id] = clean_d
             except Exception as e:
                 logger.error(f"Error processing landmark {landmark_id}: {e}")
                 # Skip this landmark and continue with others

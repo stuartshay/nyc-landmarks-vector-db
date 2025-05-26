@@ -141,7 +141,13 @@ def _process_articles_into_chunks(
         dict_chunks = []
         for i, chunk_text in enumerate(token_chunks):
             token_count = len(tokenizer.encode(chunk_text))
-            logger.info(f"Processing chunk {i} with {token_count} tokens")
+            # Generate the vector ID that will be used for this chunk
+            vector_id = (
+                f"wiki-{article.title.replace(' ', '_')}-{landmark_id}-chunk-{i}"
+            )
+            logger.info(
+                f"Processing chunk {i} with {token_count} tokens (Vector ID: {vector_id})"
+            )
 
             dict_chunks.append(
                 {
@@ -249,6 +255,21 @@ def _generate_embeddings_and_store(
     Returns:
         Total chunks embedded
     """
+    # Collect enhanced metadata once for this landmark
+    from nyc_landmarks.vectordb.enhanced_metadata import EnhancedMetadataCollector
+
+    enhanced_metadata_dict = {}
+    try:
+        collector = EnhancedMetadataCollector()
+        enhanced_metadata_obj = collector.collect_landmark_metadata(landmark_id)
+        enhanced_metadata_dict = (
+            enhanced_metadata_obj.model_dump() if enhanced_metadata_obj else {}
+        )
+        logger.info(f"Collected enhanced metadata for landmark {landmark_id}")
+    except Exception as e:
+        logger.warning(f"Could not collect enhanced metadata for {landmark_id}: {e}")
+        enhanced_metadata_dict = {}
+
     total_chunks_embedded = 0
 
     for wiki_article in processed_articles:
@@ -291,6 +312,7 @@ def _generate_embeddings_and_store(
             use_fixed_ids=True,
             delete_existing=delete_existing
             and total_chunks_embedded == 0,  # Only delete on first article
+            enhanced_metadata=enhanced_metadata_dict,
         )
 
         total_chunks_embedded += len(vector_ids)
