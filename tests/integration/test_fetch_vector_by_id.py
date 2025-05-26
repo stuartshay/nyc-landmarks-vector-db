@@ -20,7 +20,7 @@ logging.basicConfig(level=settings.LOG_LEVEL.value)
 # Test vectors - these should exist in the production index
 TEST_VECTOR_IDS = [
     "wiki-Wyckoff_House-LP-00001-chunk-0",  # Known to exist in multiple namespaces
-    "wiki-Bohemian_National_Hall-LP-01914-chunk-0"  # Known to exist in multiple namespaces
+    "wiki-Bohemian_National_Hall-LP-01914-chunk-0",  # Known to exist in multiple namespaces
 ]
 
 
@@ -46,7 +46,9 @@ def test_fetch_vector_by_id_no_namespace() -> None:
             vector_data = pinecone_db.fetch_vector_by_id(vector_id, namespace=None)
 
             # Verify vector was found
-            assert vector_data is not None, f"Failed to retrieve vector {vector_id} with no namespace"
+            assert (
+                vector_data is not None
+            ), f"Failed to retrieve vector {vector_id} with no namespace"
 
             # Verify expected fields in the vector data
             assert "id" in vector_data, "Vector data should contain 'id'"
@@ -54,11 +56,14 @@ def test_fetch_vector_by_id_no_namespace() -> None:
             assert "metadata" in vector_data, "Vector data should contain 'metadata'"
 
             # Verify id matches requested id
-            assert vector_data["id"] == vector_id, f"Expected ID {vector_id} but got {vector_data['id']}"
+            assert (
+                vector_data["id"] == vector_id
+            ), f"Expected ID {vector_id} but got {vector_data['id']}"
 
             # Verify values is a list of expected dimension
-            assert len(vector_data["values"]) == settings.PINECONE_DIMENSIONS, \
-                f"Expected {settings.PINECONE_DIMENSIONS} dimensions, got {len(vector_data['values'])}"
+            assert (
+                len(vector_data["values"]) == settings.PINECONE_DIMENSIONS
+            ), f"Expected {settings.PINECONE_DIMENSIONS} dimensions, got {len(vector_data['values'])}"
 
             # Verify metadata contains expected fields for landmark vectors
             metadata = vector_data["metadata"]
@@ -69,7 +74,9 @@ def test_fetch_vector_by_id_no_namespace() -> None:
             logger.info(f"✓ Successfully retrieved vector {vector_id}")
 
     except Exception as e:
-        logger.error(f"Error in test_fetch_vector_by_id_no_namespace: {e}", exc_info=True)
+        logger.error(
+            f"Error in test_fetch_vector_by_id_no_namespace: {e}", exc_info=True
+        )
         raise
     finally:
         logger.info("=== Finished test_fetch_vector_by_id_no_namespace ===")
@@ -105,7 +112,9 @@ def test_fetch_vector_by_id_with_specific_namespace() -> None:
 
         for vector_id in TEST_VECTOR_IDS:
             # Try to fetch from the specific namespace
-            vector_data = pinecone_db.fetch_vector_by_id(vector_id, namespace=test_namespace)
+            vector_data = pinecone_db.fetch_vector_by_id(
+                vector_id, namespace=test_namespace
+            )
 
             if vector_data:
                 # Vector found in this namespace
@@ -114,15 +123,24 @@ def test_fetch_vector_by_id_with_specific_namespace() -> None:
                 # Verify expected fields in the vector data
                 assert "id" in vector_data, "Vector data should contain 'id'"
                 assert "values" in vector_data, "Vector data should contain 'values'"
-                assert "metadata" in vector_data, "Vector data should contain 'metadata'"
+                assert (
+                    "metadata" in vector_data
+                ), "Vector data should contain 'metadata'"
 
                 # Verify id matches requested id
-                assert vector_data["id"] == vector_id, f"Expected ID {vector_id} but got {vector_data['id']}"
+                assert (
+                    vector_data["id"] == vector_id
+                ), f"Expected ID {vector_id} but got {vector_data['id']}"
             else:
-                logger.info(f"Vector {vector_id} not found in namespace {test_namespace} (this is OK)")
+                logger.info(
+                    f"Vector {vector_id} not found in namespace {test_namespace} (this is OK)"
+                )
 
     except Exception as e:
-        logger.error(f"Error in test_fetch_vector_by_id_with_specific_namespace: {e}", exc_info=True)
+        logger.error(
+            f"Error in test_fetch_vector_by_id_with_specific_namespace: {e}",
+            exc_info=True,
+        )
         raise
     finally:
         logger.info("=== Finished test_fetch_vector_by_id_with_specific_namespace ===")
@@ -147,21 +165,31 @@ def test_fetch_vector_by_id_fallback_behavior() -> None:
         fake_namespace = "non_existent_namespace_" + str(hash(str(TEST_VECTOR_IDS)))
 
         for vector_id in TEST_VECTOR_IDS:
-            logger.info(f"Fetching {vector_id} with non-existent namespace: {fake_namespace}")
-            vector_data = pinecone_db.fetch_vector_by_id(vector_id, namespace=fake_namespace)
+            logger.info(
+                f"Fetching {vector_id} with non-existent namespace: {fake_namespace}"
+            )
+            vector_data = pinecone_db.fetch_vector_by_id(
+                vector_id, namespace=fake_namespace
+            )
 
             # The fallback behavior should still find the vector
-            assert vector_data is not None, f"Failed to retrieve vector {vector_id} with fallback behavior"
+            assert (
+                vector_data is not None
+            ), f"Failed to retrieve vector {vector_id} with fallback behavior"
 
             # Verify expected fields and values
-            assert vector_data["id"] == vector_id, f"Expected ID {vector_id} but got {vector_data['id']}"
+            assert (
+                vector_data["id"] == vector_id
+            ), f"Expected ID {vector_id} but got {vector_data['id']}"
             assert len(vector_data["values"]) == settings.PINECONE_DIMENSIONS
             assert "metadata" in vector_data
 
             logger.info(f"✓ Successfully retrieved {vector_id} via fallback behavior")
 
     except Exception as e:
-        logger.error(f"Error in test_fetch_vector_by_id_fallback_behavior: {e}", exc_info=True)
+        logger.error(
+            f"Error in test_fetch_vector_by_id_fallback_behavior: {e}", exc_info=True
+        )
         raise
     finally:
         logger.info("=== Finished test_fetch_vector_by_id_fallback_behavior ===")
@@ -184,18 +212,26 @@ def test_fetch_vector_by_id_default_namespace() -> None:
 
         for vector_id in TEST_VECTOR_IDS:
             logger.info(f"Fetching {vector_id} from __default__ namespace")
-            vector_data = pinecone_db.fetch_vector_by_id(vector_id, namespace="__default__")
+            vector_data = pinecone_db.fetch_vector_by_id(
+                vector_id, namespace="__default__"
+            )
 
             if vector_data is not None:
-                logger.info(f"✓ Successfully retrieved {vector_id} from default namespace")
+                logger.info(
+                    f"✓ Successfully retrieved {vector_id} from default namespace"
+                )
                 assert vector_data["id"] == vector_id
                 assert "values" in vector_data
                 assert "metadata" in vector_data
             else:
-                logger.info(f"Vector {vector_id} not found in __default__ namespace (this is OK)")
+                logger.info(
+                    f"Vector {vector_id} not found in __default__ namespace (this is OK)"
+                )
 
     except Exception as e:
-        logger.error(f"Error in test_fetch_vector_by_id_default_namespace: {e}", exc_info=True)
+        logger.error(
+            f"Error in test_fetch_vector_by_id_default_namespace: {e}", exc_info=True
+        )
         raise
     finally:
         logger.info("=== Finished test_fetch_vector_by_id_default_namespace ===")

@@ -5,16 +5,18 @@
 The `vector_utility.py` script is a comprehensive tool for working with Pinecone vectors. It combines functionality
 from multiple standalone scripts into a single, unified command-line tool.
 
-## Deprecated Scripts
+## Unified Scripts
 
-The following scripts have been deprecated and their functionality has been integrated into `vector_utility.py`:
+The following standalone scripts have been integrated into `vector_utility.py`:
 
-| Deprecated Script           | Replacement Command                | Description                                      |
-| --------------------------- | ---------------------------------- | ------------------------------------------------ |
-| `fetch_pinecone_vector.py`  | `vector_utility.py fetch`          | Fetch a specific vector by ID                    |
-| `check_landmark_vectors.py` | `vector_utility.py check-landmark` | Check all vectors for a specific landmark ID     |
-| `list_pinecone_vectors.py`  | `vector_utility.py list-vectors`   | List vectors in Pinecone with optional filtering |
-| `check_specific_vector.py`  | `vector_utility.py validate`       | Validate a specific vector against requirements  |
+| Original Script                | Replacement Command                | Description                                      |
+| ------------------------------ | ---------------------------------- | ------------------------------------------------ |
+| `fetch_pinecone_vector.py`     | `vector_utility.py fetch`          | Fetch a specific vector by ID                    |
+| `check_landmark_vectors.py`    | `vector_utility.py check-landmark` | Check all vectors for a specific landmark ID     |
+| ~~`list_pinecone_vectors.py`~~ | `vector_utility.py list-vectors`   | List vectors in Pinecone with optional filtering |
+| `check_specific_vector.py`     | `vector_utility.py validate`       | Validate a specific vector against requirements  |
+
+Note: Scripts with strikethrough have been completely removed from the codebase.
 
 ## Commands
 
