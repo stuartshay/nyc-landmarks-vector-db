@@ -185,41 +185,6 @@ def fetch_vector(
 # =============== Check Landmark Vectors Command Functions ===============
 
 
-def query_landmark_vectors(
-    pinecone_db: PineconeDB, landmark_id: str, namespace: Optional[str] = None
-) -> List[Any]:
-    """
-    Query Pinecone for vectors related to a landmark.
-
-    .. deprecated::
-        Use PineconeDB.query_vectors() or PineconeDB.list_vectors() instead.
-
-    Args:
-        pinecone_db: PineconeDB instance
-        landmark_id: The ID of the landmark to check
-        namespace: Optional namespace to query
-
-    Returns:
-        List of vector matches
-    """
-    import warnings
-
-    warnings.warn(
-        "query_landmark_vectors is deprecated. Use PineconeDB.query_vectors() or PineconeDB.list_vectors() instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-
-    # Delegate to the enhanced query_vectors method
-    return pinecone_db.query_vectors(
-        query_vector=None,  # Listing operation
-        top_k=100,  # Match original behavior
-        landmark_id=landmark_id,
-        namespace_override=namespace,
-        include_values=False,
-    )
-
-
 def extract_metadata(match: Any) -> Dict[str, Any]:
     """
     Extract metadata from a match object.
@@ -328,10 +293,20 @@ def check_landmark_vectors(
         namespace: Optional namespace to query
     """
     pinecone_db = PineconeDB()
+
+    if namespace is not None:
+        pinecone_db.namespace = namespace
+
     print(f"Checking vectors for landmark: {landmark_id}")
 
-    # Get vector matches from Pinecone
-    matches = query_landmark_vectors(pinecone_db, landmark_id, namespace)
+    # Get vector matches from Pinecone using PineconeDB.query_vectors()
+    matches = pinecone_db.query_vectors(
+        query_vector=None,  # Listing operation
+        top_k=100,
+        landmark_id=landmark_id,
+        namespace_override=namespace,
+        include_values=False,
+    )
 
     print(f"Found {len(matches)} vectors for landmark {landmark_id}")
     if not matches:
@@ -351,52 +326,6 @@ def check_landmark_vectors(
 
 
 # =============== List Vectors Command Functions ===============
-
-
-def query_pinecone_index(
-    pinecone_db: PineconeDB,
-    limit: int,
-    namespace: Optional[str] = None,
-    prefix: Optional[str] = None,
-) -> Any:
-    """
-    Query the Pinecone index and retrieve vectors.
-
-    .. deprecated::
-        Use PineconeDB.query_vectors() or PineconeDB.list_vectors() instead.
-
-    Args:
-        pinecone_db: PineconeDB instance
-        limit: Maximum number of vectors to return
-        namespace: Optional Pinecone namespace to query in
-        prefix: Optional prefix to filter vector IDs (will increase limit internally)
-
-    Returns:
-        Query result from Pinecone (in legacy format for backward compatibility)
-    """
-    import warnings
-
-    warnings.warn(
-        "query_pinecone_index is deprecated. Use PineconeDB.query_vectors() or PineconeDB.list_vectors() instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-
-    # Get results using the enhanced method
-    results = pinecone_db.query_vectors(
-        query_vector=None,  # Listing operation
-        top_k=limit,
-        id_prefix=prefix,
-        namespace_override=namespace,
-        include_values=False,
-    )
-
-    # Create a mock result object for backward compatibility
-    class MockResult:
-        def __init__(self, matches: List[Dict[str, Any]]) -> None:
-            self.matches = matches
-
-    return MockResult(results)
 
 
 def _analyze_vector_prefixes(
