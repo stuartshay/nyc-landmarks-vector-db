@@ -170,39 +170,31 @@ def fetch_vector(
         # Initialize and configure Pinecone client
         pinecone_db = _setup_pinecone_client(namespace)
 
-        # Access the Pinecone index and fetch the vector
+        # Use PineconeDB.fetch_vector_by_id() method instead of direct index access
         logger.info(f"Fetching vector with ID: {vector_id}")
-        index = pinecone_db.index
+        vector_data_dict = pinecone_db.fetch_vector_by_id(vector_id, namespace)
 
-        # Use proper type annotations for the fetch operation
-        from typing import Any as TypeAny
-        from typing import cast
-
-        # Fetch the vector by ID
-        result = cast(TypeAny, index).fetch(
-            ids=[vector_id],
-            namespace=pinecone_db.namespace if pinecone_db.namespace else None,
-        )
-
-        # Check if vector was found
-        if (
-            not result
-            or not hasattr(result, "vectors")
-            or vector_id not in result.vectors
-        ):
+        if vector_data_dict is None:
             logger.error(f"Vector with ID '{vector_id}' not found in Pinecone")
             return None
 
-        vector_data = result.vectors[vector_id]
+        # Create a mock vector object for compatibility with existing print functions
+        class VectorData:
+            def __init__(self, data_dict: Dict[str, Any]):
+                self.id = data_dict.get("id", "")
+                self.values = data_dict.get("values", [])
+                self.metadata = data_dict.get("metadata", {})
+
+        vector_data = VectorData(vector_data_dict)
 
         # Print formatted output if requested
         if pretty_print:
             _print_vector_metadata(vector_data, vector_id)
         else:
-            print(vector_data)
+            print(vector_data_dict)
 
-        # Convert to dictionary and return
-        return _convert_vector_data_to_dict(vector_data)
+        # Return the dictionary directly
+        return vector_data_dict
 
     except Exception as e:
         logger.error(f"Error fetching vector: {e}")

@@ -13,7 +13,7 @@ import argparse
 import json
 import logging
 import uuid
-from typing import Any, Dict, List, Optional, Tuple, TypedDict, cast
+from typing import Any, Dict, List, Optional, Tuple, TypedDict
 
 from nyc_landmarks.db._coredatastore_api import _CoreDataStoreAPI as CoreDataStoreAPI
 from nyc_landmarks.models.landmark_models import LandmarkDetail, LpcReportDetailResponse
@@ -167,18 +167,20 @@ def create_and_upload_test_vector(
     test_vector_id = str(uuid.uuid4())
     embedding_dimension = 1536  # Standard dimension for OpenAI embeddings
 
-    # Format the vector as expected by Pinecone SDK
-    # Convert to the expected Vector type format with dictionary structure
-    vectors_to_upsert: List[Dict[str, Any]] = [
-        {
-            "id": test_vector_id,
-            "values": [0.5] * embedding_dimension,
-            "metadata": pinecone_metadata,
-        }
-    ]
+    # Create dummy embedding values
+    embedding_values = [0.5] * embedding_dimension
 
-    pinecone_db.index.upsert(vectors=cast(List[Any], vectors_to_upsert))
-    logger.info(f"Uploaded test vector to Pinecone with ID: {test_vector_id}")
+    # Format the vector as expected by store_vectors_batch method
+    # This method expects a List[Tuple[str, List[float], Dict[str, Any]]]
+    vectors_batch = [(test_vector_id, embedding_values, pinecone_metadata)]
+
+    # Use the centralized method instead of direct index access
+    success = pinecone_db.store_vectors_batch(vectors_batch)
+
+    if not success:
+        logger.error("Failed to upload test vector to Pinecone")
+    else:
+        logger.info(f"Uploaded test vector to Pinecone with ID: {test_vector_id}")
 
     return test_vector_id
 

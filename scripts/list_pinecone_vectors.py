@@ -23,21 +23,32 @@ def query_pinecone_index(pinecone_db: PineconeDB, limit: int) -> Any:
         limit: Maximum number of vectors to return
 
     Returns:
-        Query result from Pinecone
+        Query result with matches structure similar to direct index.query
     """
-    # Use a standard dimension for embeddings
-    vector_dimension = 1536  # Common dimension for embeddings
-    zero_vector = [0.0] * vector_dimension
-
-    # Query the index without filtering - we'll filter results locally
+    # Use PineconeDB.query_vectors instead of direct index access
     logger.info(f"Querying with top_k: {limit}")
-    result = pinecone_db.index.query(
-        vector=zero_vector,
+
+    # Get vectors using the centralized query_vectors method
+    vectors = pinecone_db.query_vectors(
+        query_vector=None,  # None for listing operation (uses zero vector internally)
         top_k=limit,
-        include_metadata=True,
         include_values=False,
     )
-    return result
+
+    # Convert to a structure similar to what index.query would return for compatibility
+    class QueryResult:
+        def __init__(self, matches: List[Any]):
+            self.matches = matches
+
+    # Convert dictionary results to match objects for backward compatibility
+    class Match:
+        def __init__(self, match_dict: Dict[str, Any]):
+            self.id = match_dict.get("id")
+            self.score = match_dict.get("score")
+            self.metadata = match_dict.get("metadata", {})
+
+    matches = [Match(vector) for vector in vectors]
+    return QueryResult(matches)
 
 
 def filter_matches_by_prefix(matches: List[Any], prefix: Optional[str]) -> List[Any]:

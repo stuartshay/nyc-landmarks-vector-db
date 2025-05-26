@@ -16,7 +16,7 @@ Usage:
 import argparse
 import json
 import time
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.db_client import get_db_client
@@ -94,17 +94,21 @@ def update_and_verify_landmark(landmark_id: str, verbose: bool = False) -> None:
             }
         ]
 
-        # Use the namespace if configured
-        namespace = pinecone_db.namespace if pinecone_db.namespace else None
-
         logger.info(f"Upserting test vector to Pinecone with ID: {test_vector_id}")
-        if namespace:
-            logger.info(f"Using namespace: {namespace}")
-            pinecone_db.index.upsert(
-                vectors=cast(List[Any], vectors_to_upsert), namespace=namespace
-            )
-        else:
-            pinecone_db.index.upsert(vectors=cast(List[Any], vectors_to_upsert))
+
+        # Convert to the format expected by store_vectors_batch (List[Tuple[str, List[float], Dict[str, Any]]])
+        # This method handles namespaces internally based on the PineconeDB instance configuration
+        vectors_batch = [
+            (vector["id"], vector["values"], vector["metadata"])
+            for vector in vectors_to_upsert
+        ]
+
+        # Use the centralized method instead of direct index access
+        success = pinecone_db.store_vectors_batch(vectors_batch)
+
+        if not success:
+            logger.error("Failed to upsert test vector to Pinecone")
+            return
 
         logger.info("Uploaded test vector to Pinecone")
 
@@ -144,28 +148,21 @@ def execute_vector_query(
     Returns:
         Query response from Pinecone
     """
-    # Build query based on available parameters to avoid using **kwargs
-    # which is causing type errors
-    if namespace and filter_dict:
-        return pinecone_db.index.query(
-            vector=vector,
-            filter=filter_dict,
-            top_k=top_k,
-            include_metadata=True,
-            namespace=namespace,
-        )
-    elif namespace:
-        return pinecone_db.index.query(
-            vector=vector, top_k=top_k, include_metadata=True, namespace=namespace
-        )
-    elif filter_dict:
-        return pinecone_db.index.query(
-            vector=vector, filter=filter_dict, top_k=top_k, include_metadata=True
-        )
-    else:
-        return pinecone_db.index.query(
-            vector=vector, top_k=top_k, include_metadata=True
-        )
+    # Use centralized query_vectors method instead of direct index access
+    results = pinecone_db.query_vectors(
+        query_vector=vector,
+        top_k=top_k,
+        filter_dict=filter_dict,
+        namespace_override=namespace,
+        include_values=False,
+    )
+
+    # Create a mock result object for backward compatibility
+    class MockResult:
+        def __init__(self, matches: List[Dict[str, Any]]) -> None:
+            self.matches = matches
+
+    return MockResult(results)
 
 
 def extract_matches_from_response(
