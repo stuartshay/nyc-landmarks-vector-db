@@ -49,6 +49,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
+from nyc_landmarks.vectordb.vector_id_validator import VectorIDValidator
 
 # Configure logging
 logger = get_logger(__name__)
@@ -60,11 +61,6 @@ REQUIRED_METADATA = ["landmark_id", "source_type", "chunk_index", "text"]
 
 # Additional required metadata fields for Wikipedia vectors
 REQUIRED_WIKI_METADATA = ["article_title", "article_url"]
-
-# TODO - Use anyc_landmarks/vectordb/vector_id_validator.py
-# Vector ID format patterns for validation
-PDF_ID_PATTERN = r"^(LP-\d{5})-chunk-(\d+)$"
-WIKI_ID_PATTERN = r"^wiki-(.+)-(LP-\d{5})-chunk-(\d+)$"
 
 # =============== Fetch Vector Command Functions ===============
 
@@ -631,11 +627,19 @@ def _print_vector_details(
     print(f"  Chunk Index: {chunk_index}")
     print(f"  Landmark ID: {landmark_id}")
 
-    if vector_id.startswith("wiki-"):
+    # Use VectorIDValidator to properly detect Wikipedia vectors
+    detected_source = VectorIDValidator.get_source_type(vector_id)
+    if detected_source == "wikipedia":
         article_title = metadata.get("article_title", "Unknown")
         article_url = metadata.get("article_url", "Unknown")
         print(f"  Article Title: {article_title}")
         print(f"  Article URL: {article_url}")
+
+        # Additional validation: check if vector ID format matches metadata
+        if VectorIDValidator.validate_format(vector_id):
+            print("  ✓ Vector ID format is valid")
+        else:
+            print("  ✗ Vector ID format is invalid")
 
 
 def validate_vector_metadata(
@@ -657,8 +661,24 @@ def validate_vector_metadata(
     # Print header information if verbose
     _print_validation_header(vector_id, metadata, verbose)
 
+    # Validate vector ID format first
+    is_valid_format = VectorIDValidator.validate_format(vector_id)
+    if not is_valid_format:
+        print(f"\nERROR: Vector {vector_id} has invalid ID format")
+        return False
+
     # Check for missing required fields
     missing_fields = _check_missing_fields(metadata, vector_id)
+
+    # Additional validation: Check if source type from ID matches metadata
+    detected_source = VectorIDValidator.get_source_type(vector_id)
+    metadata_source = metadata.get("source_type", "")
+
+    source_mismatch = False
+    if detected_source != "unknown" and metadata_source:
+        if detected_source != metadata_source:
+            print(f"\nWARNING: Source type mismatch - ID suggests '{detected_source}' but metadata says '{metadata_source}'")
+            source_mismatch = True
 
     # Print validation results
     if missing_fields:
@@ -668,6 +688,10 @@ def validate_vector_metadata(
         return False
     else:
         print(f"\nVector {vector_id} has all required metadata fields")
+        if verbose:
+            print("  ✓ Vector ID format is valid")
+            if not source_mismatch:
+                print("  ✓ Source type consistency verified")
 
         # Print additional details if verbose
         _print_vector_details(metadata, vector_id, verbose)
@@ -925,16 +949,19 @@ def verify_id_format(vector_id: str, source_type: str, landmark_id: str) -> bool
     Returns:
         True if the ID format is valid, False otherwise
     """
-    import re
+    # Use VectorIDValidator to check format
+    if not VectorIDValidator.validate_format(vector_id):
+        return False
 
-    if source_type == "wikipedia":
-        # Should match pattern: wiki-{article_title}-{landmark_id}-chunk-{chunk_index}
-        match = re.match(WIKI_ID_PATTERN, vector_id)
-        return match is not None and landmark_id in vector_id
-    else:
-        # Should match pattern: {landmark_id}-chunk-{chunk_index}
-        match = re.match(PDF_ID_PATTERN, vector_id)
-        return match is not None and vector_id.startswith(landmark_id)
+    # Check if the source type matches what's expected
+    detected_source = VectorIDValidator.get_source_type(vector_id)
+    if source_type == "wikipedia" and detected_source != "wikipedia":
+        return False
+    elif source_type == "pdf" and detected_source != "pdf":
+        return False
+
+    # Check if landmark_id is present in the vector_id
+    return landmark_id in vector_id
 
 
 def check_vector_has_embeddings(vector: Dict[str, Any]) -> bool:
