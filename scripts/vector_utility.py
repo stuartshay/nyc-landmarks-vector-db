@@ -17,9 +17,8 @@ Commands:
     verify           - Verify the integrity of vectors
 
 Example usage:
-    # Fetch a specific vector by ID:
-    python scripts/vector_utility.py fetch wiki-Wyckoff_House-LP-00001-chunk-0 --pretty
-    TODO: CHECK DEFAULT
+    # Fetch a specific vector by ID (will search across all available namespaces):
+    python scripts/vector_utility.py fetch LP-00002-chunk-0 --pretty
 
     # Fetch a vector from a specific namespace:
     python scripts/vector_utility.py fetch wiki-Manhattan_Municipal_Building-LP-00079-chunk-0 --namespace landmarks --pretty
@@ -103,65 +102,6 @@ def _print_vector_metadata(vector_data: Any, vector_id: str) -> None:
         print("...")
 
     print("=" * 80)
-
-
-def fetch_vector(
-    vector_id: str, pretty_print: bool = False, namespace: Optional[str] = None
-) -> Optional[Dict[str, Any]]:
-    """
-    Fetch a specific vector from Pinecone by ID.
-
-    Connects to the Pinecone database configured in the application settings,
-    retrieves the vector with the specified ID, and returns its complete data
-    including embeddings and metadata.
-
-    Args:
-        vector_id: The ID of the vector to fetch
-        pretty_print: Whether to format the output with clear sections
-        namespace: Optional Pinecone namespace to search in
-
-    Returns:
-        The vector data as a dictionary if found
-    """
-    try:
-        # Initialize and configure Pinecone client
-        pinecone_db = PineconeDB()
-
-        if namespace is not None:
-            pinecone_db.namespace = namespace
-            logger.info(f"Using custom namespace: {namespace}")
-        else:
-            logger.info(f"Using default namespace: {pinecone_db.namespace}")
-
-        # Use PineconeDB.fetch_vector_by_id() method instead of direct index access
-        logger.info(f"Fetching vector with ID: {vector_id}")
-        vector_data_dict = pinecone_db.fetch_vector_by_id(vector_id, namespace)
-
-        if vector_data_dict is None:
-            logger.error(f"Vector with ID '{vector_id}' not found in Pinecone")
-            return None
-
-        # Create a mock vector object for compatibility with existing print functions
-        class VectorData:
-            def __init__(self, data_dict: Dict[str, Any]):
-                self.id = data_dict.get("id", "")
-                self.values = data_dict.get("values", [])
-                self.metadata = data_dict.get("metadata", {})
-
-        vector_data = VectorData(vector_data_dict)
-
-        # Print formatted output if requested
-        if pretty_print:
-            _print_vector_metadata(vector_data, vector_id)
-        else:
-            print(vector_data_dict)
-
-        # Return the dictionary directly
-        return vector_data_dict
-
-    except Exception as e:
-        logger.error(f"Error fetching vector: {e}")
-        return None
 
 
 # =============== Check Landmark Vectors Command Functions ===============
@@ -261,53 +201,6 @@ def display_metadata(metadata: Dict[str, Any], verbose: bool = False) -> None:
         except Exception as e:
             print(f"Error serializing metadata: {e}")
             print(f"Raw metadata: {metadata}")
-
-
-def check_landmark_vectors(
-    landmark_id: str, verbose: bool = False, namespace: Optional[str] = None
-) -> None:
-    """
-    Check all vectors for a specific landmark.
-
-    Args:
-        landmark_id: The ID of the landmark to check
-        verbose: Whether to print full metadata details
-        namespace: Optional namespace to query
-    """
-    pinecone_db = PineconeDB()
-
-    if namespace is not None:
-        pinecone_db.namespace = namespace
-        logger.info(f"Using custom namespace: {namespace}")
-    else:
-        logger.info(f"Using default namespace: {pinecone_db.namespace}")
-
-    print(f"Checking vectors for landmark: {landmark_id}")
-
-    # Get vector matches from Pinecone using PineconeDB.query_vectors()
-    matches = pinecone_db.query_vectors(
-        query_vector=None,  # Listing operation
-        top_k=100,
-        landmark_id=landmark_id,
-        namespace_override=namespace,
-        include_values=False,
-    )
-
-    print(f"Found {len(matches)} vectors for landmark {landmark_id}")
-    if not matches:
-        print("No vectors found.")
-        return
-
-    # Process each match
-    for i, match in enumerate(matches):
-        vector_id = get_vector_id(match)
-        print(f"\nVector {i + 1}: {vector_id}")
-
-        # Get and process metadata
-        metadata = extract_metadata(match)
-        check_deprecated_fields(metadata)
-        process_building_data(metadata)
-        display_metadata(metadata, verbose)
 
 
 # =============== List Vectors Command Functions ===============
@@ -666,7 +559,9 @@ def validate_vector_metadata(
     source_mismatch = False
     if detected_source != "unknown" and metadata_source:
         if detected_source != metadata_source:
-            print(f"\nWARNING: Source type mismatch - ID suggests '{detected_source}' but metadata says '{metadata_source}'")
+            print(
+                f"\nWARNING: Source type mismatch - ID suggests '{detected_source}' but metadata says '{metadata_source}'"
+            )
             source_mismatch = True
 
     # Print validation results
@@ -691,7 +586,19 @@ def validate_vector_metadata(
 def validate_vector_command(args: argparse.Namespace) -> None:
     """Command handler for validating a specific vector."""
     try:
-        vector_data = fetch_vector(args.vector_id, namespace=args.namespace)
+        # Initialize PineconeDB client
+        pinecone_db = PineconeDB()
+
+        # Use "__default__" namespace when none is specified
+        if args.namespace is None:
+            namespace_to_use = "__default__"
+            logger.info(f"No namespace specified, using: {namespace_to_use}")
+        else:
+            namespace_to_use = args.namespace
+            logger.info(f"Using specified namespace: {namespace_to_use}")
+
+        # Fetch vector directly using PineconeDB
+        vector_data = pinecone_db.fetch_vector_by_id(args.vector_id, namespace_to_use)
         if not vector_data:
             print(f"ERROR: Vector with ID '{args.vector_id}' not found")
             return
@@ -843,15 +750,28 @@ def compare_vectors(
         True if successful comparison, False otherwise
     """
     try:
+        # Initialize PineconeDB client
+        pinecone_db = PineconeDB()
+
+        # Use "__default__" namespace when none is specified
+        if namespace is None:
+            namespace_to_use = "__default__"
+            logger.info(f"No namespace specified, using: {namespace_to_use}")
+        else:
+            namespace_to_use = namespace
+            logger.info(f"Using specified namespace: {namespace_to_use}")
+
         # Fetch both vectors
         logger.info(f"Fetching first vector: {first_vector_id}")
-        first_vector = fetch_vector(first_vector_id, namespace=namespace)
+        first_vector = pinecone_db.fetch_vector_by_id(first_vector_id, namespace_to_use)
         if not first_vector:
             print(f"ERROR: First vector with ID '{first_vector_id}' not found")
             return False
 
         logger.info(f"Fetching second vector: {second_vector_id}")
-        second_vector = fetch_vector(second_vector_id, namespace=namespace)
+        second_vector = pinecone_db.fetch_vector_by_id(
+            second_vector_id, namespace_to_use
+        )
         if not second_vector:
             print(f"ERROR: Second vector with ID '{second_vector_id}' not found")
             return False
@@ -1079,7 +999,18 @@ def _check_embeddings(
     vector_id: str, namespace: Optional[str], verbose: bool
 ) -> Optional[str]:
     """Check vector embeddings and return error message if invalid."""
-    full_vector = fetch_vector(vector_id, namespace=namespace)
+    # Initialize PineconeDB client
+    pinecone_db = PineconeDB()
+
+    # Use "__default__" namespace when none is specified
+    if namespace is None:
+        namespace_to_use = "__default__"
+        logger.info(f"No namespace specified, using: {namespace_to_use}")
+    else:
+        namespace_to_use = namespace
+        logger.info(f"Using specified namespace: {namespace_to_use}")
+
+    full_vector = pinecone_db.fetch_vector_by_id(vector_id, namespace_to_use)
     if full_vector and check_vector_has_embeddings(full_vector):
         if verbose:
             print("  ✓ Valid embeddings found")
@@ -1173,18 +1104,20 @@ def verify_vectors(
         # Initialize Pinecone client
         pinecone_db = PineconeDB()
 
-        if namespace is not None:
-            pinecone_db.namespace = namespace
-            logger.info(f"Using custom namespace: {namespace}")
+        # Use "__default__" namespace when none is specified
+        if namespace is None:
+            namespace_to_use = "__default__"
+            logger.info(f"No namespace specified, using: {namespace_to_use}")
         else:
-            logger.info(f"Using default namespace: {pinecone_db.namespace}")
+            namespace_to_use = namespace
+            logger.info(f"Using specified namespace: {namespace_to_use}")
 
         # Query vectors
         logger.info(f"Querying up to {limit} vectors for verification")
         matches = pinecone_db.list_vectors(
             limit=limit,
             id_prefix=prefix,
-            namespace_override=namespace,
+            namespace_override=namespace_to_use,
             include_values=False,
         )
 
@@ -1319,8 +1252,19 @@ def _verify_single_vector_in_batch(
     if verbose:
         print(f"\nChecking vector: {vector_id}")
 
+    # Initialize PineconeDB client
+    pinecone_db = PineconeDB()
+
+    # Use "__default__" namespace when none is specified
+    if namespace is None:
+        namespace_to_use = "__default__"
+        logger.info(f"No namespace specified, using: {namespace_to_use}")
+    else:
+        namespace_to_use = namespace
+        logger.info(f"Using specified namespace: {namespace_to_use}")
+
     # Fetch the vector
-    vector = fetch_vector(vector_id, namespace=namespace)
+    vector = pinecone_db.fetch_vector_by_id(vector_id, namespace_to_use)
     if not vector:
         if verbose:
             print("  ✗ Vector not found")
@@ -1372,6 +1316,16 @@ def verify_batch(
     Returns:
         Dictionary with verification results
     """
+    # Use "__default__" namespace when none is specified
+    if namespace is None:
+        namespace_to_use = "__default__"
+        if verbose:
+            print(f"No namespace specified, using: {namespace_to_use}")
+    else:
+        namespace_to_use = namespace
+        if verbose:
+            print(f"Using specified namespace: {namespace_to_use}")
+
     # Print header
     if verbose:
         print("=" * 80)
@@ -1392,7 +1346,7 @@ def verify_batch(
     # Process each vector
     for vector_id in vector_ids:
         vector_result = _verify_single_vector_in_batch(
-            vector_id, namespace, check_embeddings, verbose
+            vector_id, namespace_to_use, check_embeddings, verbose
         )
 
         # Update aggregate results
@@ -1460,12 +1414,140 @@ def batch_verify_command(args: argparse.Namespace) -> None:
 
 def fetch_command(args: argparse.Namespace) -> None:
     """Handle the fetch command."""
-    fetch_vector(args.vector_id, args.pretty, args.namespace)
+    try:
+        # Initialize PineconeDB client
+        pinecone_db = PineconeDB()
+
+        # Handle namespace parameter
+        if args.namespace is None:
+            # Try the Pinecone default namespace first (None)
+            logger.info(
+                "No namespace specified, trying Pinecone default namespace first"
+            )
+            namespace_to_use = None
+        else:
+            namespace_to_use = args.namespace
+            logger.info(f"Using specified namespace: {namespace_to_use}")
+
+        # Fetch vector directly using PineconeDB
+        logger.info(f"Fetching vector with ID: {args.vector_id}")
+        vector_data_dict = None
+
+        # If no specific namespace is provided, try to find one that has the vector
+        if args.namespace is None:
+            # Get index statistics to find available namespaces
+            logger.info("No namespace specified, checking all available namespaces")
+            stats = pinecone_db.get_index_stats()
+            namespaces = stats.get("namespaces", {})
+
+            if namespaces:
+                logger.info(
+                    f"Found {len(namespaces)} namespaces: {', '.join(namespaces.keys())}"
+                )
+
+                # Try each namespace until we find the vector
+                for namespace_name in namespaces.keys():
+                    # Skip "__default__" namespace which causes API errors
+                    if namespace_name == "__default__":
+                        logger.info(
+                            "Skipping '__default__' namespace due to API limitations"
+                        )
+                        continue
+
+                    logger.info(f"Trying namespace: {namespace_name}")
+                    try:
+                        temp_vector = pinecone_db.fetch_vector_by_id(
+                            args.vector_id, namespace_name
+                        )
+                        if temp_vector:
+                            logger.info(f"Found vector in namespace: {namespace_name}")
+                            vector_data_dict = temp_vector
+                            break
+                    except Exception as e:
+                        logger.warning(
+                            f"Error fetching from namespace {namespace_name}: {e}"
+                        )
+            else:
+                # If no namespaces found, try with default
+                vector_data_dict = pinecone_db.fetch_vector_by_id(
+                    args.vector_id, namespace_to_use
+                )
+        else:
+            # Use specified namespace
+            vector_data_dict = pinecone_db.fetch_vector_by_id(
+                args.vector_id, namespace_to_use
+            )
+
+        if vector_data_dict is None:
+            logger.error(f"Vector with ID '{args.vector_id}' not found in Pinecone")
+            return
+
+        # Create a mock vector object for compatibility with existing print functions
+        class VectorData:
+            def __init__(self, data_dict: Dict[str, Any]):
+                self.id = data_dict.get("id", "")
+                self.values = data_dict.get("values", [])
+                self.metadata = data_dict.get("metadata", {})
+
+        vector_data = VectorData(vector_data_dict)
+
+        # Print formatted output if requested
+        if args.pretty:
+            _print_vector_metadata(vector_data, args.vector_id)
+        else:
+            print(vector_data_dict)
+
+    except Exception as e:
+        logger.error(f"Error fetching vector: {e}")
+        return
 
 
 def check_landmark_command(args: argparse.Namespace) -> None:
     """Handle the check-landmark command."""
-    check_landmark_vectors(args.landmark_id, args.verbose, args.namespace)
+    try:
+        # Initialize PineconeDB client
+        pinecone_db = PineconeDB()
+
+        # Use "__default__" namespace when none is specified
+        if args.namespace is None:
+            namespace_to_use = "__default__"
+            logger.info(f"No namespace specified, using: {namespace_to_use}")
+        else:
+            namespace_to_use = args.namespace
+            logger.info(f"Using specified namespace: {namespace_to_use}")
+
+        print(f"Checking vectors for landmark: {args.landmark_id}")
+
+        # Get vector matches from Pinecone using PineconeDB.query_vectors()
+        matches = pinecone_db.query_vectors(
+            query_vector=None,  # Listing operation
+            top_k=100,
+            landmark_id=args.landmark_id,
+            namespace_override=namespace_to_use,
+            include_values=False,
+        )
+
+        print(f"Found {len(matches)} vectors for landmark {args.landmark_id}")
+        if not matches:
+            print("No vectors found.")
+            return
+
+        # Process each match
+        for i, match in enumerate(matches):
+            vector_id = get_vector_id(match)
+            print(f"\nVector {i + 1}: {vector_id}")
+
+            # Get and process metadata
+            metadata = extract_metadata(match)
+            check_deprecated_fields(metadata)
+            process_building_data(metadata)
+            display_metadata(metadata, args.verbose)
+
+    except Exception as e:
+        logger.error(f"Error checking landmark vectors: {e}")
+        import traceback
+
+        traceback.print_exc()
 
 
 def list_vectors_command(args: argparse.Namespace) -> None:
@@ -1474,11 +1556,13 @@ def list_vectors_command(args: argparse.Namespace) -> None:
         # Initialize Pinecone client
         pinecone_db = PineconeDB()
 
-        if args.namespace is not None:
-            pinecone_db.namespace = args.namespace
-            logger.info(f"Using custom namespace: {args.namespace}")
+        # Use "__default__" namespace when none is specified
+        if args.namespace is None:
+            namespace_to_use = "__default__"
+            logger.info(f"No namespace specified, using: {namespace_to_use}")
         else:
-            logger.info(f"Using default namespace: {pinecone_db.namespace}")
+            namespace_to_use = args.namespace
+            logger.info(f"Using specified namespace: {namespace_to_use}")
 
         logger.info(
             f"Listing vectors with prefix: '{args.prefix if args.prefix else 'all'}'"
@@ -1486,9 +1570,7 @@ def list_vectors_command(args: argparse.Namespace) -> None:
 
         # Display query information
         print("\nQuerying Pinecone database for vectors")
-        print(
-            f"  Namespace: {args.namespace if args.namespace else pinecone_db.namespace or 'default'}"
-        )
+        print(f"  Namespace: {namespace_to_use}")
         print(f"  Prefix filter: {args.prefix if args.prefix else 'None'}")
         print(f"  Result limit: {args.limit}")
 
@@ -1496,7 +1578,7 @@ def list_vectors_command(args: argparse.Namespace) -> None:
         matches = pinecone_db.list_vectors(
             limit=args.limit,
             id_prefix=args.prefix,
-            namespace_override=args.namespace,
+            namespace_override=namespace_to_use,
             include_values=False,
         )
 
@@ -1554,7 +1636,7 @@ def setup_fetch_parser(subparsers: Any) -> None:
         "--namespace",
         "-n",
         type=str,
-        help="Pinecone namespace to search in (defaults to configured namespace)",
+        help="Pinecone namespace to search in (if not specified, will search all available namespaces)",
     )
     fetch_parser.set_defaults(func=fetch_command)
 
@@ -1580,7 +1662,7 @@ def setup_check_landmark_parser(subparsers: Any) -> None:
         "--namespace",
         "-n",
         type=str,
-        help="Pinecone namespace to search in (defaults to configured namespace)",
+        help='Pinecone namespace to search in (if not specified, "__default__" will be used)',
     )
     check_parser.set_defaults(func=check_landmark_command)
 
@@ -1614,7 +1696,7 @@ def setup_list_vectors_parser(subparsers: Any) -> None:
         "--namespace",
         "-n",
         type=str,
-        help="Pinecone namespace to search in (defaults to configured namespace)",
+        help='Pinecone namespace to search in (if not specified, "__default__" will be used)',
     )
     list_parser.set_defaults(func=list_vectors_command)
 
@@ -1640,7 +1722,7 @@ def setup_validate_parser(subparsers: Any) -> None:
         "--namespace",
         "-n",
         type=str,
-        help="Pinecone namespace to search in (defaults to configured namespace)",
+        help='Pinecone namespace to search in (if not specified, "__default__" will be used)',
     )
     validate_parser.set_defaults(func=validate_vector_command)
 
@@ -1671,7 +1753,7 @@ def setup_compare_vectors_parser(subparsers: Any) -> None:
         "--namespace",
         "-n",
         type=str,
-        help="Pinecone namespace to search in (defaults to configured namespace)",
+        help='Pinecone namespace to search in (if not specified, "__default__" will be used)',
     )
     compare_parser.set_defaults(func=compare_vectors_command)
 
@@ -1687,7 +1769,7 @@ def setup_verify_vectors_parser(subparsers: Any) -> None:
         "--namespace",
         "-n",
         type=str,
-        help="Pinecone namespace to check (defaults to configured namespace)",
+        help='Pinecone namespace to check (if not specified, "__default__" will be used)',
     )
     verify_parser.add_argument(
         "--limit",
@@ -1741,7 +1823,7 @@ def setup_verify_batch_parser(subparsers: Any) -> None:
         "--namespace",
         "-n",
         type=str,
-        help="Pinecone namespace to check (defaults to configured namespace)",
+        help='Pinecone namespace to check (if not specified, "__default__" will be used)',
     )
     batch_parser.add_argument(
         "--check-embeddings",

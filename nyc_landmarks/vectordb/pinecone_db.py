@@ -895,7 +895,7 @@ class PineconeDB:
         self, vector_id: str, namespace: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """
-        Fetch a specific vector from Pinecone by ID using query approach.
+        Fetch a specific vector from Pinecone by ID using fetch approach.
 
         Args:
             vector_id: The ID of the vector to fetch
@@ -910,30 +910,84 @@ class PineconeDB:
 
             logger.info(f"Fetching vector with ID: {vector_id}")
 
-            # Use query approach to fetch by ID since fetch() is not available
-            dimension = 1536  # Standard OpenAI embedding dimension
-            dummy_vector = [0.0] * dimension
+            # Try first without specifying namespace parameter (for "__default__" namespace)
+            if not fetch_namespace or fetch_namespace == "__default__":
+                try:
+                    result = self.index.fetch(ids=[vector_id])
+                    if (
+                        result
+                        and hasattr(result, "vectors")
+                        and vector_id in result.vectors
+                    ):
+                        return {
+                            "id": vector_id,
+                            "values": getattr(result.vectors[vector_id], "values", []),
+                            "metadata": getattr(
+                                result.vectors[vector_id], "metadata", {}
+                            ),
+                        }
+                except Exception as e:
+                    logger.warning(f"Error fetching vector without namespace: {e}")
 
-            # Query with a large limit to search for the specific vector ID
-            result = self.index.query(
-                vector=dummy_vector,
-                top_k=1000,  # Large number to ensure we find the vector
-                include_metadata=True,
-                include_values=True,
-                namespace=fetch_namespace if fetch_namespace else None,
-            )
+            # If we have a specific namespace or the previous attempt failed, try with namespace
+            if fetch_namespace and fetch_namespace != "__default__":
+                try:
+                    result = self.index.fetch(
+                        ids=[vector_id], namespace=fetch_namespace
+                    )
+                    if (
+                        result
+                        and hasattr(result, "vectors")
+                        and vector_id in result.vectors
+                    ):
+                        return {
+                            "id": vector_id,
+                            "values": getattr(result.vectors[vector_id], "values", []),
+                            "metadata": getattr(
+                                result.vectors[vector_id], "metadata", {}
+                            ),
+                        }
+                except Exception as e:
+                    logger.warning(
+                        f"Error fetching vector from namespace '{fetch_namespace}': {e}"
+                    )
 
-            # Search through results for matching ID
-            matches = getattr(result, "matches", [])
-            for match in matches:
-                if getattr(match, "id", "") == vector_id:
-                    return {
-                        "id": vector_id,
-                        "values": getattr(match, "values", []),
-                        "metadata": getattr(match, "metadata", {}),
-                    }
+            # If we didn't find it with or without namespace, try all available namespaces
+            try:
+                stats = self.get_index_stats()
+                all_namespaces = list(stats.get("namespaces", {}).keys())
 
-            logger.error(f"Vector with ID '{vector_id}' not found in Pinecone")
+                # Try each namespace until we find the vector
+                for ns_name in all_namespaces:
+                    if ns_name == fetch_namespace:
+                        continue  # Skip the namespace we already tried
+
+                    try:
+                        result = self.index.fetch(ids=[vector_id], namespace=ns_name)
+                        if (
+                            result
+                            and hasattr(result, "vectors")
+                            and vector_id in result.vectors
+                        ):
+                            logger.info(
+                                f"Found vector in namespace '{ns_name}' instead of requested '{fetch_namespace}'"
+                            )
+                            return {
+                                "id": vector_id,
+                                "values": getattr(
+                                    result.vectors[vector_id], "values", []
+                                ),
+                                "metadata": getattr(
+                                    result.vectors[vector_id], "metadata", {}
+                                ),
+                            }
+                    except Exception:
+                        # Silently continue to next namespace
+                        pass
+            except Exception as e:
+                logger.warning(f"Error when trying to search all namespaces: {e}")
+
+            logger.error(f"Vector with ID '{vector_id}' not found in any namespace")
             return None
 
         except Exception as e:
