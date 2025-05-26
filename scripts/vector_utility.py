@@ -30,7 +30,7 @@ Example usage:
     python scripts/vector_utility.py list-vectors --prefix wiki-Manhattan --limit 10 --pretty --namespace landmarks
 
     # Validate a specific vector against metadata requirements:
-    python scripts/vector_utility.py validate wiki-Wyckoff_House-LP-00001-chunk-0 --pretty
+    python scripts/vector_utility.py validate wiki-Wyckoff_House-LP-00001-chunk-0
 
     # Compare metadata between two vectors:
     python scripts/vector_utility.py compare-vectors wiki-Wyckoff_House-LP-00001-chunk-0 wiki-Wyckoff_House-LP-00001-chunk-1 --namespace landmarks
