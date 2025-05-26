@@ -395,6 +395,112 @@ class PineconeDB:
             delete_existing=True,
         )
 
+    def _build_combined_filter(
+        self,
+        filter_dict: Optional[Dict[str, Any]],
+        landmark_id: Optional[str],
+        source_type: Optional[str],
+    ) -> Dict[str, Any]:
+        """
+        Build a combined filter dictionary from individual filter components.
+
+        Args:
+            filter_dict: Base filter dictionary
+            landmark_id: Optional landmark ID to filter by
+            source_type: Optional source type to filter by
+
+        Returns:
+            Combined filter dictionary
+        """
+        combined_filter: Dict[str, Any] = {}
+
+        if filter_dict:
+            combined_filter.update(filter_dict)
+        if landmark_id:
+            combined_filter["landmark_id"] = landmark_id
+        if source_type:
+            combined_filter["source_type"] = source_type
+
+        return combined_filter
+
+    def _get_query_vector(self, query_vector: Optional[List[float]]) -> List[float]:
+        """
+        Get a query vector, creating a dummy one if needed.
+
+        Args:
+            query_vector: Optional user-provided query vector
+
+        Returns:
+            Query vector to use (provided or dummy)
+        """
+        if query_vector is None:
+            # For listing operations, use zero vector
+            dimension = self.dimensions
+            vector = [0.0] * dimension
+            logger.debug("Using dummy vector for listing operation")
+        else:
+            vector = query_vector
+            logger.debug("Using provided query vector for semantic search")
+        return vector
+
+    def _apply_prefix_filter(
+        self, matches: List[Any], id_prefix: Optional[str], top_k: int
+    ) -> List[Any]:
+        """
+        Filter matches by ID prefix.
+
+        Args:
+            matches: List of match objects
+            id_prefix: Prefix to filter by (case-insensitive)
+            top_k: Maximum number of results to return
+
+        Returns:
+            Filtered list of matches
+        """
+        if not id_prefix:
+            return matches
+
+        prefix_lower = id_prefix.lower()
+        filtered_matches = [
+            match
+            for match in matches
+            if hasattr(match, "id")
+            and match.id
+            and match.id.lower().startswith(prefix_lower)
+        ]
+        return filtered_matches[:top_k]
+
+    def _standardize_match(self, match: Any, include_values: bool) -> Dict[str, Any]:
+        """
+        Convert a match object to a standardized dictionary format.
+
+        Args:
+            match: Match object from Pinecone response
+            include_values: Whether to include embeddings
+
+        Returns:
+            Standardized match dictionary
+        """
+        match_dict: Dict[str, Any] = {}
+
+        # Extract ID if available
+        if hasattr(match, "id"):
+            match_dict["id"] = match.id
+
+        # Extract score if available
+        if hasattr(match, "score"):
+            match_dict["score"] = match.score
+
+        # Extract metadata if available
+        if hasattr(match, "metadata"):
+            match_dict["metadata"] = match.metadata
+
+        # Extract values if requested and available
+        if include_values and hasattr(match, "values"):
+            match_dict["values"] = match.values
+
+        return match_dict
+
     def query_vectors(
         self,
         query_vector: Optional[List[float]] = None,
@@ -434,29 +540,15 @@ class PineconeDB:
                 namespace_override if namespace_override is not None else self.namespace
             )
 
-            # Build the combined filter dictionary
-            combined_filter: Dict[str, Any] = {}
-            if filter_dict:
-                combined_filter.update(filter_dict)
-            if landmark_id:
-                combined_filter["landmark_id"] = landmark_id
-            if source_type:
-                combined_filter["source_type"] = source_type
+            # Build filter, get vector, and adjust top_k using helper methods
+            combined_filter = self._build_combined_filter(
+                filter_dict, landmark_id, source_type
+            )
+            vector = self._get_query_vector(query_vector)
 
-            # Use query vector or create dummy vector for listing operations
-            if query_vector is None:
-                # For listing operations, use zero vector
-                dimension = self.dimensions
-                vector = [0.0] * dimension
-                logger.debug("Using dummy vector for listing operation")
-            else:
-                vector = query_vector
-                logger.debug("Using provided query vector for semantic search")
-
-            # Adjust top_k for prefix filtering to ensure we get enough matches
+            # Adjust top_k for prefix filtering
             effective_top_k = top_k
             if id_prefix:
-                # When filtering by prefix, retrieve more results to account for filtering
                 effective_top_k = max(top_k * 20, 100)
                 logger.debug(
                     f"Increased top_k to {effective_top_k} for prefix filtering"
@@ -472,11 +564,7 @@ class PineconeDB:
                 namespace=query_namespace if query_namespace else None,
             )
 
-            # Process the response to extract matches
-            result_list: List[Dict[str, Any]] = []
-
             # Handle response.matches which can be a list or other iterable
-            # Cast response to Any to handle different return types from Pinecone SDK
             from typing import Any as TypeAny
             from typing import cast
 
@@ -485,39 +573,14 @@ class PineconeDB:
             # Access matches safely
             matches = getattr(response_dict, "matches", [])
 
-            # Apply prefix filtering if specified
+            # Apply prefix filtering if needed
             if id_prefix:
-                prefix_lower = id_prefix.lower()
-                filtered_matches = [
-                    match
-                    for match in matches
-                    if hasattr(match, "id")
-                    and match.id
-                    and match.id.lower().startswith(prefix_lower)
-                ]
-                matches = filtered_matches[:top_k]
+                matches = self._apply_prefix_filter(matches, id_prefix, top_k)
 
-            # Convert matches to standardized format
-            for match in matches:
-                match_dict: Dict[str, Any] = {}
-
-                # Extract ID if available
-                if hasattr(match, "id"):
-                    match_dict["id"] = match.id
-
-                # Extract score if available
-                if hasattr(match, "score"):
-                    match_dict["score"] = match.score
-
-                # Extract metadata if available
-                if hasattr(match, "metadata"):
-                    match_dict["metadata"] = match.metadata
-
-                # Extract values if requested and available
-                if include_values and hasattr(match, "values"):
-                    match_dict["values"] = match.values
-
-                result_list.append(match_dict)
+            # Convert matches to standardized format using helper method
+            result_list = [
+                self._standardize_match(match, include_values) for match in matches
+            ]
 
             logger.debug(f"Returned {len(result_list)} vectors after processing")
             return result_list
