@@ -19,6 +19,7 @@ Commands:
 Example usage:
     # Fetch a specific vector by ID:
     python scripts/vector_utility.py fetch wiki-Wyckoff_House-LP-00001-chunk-0 --pretty
+    TODO: CHECK DEFAULT
 
     # Fetch a vector from a specific namespace:
     python scripts/vector_utility.py fetch wiki-Manhattan_Municipal_Building-LP-00079-chunk-0 --namespace landmarks --pretty
@@ -63,27 +64,6 @@ REQUIRED_METADATA = ["landmark_id", "source_type", "chunk_index", "text"]
 REQUIRED_WIKI_METADATA = ["article_title", "article_url"]
 
 # =============== Fetch Vector Command Functions ===============
-
-
-def _setup_pinecone_client(namespace: Optional[str] = None) -> PineconeDB:
-    """
-    Set up and configure a Pinecone client.
-
-    Args:
-        namespace: Optional Pinecone namespace to use
-
-    Returns:
-        Configured PineconeDB instance
-    """
-    pinecone_db = PineconeDB()
-
-    if namespace is not None:
-        pinecone_db.namespace = namespace
-        logger.info(f"Using custom namespace: {namespace}")
-    else:
-        logger.info(f"Using default namespace: {pinecone_db.namespace}")
-
-    return pinecone_db
 
 
 def _print_vector_metadata(vector_data: Any, vector_id: str) -> None:
@@ -145,7 +125,13 @@ def fetch_vector(
     """
     try:
         # Initialize and configure Pinecone client
-        pinecone_db = _setup_pinecone_client(namespace)
+        pinecone_db = PineconeDB()
+
+        if namespace is not None:
+            pinecone_db.namespace = namespace
+            logger.info(f"Using custom namespace: {namespace}")
+        else:
+            logger.info(f"Using default namespace: {pinecone_db.namespace}")
 
         # Use PineconeDB.fetch_vector_by_id() method instead of direct index access
         logger.info(f"Fetching vector with ID: {vector_id}")
@@ -292,6 +278,9 @@ def check_landmark_vectors(
 
     if namespace is not None:
         pinecone_db.namespace = namespace
+        logger.info(f"Using custom namespace: {namespace}")
+    else:
+        logger.info(f"Using default namespace: {pinecone_db.namespace}")
 
     print(f"Checking vectors for landmark: {landmark_id}")
 
@@ -1186,6 +1175,9 @@ def verify_vectors(
 
         if namespace is not None:
             pinecone_db.namespace = namespace
+            logger.info(f"Using custom namespace: {namespace}")
+        else:
+            logger.info(f"Using default namespace: {pinecone_db.namespace}")
 
         # Query vectors
         logger.info(f"Querying up to {limit} vectors for verification")
