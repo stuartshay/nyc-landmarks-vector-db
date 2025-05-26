@@ -57,6 +57,7 @@ class Index:
         namespace: Optional[str] = None,
         filter: Optional[Dict[str, Any]] = None,
     ) -> QueryResponse: ...
+    def fetch(self, ids: List[str], namespace: Optional[str] = None) -> Any: ...
 
 class IndexDefinition:
     """Definition of a Pinecone index."""
