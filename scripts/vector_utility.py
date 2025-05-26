@@ -1468,7 +1468,9 @@ def _search_all_namespaces(
 
     # Try each namespace until we find the vector
     for namespace_name in namespaces.keys():
-        vector_data = _fetch_from_specific_namespace(pinecone_db, vector_id, namespace_name)
+        vector_data = _fetch_from_specific_namespace(
+            pinecone_db, vector_id, namespace_name
+        )
         if vector_data:
             return vector_data
     return None
@@ -1497,7 +1499,9 @@ def fetch_command(args: argparse.Namespace) -> None:
         else:
             # Use specified namespace
             logger.info(f"Using specified namespace: {args.namespace}")
-            vector_data_dict = pinecone_db.fetch_vector_by_id(args.vector_id, args.namespace)
+            vector_data_dict = pinecone_db.fetch_vector_by_id(
+                args.vector_id, args.namespace
+            )
 
         if vector_data_dict is None:
             logger.error(f"Vector with ID '{args.vector_id}' not found in Pinecone")

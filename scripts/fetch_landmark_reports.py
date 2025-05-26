@@ -80,7 +80,7 @@ import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 import requests
 
@@ -90,6 +90,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 from nyc_landmarks.db.db_client import get_db_client
 from nyc_landmarks.models.landmark_models import LpcReportResponse
 from nyc_landmarks.utils.logger import get_logger
+from nyc_landmarks.utils.file_utils import ensure_directory_exists
 
 # Configure logger for this script
 logger = get_logger(name="fetch_landmark_reports")
@@ -117,13 +118,7 @@ class ProcessingResult:
     output_files: Dict[str, str]
 
 
-def ensure_directory_exists(directory_path: Union[str, Path]) -> None:
-    """Ensure that the specified directory exists.
-
-    Args:
-        directory_path: Path to the directory to ensure exists.
-    """
-    Path(directory_path).mkdir(parents=True, exist_ok=True)
+# Use the utility function from utils.file_utils
 
 
 class LandmarkReportProcessor:
@@ -350,7 +345,7 @@ class LandmarkReportProcessor:
         download_samples: bool = False,
         sample_limit: int = 5,
         output_dir: str = "logs",
-        **filters,
+        **filters: Any,
     ) -> ProcessingResult:
         """Process all records with progress tracking and metrics.
 
@@ -453,7 +448,7 @@ class LandmarkReportProcessor:
             "pdf_urls": str(pdf_urls_path),
         }
 
-        logger.info(f"Results saved to:")
+        logger.info("Results saved to:")
         logger.info(f"  Landmark reports: {landmark_reports_path}")
         logger.info(f"  PDF URLs: {pdf_urls_path}")
 
@@ -648,7 +643,7 @@ def main() -> None:
         )
 
         # Print final summary
-        print(f"\nProcessing Complete!")
+        print("\nProcessing Complete!")
         print(f"Total reports processed: {result.metrics.processed_records:,}")
         print(f"Reports with PDF URLs: {result.metrics.records_with_pdfs:,}")
         print(f"Processing time: {result.metrics.processing_time:.2f} seconds")
