@@ -136,16 +136,9 @@ def test_query_api_empire_state_building() -> None:
 
 
 @pytest.mark.integration
-def test_query_api_components_individually() -> None:
-    """
-    Test individual components of the query pipeline to isolate issues.
-
-    This test helps identify which component might be causing the problem.
-    """
-    logger.info("Testing query API components individually")
-
-    # Test 1: Embedding Generation
-    logger.info("Testing embedding generation...")
+def test_embedding_generation_component() -> None:
+    """Test the embedding generation component in isolation."""
+    logger.info("Testing embedding generation component...")
     embedding_generator = EmbeddingGenerator()
 
     try:
@@ -159,7 +152,10 @@ def test_query_api_components_individually() -> None:
         logger.error(f"✗ Embedding generation failed: {e}")
         pytest.fail(f"Embedding generation failed: {e}")
 
-    # Test 2: Vector Database Connection
+
+@pytest.mark.integration
+def test_vector_database_component() -> None:
+    """Test the vector database connection and basic operations."""
     logger.info("Testing vector database connection...")
     vector_db = PineconeDB()
 
@@ -179,7 +175,10 @@ def test_query_api_components_individually() -> None:
         logger.error(f"✗ Vector database connection failed: {e}")
         pytest.fail(f"Vector database connection failed: {e}")
 
-    # Test 3: Database Client
+
+@pytest.mark.integration
+def test_database_client_component() -> None:
+    """Test the database client functionality."""
     logger.info("Testing database client...")
     db_client = get_db_client()
 
@@ -203,8 +202,13 @@ def test_query_api_components_individually() -> None:
         logger.error(f"✗ Database client failed: {e}")
         pytest.fail(f"Database client failed: {e}")
 
-    # Test 4: Vector Search with Simple Query
+
+@pytest.mark.integration
+def test_vector_search_component() -> None:
+    """Test the vector search functionality with simple queries."""
     logger.info("Testing vector search...")
+    embedding_generator = EmbeddingGenerator()
+    vector_db = PineconeDB()
 
     try:
         simple_embedding = embedding_generator.generate_embedding("building")
