@@ -89,8 +89,8 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from nyc_landmarks.db.db_client import get_db_client
 from nyc_landmarks.models.landmark_models import LpcReportResponse
-from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.utils.file_utils import ensure_directory_exists
+from nyc_landmarks.utils.logger import get_logger
 
 # Configure logger for this script
 logger = get_logger(name="fetch_landmark_reports")
@@ -318,7 +318,7 @@ class LandmarkReportProcessor:
                 filename = f"{safe_id}.pdf"
                 filepath = os.path.join(output_dir, filename)
 
-                logger.info(f"Downloading PDF {i+1}/{download_count}: {landmark_id}")
+                logger.info(f"Downloading PDF {i + 1}/{download_count}: {landmark_id}")
 
                 # Download the PDF with timeout and error handling
                 response = requests.get(pdf_url, stream=True, timeout=60)

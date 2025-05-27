@@ -4,6 +4,8 @@
 
 Successfully completed the enhancement and testing of `scripts/fetch_landmark_reports.py` to use the unified DbClient interface and implement comprehensive pagination and filtering capabilities. All 20 tests now pass.
 
+Additionally, completed cleanup of obsolete integration tests by removing `tests/integration/test_landmark_fetcher_integration.py` which was testing the old `LandmarkReportFetcher` class that no longer exists after the script refactoring.
+
 ## Recent Changes
 
 ### fetch_landmark_reports.py Enhancement & Testing - Complete (2025-05-26)

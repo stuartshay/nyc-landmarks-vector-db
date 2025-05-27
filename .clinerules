@@ -16,3 +16,5 @@ This file captures key patterns, preferences, and project intelligence learned d
 *   **Vector Search Implementation:** The `landmark_query_testing.ipynb` notebook establishes the foundation for the Query API Enhancement, testing basic vector search capabilities, filtering options, and performance metrics before implementation in the production API.
 
 *   **Notebook Content Organization:** All notebooks should follow a consistent structure with clear sections: introduction, imports, setup, analysis, and conclusion. Each section should be properly documented with markdown cells explaining the purpose and approach.
+
+*   **Test Suite Maintenance:** When refactoring scripts, ensure to remove obsolete integration tests that test deprecated functionality. The removal of `tests/integration/test_landmark_fetcher_integration.py` demonstrates proper cleanup of tests that reference classes that no longer exist after refactoring (old `LandmarkReportFetcher` vs new `LandmarkReportProcessor`).
