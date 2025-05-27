@@ -86,7 +86,7 @@ setup(
     install_requires=[
         "fastapi>=0.115.12",
         "uvicorn>=0.34.2",
-        "openai>=1.79.0",
+        "openai>=1.82.0",
         "pinecone>=6.0.2",  # Updated from pinecone-client to pinecone
         "pypdf>=5.4.0",  # Updated from pypdf2 to pypdf
         "pdfplumber>=0.11.6",
