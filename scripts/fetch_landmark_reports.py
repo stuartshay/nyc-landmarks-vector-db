@@ -318,7 +318,7 @@ class LandmarkReportProcessor:
                 filename = f"{safe_id}.pdf"
                 filepath = os.path.join(output_dir, filename)
 
-                logger.info(f"Downloading PDF {i+1}/{download_count}: {landmark_id}")
+                logger.info(f"Downloading PDF {i + 1}/{download_count}: {landmark_id}")
 
                 # Download the PDF with timeout and error handling
                 response = requests.get(pdf_url, stream=True, timeout=60)

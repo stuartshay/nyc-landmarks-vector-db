@@ -176,7 +176,7 @@ def get_mock_verification_vectors() -> List[Dict[str, Any]]:
 
     # Valid vectors
     for i in range(3):
-        vectors.append(get_mock_vector_data(f"valid-LP-00{i+1}-chunk-0"))
+        vectors.append(get_mock_vector_data(f"valid-LP-00{i + 1}-chunk-0"))
 
     # Invalid vector (missing metadata)
     invalid_vector = get_mock_invalid_vector()
