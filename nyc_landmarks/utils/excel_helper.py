@@ -1,8 +1,17 @@
+import os
+from typing import Any, Dict, List, Mapping, Optional
+
+from openpyxl import Workbook, load_workbook
+from openpyxl.styles import Font, PatternFill
+from openpyxl.utils import get_column_letter
+from openpyxl.utils.cell import column_index_from_string
+
+
 def export_dicts_to_excel(
-    data: list,
+    data: List[Dict[str, Any]],
     output_file_path: str,
-    column_order: list = None,
-    header_map: dict = None,
+    column_order: Optional[List[str]] = None,
+    header_map: Optional[Dict[str, str]] = None,
 ) -> None:
     """
     Export a list of dictionaries to an Excel file.
@@ -19,16 +28,17 @@ def export_dicts_to_excel(
     if column_order is None:
         column_order = list(data[0].keys())
 
-    import os
-
-    from openpyxl import Workbook
-
     wb = Workbook()
     ws = wb.active
+    if ws is None:
+        raise RuntimeError("Failed to get active worksheet from Workbook.")
 
     # Write header
     headers = [header_map.get(col, col) if header_map else col for col in column_order]
-    ws.append(headers)
+    if hasattr(ws, "append") and callable(ws.append):
+        ws.append(headers)
+    else:
+        raise RuntimeError("Worksheet object does not support 'append' method.")
 
     # Write data rows
     for row in data:
@@ -39,23 +49,15 @@ def export_dicts_to_excel(
     wb.save(output_file_path)
 
 
-from typing import Dict, List, Tuple
-
-from openpyxl import load_workbook
-from openpyxl.styles import Font, PatternFill
-from openpyxl.utils import get_column_letter
-from openpyxl.utils.cell import column_index_from_string
-
-
 def format_excel_columns(
-    output_file_path: str, column_widths: Dict[str, float]
+    output_file_path: str, column_widths: Mapping[str, float]
 ) -> None:
     """
     Format Excel columns by setting widths and header styles.
 
     Args:
         output_file_path (str): Path to the Excel file to format.
-        column_widths (dict[str, float]): Mapping of column letters to widths.
+        column_widths (Mapping[str, float]): Mapping of column letters to widths.
     """
     # type: ignore[import-untyped]
     wb = load_workbook(output_file_path)
@@ -165,7 +167,7 @@ def highlight_false_or_empty_values(
     wb.save(output_file_path)
 
 
-def validate_data(output_file_path: str, column_pairs: List[Tuple[str, str]]) -> None:
+def validate_data(output_file_path: str, column_pairs: list[tuple[str, str]]) -> None:
     """
     Validate data by comparing pairs of columns and highlight mismatches.
 
