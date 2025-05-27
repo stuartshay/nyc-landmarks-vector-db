@@ -16,6 +16,16 @@ def get_text_query_examples() -> Dict[str, Dict[str, Any]]:
         Dictionary of example queries with their metadata
     """
     return {
+        "lefferts_family_history": {
+            "summary": "Lefferts Family History (Wikipedia)",
+            "description": "Search for the history of the Lefferts Family from Wikipedia sources",
+            "value": {
+                "query": "What is the history of the Lefferts Family?",
+                "landmark_id": None,
+                "source_type": "wikipedia",
+                "top_k": 5,
+            },
+        },
         "empire_state_building": {
             "summary": "Empire State Building History (PDF)",
             "description": "Search for information about the Empire State Building's history in PDF documents",

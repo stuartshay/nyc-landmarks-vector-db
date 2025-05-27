@@ -62,6 +62,12 @@ class SearchResult(BaseModel):
     source_url: Optional[str] = Field(
         None, description="URL to the source if available"
     )
+    index_name: Optional[str] = Field(
+        None, description="Pinecone index name where this result was found"
+    )
+    namespace: Optional[str] = Field(
+        None, description="Pinecone namespace where this result was found"
+    )
     metadata: Dict[str, Any] = Field({}, description="Additional metadata")
 
 
@@ -77,6 +83,12 @@ class SearchResponse(BaseModel):
         None, description="Source type filter that was applied"
     )
     count: int = Field(0, description="Number of results")
+    index_name: Optional[str] = Field(
+        None, description="Pinecone index name used for this search"
+    )
+    namespace: Optional[str] = Field(
+        None, description="Pinecone namespace used for this search"
+    )
 
 
 class LandmarkInfo(BaseModel):
@@ -165,6 +177,10 @@ async def search_text(
         filter_to_use = filter_dict if filter_dict else None
         matches = vector_db.query_vectors(query_embedding, query.top_k, filter_to_use)
 
+        # Get index information from vector_db
+        index_name = getattr(vector_db, "index_name", None)
+        namespace = getattr(vector_db, "namespace", None)
+
         # Process results
         results = []
         for match in matches:
@@ -208,6 +224,8 @@ async def search_text(
                 source_type=source_type,
                 source=source,
                 source_url=source_url,
+                index_name=index_name,
+                namespace=namespace,
                 metadata={k: v for k, v in metadata.items() if k != "text"},
             )
 
@@ -220,6 +238,8 @@ async def search_text(
             landmark_id=query.landmark_id,
             source_type=query.source_type,
             count=len(results),
+            index_name=index_name,
+            namespace=namespace,
         )
     except Exception as e:
         logger.error(f"Error searching text: {e}")

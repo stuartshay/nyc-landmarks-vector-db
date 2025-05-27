@@ -71,7 +71,9 @@ def verify_landmark_metadata(landmark_id: str) -> Dict[str, Any]:
 
         # Step 2: Get enhanced metadata
         metadata_collector = get_metadata_collector()
-        enhanced_metadata_obj = metadata_collector.collect_landmark_metadata(landmark_id)
+        enhanced_metadata_obj = metadata_collector.collect_landmark_metadata(
+            landmark_id
+        )
         # Always work with a dict for field iteration
         if hasattr(enhanced_metadata_obj, "model_dump"):
             enhanced_metadata = enhanced_metadata_obj.model_dump()

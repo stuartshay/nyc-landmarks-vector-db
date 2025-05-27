@@ -18,12 +18,12 @@ logging.basicConfig(level=settings.LOG_LEVEL.value)
 
 
 class EnhancedMetadataCollector:
-    def _postprocess_metadata(self, metadata_dict: dict) -> LandmarkMetadata:
-        # Only add 'buildings' if there are any
+
+    def _remove_empty_buildings(self, metadata_dict: dict) -> None:
         if not metadata_dict.get("buildings"):
             metadata_dict.pop("buildings", None)
 
-        # Sanitize boolean fields to avoid mock objects
+    def _sanitize_boolean_fields(self, metadata_dict: dict) -> None:
         for key in ["has_pluto_data"]:
             val = metadata_dict.get(key)
             if val is not None and not isinstance(val, bool):
@@ -31,7 +31,7 @@ class EnhancedMetadataCollector:
                 if hasattr(val, "__bool__"):
                     try:
                         metadata_dict[key] = bool(val)
-                    except:
+                    except Exception:
                         metadata_dict[key] = False
                 elif str(val).lower() in ["true", "1", "yes"]:
                     metadata_dict[key] = True
@@ -40,7 +40,7 @@ class EnhancedMetadataCollector:
                 else:
                     metadata_dict[key] = False
 
-        # Only include PLUTO fields if has_pluto_data is True
+    def _remove_pluto_fields_if_needed(self, metadata_dict: dict) -> None:
         pluto_fields = [
             "year_built",
             "land_use",
@@ -51,7 +51,7 @@ class EnhancedMetadataCollector:
             for field in pluto_fields:
                 metadata_dict.pop(field, None)
 
-        # Sanitize string fields to avoid mock objects
+    def _sanitize_string_fields(self, metadata_dict: dict) -> None:
         for key in [
             "architect",
             "style",
@@ -65,7 +65,11 @@ class EnhancedMetadataCollector:
             if val is not None and not isinstance(val, str):
                 metadata_dict[key] = str(val) if hasattr(val, "__str__") else None
 
-        # Remove all fields with value None
+    def _postprocess_metadata(self, metadata_dict: dict) -> LandmarkMetadata:
+        self._remove_empty_buildings(metadata_dict)
+        self._sanitize_boolean_fields(metadata_dict)
+        self._remove_pluto_fields_if_needed(metadata_dict)
+        self._sanitize_string_fields(metadata_dict)
         clean_metadata = {k: v for k, v in metadata_dict.items() if v is not None}
         return LandmarkMetadata(**clean_metadata)
 

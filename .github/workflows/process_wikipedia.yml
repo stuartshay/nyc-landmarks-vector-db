@@ -164,7 +164,7 @@ jobs:
         run: |
           # Get the total record count using the db_client
           TOTAL_RECORDS=$(python -c "from nyc_landmarks.db.db_client import get_db_client; print(get_db_client().get_total_record_count())")
-          echo "total_records=$TOTAL_RECORDS" >> $GITHUB_OUTPUT
+          echo "total_records=$TOTAL_RECORDS" >> "$GITHUB_OUTPUT"
           echo "Total records: $TOTAL_RECORDS"
 
       - name: Create processing matrix
@@ -172,8 +172,8 @@ jobs:
         run: |
           if [ -n "${{ github.event.inputs.landmark_ids }}" ]; then
             # If specific landmarks are provided, no matrix is needed
-            echo "matrix={\"batch\": [0]}" >> $GITHUB_OUTPUT
-            echo "using_matrix=false" >> $GITHUB_OUTPUT
+            echo "matrix={\"batch\": [0]}" >> "$GITHUB_OUTPUT"
+            echo "using_matrix=false" >> "$GITHUB_OUTPUT"
             echo "Using single job for specified landmark IDs"
           else
             # Calculate the number of batches
@@ -182,17 +182,24 @@ jobs:
 
             # Use limit if provided, otherwise use total records
             if [ "${{ github.event.inputs.limit }}" != "0" ]; then
-              TOTAL_RECORDS=$(( ${{ github.event.inputs.limit }} < $TOTAL_RECORDS ? ${{ github.event.inputs.limit }} : $TOTAL_RECORDS ))
+            # shellcheck disable=SC2170
+            LIMIT="${{ github.event.inputs.limit }}"
+            if [ -z "$LIMIT" ]; then
+              LIMIT=0
+            fi
+            if [ "$LIMIT" -lt "$TOTAL_RECORDS" ]; then
+              TOTAL_RECORDS="$LIMIT"
+            fi
             fi
 
             # Calculate number of batches (ceil division)
-            NUM_BATCHES=$(( ($TOTAL_RECORDS + $BATCH_SIZE - 1) / $BATCH_SIZE ))
+            NUM_BATCHES=$(( (TOTAL_RECORDS + BATCH_SIZE - 1) / BATCH_SIZE ))
 
             # Create matrix with batch indices (0 to NUM_BATCHES-1)
             BATCHES="["
             i=0
-            while [ $i -lt $NUM_BATCHES ]; do
-              if [ $i -gt 0 ]; then
+            while [ "$i" -lt "$NUM_BATCHES" ]; do
+              if [ "$i" -gt 0 ]; then
                 BATCHES="$BATCHES,"
               fi
               BATCHES="$BATCHES$i"
@@ -200,8 +207,8 @@ jobs:
             done
             BATCHES="$BATCHES]"
 
-            echo "matrix={\"batch\": $BATCHES}" >> $GITHUB_OUTPUT
-            echo "using_matrix=true" >> $GITHUB_OUTPUT
+            echo "matrix={\"batch\": $BATCHES}" >> "$GITHUB_OUTPUT"
+            echo "using_matrix=true" >> "$GITHUB_OUTPUT"
             echo "Created matrix with $NUM_BATCHES batches (batch size: $BATCH_SIZE, total records: $TOTAL_RECORDS)"
           fi
 
@@ -247,8 +254,8 @@ jobs:
         id: process_articles
         shell: bash
         run: |
-          # Build command arguments - using POSIX-compatible command building
-          ARGS=""
+          # Build command arguments using an array for safety
+          ARGS=()
 
           if [ "${{ needs.setup.outputs.using_matrix }}" = "true" ]; then
             # Matrix mode - calculate batch range
@@ -256,44 +263,43 @@ jobs:
             BATCH_SIZE="${{ github.event.inputs.batch_size }}"
             # Use page numbers (1-indexed) not record indices
             PAGE_NUMBER=$((BATCH_INDEX + 1))
-
             # Use pagination without --all flag (they're mutually exclusive)
-          ARGS="$ARGS --page \"$PAGE_NUMBER\" --page-size \"$BATCH_SIZE\""
-          echo "Processing batch $BATCH_INDEX: Page $PAGE_NUMBER with batch size $BATCH_SIZE"
+            ARGS+=(--page "$PAGE_NUMBER" --page-size "$BATCH_SIZE")
+            echo "Processing batch $BATCH_INDEX: Page $PAGE_NUMBER with batch size $BATCH_SIZE"
           elif [ -n "${{ github.event.inputs.landmark_ids }}" ]; then
             # Specific landmark IDs mode
-            ARGS="$ARGS --landmark-ids \"${{ github.event.inputs.landmark_ids }}\""
+            ARGS+=(--landmark-ids "${{ github.event.inputs.landmark_ids }}")
           else
             # Fallback to simple --all mode (should not happen with current logic)
-            ARGS="$ARGS --all"
+            ARGS+=(--all)
           fi
 
           # Add limit if specified (only for non-matrix mode)
           if [ "${{ needs.setup.outputs.using_matrix }}" != "true" ] && [ "${{ github.event.inputs.limit }}" != "0" ]; then
-            ARGS="$ARGS --limit \"${{ github.event.inputs.limit }}\""
+            ARGS+=(--limit "${{ github.event.inputs.limit }}")
           fi
 
           # Add chunk configuration
-          ARGS="$ARGS --chunk-size \"${{ github.event.inputs.chunk_size }}\" --chunk-overlap \"${{ github.event.inputs.chunk_overlap }}\""
+          ARGS+=(--chunk-size "${{ github.event.inputs.chunk_size }}" --chunk-overlap "${{ github.event.inputs.chunk_overlap }}")
 
           # Add parallel processing if enabled
           if [ "${{ github.event.inputs.parallel }}" = "true" ]; then
             # Use the specified number of workers
             WORKERS="${{ github.event.inputs.workers }}"
-            ARGS="$ARGS --parallel --workers \"$WORKERS\""
+            ARGS+=(--parallel --workers "$WORKERS")
           fi
 
           # Add force reprocess if enabled
           if [ "${{ github.event.inputs.force_reprocess }}" = "true" ]; then
-            ARGS="$ARGS --delete-existing"
+            ARGS+=(--delete-existing)
           fi
 
           # Always enable verbose logging
-          ARGS="$ARGS --verbose"
+          ARGS+=(--verbose)
 
           # Run the processing script
-          echo "Running: python scripts/ci/process_wikipedia_articles.py $ARGS"
-          python scripts/ci/process_wikipedia_articles.py "$ARGS"
+          echo "Running: python scripts/ci/process_wikipedia_articles.py ${ARGS[*]}"
+          python scripts/ci/process_wikipedia_articles.py "${ARGS[@]}"
 
           # Create batch-specific summary file
           BATCH_SUFFIX=""
@@ -310,7 +316,11 @@ jobs:
               echo "- Page: $PAGE_NUMBER"
               echo "- Batch Size: $BATCH_SIZE"
             else
-              echo "- Landmark IDs: ${{ github.event.inputs.landmark_ids || 'All landmarks' }}"
+              if [ -n "${{ github.event.inputs.landmark_ids }}" ]; then
+                echo "- Landmark IDs: ${{ github.event.inputs.landmark_ids }}"
+              else
+                echo "- Landmark IDs: All landmarks"
+              fi
             fi
             echo "- Chunk size: ${{ github.event.inputs.chunk_size }}"
             echo "- Chunk overlap: ${{ github.event.inputs.chunk_overlap }}"
