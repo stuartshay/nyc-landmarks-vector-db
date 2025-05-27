@@ -24,7 +24,7 @@ repos:
     rev: v2.0.4 # or latest
     hooks:
       - id: autopep8
-        args: [--select=E225, --in-place]
+        args: ["--select=E225,E226", "--in-place"]
 
   - repo: https://github.com/pycqa/isort
     rev: 6.0.1
