@@ -9,7 +9,7 @@ echo "Listing branch protection rules for $REPO..."
 # Get all branches
 branches=$(gh api repos/$REPO/branches --jq '.[].name')
 
-for branch in $branches; do
+echo "$branches" | while IFS= read -r branch; do
   echo "\n--- Protection for branch: $branch ---"
   if gh api repos/$REPO/branches/$branch/protection > branch_protection_tmp.json 2>/dev/null; then
     jq . branch_protection_tmp.json
