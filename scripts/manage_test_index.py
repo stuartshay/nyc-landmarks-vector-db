@@ -21,12 +21,12 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from nyc_landmarks.utils.logger import get_logger
+from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 from tests.utils.pinecone_test_utils import (
     cleanup_old_test_indexes,
     create_test_index,
     delete_test_index,
     get_default_test_index_name,
-    get_pinecone_client,
     list_test_indexes,
 )
 
@@ -88,26 +88,19 @@ def check_status() -> None:
     """Check the status of the test index."""
     test_index_name = get_default_test_index_name()
     logger.info(f"Checking status of test index '{test_index_name}'...")
-    pc = get_pinecone_client()
-
-    # Get list of indexes
-    indexes = pc.list_indexes()
-    index_names = (
-        [idx.name for idx in indexes]
-        if hasattr(indexes, "__iter__")
-        else getattr(indexes, "names", [])
-    )
+    pinecone_db = PineconeDB()
+    index_names = pinecone_db.list_indexes()
 
     if test_index_name in index_names:
         # Index exists, get stats
         try:
-            index = pc.Index(test_index_name)
-            stats = index.describe_index_stats()
+            test_db = PineconeDB(index_name=test_index_name)
+            stats = test_db.get_index_stats()
 
             # Extract and display key information
-            vector_count = getattr(stats, "total_vector_count", 0)
-            dimension = getattr(stats, "dimension", "unknown")
-            fullness = getattr(stats, "index_fullness", 0)
+            vector_count = stats.get("total_vector_count", 0)
+            dimension = stats.get("dimension", "unknown")
+            fullness = stats.get("index_fullness", 0)
 
             logger.info(f"✅ Test index '{test_index_name}' exists")
             logger.info(f"   - Vector count: {vector_count}")
