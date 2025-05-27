@@ -89,8 +89,8 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from nyc_landmarks.db.db_client import get_db_client
 from nyc_landmarks.models.landmark_models import LpcReportResponse
-from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.utils.file_utils import ensure_directory_exists
+from nyc_landmarks.utils.logger import get_logger
 
 # Configure logger for this script
 logger = get_logger(name="fetch_landmark_reports")

@@ -25,6 +25,12 @@
 
 ## Recent Accomplishments
 
+### 2025-05-27: Test Suite Cleanup - Complete ✅
+
+- **Obsolete Test Removal**: Removed `tests/integration/test_landmark_fetcher_integration.py` which was testing the deprecated `LandmarkReportFetcher` class
+- **Testing Consolidation**: The functionality is now comprehensively covered by the 20 unit tests in `tests/scripts/test_fetch_landmark_reports.py`
+- **Documentation Update**: Updated memory bank to reflect the cleanup and maintain accurate project state documentation
+
 ### 2025-05-26: Script Enhancement - fetch_landmark_reports.py - Complete ✅
 
 - **DbClient Integration**: Successfully replaced custom CoreDataStoreClient with unified DbClient interface

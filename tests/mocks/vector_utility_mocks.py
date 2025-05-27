@@ -3,8 +3,8 @@ Mock data and utilities for testing scripts/vector_utility.py
 """
 
 import argparse
-from typing import Any, Dict, List, Optional
-from unittest.mock import Mock, MagicMock
+from typing import Any, Dict, List
+from unittest.mock import Mock
 
 
 class MockMatch:
@@ -24,7 +24,9 @@ def create_mock_pinecone_db() -> Mock:
     # Mock successful operations
     mock_db.get_index_stats.return_value = {"total_vector_count": 1000}
     mock_db.fetch_vector_by_id.return_value = get_mock_vector_data()
-    mock_db.query_vectors.return_value = create_mock_matches(get_mock_landmark_vectors())
+    mock_db.query_vectors.return_value = create_mock_matches(
+        get_mock_landmark_vectors()
+    )
     mock_db.list_vectors.return_value = get_mock_vector_batch()
 
     return mock_db
@@ -56,7 +58,9 @@ def create_mock_pinecone_db_with_errors() -> Mock:
     return mock_db
 
 
-def get_mock_vector_data(vector_id: str = "wiki-Test_Landmark-LP-00001-chunk-0") -> Dict[str, Any]:
+def get_mock_vector_data(
+    vector_id: str = "wiki-Test_Landmark-LP-00001-chunk-0",
+) -> Dict[str, Any]:
     """Get mock vector data for a single vector."""
     is_wiki = vector_id.startswith("wiki-")
 
@@ -85,18 +89,20 @@ def get_mock_vector_data(vector_id: str = "wiki-Test_Landmark-LP-00001-chunk-0")
                 article_title = "Test Landmark"
                 article_url = "https://en.wikipedia.org/wiki/Test_Landmark"
 
-        base_metadata.update({
-            "article_title": article_title,
-            "article_url": article_url,
-            "section_title": "History",
-            "wikipedia_id": "12345",
-        })
+        base_metadata.update(
+            {
+                "article_title": article_title,
+                "article_url": article_url,
+                "section_title": "History",
+                "wikipedia_id": "12345",
+            }
+        )
 
     return {
         "id": vector_id,
         "values": [0.1] * 1536,  # Standard OpenAI embedding size
         "metadata": base_metadata,
-        "score": 0.95
+        "score": 0.95,
     }
 
 
@@ -120,7 +126,7 @@ def get_mock_invalid_vector() -> Dict[str, Any]:
         "metadata": {
             "incomplete": "data",
             # Missing required fields like landmark_id, source_type, etc.
-        }
+        },
     }
 
 
@@ -206,6 +212,7 @@ def create_mock_matches(vector_batch: List[Dict[str, Any]]) -> List[MockMatch]:
 
 
 # Mock argument classes for command testing
+
 
 def get_mock_args_fetch() -> argparse.Namespace:
     """Get mock arguments for fetch command."""
