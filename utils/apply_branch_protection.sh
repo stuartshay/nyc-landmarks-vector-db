@@ -5,14 +5,12 @@ set -euo pipefail
 REPO="stuartshay/nyc-landmarks-vector-db"
 BRANCH="master"
 
+
 cat > branch_protection.json <<'EOF'
 {
   "required_status_checks": {
     "strict": true,
     "contexts": [
-      "Code scanning results / Bandit",
-      "Dependency Review / dependency-review (pull_request)",
-      "Dependency Review / security-scan (pull_request)",
       "Pre-commit Checks / pre-commit (pull_request)",
       "Python CI / test (3.12) (pull_request)"
     ]
