@@ -54,10 +54,16 @@ Advanced Features:
     # Process specific page range
     python scripts/fetch_landmark_reports.py --page 5 --limit 50
 
+
+Excel Export Option:
+    # Export results to Excel (XLSX) format
+    python scripts/fetch_landmark_reports.py --export-excel
+
 Output Files:
-    # Files are saved with timestamps in logs/ directory
-    logs/landmark_reports_20250526_180000.json    # Full landmark data
-    logs/pdf_urls_20250526_180000.json           # Extracted PDF URLs
+    # Files are saved with timestamps in output/ directory (or as specified by --output-dir)
+    output/landmark_reports_20250526_180000.json    # Full landmark data
+    output/pdf_urls_20250526_180000.json           # Extracted PDF URLs
+    output/fetch_landmark_YYYY_MM_DD_HH_MM.xlsx    # Excel export (if --export-excel is used)
 
 Environment Variables:
     COREDATASTORE_API_KEY: Optional API key for enhanced access
@@ -499,6 +505,11 @@ Examples:
   %(prog)s --page 5 --page-size 50           # Fetch specific page
         """,
     )
+    parser.add_argument(
+        "--export-excel",
+        action="store_true",
+        help="Export results to Excel (.xlsx) in the output directory",
+    )
 
     # Basic pagination options
     parser.add_argument(
@@ -551,8 +562,8 @@ Examples:
     # Output options
     parser.add_argument(
         "--output-dir",
-        default="logs",
-        help="Output directory for JSON files (default: logs)",
+        default="output",
+        help="Output directory for JSON and Excel files (default: output)",
     )
 
     # Control options
@@ -573,59 +584,72 @@ def main() -> None:
     parser = create_argument_parser()
     args = parser.parse_args()
 
-    # Initialize processor
     processor = LandmarkReportProcessor(verbose=args.verbose)
 
-    # Handle dry run
     if args.dry_run:
-        total_count = processor.get_total_count()
-        print(f"DRY RUN: Would process up to {args.limit or total_count:,} records")
-        print(f"Page size: {args.page_size}")
-        if args.borough:
-            print(f"Borough filter: {args.borough}")
-        if args.object_type:
-            print(f"Object type filter: {args.object_type}")
-        if args.search:
-            print(f"Search filter: {args.search}")
-        if args.download:
-            print(f"Would download {args.samples} sample PDFs")
+        _handle_dry_run(processor, args)
         return
 
-    # Handle specific page request
     if args.page is not None:
-        try:
-            logger.info(
-                f"Fetching specific page {args.page} with {args.page_size} records"
-            )
-            response = processor.db_client.get_lpc_reports(
-                page=args.page,
-                limit=args.page_size,
-                borough=args.borough,
-                object_type=args.object_type,
-                neighborhood=args.neighborhood,
-                search_text=args.search,
-                parent_style_list=args.styles,
-                sort_column=args.sort_column,
-                sort_order=args.sort_order,
-            )
-
-            reports = [model.model_dump() for model in response.results]
-            pdf_info = processor.extract_pdf_urls(reports)
-
-            # Save single page results
-            output_files = processor._save_results(reports, pdf_info, args.output_dir)
-
-            print(f"\nPage {args.page} Results:")
-            print(f"Records fetched: {len(reports)}")
-            print(f"Records with PDFs: {len(pdf_info)}")
-            print(f"Results saved to: {output_files['landmark_reports']}")
-
-        except Exception as e:
-            logger.error(f"Error fetching page {args.page}: {e}")
-            sys.exit(1)
+        _handle_page_request(processor, args)
         return
 
-    # Process with full pipeline
+    _handle_full_pipeline(processor, args)
+
+
+def _handle_dry_run(
+    processor: LandmarkReportProcessor, args: argparse.Namespace
+) -> None:
+    """Handle dry run mode - show what would be processed without fetching data."""
+    total_count = processor.get_total_count()
+    print(f"DRY RUN: Would process up to {args.limit or total_count:,} records")
+    print(f"Page size: {args.page_size}")
+    if args.borough:
+        print(f"Borough filter: {args.borough}")
+    if args.object_type:
+        print(f"Object type filter: {args.object_type}")
+    if args.search:
+        print(f"Search filter: {args.search}")
+    if args.download:
+        print(f"Would download {args.samples} sample PDFs")
+
+
+def _handle_page_request(
+    processor: LandmarkReportProcessor, args: argparse.Namespace
+) -> None:
+    """Handle specific page request."""
+    try:
+        logger.info(f"Fetching specific page {args.page} with {args.page_size} records")
+        response = processor.db_client.get_lpc_reports(
+            page=args.page,
+            limit=args.page_size,
+            borough=args.borough,
+            object_type=args.object_type,
+            neighborhood=args.neighborhood,
+            search_text=args.search,
+            parent_style_list=args.styles,
+            sort_column=args.sort_column,
+            sort_order=args.sort_order,
+        )
+
+        reports = [model.model_dump() for model in response.results]
+        pdf_info = processor.extract_pdf_urls(reports)
+        output_files = processor._save_results(reports, pdf_info, args.output_dir)
+
+        print(f"\nPage {args.page} Results:")
+        print(f"Records fetched: {len(reports)}")
+        print(f"Records with PDFs: {len(pdf_info)}")
+        print(f"Results saved to: {output_files['landmark_reports']}")
+
+    except Exception as e:
+        logger.error(f"Error fetching page {args.page}: {e}")
+        sys.exit(1)
+
+
+def _handle_full_pipeline(
+    processor: LandmarkReportProcessor, args: argparse.Namespace
+) -> None:
+    """Handle full pipeline processing."""
     try:
         result = processor.process_with_progress(
             page_size=args.page_size,
@@ -642,7 +666,43 @@ def main() -> None:
             sort_order=args.sort_order,
         )
 
-        # Print final summary
+        # Excel export option
+        if getattr(args, "export_excel", False):
+            import datetime
+            from pathlib import Path
+
+            from nyc_landmarks.utils.excel_helper import (
+                export_dicts_to_excel,
+                format_excel_columns,
+            )
+
+            # You may want to adjust column_widths as needed
+            column_widths = {
+                "A": 20,
+                "B": 15,
+                "C": 15,
+                "D": 20,
+                "E": 20,
+                "F": 20,
+                "G": 20,
+                "H": 15,
+                "I": 18,
+                "J": 15,
+                "K": 15,
+                "L": 20,
+                "M": 10,
+                "N": 30,
+                "O": 30,
+            }
+            timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")
+            excel_path = Path(args.output_dir) / f"fetch_landmark_{timestamp}.xlsx"
+            export_dicts_to_excel(
+                data=result.reports,
+                output_file_path=str(excel_path),
+            )
+            format_excel_columns(str(excel_path), column_widths)
+            result.output_files["excel"] = str(excel_path)
+
         print("\nProcessing Complete!")
         print(f"Total reports processed: {result.metrics.processed_records:,}")
         print(f"Reports with PDF URLs: {result.metrics.records_with_pdfs:,}")

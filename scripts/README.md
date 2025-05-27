@@ -1,5 +1,58 @@
 # Scripts Documentation
 
+# fetch_landmark_reports.py
+
+This script provides a unified interface for retrieving, filtering, and exporting NYC landmark reports from the CoreDataStore API using the project's `DbClient` abstraction. It is designed for robust, large-scale data extraction and supports a variety of output formats and filtering options.
+
+**Key Features:**
+
+- Fetches all landmark reports with intelligent pagination and progress tracking
+- Supports filtering by borough, object type, neighborhood, and text search
+- Extracts and exports PDF URLs for landmark reports
+- Optionally downloads a sample of PDF reports
+- Exports results to JSON and Excel (XLSX) formats
+- Allows sorting, custom page sizes, and limiting the number of records
+- Provides detailed processing metrics and logging
+
+**Usage Examples:**
+
+```bash
+# Fetch all landmark reports with default settings
+python scripts/fetch_landmark_reports.py
+
+# Filter by borough and object type
+python scripts/fetch_landmark_reports.py --borough Manhattan --object-type "Individual Landmark"
+
+# Export results to Excel
+python scripts/fetch_landmark_reports.py --export-excel
+
+# Download sample PDFs (first 5)
+python scripts/fetch_landmark_reports.py --download --samples 5
+```
+
+**Output Files:**
+
+- JSON: Full landmark data and extracted PDF URLs (with timestamps)
+- Excel: XLSX file with all report data (if `--export-excel` is used)
+- Sample PDFs: Downloaded to a specified directory (if `--download` is used)
+
+**Main Functions:**
+
+- Fetches all reports with optional filters and pagination
+- Extracts PDF URLs from reports
+- Downloads a sample of PDF files
+- Exports data to JSON and Excel
+- Tracks and prints processing metrics
+
+**Dependencies:**
+
+- `nyc_landmarks.db.db_client` (database access)
+- `nyc_landmarks.models.landmark_models` (data models)
+- `nyc_landmarks.utils.logger` (logging)
+- `nyc_landmarks.utils.excel_helper` (Excel export)
+
+See the script's docstring or run with `--help` for a full list of options and arguments.
+
 ## Vector Database Utilities
 
 ### vector_utility.py
@@ -53,53 +106,4 @@ For detailed help on any command, use the `--help` flag:
 ```bash
 # Show general help
 python scripts/vector_utility.py --help
-
-# Show help for a specific command
-python scripts/vector_utility.py fetch --help
 ```
-
-### check_specific_vector.py
-
-This script allows you to check the metadata for a specific vector stored in Pinecone. It's particularly useful for debugging and validating that vectors have the correct metadata fields.
-
-**Usage:**
-
-```bash
-python scripts/check_specific_vector.py "<vector_id>"
-```
-
-**Examples:**
-
-```bash
-# Check a Wikipedia vector
-python scripts/check_specific_vector.py "wiki-83_and_85_Sullivan_Street-LP-02344-chunk-0"
-
-# Check a landmark report vector
-python scripts/check_specific_vector.py "report-LP-00001-chunk-0"
-```
-
-**Output:**
-The script outputs the full metadata for the vector and, for Wikipedia vectors, validates that required fields are present:
-
-```
-Vector ID: wiki-83_and_85_Sullivan_Street-LP-02344-chunk-0
-Metadata type: <class 'dict'>
-Metadata keys: ['architect', 'borough', 'chunk_index', 'designation_date', ...]
-Full metadata: {
-  "architect": "Unknown",
-  "borough": "Manhattan",
-  ...
-  "source_type": "wikipedia",
-  "text": "83 and 85 Sullivan Street are on Sullivan Street...",
-  ...
-}
-
-Missing required Wikipedia fields: ['article_title', 'article_url']
-```
-
-**Notes:**
-
-- Testing on May 18, 2025 revealed that some Wikipedia vectors were missing `article_title` and `article_url` fields.
-- These fields should be added by `process_wikipedia_articles.py`.
-
-> **Note**: Some standalone scripts (`fetch_pinecone_vector.py`, `check_landmark_vectors.py`) have been deprecated in favor of the unified `vector_utility.py` script. Please use the unified script for better functionality and consistency.

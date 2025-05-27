@@ -258,11 +258,11 @@ jobs:
             PAGE_NUMBER=$((BATCH_INDEX + 1))
 
             # Use pagination without --all flag (they're mutually exclusive)
-            ARGS="$ARGS --page $PAGE_NUMBER --page-size $BATCH_SIZE"
-            echo "Processing batch $BATCH_INDEX: Page $PAGE_NUMBER with batch size $BATCH_SIZE"
+          ARGS="$ARGS --page \"$PAGE_NUMBER\" --page-size \"$BATCH_SIZE\""
+          echo "Processing batch $BATCH_INDEX: Page $PAGE_NUMBER with batch size $BATCH_SIZE"
           elif [ -n "${{ github.event.inputs.landmark_ids }}" ]; then
             # Specific landmark IDs mode
-            ARGS="$ARGS --landmark-ids ${{ github.event.inputs.landmark_ids }}"
+            ARGS="$ARGS --landmark-ids \"${{ github.event.inputs.landmark_ids }}\""
           else
             # Fallback to simple --all mode (should not happen with current logic)
             ARGS="$ARGS --all"
@@ -270,17 +270,17 @@ jobs:
 
           # Add limit if specified (only for non-matrix mode)
           if [ "${{ needs.setup.outputs.using_matrix }}" != "true" ] && [ "${{ github.event.inputs.limit }}" != "0" ]; then
-            ARGS="$ARGS --limit ${{ github.event.inputs.limit }}"
+            ARGS="$ARGS --limit \"${{ github.event.inputs.limit }}\""
           fi
 
           # Add chunk configuration
-          ARGS="$ARGS --chunk-size ${{ github.event.inputs.chunk_size }} --chunk-overlap ${{ github.event.inputs.chunk_overlap }}"
+          ARGS="$ARGS --chunk-size \"${{ github.event.inputs.chunk_size }}\" --chunk-overlap \"${{ github.event.inputs.chunk_overlap }}\""
 
           # Add parallel processing if enabled
           if [ "${{ github.event.inputs.parallel }}" = "true" ]; then
             # Use the specified number of workers
             WORKERS="${{ github.event.inputs.workers }}"
-            ARGS="$ARGS --parallel --workers $WORKERS"
+            ARGS="$ARGS --parallel --workers \"$WORKERS\""
           fi
 
           # Add force reprocess if enabled
@@ -293,7 +293,7 @@ jobs:
 
           # Run the processing script
           echo "Running: python scripts/ci/process_wikipedia_articles.py $ARGS"
-          python scripts/ci/process_wikipedia_articles.py $ARGS
+          python scripts/ci/process_wikipedia_articles.py "$ARGS"
 
           # Create batch-specific summary file
           BATCH_SUFFIX=""
