@@ -17,6 +17,5 @@ echo "$branches" | while IFS= read -r branch; do
   else
     echo "No protection rule set."
   fi
+  rm -f "$tmp_file"
 done
-
-rm -f "$tmp_file"
