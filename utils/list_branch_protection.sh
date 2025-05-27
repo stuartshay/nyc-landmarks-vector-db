@@ -11,11 +11,12 @@ branches=$(gh api repos/$REPO/branches --jq '.[].name')
 
 echo "$branches" | while IFS= read -r branch; do
   echo -e "\n--- Protection for branch: $branch ---"
-  if gh api repos/$REPO/branches/$branch/protection > branch_protection_tmp.json 2>/dev/null; then
-    jq . branch_protection_tmp.json
+  tmp_file=$(mktemp)
+  if gh api repos/$REPO/branches/$branch/protection > "$tmp_file" 2>/dev/null; then
+    jq . "$tmp_file"
   else
     echo "No protection rule set."
   fi
 done
 
-rm -f branch_protection_tmp.json
+rm -f "$tmp_file"
