@@ -2,13 +2,67 @@
 
 ## Current Focus
 
-Successfully completed the enhancement and testing of `scripts/fetch_landmark_reports.py` to use the unified DbClient interface and implement comprehensive pagination and filtering capabilities. All 20 tests now pass.
-
-Additionally, completed cleanup of obsolete integration tests by removing `tests/integration/test_landmark_fetcher_integration.py` which was testing the old `LandmarkReportFetcher` class that no longer exists after the script refactoring.
+**COMPLETED:** Successfully fixed all failing tests in `tests/unit/test_db_client_edge_cases.py` by adding missing helper methods to the `DbClient` class. All 17 tests now pass.
 
 ## Recent Changes
 
-### fetch_landmark_reports.py Enhancement & Testing - Complete (2025-05-26)
+### DB Client Edge Case Tests Fix - Complete (2025-05-27)
+
+Successfully resolved all failing tests in the DB client edge cases test suite by implementing missing helper methods:
+
+#### Problem Identified
+
+- 5 tests were failing with `AttributeError` for missing methods `_fetch_buildings_from_client` and `_fetch_buildings_from_landmark_detail`
+- Tests expected these private helper methods to exist in the `DbClient` class
+- These methods were referenced in other test files but were missing from the actual implementation
+
+#### Solution Implemented
+
+Added two missing helper methods to `nyc_landmarks/db/db_client.py`:
+
+1. **`_fetch_buildings_from_client()`**:
+
+   - Attempts to fetch buildings using the client's `get_landmark_buildings` method
+   - Returns empty list if method doesn't exist or fails
+   - Includes proper error handling and logging
+   - Uses type casting to ensure compatibility with union types
+
+1. **`_fetch_buildings_from_landmark_detail()`**:
+
+   - Fetches buildings from landmark detail response as fallback
+   - Validates response type and attributes before processing
+   - Filters out invalid items and respects limit parameter
+   - Robust error handling for various edge cases
+
+1. **Enhanced `get_landmark_buildings()`**:
+
+   - Now uses both helper methods in sequence (primary + fallback)
+   - Standardizes landmark ID format
+   - Converts all items to `LpcReportModel` objects
+   - Maintains existing public interface while adding internal robustness
+
+#### Technical Details
+
+- **Type Safety**: Added proper type casting using `cast()` to resolve mypy errors
+- **Error Handling**: Comprehensive exception handling with detailed logging
+- **Fallback Logic**: Primary method tries client API, fallback uses landmark detail response
+- **Edge Case Coverage**: Handles missing methods, invalid responses, and malformed data
+- **Compatibility**: Maintains backward compatibility with existing code
+
+#### Test Results
+
+- **Before**: 5 failed, 12 passed (17 total)
+- **After**: 17 passed (100% success rate)
+
+All edge case scenarios now properly tested including:
+
+- Missing API methods (hasattr checks)
+- Invalid response types
+- Missing attributes in responses
+- Exception handling
+- Empty result scenarios
+
+### Previous Work - fetch_landmark_reports.py Enhancement & Testing - Complete (2025-05-26)
 
 Successfully refactored and enhanced the landmark reports fetching script with comprehensive functionality and created a complete test suite:
 
@@ -61,47 +115,9 @@ Successfully refactored and enhanced the landmark reports fetching script with c
 - **Error Handling**: Try-catch blocks with detailed logging and graceful degradation
 - **Performance**: Configurable page sizes and intelligent record counting
 
-#### Best Practices Applied
+#### Test Results
 
-- Uses project's centralized logger (`get_logger`)
-- Follows established coding patterns and conventions
-- Comprehensive docstrings and type annotations
-- Proper handling of mutable defaults in dataclasses
-- Structured CLI with argparse and help documentation
-
-#### Comprehensive Test Suite
-
-Created a complete test suite with **20 test cases** covering:
-
-1. **LandmarkReportProcessor Tests** (17 tests):
-
-   - Processor initialization with DbClient integration
-   - Total count fetching with success and error scenarios
-   - Report fetching with single page, multiple pages, and filters
-   - PDF URL extraction from reports
-   - Sample PDF downloading functionality
-   - Complete processing workflow testing
-   - Error handling and edge cases
-   - File saving and output verification
-   - Pagination behavior testing
-
-1. **Data Model Tests** (3 tests):
-
-   - ProcessingMetrics initialization and data handling
-   - ProcessingResult initialization and structure validation
-
-#### Mock Infrastructure
-
-Built comprehensive mock utilities in `tests/mocks/fetch_landmark_reports_mocks.py`:
-
-- `create_mock_db_client_for_processor()` - Standard success scenarios
-- `create_mock_db_client_with_errors()` - Error handling scenarios
-- `create_mock_db_client_empty()` - Empty result scenarios
-- `get_mock_lpc_reports()` - Realistic test data with 5 landmarks
-- `get_mock_lpc_report_response()` - Paginated response simulation
-- `get_mock_pdf_info()` - PDF metadata for download testing
-
-**Test Results**: All 20 tests pass successfully, validating all functionality including error handling, pagination, filtering, and data processing.
+Created a complete test suite with **20 test cases** covering all functionality. All tests pass successfully.
 
 ### Previous Work - PineconeDB Enhancement - Phase 1 Complete (2025-05-25)
 
@@ -114,21 +130,22 @@ Successfully enhanced the `PineconeDB` class with four new methods to consolidat
 
 ## Active Decisions and Considerations
 
-1. **Script Modernization**: Successfully demonstrated the pattern for refactoring legacy scripts to use unified project interfaces while maintaining all functionality and adding significant enhancements.
+1. **Test Infrastructure Robustness**: The DB client edge case tests demonstrate the importance of comprehensive test coverage for edge cases and error scenarios. The missing helper methods were caught by thorough testing.
 
-1. **Documentation Standards**: Established comprehensive documentation format with usage examples that should be applied to other scripts in the project.
+1. **Helper Method Design**: Private helper methods should follow established patterns:
 
-1. **Filtering Capabilities**: The enhanced script now supports all filtering options available in the DbClient, making it a powerful tool for data analysis and processing.
+   - Proper error handling with logging
+   - Type safety with appropriate casting
+   - Graceful degradation for missing functionality
+   - Clear parameter validation
 
-1. **Performance Optimization**: Intelligent pagination and record counting ensure efficient processing of large datasets while providing progress feedback.
-
-1. **Testing Standards**: Created comprehensive test patterns that should be applied to other script testing, including proper mocking, error scenario coverage, and data validation.
+1. **Test-Driven Development**: This fix shows the value of having tests that exercise edge cases - they catch missing implementations and ensure robustness.
 
 ## Next Steps
 
 ### Phase 2: Vector Utility Script Refactoring
 
-With the fetch_landmark_reports.py enhancement and testing complete, the next priority is to continue the PineconeDB consolidation work:
+With the DB client tests now fully passing, continue the PineconeDB consolidation work:
 
 1. **Replace duplicated functions** in `scripts/vector_utility.py`:
 
@@ -138,13 +155,12 @@ With the fetch_landmark_reports.py enhancement and testing complete, the next pr
    - Replace `list_vectors()` logic with `PineconeDB.list_vectors_with_filter()`
    - Replace validation functions with `PineconeDB.validate_vector_metadata()`
 
-1. **Apply Documentation Standards**: Update vector_utility.py with comprehensive documentation following the pattern established in fetch_landmark_reports.py
+1. **Apply Documentation Standards**: Update vector_utility.py with comprehensive documentation following established patterns
 
 ### Expected Benefits from Completed Work
 
-- **Code Consolidation**: Eliminated duplicate API client code, reducing maintenance burden
-- **Enhanced Functionality**: Added comprehensive filtering, sorting, and search capabilities
-- **Better User Experience**: Professional CLI with help text and examples
-- **Improved Maintainability**: Uses project standards and unified interfaces
-- **Performance Optimization**: Intelligent pagination and progress tracking
-- **Quality Assurance**: Complete test coverage ensuring reliability and regression protection
+- **Test Reliability**: All DB client edge cases now properly tested and handled
+- **Code Robustness**: Enhanced error handling and fallback mechanisms
+- **Type Safety**: Proper type casting resolves static analysis warnings
+- **Maintainability**: Clear helper method patterns for future development
+- **Quality Assurance**: 100% test success rate ensures regression protection
