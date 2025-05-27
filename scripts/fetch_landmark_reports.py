@@ -124,9 +124,6 @@ class ProcessingResult:
     output_files: Dict[str, str]
 
 
-# Use the utility function from utils.file_utils
-
-
 class LandmarkReportProcessor:
     """
     Enhanced landmark report processor using DbClient.
@@ -672,27 +669,28 @@ def _handle_full_pipeline(
             from pathlib import Path
 
             from nyc_landmarks.utils.excel_helper import (
+                add_filtering_to_all_columns,
                 export_dicts_to_excel,
                 format_excel_columns,
             )
 
             # You may want to adjust column_widths as needed
             column_widths = {
-                "A": 20,
+                "A": 50,
                 "B": 15,
                 "C": 15,
                 "D": 20,
                 "E": 20,
                 "F": 20,
-                "G": 20,
+                "G": 35,
                 "H": 15,
                 "I": 18,
                 "J": 15,
                 "K": 15,
                 "L": 20,
                 "M": 10,
-                "N": 30,
-                "O": 30,
+                "N": 40,
+                "O": 40,
             }
             timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")
             excel_path = Path(args.output_dir) / f"fetch_landmark_{timestamp}.xlsx"
@@ -701,6 +699,7 @@ def _handle_full_pipeline(
                 output_file_path=str(excel_path),
             )
             format_excel_columns(str(excel_path), column_widths)
+            add_filtering_to_all_columns(str(excel_path))
             result.output_files["excel"] = str(excel_path)
 
         print("\nProcessing Complete!")

@@ -12,7 +12,7 @@ Key improvements in this test:
 """
 
 import logging
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 import pytest
 
@@ -134,7 +134,7 @@ def test_end_to_end_wikipedia_pipeline(pinecone_test_db: Optional[PineconeDB]) -
     )
 
 
-def _retrieve_wikipedia_articles(mock_db_client):
+def _retrieve_wikipedia_articles(mock_db_client: Any) -> List[Any]:
     """Step 1: Retrieve Wikipedia articles using mock data."""
     logger.info(f"Step 1: Retrieving Wikipedia articles for {TEST_LANDMARK_ID}")
     articles = mock_db_client.get_wikipedia_articles(TEST_LANDMARK_ID)
@@ -146,10 +146,11 @@ def _retrieve_wikipedia_articles(mock_db_client):
     for article in articles:
         logger.info(f"  Article: {article.title}, URL: {article.url}")
 
-    return articles
+    # Ensure the return type is always a list
+    return list(articles)
 
 
-def _collect_enhanced_metadata(mock_db_client):
+def _collect_enhanced_metadata(mock_db_client: Any) -> dict:
     """Step 2: Initialize enhanced metadata collector with mock client."""
     from unittest.mock import patch
 
@@ -176,7 +177,7 @@ def _collect_enhanced_metadata(mock_db_client):
         return enhanced_metadata.model_dump()
 
 
-def _log_enhanced_metadata(enhanced_metadata):
+def _log_enhanced_metadata(enhanced_metadata: Any) -> None:
     """Log enhanced metadata details."""
     logger.info("Enhanced metadata collected successfully:")
     logger.info(f"  Landmark name: {enhanced_metadata.name}")
@@ -206,7 +207,7 @@ def _log_enhanced_metadata(enhanced_metadata):
         logger.info("  No buildings data found")
 
 
-def _process_wikipedia_content(fetcher, article):
+def _process_wikipedia_content(fetcher: Any, article: Any) -> Any:
     """Step 3: Process Wikipedia article with mocked HTTP response."""
     from unittest.mock import patch
 
@@ -223,7 +224,7 @@ def _process_wikipedia_content(fetcher, article):
         return content_model
 
 
-def _create_mock_wikipedia_response():
+def _create_mock_wikipedia_response() -> Any:
     """Create mock Wikipedia HTTP response."""
     from unittest.mock import MagicMock
 
@@ -255,7 +256,7 @@ def _create_mock_wikipedia_response():
     return mock_response
 
 
-def _log_content_chunks(content_model, article_title):
+def _log_content_chunks(content_model: Any, article_title: str) -> None:
     """Log information about generated content chunks."""
     logger.info(
         f"Generated {len(content_model.chunks)} chunks from article '{article_title}'"
@@ -271,17 +272,20 @@ def _log_content_chunks(content_model, article_title):
         logger.info(f"  Chunk {i + 1}: {content}...")
 
 
-def _generate_embeddings(embedding_generator, content_model):
+def _generate_embeddings(embedding_generator: Any, content_model: Any) -> List[Any]:
     """Step 4: Generate embeddings for the chunks."""
     logger.info("Step 4: Generating embeddings for chunks")
     chunks_with_embeddings = embedding_generator.process_chunks(content_model.chunks)
-    assert chunks_with_embeddings, "Should generate embeddings for chunks"
+    assert (
+        isinstance(chunks_with_embeddings, list) and chunks_with_embeddings
+    ), "Should generate embeddings for chunks"
 
     _validate_embeddings(chunks_with_embeddings)
-    return chunks_with_embeddings
+    # Ensure the return type is always a list
+    return list(chunks_with_embeddings)
 
 
-def _validate_embeddings(chunks_with_embeddings):
+def _validate_embeddings(chunks_with_embeddings: List[Any]) -> None:
     """Validate that embeddings were generated correctly."""
     logger.info(f"Generated embeddings for {len(chunks_with_embeddings)} chunks")
     for i, chunk in enumerate(chunks_with_embeddings[:2]):  # Check first 2 chunks
@@ -299,12 +303,12 @@ def _validate_embeddings(chunks_with_embeddings):
 
 
 def _store_and_verify_vectors(
-    pinecone_test_db,
-    article,
-    chunks_with_embeddings,
-    enhanced_metadata_dict,
-    embedding_generator,
-):
+    pinecone_test_db: Optional[PineconeDB],
+    article: Any,
+    chunks_with_embeddings: List[Any],
+    enhanced_metadata_dict: Dict[str, Any],
+    embedding_generator: Any,
+) -> None:
     """Steps 5-8: Store vectors in Pinecone and verify complete pipeline."""
     logger.info("Step 5: Storing vectors in Pinecone with enhanced metadata")
     pinecone_db = pinecone_test_db
@@ -341,7 +345,9 @@ def _store_and_verify_vectors(
         _log_test_completion(vector_ids, pinecone_db)
 
 
-def _cleanup_existing_vectors(pinecone_db, embedding_generator):
+def _cleanup_existing_vectors(
+    pinecone_db: PineconeDB, embedding_generator: Any
+) -> None:
     """Clean up any existing vectors for this landmark to avoid conflicts."""
     try:
         # Get existing vectors
@@ -364,8 +370,11 @@ def _cleanup_existing_vectors(pinecone_db, embedding_generator):
 
 
 def _store_vectors(
-    pinecone_db, chunks_with_embeddings, wiki_id_prefix, enhanced_metadata_dict
-):
+    pinecone_db: PineconeDB,
+    chunks_with_embeddings: List[Any],
+    wiki_id_prefix: str,
+    enhanced_metadata_dict: Dict[str, Any],
+) -> List[str]:
     """Store vectors with enhanced metadata."""
     vector_ids = pinecone_db.store_chunks(
         chunks=chunks_with_embeddings,
@@ -385,8 +394,11 @@ def _store_vectors(
 
 
 def _verify_complete_pipeline(
-    pinecone_db, wiki_id_prefix, embedding_generator, vector_ids
-):
+    pinecone_db: PineconeDB,
+    wiki_id_prefix: str,
+    embedding_generator: Any,
+    vector_ids: List[str],
+) -> None:
     """Steps 6-8: Verify vectors were stored and can be queried with complete metadata."""
     # Step 6: Verify vectors were stored with correct metadata
     logger.info("Step 6: Verifying stored vectors have correct metadata")
@@ -407,8 +419,8 @@ def _verify_complete_pipeline(
 
 
 def _query_vectors_for_verification(
-    pinecone_db, embedding_generator, expected_source_type
-):
+    pinecone_db: PineconeDB, embedding_generator: Any, expected_source_type: str
+) -> List[Dict[str, Any]]:
     """Query vectors to verify complete pipeline."""
     test_query = "historic YMCA building in Harlem Renaissance architecture"
     test_embedding = embedding_generator.generate_embedding(test_query)
@@ -429,7 +441,9 @@ def _query_vectors_for_verification(
     return results
 
 
-def _verify_enhanced_metadata_in_results(results, expected_source_type):
+def _verify_enhanced_metadata_in_results(
+    results: List[Dict[str, Any]], expected_source_type: str
+) -> None:
     """Verify the retrieved vectors have complete metadata including enhanced fields."""
     for i, result in enumerate(results):
         metadata = result.get("metadata", {})
@@ -459,7 +473,7 @@ def _verify_enhanced_metadata_in_results(results, expected_source_type):
             logger.info(f"  ✓ Enhanced field 'style': {metadata['style']}")
 
 
-def _log_test_completion(vector_ids, pinecone_db):
+def _log_test_completion(vector_ids: List[str], pinecone_db: PineconeDB) -> None:
     """Log test completion details."""
     logger.info("✅ All integration test steps completed successfully!")
     logger.info("✅ Wikipedia processing pipeline working with comprehensive mocks!")
@@ -559,7 +573,7 @@ def test_create_debug_wikipedia_vectors(pinecone_test_db: Optional[PineconeDB]) 
     _debug_store_and_verify_vectors(pinecone_test_db, chunks_with_embeddings)
 
 
-def _debug_collect_enhanced_metadata(mock_db_client):
+def _debug_collect_enhanced_metadata(mock_db_client: Any) -> Any:
     """Step 1: Collect enhanced metadata for debug test."""
     from unittest.mock import patch
 
@@ -578,7 +592,7 @@ def _debug_collect_enhanced_metadata(mock_db_client):
         return enhanced_metadata
 
 
-def _log_debug_enhanced_metadata(enhanced_metadata):
+def _log_debug_enhanced_metadata(enhanced_metadata: Any) -> None:
     """Log enhanced metadata details for debugging."""
     logger.info("Enhanced metadata collected:")
     logger.info(f"  landmark_id: {enhanced_metadata.landmark_id}")
@@ -599,7 +613,9 @@ def _log_debug_enhanced_metadata(enhanced_metadata):
             logger.info(f"    Sample building: {buildings[0]}")
 
 
-def _debug_process_wikipedia_articles(mock_db_client):
+def _debug_process_wikipedia_articles(
+    mock_db_client: Any,
+) -> tuple[List[Any], Optional[Any]]:
     """Step 2: Process Wikipedia articles with mocked content."""
     from unittest.mock import patch
 
@@ -632,7 +648,7 @@ def _debug_process_wikipedia_articles(mock_db_client):
     return articles, content_model
 
 
-def _create_debug_mock_wikipedia_response():
+def _create_debug_mock_wikipedia_response() -> Any:
     """Create mock Wikipedia HTTP response for debugging."""
     from unittest.mock import MagicMock
 
@@ -660,8 +676,8 @@ def _create_debug_mock_wikipedia_response():
 
 
 def _debug_generate_enhanced_embeddings(
-    content_model, enhanced_metadata, mock_db_client
-):
+    content_model: Any, enhanced_metadata: Any, mock_db_client: Any
+) -> List[Dict[str, Any]]:
     """Step 3: Generate embeddings and enhance with metadata."""
     from unittest.mock import patch
 
@@ -689,7 +705,9 @@ def _debug_generate_enhanced_embeddings(
     return chunks_with_embeddings
 
 
-def _enhance_chunk_metadata(chunks_with_embeddings, enhanced_metadata):
+def _enhance_chunk_metadata(
+    chunks_with_embeddings: List[Dict[str, Any]], enhanced_metadata: Any
+) -> None:
     """Add enhanced metadata fields to each chunk."""
     for chunk in chunks_with_embeddings:
         if "metadata" in chunk:
@@ -711,7 +729,7 @@ def _enhance_chunk_metadata(chunks_with_embeddings, enhanced_metadata):
                 chunk["metadata"]["buildings"] = enhanced_metadata.buildings
 
 
-def _inspect_enhanced_chunks(chunks_with_embeddings):
+def _inspect_enhanced_chunks(chunks_with_embeddings: List[Dict[str, Any]]) -> None:
     """Inspect and log enhanced chunk metadata."""
     if not chunks_with_embeddings:
         return
@@ -753,7 +771,9 @@ def _inspect_enhanced_chunks(chunks_with_embeddings):
             logger.info("✅ All expected enhanced metadata fields present")
 
 
-def _debug_store_and_verify_vectors(pinecone_test_db, chunks_with_embeddings):
+def _debug_store_and_verify_vectors(
+    pinecone_test_db: Optional[PineconeDB], chunks_with_embeddings: List[Dict[str, Any]]
+) -> None:
     """Step 4: Store vectors in test database and verify results."""
     # Step 5: Store vectors in test database (KEEP FOR DEBUGGING)
     pinecone_db = pinecone_test_db
@@ -780,7 +800,7 @@ def _debug_store_and_verify_vectors(pinecone_test_db, chunks_with_embeddings):
     _debug_query_and_verify_vectors(pinecone_db, vector_ids)
 
 
-def _log_debug_vector_storage(vector_ids, pinecone_db):
+def _log_debug_vector_storage(vector_ids: list, pinecone_db: PineconeDB) -> None:
     """Log debug vector storage information."""
     logger.info(
         f"STORED {len(vector_ids)} ENHANCED DEBUG VECTORS - KEEPING FOR INSPECTION"
@@ -791,7 +811,7 @@ def _log_debug_vector_storage(vector_ids, pinecone_db):
     logger.info(f"Index name: {pinecone_db.index_name}")
 
 
-def _debug_query_and_verify_vectors(pinecone_db, vector_ids):
+def _debug_query_and_verify_vectors(pinecone_db: PineconeDB, vector_ids: list) -> None:
     """Query and verify the stored debug vectors."""
     from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 
@@ -826,7 +846,7 @@ def _debug_query_and_verify_vectors(pinecone_db, vector_ids):
     _log_final_debug_info(pinecone_db, vector_ids)
 
 
-def _log_final_debug_info(pinecone_db, vector_ids):
+def _log_final_debug_info(pinecone_db: PineconeDB, vector_ids: list) -> None:
     """Log final debug information for the stored vectors."""
     logger.info("=" * 60)
     logger.info("ENHANCED DEBUG VECTORS CREATED AND KEPT IN TEST DATABASE")

@@ -638,9 +638,77 @@ class DbClient:
         )
         return model_results
 
+    def _fetch_buildings_from_client(
+        self, landmark_id: str, limit: int
+    ) -> List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]]:
+        """Fetch buildings from the client API.
+
+        Args:
+            landmark_id: ID of the landmark
+            limit: Maximum number of buildings to return
+
+        Returns:
+            List of building items
+        """
+        if not hasattr(self.client, "get_landmark_buildings"):
+            return []
+
+        try:
+            buildings = self.client.get_landmark_buildings(landmark_id, limit)
+            # Cast to the union type since LandmarkDetail is compatible
+            return cast(
+                List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]], buildings
+            )
+        except Exception as e:
+            logger.error(
+                f"Error fetching buildings from client for landmark {landmark_id}: {e}"
+            )
+            return []
+
+    def _fetch_buildings_from_landmark_detail(
+        self, landmark_id: str, limit: int
+    ) -> List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]]:
+        """Fetch buildings from landmark detail response.
+
+        Args:
+            landmark_id: ID of the landmark
+            limit: Maximum number of buildings to return
+
+        Returns:
+            List of building items
+        """
+        try:
+            response = self.get_landmark_by_id(landmark_id)
+            if not isinstance(response, LpcReportDetailResponse):
+                return []
+
+            if not hasattr(response, "landmarks"):
+                return []
+
+            landmarks = response.landmarks
+            if not isinstance(landmarks, list):
+                return []
+
+            # Filter out invalid items and limit results
+            valid_items = []
+            for item in landmarks:
+                if isinstance(item, (dict, LandmarkDetail)):
+                    valid_items.append(item)
+                    if len(valid_items) >= limit:
+                        break
+
+            return cast(
+                List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]], valid_items
+            )
+        except Exception as e:
+            logger.error(
+                f"Error fetching buildings from landmark detail for {landmark_id}: {e}"
+            )
+            return []
+
     def get_landmark_buildings(
         self, landmark_id: str, limit: int = 50
-    ) -> List[LandmarkDetail]:
+    ) -> List[LpcReportModel]:
         """Get buildings associated with a landmark.
 
         Args:
@@ -648,10 +716,20 @@ class DbClient:
             limit: Maximum number of buildings to return
 
         Returns:
-            List of buildings (as LandmarkDetail objects)
+            List of buildings (as LpcReportModel objects)
         """
-        # Use the CoreDataStore API directly which returns LandmarkDetail objects
-        return self.client.get_landmark_buildings(landmark_id, limit)
+        # Standardize the landmark ID
+        lp_number = self._standardize_lp_number(landmark_id)
+
+        # Try to fetch buildings from the client first
+        buildings = self._fetch_buildings_from_client(lp_number, limit)
+
+        # If no buildings found, try fallback method
+        if not buildings:
+            buildings = self._fetch_buildings_from_landmark_detail(lp_number, limit)
+
+        # Convert to LpcReportModel objects
+        return self._convert_building_items_to_models(buildings, lp_number)
 
     def get_wikipedia_articles(self, landmark_id: str) -> List[WikipediaArticleModel]:
         """Get Wikipedia articles associated with a landmark.
