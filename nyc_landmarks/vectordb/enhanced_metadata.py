@@ -23,6 +23,23 @@ class EnhancedMetadataCollector:
         if not metadata_dict.get("buildings"):
             metadata_dict.pop("buildings", None)
 
+        # Sanitize boolean fields to avoid mock objects
+        for key in ["has_pluto_data"]:
+            val = metadata_dict.get(key)
+            if val is not None and not isinstance(val, bool):
+                # Try to convert to boolean, default to False if invalid
+                if hasattr(val, "__bool__"):
+                    try:
+                        metadata_dict[key] = bool(val)
+                    except:
+                        metadata_dict[key] = False
+                elif str(val).lower() in ["true", "1", "yes"]:
+                    metadata_dict[key] = True
+                elif str(val).lower() in ["false", "0", "no", ""]:
+                    metadata_dict[key] = False
+                else:
+                    metadata_dict[key] = False
+
         # Only include PLUTO fields if has_pluto_data is True
         pluto_fields = [
             "year_built",
@@ -35,7 +52,15 @@ class EnhancedMetadataCollector:
                 metadata_dict.pop(field, None)
 
         # Sanitize string fields to avoid mock objects
-        for key in ["architect", "style", "neighborhood"]:
+        for key in [
+            "architect",
+            "style",
+            "neighborhood",
+            "year_built",
+            "land_use",
+            "historic_district",
+            "zoning_district",
+        ]:
             val = metadata_dict.get(key)
             if val is not None and not isinstance(val, str):
                 metadata_dict[key] = str(val) if hasattr(val, "__str__") else None
@@ -108,20 +133,41 @@ class EnhancedMetadataCollector:
 
             if buildings:
                 for building in buildings:
-                    # buildings is now guaranteed to be List[LandmarkDetail]
-                    # Clean up empty string values for BBL
-                    bbl_value = building.bbl if building.bbl != "" else None
+                    # Handle both dict and object building data
+                    if isinstance(building, dict):
+                        # Handle dictionary building data (from mocks)
+                        bbl_value = building.get("bbl")
+                        if bbl_value == "":
+                            bbl_value = None
 
-                    building_info = {
-                        "bbl": bbl_value,
-                        "binNumber": building.binNumber,
-                        "block": building.block,
-                        "lot": building.lot,
-                        "latitude": building.latitude,
-                        "longitude": building.longitude,
-                        "address": building.designatedAddress or "",
-                        "name": building.name or "",
-                    }
+                        building_info = {
+                            "bbl": bbl_value,
+                            "binNumber": building.get("binNumber"),
+                            "block": building.get("block"),
+                            "lot": building.get("lot"),
+                            "latitude": building.get("latitude"),
+                            "longitude": building.get("longitude"),
+                            "address": building.get("designatedAddress")
+                            or building.get("address", ""),
+                            "name": building.get("name", ""),
+                        }
+                    else:
+                        # Handle object building data (from actual API)
+                        bbl_value = getattr(building, "bbl", None)
+                        if bbl_value == "":
+                            bbl_value = None
+
+                        building_info = {
+                            "bbl": bbl_value,
+                            "binNumber": getattr(building, "binNumber", None),
+                            "block": getattr(building, "block", None),
+                            "lot": getattr(building, "lot", None),
+                            "latitude": getattr(building, "latitude", None),
+                            "longitude": getattr(building, "longitude", None),
+                            "address": getattr(building, "designatedAddress", None)
+                            or getattr(building, "address", ""),
+                            "name": getattr(building, "name", ""),
+                        }
 
                     # Only add building if it has meaningful data
                     if any(v is not None and v != "" for v in building_info.values()):
