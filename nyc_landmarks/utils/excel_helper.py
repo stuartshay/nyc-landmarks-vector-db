@@ -1,3 +1,44 @@
+def export_dicts_to_excel(
+    data: list,
+    output_file_path: str,
+    column_order: list = None,
+    header_map: dict = None,
+) -> None:
+    """
+    Export a list of dictionaries to an Excel file.
+
+    Args:
+        data (list): List of dictionaries to export.
+        output_file_path (str): Path to the Excel file to create.
+        column_order (list, optional): List of column keys to order columns. Defaults to None.
+        header_map (dict, optional): Mapping of column keys to header names. Defaults to None.
+    """
+    if not data:
+        raise ValueError("No data to export.")
+
+    if column_order is None:
+        column_order = list(data[0].keys())
+
+    import os
+
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+
+    # Write header
+    headers = [header_map.get(col, col) if header_map else col for col in column_order]
+    ws.append(headers)
+
+    # Write data rows
+    for row in data:
+        ws.append([row.get(col, "") for col in column_order])
+
+    # Ensure output directory exists
+    os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
+    wb.save(output_file_path)
+
+
 from typing import Dict, List, Tuple
 
 from openpyxl import load_workbook

@@ -54,10 +54,16 @@ Advanced Features:
     # Process specific page range
     python scripts/fetch_landmark_reports.py --page 5 --limit 50
 
+
+Excel Export Option:
+    # Export results to Excel (XLSX) format
+    python scripts/fetch_landmark_reports.py --export-excel
+
 Output Files:
-    # Files are saved with timestamps in logs/ directory
-    logs/landmark_reports_20250526_180000.json    # Full landmark data
-    logs/pdf_urls_20250526_180000.json           # Extracted PDF URLs
+    # Files are saved with timestamps in output/ directory (or as specified by --output-dir)
+    output/landmark_reports_20250526_180000.json    # Full landmark data
+    output/pdf_urls_20250526_180000.json           # Extracted PDF URLs
+    output/fetch_landmark_YYYY_MM_DD_HH_MM.xlsx    # Excel export (if --export-excel is used)
 
 Environment Variables:
     COREDATASTORE_API_KEY: Optional API key for enhanced access
@@ -499,6 +505,11 @@ Examples:
   %(prog)s --page 5 --page-size 50           # Fetch specific page
         """,
     )
+    parser.add_argument(
+        "--export-excel",
+        action="store_true",
+        help="Export results to Excel (.xlsx) in the output directory",
+    )
 
     # Basic pagination options
     parser.add_argument(
@@ -551,8 +562,8 @@ Examples:
     # Output options
     parser.add_argument(
         "--output-dir",
-        default="logs",
-        help="Output directory for JSON files (default: logs)",
+        default="output",
+        help="Output directory for JSON and Excel files (default: output)",
     )
 
     # Control options
@@ -654,6 +665,43 @@ def _handle_full_pipeline(
             sort_column=args.sort_column,
             sort_order=args.sort_order,
         )
+
+        # Excel export option
+        if getattr(args, "export_excel", False):
+            import datetime
+            from pathlib import Path
+
+            from nyc_landmarks.utils.excel_helper import (
+                export_dicts_to_excel,
+                format_excel_columns,
+            )
+
+            # You may want to adjust column_widths as needed
+            column_widths = {
+                "A": 20,
+                "B": 15,
+                "C": 15,
+                "D": 20,
+                "E": 20,
+                "F": 20,
+                "G": 20,
+                "H": 15,
+                "I": 18,
+                "J": 15,
+                "K": 15,
+                "L": 20,
+                "M": 10,
+                "N": 30,
+                "O": 30,
+            }
+            timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")
+            excel_path = Path(args.output_dir) / f"fetch_landmark_{timestamp}.xlsx"
+            export_dicts_to_excel(
+                data=result.reports,
+                output_file_path=str(excel_path),
+            )
+            format_excel_columns(str(excel_path), column_widths)
+            result.output_files["excel"] = str(excel_path)
 
         print("\nProcessing Complete!")
         print(f"Total reports processed: {result.metrics.processed_records:,}")
