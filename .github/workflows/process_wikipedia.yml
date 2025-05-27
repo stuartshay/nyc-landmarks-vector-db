@@ -164,7 +164,7 @@ jobs:
         run: |
           # Get the total record count using the db_client
           TOTAL_RECORDS=$(python -c "from nyc_landmarks.db.db_client import get_db_client; print(get_db_client().get_total_record_count())")
-          echo "total_records=$TOTAL_RECORDS" >> $GITHUB_OUTPUT
+          echo "total_records=$TOTAL_RECORDS" >> "$GITHUB_OUTPUT"
           echo "Total records: $TOTAL_RECORDS"
 
       - name: Create processing matrix
@@ -172,8 +172,8 @@ jobs:
         run: |
           if [ -n "${{ github.event.inputs.landmark_ids }}" ]; then
             # If specific landmarks are provided, no matrix is needed
-            echo "matrix={\"batch\": [0]}" >> $GITHUB_OUTPUT
-            echo "using_matrix=false" >> $GITHUB_OUTPUT
+            echo "matrix={\"batch\": [0]}" >> "$GITHUB_OUTPUT"
+            echo "using_matrix=false" >> "$GITHUB_OUTPUT"
             echo "Using single job for specified landmark IDs"
           else
             # Calculate the number of batches
@@ -182,17 +182,19 @@ jobs:
 
             # Use limit if provided, otherwise use total records
             if [ "${{ github.event.inputs.limit }}" != "0" ]; then
-              TOTAL_RECORDS=$(( ${{ github.event.inputs.limit }} < $TOTAL_RECORDS ? ${{ github.event.inputs.limit }} : $TOTAL_RECORDS ))
+              if [ "${{ github.event.inputs.limit }}" -lt "$TOTAL_RECORDS" ]; then
+                TOTAL_RECORDS="${{ github.event.inputs.limit }}"
+              fi
             fi
 
             # Calculate number of batches (ceil division)
-            NUM_BATCHES=$(( ($TOTAL_RECORDS + $BATCH_SIZE - 1) / $BATCH_SIZE ))
+            NUM_BATCHES=$(( (TOTAL_RECORDS + BATCH_SIZE - 1) / BATCH_SIZE ))
 
             # Create matrix with batch indices (0 to NUM_BATCHES-1)
             BATCHES="["
             i=0
-            while [ $i -lt $NUM_BATCHES ]; do
-              if [ $i -gt 0 ]; then
+            while [ "$i" -lt "$NUM_BATCHES" ]; do
+              if [ "$i" -gt 0 ]; then
                 BATCHES="$BATCHES,"
               fi
               BATCHES="$BATCHES$i"
@@ -200,8 +202,8 @@ jobs:
             done
             BATCHES="$BATCHES]"
 
-            echo "matrix={\"batch\": $BATCHES}" >> $GITHUB_OUTPUT
-            echo "using_matrix=true" >> $GITHUB_OUTPUT
+            echo "matrix={\"batch\": $BATCHES}" >> "$GITHUB_OUTPUT"
+            echo "using_matrix=true" >> "$GITHUB_OUTPUT"
             echo "Created matrix with $NUM_BATCHES batches (batch size: $BATCH_SIZE, total records: $TOTAL_RECORDS)"
           fi
 
@@ -293,7 +295,8 @@ jobs:
 
           # Run the processing script
           echo "Running: python scripts/ci/process_wikipedia_articles.py $ARGS"
-          python scripts/ci/process_wikipedia_articles.py "$ARGS"
+          # shellcheck disable=SC2086
+          python scripts/ci/process_wikipedia_articles.py $ARGS
 
           # Create batch-specific summary file
           BATCH_SUFFIX=""
@@ -310,7 +313,11 @@ jobs:
               echo "- Page: $PAGE_NUMBER"
               echo "- Batch Size: $BATCH_SIZE"
             else
-              echo "- Landmark IDs: ${{ github.event.inputs.landmark_ids || 'All landmarks' }}"
+              if [ -n "${{ github.event.inputs.landmark_ids }}" ]; then
+                echo "- Landmark IDs: ${{ github.event.inputs.landmark_ids }}"
+              else
+                echo "- Landmark IDs: All landmarks"
+              fi
             fi
             echo "- Chunk size: ${{ github.event.inputs.chunk_size }}"
             echo "- Chunk overlap: ${{ github.event.inputs.chunk_overlap }}"
