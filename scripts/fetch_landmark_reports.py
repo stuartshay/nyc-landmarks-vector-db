@@ -549,7 +549,7 @@ class LandmarkReportProcessor:
             metrics.processing_time = time.time() - start_time
 
             # Log summary
-            self._log_processing_summary(metrics, len(downloaded_paths))
+            self._log_processing_summary(metrics, len(downloaded_paths), reports)
 
             return ProcessingResult(
                 reports=reports,
@@ -636,13 +636,17 @@ class LandmarkReportProcessor:
         return output_files
 
     def _log_processing_summary(
-        self, metrics: ProcessingMetrics, downloaded_count: int
+        self,
+        metrics: ProcessingMetrics,
+        downloaded_count: int,
+        reports: List[Dict[str, Any]],
     ) -> None:
         """Log processing summary with metrics.
 
         Args:
             metrics: Processing metrics
             downloaded_count: Number of PDFs downloaded
+            reports: List of landmark reports for calculating averages
         """
         logger.info("\n" + "=" * 60)
         logger.info("PROCESSING SUMMARY")
@@ -663,10 +667,8 @@ class LandmarkReportProcessor:
                 f"  Total Wikipedia articles found: {metrics.total_wikipedia_articles:,}"
             )
             logger.info(f"  Wikipedia API failures: {metrics.wikipedia_api_failures:,}")
-            if len(metrics.reports) > 0:
-                avg_articles = (
-                    metrics.total_wikipedia_articles / len(metrics.reports)
-                )
+            if len(reports) > 0:
+                avg_articles = metrics.total_wikipedia_articles / len(reports)
                 logger.info(f"  Average articles per landmark: {avg_articles:.2f}")
 
         if metrics.errors_encountered:
