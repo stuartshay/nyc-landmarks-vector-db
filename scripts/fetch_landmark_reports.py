@@ -843,11 +843,10 @@ def _handle_page_request(
 
         pdf_info = processor.extract_pdf_urls(reports)
 
-        # Create temporary metrics for saving
-        temp_metrics = ProcessingMetrics()
-        temp_metrics.wikipedia_enabled = args.include_wikipedia
+        # Reuse the existing metrics object for saving
+        metrics.wikipedia_enabled = args.include_wikipedia
         output_files = processor._save_results(
-            reports, pdf_info, args.output_dir, temp_metrics
+            reports, pdf_info, args.output_dir, metrics
         )
 
         print(f"\nPage {args.page} Results:")
