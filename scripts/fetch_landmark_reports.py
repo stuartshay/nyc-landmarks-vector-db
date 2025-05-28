@@ -879,7 +879,6 @@ def _handle_page_request(
         pdf_info = processor.extract_pdf_urls(reports)
 
         # Reuse the existing metrics object for saving
-        metrics.wikipedia_enabled = args.include_wikipedia
         output_files = processor._save_results(
             reports, pdf_info, args.output_dir, metrics
         )
