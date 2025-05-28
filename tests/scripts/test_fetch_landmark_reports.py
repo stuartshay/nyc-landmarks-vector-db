@@ -331,8 +331,18 @@ class TestLandmarkReportProcessor(unittest.TestCase):
         reports = [report.model_dump() for report in get_mock_lpc_reports()[:2]]
         pdf_info = get_mock_pdf_info()[:2]
 
+        # Create test metrics
+        metrics = ProcessingMetrics()
+        metrics.processing_time = 1.5
+        metrics.wikipedia_enabled = True
+        metrics.landmarks_with_wikipedia = 1
+        metrics.total_wikipedia_articles = 3
+        metrics.wikipedia_api_failures = 0
+
         # Test the private method
-        output_files = processor._save_results(reports, pdf_info, self.temp_dir)
+        output_files = processor._save_results(
+            reports, pdf_info, self.temp_dir, metrics
+        )
 
         # Verify files were created
         self.assertIn("landmark_reports", output_files)
@@ -342,8 +352,26 @@ class TestLandmarkReportProcessor(unittest.TestCase):
 
         # Verify file contents
         with open(output_files["landmark_reports"], "r") as f:
-            saved_reports = json.load(f)
-        self.assertEqual(len(saved_reports), 2)
+            saved_data = json.load(f)
+
+        # Check that we have the expected structure with metadata and landmarks
+        self.assertIn("metadata", saved_data)
+        self.assertIn("landmarks", saved_data)
+        self.assertEqual(len(saved_data["landmarks"]), 2)
+
+        # Check metadata
+        metadata = saved_data["metadata"]
+        self.assertEqual(metadata["total_landmarks"], 2)
+        self.assertEqual(metadata["landmarks_with_pdfs"], 2)
+        self.assertEqual(metadata["processing_time_seconds"], 1.5)
+        self.assertEqual(metadata["wikipedia_enabled"], True)
+
+        # Check Wikipedia summary in metadata
+        self.assertIn("wikipedia_summary", metadata)
+        wiki_summary = metadata["wikipedia_summary"]
+        self.assertEqual(wiki_summary["landmarks_with_wikipedia"], 1)
+        self.assertEqual(wiki_summary["total_wikipedia_articles"], 3)
+        self.assertEqual(wiki_summary["wikipedia_api_failures"], 0)
 
         with open(output_files["pdf_urls"], "r") as f:
             saved_pdfs = json.load(f)
