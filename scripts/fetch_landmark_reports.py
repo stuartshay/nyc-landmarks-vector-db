@@ -1,14 +1,15 @@
 """
-Fetch landmark reports from the NYC Landmarks Vector Database.
+Fetch landmark reports from the NYC Landmarks Vector Database with Wikipedia article counting.
 
 This script provides a unified interface for retrieving landmark data using the
-DbClient. It supports full dataset pagination, PDF URL extraction, and sample
-downloading capabilities.
+DbClient. It supports full dataset pagination, PDF URL extraction, sample
+downloading capabilities, and Wikipedia article counting.
 
 Key Features:
 - Total record count retrieval and intelligent pagination
 - Complete dataset processing with progress tracking
 - PDF URL extraction and optional sample downloading
+- Wikipedia article counting for each landmark
 - Filtering by borough, object type, neighborhood, and more
 - JSON output with timestamps for data analysis
 - Robust error handling and comprehensive logging
@@ -25,6 +26,9 @@ Basic Usage:
     # Show progress for large dataset processing
     python scripts/fetch_landmark_reports.py --verbose
 
+    # Include Wikipedia article counts for each landmark
+    python scripts/fetch_landmark_reports.py --include-wikipedia --limit 50
+
 Filtering Options:
     # Filter by borough
     python scripts/fetch_landmark_reports.py --borough Manhattan
@@ -35,8 +39,8 @@ Filtering Options:
     # Filter by neighborhood
     python scripts/fetch_landmark_reports.py --neighborhood "Greenwich Village"
 
-    # Combine multiple filters
-    python scripts/fetch_landmark_reports.py --borough Brooklyn --object-type "Historic District"
+    # Combine multiple filters with Wikipedia counting
+    python scripts/fetch_landmark_reports.py --borough Brooklyn --object-type "Historic District" --include-wikipedia
 
     # Search with text query
     python scripts/fetch_landmark_reports.py --search "brownstone"
@@ -54,6 +58,8 @@ Advanced Features:
     # Process specific page range
     python scripts/fetch_landmark_reports.py --page 5 --limit 50
 
+    # Include Wikipedia data with Excel export
+    python scripts/fetch_landmark_reports.py --include-wikipedia --export-excel --limit 100
 
 Excel Export Option:
     # Export results to Excel (XLSX) format
@@ -95,6 +101,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from nyc_landmarks.db.db_client import get_db_client
 from nyc_landmarks.models.landmark_models import LpcReportResponse
+from nyc_landmarks.utils.exceptions import WikipediaAPIError
 from nyc_landmarks.utils.file_utils import ensure_directory_exists
 from nyc_landmarks.utils.logger import get_logger
 
@@ -112,6 +119,11 @@ class ProcessingMetrics:
     processing_time: float = 0.0
     errors_encountered: List[str] = field(default_factory=list)
     pages_processed: int = 0
+    # Wikipedia article metrics
+    wikipedia_enabled: bool = False
+    landmarks_with_wikipedia: int = 0
+    total_wikipedia_articles: int = 0
+    wikipedia_api_failures: int = 0
 
 
 @dataclass
@@ -283,6 +295,145 @@ class LandmarkReportProcessor:
         logger.info(f"Extracted {len(pdf_info)} PDF URLs from {len(reports)} reports")
         return pdf_info
 
+    def add_wikipedia_article_counts(
+        self, reports: List[Dict[str, Any]], metrics: ProcessingMetrics
+    ) -> List[Dict[str, Any]]:
+        """Add Wikipedia article counts to landmark reports.
+
+        Args:
+            reports: List of landmark report dictionaries
+            metrics: Processing metrics to update
+
+        Returns:
+            Updated list of landmark reports with Wikipedia article counts
+        """
+        if not metrics.wikipedia_enabled:
+            return reports
+
+        logger.info("Adding Wikipedia article counts to landmark reports...")
+
+        for i, report in enumerate(reports):
+            self._process_single_report_wikipedia(report, i, len(reports), metrics)
+
+        self._log_wikipedia_summary(metrics, len(reports))
+        return reports
+
+    def _process_single_report_wikipedia(
+        self,
+        report: Dict[str, Any],
+        index: int,
+        total_reports: int,
+        metrics: ProcessingMetrics,
+    ) -> None:
+        """Process Wikipedia article count for a single landmark report.
+
+        Args:
+            report: Single landmark report dictionary
+            index: Current report index (0-based)
+            total_reports: Total number of reports being processed
+            metrics: Processing metrics to update
+        """
+        landmark_id = report.get("lpNumber") or report.get("lpcId")
+
+        if not landmark_id:
+            logger.warning(
+                f"No landmark ID found for report {index + 1}, skipping Wikipedia lookup"
+            )
+            report["wikipedia_article_count"] = 0
+            report["in_wikipedia_index"] = "No"
+            return
+
+        try:
+            article_count = self._fetch_wikipedia_articles_for_landmark(
+                landmark_id, index, total_reports
+            )
+            report["wikipedia_article_count"] = article_count
+            # Add new column to indicate if landmark exists in Wikipedia index
+            report["in_wikipedia_index"] = "Yes" if article_count > 0 else "No"
+
+            if article_count > 0:
+                metrics.landmarks_with_wikipedia += 1
+                metrics.total_wikipedia_articles += article_count
+
+        except Exception as e:
+            self._handle_wikipedia_fetch_error(e, landmark_id, metrics)
+            report["wikipedia_article_count"] = 0
+            report["in_wikipedia_index"] = "No"
+
+    def _fetch_wikipedia_articles_for_landmark(
+        self, landmark_id: str, index: int, total_reports: int
+    ) -> int:
+        """Fetch Wikipedia articles for a specific landmark.
+
+        Args:
+            landmark_id: The landmark identifier
+            index: Current report index (0-based)
+            total_reports: Total number of reports being processed
+
+        Returns:
+            Number of Wikipedia articles found
+        """
+        if self.verbose:
+            logger.info(
+                f"Fetching Wikipedia articles for landmark {landmark_id} ({index + 1}/{total_reports})"
+            )
+
+        wikipedia_articles = self.db_client.get_wikipedia_articles(landmark_id)
+        article_count = len(wikipedia_articles)
+
+        if self.verbose and article_count > 0:
+            logger.info(
+                f"Found {article_count} Wikipedia articles for landmark {landmark_id}"
+            )
+
+        return article_count
+
+    def _handle_wikipedia_fetch_error(
+        self, error: Exception, landmark_id: str, metrics: ProcessingMetrics
+    ) -> None:
+        """Handle errors that occur during Wikipedia article fetching.
+
+        Args:
+            error: The exception that occurred
+            landmark_id: The landmark identifier
+            metrics: Processing metrics to update
+
+        Raises:
+            WikipediaAPIError: If this is a critical API failure
+        """
+        error_msg = (
+            f"Error fetching Wikipedia articles for landmark {landmark_id}: {error}"
+        )
+        logger.error(error_msg)
+        metrics.errors_encountered.append(error_msg)
+        metrics.wikipedia_api_failures += 1
+
+        # If this is a critical API failure (not just missing articles), raise the error
+        if isinstance(error, requests.exceptions.ConnectionError):
+            raise WikipediaAPIError(
+                "Wikipedia API is unreachable", original_error=error
+            )
+
+    def _log_wikipedia_summary(
+        self, metrics: ProcessingMetrics, total_reports: int
+    ) -> None:
+        """Log summary of Wikipedia article processing.
+
+        Args:
+            metrics: Processing metrics with Wikipedia data
+            total_reports: Total number of reports processed
+        """
+        logger.info(
+            f"Completed Wikipedia article counting for {total_reports} landmarks"
+        )
+        logger.info(
+            f"Found Wikipedia articles for {metrics.landmarks_with_wikipedia} landmarks"
+        )
+        logger.info(f"Total Wikipedia articles: {metrics.total_wikipedia_articles}")
+
+        if metrics.wikipedia_api_failures > 0:
+            logger.warning(f"Wikipedia API failures: {metrics.wikipedia_api_failures}")
+
     def download_sample_pdfs(
         self,
         pdf_info: List[Dict[str, str]],
@@ -347,7 +498,8 @@ class LandmarkReportProcessor:
         max_records: Optional[int] = None,
         download_samples: bool = False,
         sample_limit: int = 5,
-        output_dir: str = "logs",
+        output_dir: str = "output",
+        include_wikipedia: bool = False,
         **filters: Any,
     ) -> ProcessingResult:
         """Process all records with progress tracking and metrics.
@@ -358,6 +510,7 @@ class LandmarkReportProcessor:
             download_samples: Whether to download sample PDFs
             sample_limit: Number of sample PDFs to download
             output_dir: Directory for output files
+            include_wikipedia: Whether to include Wikipedia article counts
             **filters: Additional filters (borough, object_type, etc.)
 
         Returns:
@@ -365,6 +518,7 @@ class LandmarkReportProcessor:
         """
         start_time = time.time()
         metrics = ProcessingMetrics()
+        metrics.wikipedia_enabled = include_wikipedia
 
         try:
             # Get total count
@@ -382,6 +536,13 @@ class LandmarkReportProcessor:
             pdf_info = self.extract_pdf_urls(reports)
             metrics.records_with_pdfs = len(pdf_info)
 
+            # Add Wikipedia article counts if requested
+            if include_wikipedia:
+                reports = self.add_wikipedia_article_counts(reports, metrics)
+            else:
+                # Ensure in_wikipedia_index column is present for Excel export consistency
+                reports = self.ensure_wikipedia_index_column(reports)
+
             # Download sample PDFs if requested
             downloaded_paths = []
             if download_samples and pdf_info:
@@ -392,13 +553,13 @@ class LandmarkReportProcessor:
                 )
 
             # Save results to files
-            output_files = self._save_results(reports, pdf_info, output_dir)
+            output_files = self._save_results(reports, pdf_info, output_dir, metrics)
 
             # Calculate final metrics
             metrics.processing_time = time.time() - start_time
 
             # Log summary
-            self._log_processing_summary(metrics, len(downloaded_paths))
+            self._log_processing_summary(metrics, len(downloaded_paths), reports)
 
             return ProcessingResult(
                 reports=reports,
@@ -417,6 +578,7 @@ class LandmarkReportProcessor:
         reports: List[Dict[str, Any]],
         pdf_info: List[Dict[str, str]],
         output_dir: str,
+        metrics: ProcessingMetrics,
     ) -> Dict[str, str]:
         """Save processing results to JSON files.
 
@@ -424,6 +586,7 @@ class LandmarkReportProcessor:
             reports: List of landmark reports
             pdf_info: List of PDF information
             output_dir: Output directory
+            metrics: Processing metrics for summary
 
         Returns:
             Dictionary mapping file types to output paths
@@ -438,9 +601,34 @@ class LandmarkReportProcessor:
         landmark_reports_path = Path(output_dir) / f"landmark_reports_{timestamp}.json"
         pdf_urls_path = Path(output_dir) / f"pdf_urls_{timestamp}.json"
 
-        # Save landmark reports
+        # Create output data with summary
+        output_data: Dict[str, Any] = {
+            "metadata": {
+                "timestamp": timestamp,
+                "total_landmarks": len(reports),
+                "landmarks_with_pdfs": len(pdf_info),
+                "processing_time_seconds": metrics.processing_time,
+                "wikipedia_enabled": metrics.wikipedia_enabled,
+            },
+            "landmarks": reports,
+        }
+
+        # Add Wikipedia summary if enabled
+        if metrics.wikipedia_enabled:
+            output_data["metadata"]["wikipedia_summary"] = {
+                "landmarks_with_wikipedia": metrics.landmarks_with_wikipedia,
+                "total_wikipedia_articles": metrics.total_wikipedia_articles,
+                "wikipedia_api_failures": metrics.wikipedia_api_failures,
+                "average_articles_per_landmark": (
+                    round(metrics.total_wikipedia_articles / len(reports), 2)
+                    if len(reports) > 0
+                    else 0
+                ),
+            }
+
+        # Save landmark reports with metadata
         with open(landmark_reports_path, "w") as f:
-            json.dump(reports, f, indent=2, default=str)
+            json.dump(output_data, f, indent=2, default=str)
 
         # Save PDF URLs
         with open(pdf_urls_path, "w") as f:
@@ -458,13 +646,17 @@ class LandmarkReportProcessor:
         return output_files
 
     def _log_processing_summary(
-        self, metrics: ProcessingMetrics, downloaded_count: int
+        self,
+        metrics: ProcessingMetrics,
+        downloaded_count: int,
+        reports: List[Dict[str, Any]],
     ) -> None:
         """Log processing summary with metrics.
 
         Args:
             metrics: Processing metrics
             downloaded_count: Number of PDFs downloaded
+            reports: List of landmark reports for calculating averages
         """
         logger.info("\n" + "=" * 60)
         logger.info("PROCESSING SUMMARY")
@@ -475,12 +667,44 @@ class LandmarkReportProcessor:
         logger.info(f"Sample PDFs downloaded: {downloaded_count}")
         logger.info(f"Processing time: {metrics.processing_time:.2f} seconds")
 
+        # Wikipedia summary
+        if metrics.wikipedia_enabled:
+            logger.info("\nWikipedia Article Summary:")
+            logger.info(
+                f"  Landmarks with Wikipedia articles: {metrics.landmarks_with_wikipedia:,}"
+            )
+            logger.info(
+                f"  Total Wikipedia articles found: {metrics.total_wikipedia_articles:,}"
+            )
+            logger.info(f"  Wikipedia API failures: {metrics.wikipedia_api_failures:,}")
+            if len(reports) > 0:
+                avg_articles = metrics.total_wikipedia_articles / len(reports)
+                logger.info(f"  Average articles per landmark: {avg_articles:.2f}")
+
         if metrics.errors_encountered:
             logger.warning(f"Errors encountered: {len(metrics.errors_encountered)}")
             for i, error in enumerate(metrics.errors_encountered[:5], 1):
                 logger.warning(f"  {i}. {error}")
 
         logger.info("=" * 60)
+
+    def ensure_wikipedia_index_column(
+        self, reports: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Ensure all reports have the in_wikipedia_index column for Excel export.
+
+        Args:
+            reports: List of landmark report dictionaries
+
+        Returns:
+            Updated list of landmark reports with in_wikipedia_index column
+        """
+        for report in reports:
+            # If the column doesn't exist, set it to "No"
+            if "in_wikipedia_index" not in report:
+                report["in_wikipedia_index"] = "No"
+
+        return reports
 
 
 def create_argument_parser() -> argparse.ArgumentParser:
@@ -490,7 +714,7 @@ def create_argument_parser() -> argparse.ArgumentParser:
         Configured ArgumentParser instance
     """
     parser = argparse.ArgumentParser(
-        description="Fetch and process NYC landmark reports using DbClient",
+        description="Fetch and process NYC landmark reports using DbClient with Wikipedia integration",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -500,6 +724,7 @@ Examples:
   %(prog)s --search "brownstone"             # Search for text
   %(prog)s --download --samples 10           # Download sample PDFs
   %(prog)s --page 5 --page-size 50           # Fetch specific page
+  %(prog)s --include-wikipedia --limit 50    # Include Wikipedia article counts
         """,
     )
     parser.add_argument(
@@ -546,6 +771,13 @@ Examples:
         help="Column to sort results by (e.g., 'name', 'dateDesignated')",
     )
     parser.add_argument("--sort-order", choices=["asc", "desc"], help="Sort direction")
+
+    # Wikipedia options
+    parser.add_argument(
+        "--include-wikipedia",
+        action="store_true",
+        help="Include Wikipedia article counts for each landmark",
+    )
 
     # PDF download options
     parser.add_argument("--download", action="store_true", help="Download sample PDFs")
@@ -609,6 +841,8 @@ def _handle_dry_run(
         print(f"Search filter: {args.search}")
     if args.download:
         print(f"Would download {args.samples} sample PDFs")
+    if args.include_wikipedia:
+        print("Would include Wikipedia article counts")
 
 
 def _handle_page_request(
@@ -630,12 +864,35 @@ def _handle_page_request(
         )
 
         reports = [model.model_dump() for model in response.results]
+
+        # Add Wikipedia counts if requested
+        if args.include_wikipedia:
+            metrics = ProcessingMetrics()
+            metrics.wikipedia_enabled = True
+            reports = processor.add_wikipedia_article_counts(reports, metrics)
+        else:
+            # Still ensure the wikipedia index column is present for consistency
+            reports = processor.ensure_wikipedia_index_column(reports)
+            metrics = ProcessingMetrics()
+            metrics.wikipedia_enabled = False
+
         pdf_info = processor.extract_pdf_urls(reports)
-        output_files = processor._save_results(reports, pdf_info, args.output_dir)
+
+        # Reuse the existing metrics object for saving
+        output_files = processor._save_results(
+            reports, pdf_info, args.output_dir, metrics
+        )
 
         print(f"\nPage {args.page} Results:")
         print(f"Records fetched: {len(reports)}")
         print(f"Records with PDFs: {len(pdf_info)}")
+        if args.include_wikipedia:
+            wikipedia_count = sum(
+                1 for r in reports if r.get("wikipedia_article_count", 0) > 0
+            )
+            total_articles = sum(r.get("wikipedia_article_count", 0) for r in reports)
+            print(f"Records with Wikipedia articles: {wikipedia_count}")
+            print(f"Total Wikipedia articles: {total_articles}")
         print(f"Results saved to: {output_files['landmark_reports']}")
 
     except Exception as e:
@@ -654,6 +911,7 @@ def _handle_full_pipeline(
             download_samples=args.download,
             sample_limit=args.samples,
             output_dir=args.output_dir,
+            include_wikipedia=args.include_wikipedia,
             borough=args.borough,
             object_type=args.object_type,
             neighborhood=args.neighborhood,
@@ -665,7 +923,6 @@ def _handle_full_pipeline(
 
         # Excel export option
         if getattr(args, "export_excel", False):
-            import datetime
             from pathlib import Path
 
             from nyc_landmarks.utils.excel_helper import (
@@ -674,23 +931,28 @@ def _handle_full_pipeline(
                 format_excel_columns,
             )
 
-            # You may want to adjust column_widths as needed
+            # Ensure all reports have the in_wikipedia_index column for Excel export
+            result.reports = processor.ensure_wikipedia_index_column(result.reports)
+
+            # Adjust column widths to accommodate Wikipedia columns
             column_widths = {
-                "A": 50,
-                "B": 15,
-                "C": 15,
-                "D": 20,
-                "E": 20,
-                "F": 20,
-                "G": 35,
-                "H": 15,
-                "I": 18,
-                "J": 15,
-                "K": 15,
-                "L": 20,
-                "M": 10,
-                "N": 40,
-                "O": 40,
+                "A": 50,  # name
+                "B": 15,  # lpNumber
+                "C": 15,  # lpcId
+                "D": 20,  # objectType
+                "E": 20,  # architect
+                "F": 20,  # style
+                "G": 35,  # street
+                "H": 15,  # borough
+                "I": 18,  # dateDesignated
+                "J": 15,  # photoStatus
+                "K": 15,  # mapStatus
+                "L": 20,  # neighborhood
+                "M": 10,  # zipCode
+                "N": 40,  # photoUrl
+                "O": 40,  # pdfReportUrl
+                "P": 20,  # wikipedia_article_count
+                "Q": 20,  # in_wikipedia_index (new column)
             }
             timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")
             excel_path = Path(args.output_dir) / f"fetch_landmark_{timestamp}.xlsx"
@@ -705,6 +967,19 @@ def _handle_full_pipeline(
         print("\nProcessing Complete!")
         print(f"Total reports processed: {result.metrics.processed_records:,}")
         print(f"Reports with PDF URLs: {result.metrics.records_with_pdfs:,}")
+
+        if result.metrics.wikipedia_enabled:
+            print(
+                f"Landmarks with Wikipedia articles: {result.metrics.landmarks_with_wikipedia:,}"
+            )
+            print(
+                f"Total Wikipedia articles: {result.metrics.total_wikipedia_articles:,}"
+            )
+            if result.metrics.wikipedia_api_failures > 0:
+                print(
+                    f"Wikipedia API failures: {result.metrics.wikipedia_api_failures:,}"
+                )
+
         print(f"Processing time: {result.metrics.processing_time:.2f} seconds")
         print(f"Output files: {list(result.output_files.values())}")
 

@@ -12,6 +12,9 @@ import unittest
 from typing import Any
 from unittest.mock import Mock, patch
 
+import requests
+
+from nyc_landmarks.utils.exceptions import WikipediaAPIError
 from scripts.fetch_landmark_reports import (
     LandmarkReportProcessor,
     ProcessingMetrics,
@@ -40,6 +43,20 @@ class TestLandmarkReportProcessor(unittest.TestCase):
         import shutil
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+    def _create_default_metrics(self) -> ProcessingMetrics:
+        """Create a default ProcessingMetrics object for testing.
+
+        Returns:
+            ProcessingMetrics: A metrics object with default test values
+        """
+        metrics = ProcessingMetrics()
+        metrics.processing_time = 1.5
+        metrics.wikipedia_enabled = True
+        metrics.landmarks_with_wikipedia = 1
+        metrics.total_wikipedia_articles = 3
+        metrics.wikipedia_api_failures = 0
+        return metrics
 
     @patch("scripts.fetch_landmark_reports.get_db_client")
     def test_processor_initialization(self, mock_get_db_client: Mock) -> None:
@@ -331,8 +348,13 @@ class TestLandmarkReportProcessor(unittest.TestCase):
         reports = [report.model_dump() for report in get_mock_lpc_reports()[:2]]
         pdf_info = get_mock_pdf_info()[:2]
 
+        # Create test metrics
+        metrics = self._create_default_metrics()
+
         # Test the private method
-        output_files = processor._save_results(reports, pdf_info, self.temp_dir)
+        output_files = processor._save_results(
+            reports, pdf_info, self.temp_dir, metrics
+        )
 
         # Verify files were created
         self.assertIn("landmark_reports", output_files)
@@ -342,8 +364,26 @@ class TestLandmarkReportProcessor(unittest.TestCase):
 
         # Verify file contents
         with open(output_files["landmark_reports"], "r") as f:
-            saved_reports = json.load(f)
-        self.assertEqual(len(saved_reports), 2)
+            saved_data = json.load(f)
+
+        # Check that we have the expected structure with metadata and landmarks
+        self.assertIn("metadata", saved_data)
+        self.assertIn("landmarks", saved_data)
+        self.assertEqual(len(saved_data["landmarks"]), 2)
+
+        # Check metadata
+        metadata = saved_data["metadata"]
+        self.assertEqual(metadata["total_landmarks"], 2)
+        self.assertEqual(metadata["landmarks_with_pdfs"], 2)
+        self.assertEqual(metadata["processing_time_seconds"], 1.5)
+        self.assertEqual(metadata["wikipedia_enabled"], True)
+
+        # Check Wikipedia summary in metadata
+        self.assertIn("wikipedia_summary", metadata)
+        wiki_summary = metadata["wikipedia_summary"]
+        self.assertEqual(wiki_summary["landmarks_with_wikipedia"], 1)
+        self.assertEqual(wiki_summary["total_wikipedia_articles"], 3)
+        self.assertEqual(wiki_summary["wikipedia_api_failures"], 0)
 
         with open(output_files["pdf_urls"], "r") as f:
             saved_pdfs = json.load(f)
@@ -454,6 +494,43 @@ class TestProcessingResult(unittest.TestCase):
         self.assertEqual(len(result.pdf_info), 1)
         self.assertIsInstance(result.metrics, ProcessingMetrics)
         self.assertEqual(len(result.output_files), 2)
+
+
+class TestWikipediaAPIError(unittest.TestCase):
+    """Test WikipediaAPIError functionality."""
+
+    def test_wikipedia_api_error_without_original_error(self):
+        """Test WikipediaAPIError without an original error."""
+        message = "Test error message"
+        error = WikipediaAPIError(message)
+
+        self.assertEqual(str(error), message)
+        self.assertEqual(error.message, message)
+        self.assertIsNone(error.original_error)
+        self.assertIsNone(error.__cause__)
+
+    def test_wikipedia_api_error_with_original_error(self):
+        """Test WikipediaAPIError with an original error."""
+        message = "Test error message"
+        original_error = requests.exceptions.ConnectionError("Connection failed")
+        error = WikipediaAPIError(message, original_error)
+
+        self.assertEqual(error.message, message)
+        self.assertEqual(error.original_error, original_error)
+        self.assertEqual(error.__cause__, original_error)
+        self.assertIn(message, str(error))
+        self.assertIn("Original error", str(error))
+
+    def test_wikipedia_api_error_repr(self):
+        """Test WikipediaAPIError string representation."""
+        message = "Test error"
+        original_error = ValueError("Original issue")
+        error = WikipediaAPIError(message, original_error)
+
+        repr_str = repr(error)
+        self.assertIn("WikipediaAPIError", repr_str)
+        self.assertIn(message, repr_str)
+        self.assertIn("original_error", repr_str)
 
 
 if __name__ == "__main__":
