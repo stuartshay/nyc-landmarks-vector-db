@@ -154,7 +154,7 @@ def create_mock_db_client() -> Mock:
     return mock_client
 
 
-def _create_mock_get_wikipedia_articles():
+def _create_mock_get_wikipedia_articles() -> Any:
     """Create mock implementation for get_wikipedia_articles method."""
 
     def mock_get_wikipedia_articles(landmark_id: str) -> List[WikipediaArticleModel]:
@@ -165,7 +165,7 @@ def _create_mock_get_wikipedia_articles():
     return mock_get_wikipedia_articles
 
 
-def _create_mock_get_landmark_metadata():
+def _create_mock_get_landmark_metadata() -> Any:
     """Create mock implementation for get_landmark_metadata method."""
 
     def mock_get_landmark_metadata(landmark_id: str) -> Dict[str, Any]:
@@ -191,7 +191,7 @@ def _get_mock_landmark_metadata_lp00009() -> Dict[str, Any]:
     }
 
 
-def _create_mock_get_landmark_by_id():
+def _create_mock_get_landmark_by_id() -> Any:
     """Create mock implementation for get_landmark_by_id method."""
 
     def mock_get_landmark_by_id(landmark_id: str) -> Dict[str, Any]:
@@ -220,7 +220,7 @@ def _get_mock_landmark_details_lp00009() -> Dict[str, Any]:
     }
 
 
-def _create_mock_get_landmark_buildings():
+def _create_mock_get_landmark_buildings() -> Any:
     """Create mock implementation for get_landmark_buildings method."""
 
     def mock_get_landmark_buildings(landmark_id: str) -> List[Dict[str, Any]]:
@@ -270,7 +270,7 @@ def _get_mock_landmark_buildings_lp00009() -> List[Dict[str, Any]]:
     ]
 
 
-def _create_mock_get_landmark_pluto_data():
+def _create_mock_get_landmark_pluto_data() -> Any:
     """Create mock implementation for get_landmark_pluto_data method."""
 
     def mock_get_landmark_pluto_data(landmark_id: str) -> List[PlutoDataModel]:

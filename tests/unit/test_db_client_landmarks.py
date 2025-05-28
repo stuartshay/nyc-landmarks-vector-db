@@ -141,7 +141,7 @@ class TestDbClientLandmarkMethods(unittest.TestCase):
             for i in range(1, count + 1)
         ]
 
-    def _assert_landmark_id(self, item, expected_id: str) -> None:
+    def _assert_landmark_id(self, item: Any, expected_id: str) -> None:
         """Helper method to assert landmark ID regardless of item type."""
         if isinstance(item, dict):
             if "id" in item:
@@ -157,7 +157,7 @@ class TestDbClientLandmarkMethods(unittest.TestCase):
         else:
             self.fail(f"Unexpected type for result item: {type(item)}")
 
-    def _setup_fallback_mock_api(self):
+    def _setup_fallback_mock_api(self) -> Mock:
         """Helper to setup mock API for fallback testing."""
         from nyc_landmarks.models.landmark_models import LpcReportResponse
 
