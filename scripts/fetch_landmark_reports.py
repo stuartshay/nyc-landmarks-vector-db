@@ -663,9 +663,9 @@ class LandmarkReportProcessor:
                 f"  Total Wikipedia articles found: {metrics.total_wikipedia_articles:,}"
             )
             logger.info(f"  Wikipedia API failures: {metrics.wikipedia_api_failures:,}")
-            if metrics.processed_records > 0:
+            if len(metrics.reports) > 0:
                 avg_articles = (
-                    metrics.total_wikipedia_articles / metrics.processed_records
+                    metrics.total_wikipedia_articles / len(metrics.reports)
                 )
                 logger.info(f"  Average articles per landmark: {avg_articles:.2f}")
 
