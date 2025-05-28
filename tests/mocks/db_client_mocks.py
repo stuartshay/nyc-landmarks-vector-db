@@ -5,7 +5,7 @@ This module provides mock objects and fixtures for testing Wikipedia integration
 without requiring external API calls to the CoreDataStore API.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List
 from unittest.mock import Mock
 
 from nyc_landmarks.models.landmark_models import PlutoDataModel
@@ -154,7 +154,9 @@ def create_mock_db_client() -> Mock:
     return mock_client
 
 
-def _create_mock_get_wikipedia_articles() -> Any:
+def _create_mock_get_wikipedia_articles() -> (
+    Callable[[str], List[WikipediaArticleModel]]
+):
     """Create mock implementation for get_wikipedia_articles method."""
 
     def mock_get_wikipedia_articles(landmark_id: str) -> List[WikipediaArticleModel]:
@@ -165,7 +167,7 @@ def _create_mock_get_wikipedia_articles() -> Any:
     return mock_get_wikipedia_articles
 
 
-def _create_mock_get_landmark_metadata() -> Any:
+def _create_mock_get_landmark_metadata() -> Callable[[str], Dict[str, Any]]:
     """Create mock implementation for get_landmark_metadata method."""
 
     def mock_get_landmark_metadata(landmark_id: str) -> Dict[str, Any]:
@@ -191,7 +193,7 @@ def _get_mock_landmark_metadata_lp00009() -> Dict[str, Any]:
     }
 
 
-def _create_mock_get_landmark_by_id() -> Any:
+def _create_mock_get_landmark_by_id() -> Callable[[str], Dict[str, Any]]:
     """Create mock implementation for get_landmark_by_id method."""
 
     def mock_get_landmark_by_id(landmark_id: str) -> Dict[str, Any]:
@@ -220,7 +222,7 @@ def _get_mock_landmark_details_lp00009() -> Dict[str, Any]:
     }
 
 
-def _create_mock_get_landmark_buildings() -> Any:
+def _create_mock_get_landmark_buildings() -> Callable[[str], List[Dict[str, Any]]]:
     """Create mock implementation for get_landmark_buildings method."""
 
     def mock_get_landmark_buildings(landmark_id: str) -> List[Dict[str, Any]]:
@@ -270,7 +272,7 @@ def _get_mock_landmark_buildings_lp00009() -> List[Dict[str, Any]]:
     ]
 
 
-def _create_mock_get_landmark_pluto_data() -> Any:
+def _create_mock_get_landmark_pluto_data() -> Callable[[str], List[PlutoDataModel]]:
     """Create mock implementation for get_landmark_pluto_data method."""
 
     def mock_get_landmark_pluto_data(landmark_id: str) -> List[PlutoDataModel]:
