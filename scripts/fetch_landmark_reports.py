@@ -101,6 +101,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from nyc_landmarks.db.db_client import get_db_client
 from nyc_landmarks.models.landmark_models import LpcReportResponse
+from nyc_landmarks.utils.exceptions import WikipediaAPIError
 from nyc_landmarks.utils.file_utils import ensure_directory_exists
 from nyc_landmarks.utils.logger import get_logger
 
@@ -398,7 +399,7 @@ class LandmarkReportProcessor:
             metrics: Processing metrics to update
 
         Raises:
-            Exception: If this is a critical API failure
+            WikipediaAPIError: If this is a critical API failure
         """
         error_msg = (
             f"Error fetching Wikipedia articles for landmark {landmark_id}: {error}"
@@ -409,7 +410,9 @@ class LandmarkReportProcessor:
 
         # If this is a critical API failure (not just missing articles), raise the error
         if isinstance(error, requests.exceptions.ConnectionError):
-            raise Exception(f"Wikipedia API is unreachable: {error}")
+            raise WikipediaAPIError(
+                "Wikipedia API is unreachable", original_error=error
+            )
 
     def _log_wikipedia_summary(
         self, metrics: ProcessingMetrics, total_reports: int

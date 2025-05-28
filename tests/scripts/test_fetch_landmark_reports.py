@@ -12,6 +12,9 @@ import unittest
 from typing import Any
 from unittest.mock import Mock, patch
 
+import requests
+
+from nyc_landmarks.utils.exceptions import WikipediaAPIError
 from scripts.fetch_landmark_reports import (
     LandmarkReportProcessor,
     ProcessingMetrics,
@@ -491,6 +494,43 @@ class TestProcessingResult(unittest.TestCase):
         self.assertEqual(len(result.pdf_info), 1)
         self.assertIsInstance(result.metrics, ProcessingMetrics)
         self.assertEqual(len(result.output_files), 2)
+
+
+class TestWikipediaAPIError(unittest.TestCase):
+    """Test WikipediaAPIError functionality."""
+
+    def test_wikipedia_api_error_without_original_error(self):
+        """Test WikipediaAPIError without an original error."""
+        message = "Test error message"
+        error = WikipediaAPIError(message)
+
+        self.assertEqual(str(error), message)
+        self.assertEqual(error.message, message)
+        self.assertIsNone(error.original_error)
+        self.assertIsNone(error.__cause__)
+
+    def test_wikipedia_api_error_with_original_error(self):
+        """Test WikipediaAPIError with an original error."""
+        message = "Test error message"
+        original_error = requests.exceptions.ConnectionError("Connection failed")
+        error = WikipediaAPIError(message, original_error)
+
+        self.assertEqual(error.message, message)
+        self.assertEqual(error.original_error, original_error)
+        self.assertEqual(error.__cause__, original_error)
+        self.assertIn(message, str(error))
+        self.assertIn("Original error", str(error))
+
+    def test_wikipedia_api_error_repr(self):
+        """Test WikipediaAPIError string representation."""
+        message = "Test error"
+        original_error = ValueError("Original issue")
+        error = WikipediaAPIError(message, original_error)
+
+        repr_str = repr(error)
+        self.assertIn("WikipediaAPIError", repr_str)
+        self.assertIn(message, repr_str)
+        self.assertIn("original_error", repr_str)
 
 
 if __name__ == "__main__":
