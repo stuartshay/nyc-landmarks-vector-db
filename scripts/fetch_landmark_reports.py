@@ -339,6 +339,7 @@ class LandmarkReportProcessor:
                 f"No landmark ID found for report {index + 1}, skipping Wikipedia lookup"
             )
             report["wikipedia_article_count"] = 0
+            report["in_wikipedia_index"] = "No"
             return
 
         try:
@@ -346,6 +347,8 @@ class LandmarkReportProcessor:
                 landmark_id, index, total_reports
             )
             report["wikipedia_article_count"] = article_count
+            # Add new column to indicate if landmark exists in Wikipedia index
+            report["in_wikipedia_index"] = "Yes" if article_count > 0 else "No"
 
             if article_count > 0:
                 metrics.landmarks_with_wikipedia += 1
@@ -354,6 +357,7 @@ class LandmarkReportProcessor:
         except Exception as e:
             self._handle_wikipedia_fetch_error(e, landmark_id, metrics)
             report["wikipedia_article_count"] = 0
+            report["in_wikipedia_index"] = "No"
 
     def _fetch_wikipedia_articles_for_landmark(
         self, landmark_id: str, index: int, total_reports: int
@@ -532,6 +536,9 @@ class LandmarkReportProcessor:
             # Add Wikipedia article counts if requested
             if include_wikipedia:
                 reports = self.add_wikipedia_article_counts(reports, metrics)
+            else:
+                # Ensure in_wikipedia_index column is present for Excel export consistency
+                reports = self.ensure_wikipedia_index_column(reports)
 
             # Download sample PDFs if requested
             downloaded_paths = []
@@ -677,6 +684,24 @@ class LandmarkReportProcessor:
                 logger.warning(f"  {i}. {error}")
 
         logger.info("=" * 60)
+
+    def ensure_wikipedia_index_column(
+        self, reports: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Ensure all reports have the in_wikipedia_index column for Excel export.
+
+        Args:
+            reports: List of landmark report dictionaries
+
+        Returns:
+            Updated list of landmark reports with in_wikipedia_index column
+        """
+        for report in reports:
+            # If the column doesn't exist, set it to "No"
+            if "in_wikipedia_index" not in report:
+                report["in_wikipedia_index"] = "No"
+
+        return reports
 
 
 def create_argument_parser() -> argparse.ArgumentParser:
@@ -842,6 +867,11 @@ def _handle_page_request(
             metrics = ProcessingMetrics()
             metrics.wikipedia_enabled = True
             reports = processor.add_wikipedia_article_counts(reports, metrics)
+        else:
+            # Still ensure the wikipedia index column is present for consistency
+            reports = processor.ensure_wikipedia_index_column(reports)
+            metrics = ProcessingMetrics()
+            metrics.wikipedia_enabled = False
 
         pdf_info = processor.extract_pdf_urls(reports)
 
@@ -899,7 +929,10 @@ def _handle_full_pipeline(
                 format_excel_columns,
             )
 
-            # Adjust column widths to accommodate Wikipedia column
+            # Ensure all reports have the in_wikipedia_index column for Excel export
+            result.reports = processor.ensure_wikipedia_index_column(result.reports)
+
+            # Adjust column widths to accommodate Wikipedia columns
             column_widths = {
                 "A": 50,  # name
                 "B": 15,  # lpNumber
@@ -916,7 +949,8 @@ def _handle_full_pipeline(
                 "M": 10,  # zipCode
                 "N": 40,  # photoUrl
                 "O": 40,  # pdfReportUrl
-                "P": 20,  # wikipedia_article_count (new column)
+                "P": 20,  # wikipedia_article_count
+                "Q": 20,  # in_wikipedia_index (new column)
             }
             timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")
             excel_path = Path(args.output_dir) / f"fetch_landmark_{timestamp}.xlsx"
