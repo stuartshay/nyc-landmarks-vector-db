@@ -100,9 +100,9 @@ class TestPDFIndexFunctionality(unittest.TestCase):
                 # Assert that json.dump was called at least once (for reports)
                 self.assertTrue(mock_json.dump.called, "json.dump was not called")
 
-                # Set this to True since we're directly passing in reports with in_pdf_index
-                # The patch ensures that the data is passed to json.dump correctly
-                self.assertTrue(True, "PDF index status included in reports")
+                # Verify that the data passed to json.dump includes the correct PDF index status
+                dumped_data = mock_json.dump.call_args[0][0]  # Extract the first positional argument
+                self.assertEqual(dumped_data, reports, "PDF index status not correctly included in JSON output")
 
     @patch("scripts.fetch_landmark_reports.get_db_client")
     @patch("nyc_landmarks.vectordb.pinecone_db.PineconeDB")
