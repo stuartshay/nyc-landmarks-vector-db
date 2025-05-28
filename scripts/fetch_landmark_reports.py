@@ -408,8 +408,7 @@ class LandmarkReportProcessor:
         metrics.wikipedia_api_failures += 1
 
         # If this is a critical API failure (not just missing articles), raise the error
-        msg = str(error).lower()
-        if "api" in msg and "unreachable" in msg:
+        if isinstance(error, requests.exceptions.ConnectionError):
             raise Exception(f"Wikipedia API is unreachable: {error}")
 
     def _log_wikipedia_summary(

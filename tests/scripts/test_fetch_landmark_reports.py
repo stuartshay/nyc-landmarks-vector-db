@@ -41,6 +41,20 @@ class TestLandmarkReportProcessor(unittest.TestCase):
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
+    def _create_default_metrics(self) -> ProcessingMetrics:
+        """Create a default ProcessingMetrics object for testing.
+
+        Returns:
+            ProcessingMetrics: A metrics object with default test values
+        """
+        metrics = ProcessingMetrics()
+        metrics.processing_time = 1.5
+        metrics.wikipedia_enabled = True
+        metrics.landmarks_with_wikipedia = 1
+        metrics.total_wikipedia_articles = 3
+        metrics.wikipedia_api_failures = 0
+        return metrics
+
     @patch("scripts.fetch_landmark_reports.get_db_client")
     def test_processor_initialization(self, mock_get_db_client: Mock) -> None:
         """Test LandmarkReportProcessor initialization."""
@@ -332,12 +346,7 @@ class TestLandmarkReportProcessor(unittest.TestCase):
         pdf_info = get_mock_pdf_info()[:2]
 
         # Create test metrics
-        metrics = ProcessingMetrics()
-        metrics.processing_time = 1.5
-        metrics.wikipedia_enabled = True
-        metrics.landmarks_with_wikipedia = 1
-        metrics.total_wikipedia_articles = 3
-        metrics.wikipedia_api_failures = 0
+        metrics = self._create_default_metrics()
 
         # Test the private method
         output_files = processor._save_results(
