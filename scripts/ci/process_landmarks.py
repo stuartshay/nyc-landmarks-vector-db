@@ -1213,6 +1213,120 @@ def get_landmarks_to_process(
     return landmarks_to_process
 
 
+def fetch_landmarks_by_ids(landmark_ids: List[str]) -> List[Dict[str, Any]]:
+    """Fetch landmark data from database by IDs.
+
+    Args:
+        landmark_ids: List of landmark IDs to fetch
+
+    Returns:
+        List of landmark dictionaries
+    """
+    db_client = get_db_client()
+    landmarks = []
+
+    for landmark_id in landmark_ids:
+        try:
+            # Fetch landmark data by ID
+            landmark_data = db_client.get_landmark_by_id(landmark_id)
+            if landmark_data:
+                # Convert to dict for compatibility with existing pipeline methods
+                if hasattr(landmark_data, "model_dump"):
+                    landmarks.append(landmark_data.model_dump())
+                elif hasattr(landmark_data, "__dict__"):
+                    landmarks.append(landmark_data.__dict__)
+                else:
+                    landmarks.append(landmark_data)
+            else:
+                logger.warning(f"No landmark found for ID: {landmark_id}")
+        except Exception as e:
+            logger.error(f"Error fetching landmark {landmark_id}: {e}")
+
+    return landmarks
+
+
+def process_landmarks_parallel(
+    pipeline: LandmarkPipeline, landmarks: List[Dict[str, Any]], workers: int
+) -> Dict[str, Any]:
+    """Process landmarks in parallel using ThreadPoolExecutor.
+
+    Args:
+        pipeline: LandmarkPipeline instance
+        landmarks: List of landmark dictionaries
+        workers: Number of parallel workers
+
+    Returns:
+        Aggregated processing statistics
+    """
+    logger.info(
+        f"Processing {len(landmarks)} landmarks in parallel with {workers} workers"
+    )
+
+    results = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        future_to_landmark = {
+            executor.submit(pipeline.process_landmark_worker, landmark): landmark
+            for landmark in landmarks
+        }
+
+        for future in tqdm(
+            concurrent.futures.as_completed(future_to_landmark),
+            total=len(future_to_landmark),
+            desc="Processing landmarks",
+        ):
+            try:
+                result = future.result()
+                results.append(result)
+            except Exception as e:
+                landmark = future_to_landmark[future]
+                landmark_id = getattr(landmark, "lpNumber", "unknown")
+                logger.error(f"Worker exception for landmark {landmark_id}: {str(e)}")
+                results.append(
+                    {
+                        "landmark_id": landmark_id,
+                        "status": "failed",
+                        "errors": [str(e)],
+                        "stats": {},
+                    }
+                )
+
+    return pipeline._aggregate_results(results)
+
+
+def process_landmarks_sequential(
+    pipeline: LandmarkPipeline, landmarks: List[Dict[str, Any]]
+) -> Dict[str, Any]:
+    """Process landmarks sequentially using existing pipeline methods.
+
+    Args:
+        pipeline: LandmarkPipeline instance
+        landmarks: List of landmark dictionaries
+
+    Returns:
+        Processing statistics
+    """
+    logger.info(f"Processing {len(landmarks)} landmarks sequentially")
+
+    # landmarks are already dictionaries, no need to convert
+
+    # Download PDFs
+    pdf_items = pipeline.download_pdfs(landmarks)
+
+    # Extract text
+    text_items = pipeline.extract_text(pdf_items)
+
+    # Chunk text
+    chunked_items = pipeline.chunk_texts(text_items)
+
+    # Generate embeddings
+    items_with_embeddings = pipeline.generate_embeddings(chunked_items)
+
+    # Store in vector database
+    pipeline.store_in_vector_db(items_with_embeddings)
+
+    return pipeline.stats
+
+
 def process_landmarks_from_ids(
     landmark_ids: List[str],
     delete_existing: bool,
@@ -1234,99 +1348,19 @@ def process_landmarks_from_ids(
     """
     pipeline = LandmarkPipeline(api_key)
 
-    # Convert landmark IDs to landmark objects by fetching them
-    db_client = get_db_client()
-    landmarks = []
-
-    for landmark_id in landmark_ids:
-        try:
-            # Fetch landmark data by ID
-            landmark_data = db_client.get_landmark_by_id(landmark_id)
-            if landmark_data:
-                # Convert to dict for compatibility with existing pipeline methods
-                if hasattr(landmark_data, "model_dump"):
-                    landmarks.append(landmark_data.model_dump())
-                elif hasattr(landmark_data, "__dict__"):
-                    landmarks.append(landmark_data.__dict__)
-                else:
-                    landmarks.append(landmark_data)
-            else:
-                logger.warning(f"No landmark found for ID: {landmark_id}")
-        except Exception as e:
-            logger.error(f"Error fetching landmark {landmark_id}: {e}")
+    # Fetch landmarks from database
+    landmarks = fetch_landmarks_by_ids(landmark_ids)
 
     if not landmarks:
         return {"error": "No valid landmarks found"}
 
     start_time = time.time()
 
+    # Process landmarks based on mode
     if use_parallel:
-        logger.info(
-            f"Processing {len(landmarks)} landmarks in parallel with {workers} workers"
-        )
-        # Use ThreadPoolExecutor instead of ProcessPoolExecutor to avoid pickle issues
-        # with network connections (SSL sockets) in the pipeline components
-        results = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
-            future_to_landmark = {
-                executor.submit(pipeline.process_landmark_worker, landmark): landmark
-                for landmark in landmarks
-            }
-
-            for future in tqdm(
-                concurrent.futures.as_completed(future_to_landmark),
-                total=len(future_to_landmark),
-                desc="Processing landmarks",
-            ):
-                try:
-                    result = future.result()
-                    results.append(result)
-                except Exception as e:
-                    landmark = future_to_landmark[future]
-                    landmark_id = getattr(landmark, "lpNumber", "unknown")
-                    logger.error(
-                        f"Worker exception for landmark {landmark_id}: {str(e)}"
-                    )
-                    results.append(
-                        {
-                            "landmark_id": landmark_id,
-                            "status": "failed",
-                            "errors": [str(e)],
-                            "stats": {},
-                        }
-                    )
-
-        # Aggregate results
-        stats = pipeline._aggregate_results(results)
+        stats = process_landmarks_parallel(pipeline, landmarks, workers)
     else:
-        logger.info(f"Processing {len(landmarks)} landmarks sequentially")
-        # For sequential processing, we can use the existing pipeline methods
-        # Convert landmarks to the format expected by the existing methods
-        landmark_dicts = []
-        for landmark in landmarks:
-            if hasattr(landmark, "model_dump"):
-                landmark_dicts.append(landmark.model_dump())
-            elif hasattr(landmark, "__dict__"):
-                landmark_dicts.append(landmark.__dict__)
-            else:
-                landmark_dicts.append(landmark)
-
-        # Download PDFs
-        pdf_items = pipeline.download_pdfs(landmark_dicts)
-
-        # Extract text
-        text_items = pipeline.extract_text(pdf_items)
-
-        # Chunk text
-        chunked_items = pipeline.chunk_texts(text_items)
-
-        # Generate embeddings
-        items_with_embeddings = pipeline.generate_embeddings(chunked_items)
-
-        # Store in vector database
-        pipeline.store_in_vector_db(items_with_embeddings)
-
-        stats = pipeline.stats
+        stats = process_landmarks_sequential(pipeline, landmarks)
 
     elapsed_time = time.time() - start_time
     stats["elapsed_time"] = f"{elapsed_time:.2f} seconds"
@@ -1371,6 +1405,117 @@ def print_results(
         return 0
 
 
+def run_legacy_mode(args: argparse.Namespace, api_key: Optional[str]) -> None:
+    """Run the legacy page range processing mode."""
+    logger.info(
+        f"Running in legacy mode: processing pages {args.start_page} to {args.end_page}"
+    )
+
+    # Initialize pipeline
+    pipeline = LandmarkPipeline(api_key)
+
+    try:
+        # Validate page range
+        if args.start_page > args.end_page:
+            raise ValueError("Start page cannot be greater than end page.")
+
+        # Run in appropriate mode
+        if args.parallel:
+            logger.info(
+                f"Using parallel processing mode for pages {args.start_page}-{args.end_page}"
+            )
+            stats = pipeline.run_parallel(
+                start_page=args.start_page,
+                end_page=args.end_page,
+                page_size=args.page_size,
+                download_limit=args.limit,
+                workers=args.workers,
+                recreate_index=args.recreate_index,
+                drop_index=False,
+            )
+        else:
+            logger.info(
+                f"Using sequential processing mode for pages {args.start_page}-{args.end_page}"
+            )
+            stats = pipeline.run(
+                start_page=args.start_page,
+                end_page=args.end_page,
+                page_size=args.page_size,
+                download_limit=args.limit,
+                recreate_index=args.recreate_index,
+                drop_index=False,
+            )
+
+        # Handle errors
+        if "error" in stats:
+            print(f"\nError: {stats['error']}")
+            sys.exit(1)
+
+        # Print results for legacy mode
+        print_legacy_results(stats)
+
+    except Exception as e:
+        print(f"\nPipeline Execution Error: {str(e)}")
+        logger.error(f"Pipeline execution failed: {e}")
+        sys.exit(1)
+
+
+def print_legacy_results(stats: dict) -> None:
+    """Print results for legacy mode processing."""
+    print("\n===== LANDMARKS PROCESSING RESULTS =====")
+    if "landmarks_fetched" in stats:
+        print(f"Landmarks fetched: {stats['landmarks_fetched']}")
+        print(f"PDFs downloaded: {stats.get('pdfs_downloaded', 0)}")
+        print(f"PDFs processed: {stats.get('pdfs_processed', 0)}")
+        print(f"Text chunks created: {stats.get('chunks_created', 0)}")
+        print(f"Embeddings generated: {stats.get('embeddings_generated', 0)}")
+        print(f"Vectors stored: {stats.get('vectors_stored', 0)}")
+        print(f"Processing time: {stats.get('elapsed_time', 'N/A')}")
+
+    if stats.get("errors") and len(stats["errors"]) > 0:
+        print(f"\nErrors: {len(stats['errors'])}")
+        print("Check the logs for details")
+        if stats.get("vectors_stored", 0) == 0:
+            print("\nError: No landmarks were successfully processed")
+            sys.exit(1)
+        else:
+            print("\nWarning: Some landmarks failed to process")
+    else:
+        print("\nSuccess: All landmarks successfully processed")
+
+
+def run_unified_mode(args: argparse.Namespace, api_key: Optional[str]) -> None:
+    """Run the new unified landmark ID processing mode."""
+    # Get landmarks to process
+    landmarks_to_process = get_landmarks_to_process(
+        args.landmark_ids, args.limit, args.page, args.all, args.page_size
+    )
+    if not landmarks_to_process:
+        logger.error("No landmarks to process")
+        sys.exit(1)
+
+    # Process landmarks and time the execution
+    start_time = time.time()
+    stats = process_landmarks_from_ids(
+        landmarks_to_process,
+        args.delete_existing or args.recreate_index,  # Support both flags
+        args.parallel,
+        args.workers,
+        api_key,
+    )
+    elapsed_time = time.time() - start_time
+
+    if "error" in stats:
+        print(f"\nError: {stats['error']}")
+        sys.exit(1)
+
+    stats["elapsed_time"] = f"{elapsed_time:.2f} seconds"
+
+    # Print results and exit
+    exit_code = print_results(len(landmarks_to_process), stats)
+    sys.exit(exit_code)
+
+
 def main() -> None:
     """Main entry point for the script."""
     # Parse arguments and set up logging
@@ -1382,108 +1527,9 @@ def main() -> None:
 
     # Check if we're in legacy mode (GitHub Actions compatibility)
     if args.start_page is not None and args.end_page is not None:
-        # Legacy mode: use the original page range processing
-        logger.info(
-            f"Running in legacy mode: processing pages {args.start_page} to {args.end_page}"
-        )
-
-        # Initialize pipeline
-        pipeline = LandmarkPipeline(api_key)
-
-        try:
-            # Run in appropriate mode (original logic)
-            if args.parallel:
-                if args.start_page > args.end_page:
-                    raise ValueError("Start page cannot be greater than end page.")
-                logger.info(
-                    f"Using parallel processing mode for pages {args.start_page}-{args.end_page}"
-                )
-                stats = pipeline.run_parallel(
-                    start_page=args.start_page,
-                    end_page=args.end_page,
-                    page_size=args.page_size,
-                    download_limit=args.limit,
-                    workers=args.workers,
-                    recreate_index=args.recreate_index,
-                    drop_index=False,
-                )
-            else:
-                if args.start_page > args.end_page:
-                    raise ValueError("Start page cannot be greater than end page.")
-                logger.info(
-                    f"Using sequential processing mode for pages {args.start_page}-{args.end_page}"
-                )
-                stats = pipeline.run(
-                    start_page=args.start_page,
-                    end_page=args.end_page,
-                    page_size=args.page_size,
-                    download_limit=args.limit,
-                    recreate_index=args.recreate_index,
-                    drop_index=False,
-                )
-
-            # Print summary
-            if "error" in stats:
-                print(f"\nError: {stats['error']}")
-                sys.exit(1)
-
-            # Print results for legacy mode
-            print("\n===== LANDMARKS PROCESSING RESULTS =====")
-            if "landmarks_fetched" in stats:
-                print(f"Landmarks fetched: {stats['landmarks_fetched']}")
-                print(f"PDFs downloaded: {stats.get('pdfs_downloaded', 0)}")
-                print(f"PDFs processed: {stats.get('pdfs_processed', 0)}")
-                print(f"Text chunks created: {stats.get('chunks_created', 0)}")
-                print(f"Embeddings generated: {stats.get('embeddings_generated', 0)}")
-                print(f"Vectors stored: {stats.get('vectors_stored', 0)}")
-                print(f"Processing time: {stats.get('elapsed_time', 'N/A')}")
-
-            if stats.get("errors") and len(stats["errors"]) > 0:
-                print(f"\nErrors: {len(stats['errors'])}")
-                print("Check the logs for details")
-                if stats.get("vectors_stored", 0) == 0:
-                    print("\nError: No landmarks were successfully processed")
-                    sys.exit(1)
-                else:
-                    print("\nWarning: Some landmarks failed to process")
-            else:
-                print("\nSuccess: All landmarks successfully processed")
-
-        except Exception as e:
-            print(f"\nPipeline Execution Error: {str(e)}")
-            logger.error(f"Pipeline execution failed: {e}")
-            sys.exit(1)
-
+        run_legacy_mode(args, api_key)
     else:
-        # New unified mode: use landmark ID processing
-        # Get landmarks to process
-        landmarks_to_process = get_landmarks_to_process(
-            args.landmark_ids, args.limit, args.page, args.all, args.page_size
-        )
-        if not landmarks_to_process:
-            logger.error("No landmarks to process")
-            sys.exit(1)
-
-        # Process landmarks and time the execution
-        start_time = time.time()
-        stats = process_landmarks_from_ids(
-            landmarks_to_process,
-            args.delete_existing or args.recreate_index,  # Support both flags
-            args.parallel,
-            args.workers,
-            api_key,
-        )
-        elapsed_time = time.time() - start_time
-
-        if "error" in stats:
-            print(f"\nError: {stats['error']}")
-            sys.exit(1)
-
-        stats["elapsed_time"] = f"{elapsed_time:.2f} seconds"
-
-        # Print results and exit
-        exit_code = print_results(len(landmarks_to_process), stats)
-        sys.exit(exit_code)
+        run_unified_mode(args, api_key)
 
 
 if __name__ == "__main__":
