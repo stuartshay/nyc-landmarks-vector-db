@@ -147,6 +147,7 @@ jobs:
           COREDATASTORE_API_KEY: ${{ secrets.COREDATASTORE_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           PINECONE_ENVIRONMENT: ${{ secrets.PINECONE_ENVIRONMENT }}
+        shell: bash
         run: |
           echo "Starting landmark processing for pages ${{ matrix.start_page }} to ${{ matrix.end_page }}..."
 
