@@ -8,9 +8,12 @@ including error handling, edge cases, and integration with other features.
 import unittest
 from unittest.mock import Mock, patch
 
+import pytest
+
 from scripts.fetch_landmark_reports import LandmarkReportProcessor, ProcessingMetrics
 
 
+@pytest.mark.integration
 class TestPDFIndexFunctionality(unittest.TestCase):
     """Comprehensive tests for PDF index functionality."""
 
