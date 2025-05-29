@@ -1082,6 +1082,23 @@ def parse_arguments() -> argparse.Namespace:
         action="store_true",
         help="Delete existing PDF vectors before processing",
     )
+
+    # Legacy arguments for GitHub Actions compatibility
+    parser.add_argument(
+        "--start-page",
+        type=int,
+        help="Starting page number (legacy mode for batch processing)",
+    )
+    parser.add_argument(
+        "--end-page",
+        type=int,
+        help="Ending page number (legacy mode for batch processing)",
+    )
+    parser.add_argument(
+        "--recreate-index",
+        action="store_true",
+        help="Recreate the Pinecone index (legacy mode, equivalent to --delete-existing)",
+    )
     parser.add_argument(
         "--limit",
         type=int,
@@ -1224,7 +1241,13 @@ def process_landmarks_from_ids(
             # Fetch landmark data by ID
             landmark_data = db_client.get_landmark_by_id(landmark_id)
             if landmark_data:
-                landmarks.append(landmark_data)
+                # Convert to dict for compatibility with existing pipeline methods
+                if hasattr(landmark_data, "model_dump"):
+                    landmarks.append(landmark_data.model_dump())
+                elif hasattr(landmark_data, "__dict__"):
+                    landmarks.append(landmark_data.__dict__)
+                else:
+                    landmarks.append(landmark_data)
             else:
                 logger.warning(f"No landmark found for ID: {landmark_id}")
         except Exception as e:
@@ -1353,34 +1376,110 @@ def main() -> None:
     # Load API key from environment variable if not provided as argument
     api_key = args.api_key or os.environ.get("COREDATASTORE_API_KEY")
 
-    # Get landmarks to process
-    landmarks_to_process = get_landmarks_to_process(
-        args.landmark_ids, args.limit, args.page, args.all, args.page_size
-    )
-    if not landmarks_to_process:
-        logger.error("No landmarks to process")
-        sys.exit(1)
+    # Check if we're in legacy mode (GitHub Actions compatibility)
+    if args.start_page is not None and args.end_page is not None:
+        # Legacy mode: use the original page range processing
+        logger.info(
+            f"Running in legacy mode: processing pages {args.start_page} to {args.end_page}"
+        )
 
-    # Process landmarks and time the execution
-    start_time = time.time()
-    stats = process_landmarks_from_ids(
-        landmarks_to_process,
-        args.delete_existing,
-        args.parallel,
-        args.workers,
-        api_key,
-    )
-    elapsed_time = time.time() - start_time
+        # Initialize pipeline
+        pipeline = LandmarkPipeline(api_key)
 
-    if "error" in stats:
-        print(f"\nError: {stats['error']}")
-        sys.exit(1)
+        try:
+            # Run in appropriate mode (original logic)
+            if args.parallel:
+                if args.start_page > args.end_page:
+                    raise ValueError("Start page cannot be greater than end page.")
+                logger.info(
+                    f"Using parallel processing mode for pages {args.start_page}-{args.end_page}"
+                )
+                stats = pipeline.run_parallel(
+                    start_page=args.start_page,
+                    end_page=args.end_page,
+                    page_size=args.page_size,
+                    download_limit=args.limit,
+                    workers=args.workers,
+                    recreate_index=args.recreate_index,
+                    drop_index=False,
+                )
+            else:
+                if args.start_page > args.end_page:
+                    raise ValueError("Start page cannot be greater than end page.")
+                logger.info(
+                    f"Using sequential processing mode for pages {args.start_page}-{args.end_page}"
+                )
+                stats = pipeline.run(
+                    start_page=args.start_page,
+                    end_page=args.end_page,
+                    page_size=args.page_size,
+                    download_limit=args.limit,
+                    recreate_index=args.recreate_index,
+                    drop_index=False,
+                )
 
-    stats["elapsed_time"] = f"{elapsed_time:.2f} seconds"
+            # Print summary
+            if "error" in stats:
+                print(f"\nError: {stats['error']}")
+                sys.exit(1)
 
-    # Print results and exit
-    exit_code = print_results(len(landmarks_to_process), stats)
-    sys.exit(exit_code)
+            # Print results for legacy mode
+            print("\n===== LANDMARKS PROCESSING RESULTS =====")
+            if "landmarks_fetched" in stats:
+                print(f"Landmarks fetched: {stats['landmarks_fetched']}")
+                print(f"PDFs downloaded: {stats.get('pdfs_downloaded', 0)}")
+                print(f"PDFs processed: {stats.get('pdfs_processed', 0)}")
+                print(f"Text chunks created: {stats.get('chunks_created', 0)}")
+                print(f"Embeddings generated: {stats.get('embeddings_generated', 0)}")
+                print(f"Vectors stored: {stats.get('vectors_stored', 0)}")
+                print(f"Processing time: {stats.get('elapsed_time', 'N/A')}")
+
+            if stats.get("errors") and len(stats["errors"]) > 0:
+                print(f"\nErrors: {len(stats['errors'])}")
+                print("Check the logs for details")
+                if stats.get("vectors_stored", 0) == 0:
+                    print("\nError: No landmarks were successfully processed")
+                    sys.exit(1)
+                else:
+                    print("\nWarning: Some landmarks failed to process")
+            else:
+                print("\nSuccess: All landmarks successfully processed")
+
+        except Exception as e:
+            print(f"\nPipeline Execution Error: {str(e)}")
+            logger.error(f"Pipeline execution failed: {e}")
+            sys.exit(1)
+
+    else:
+        # New unified mode: use landmark ID processing
+        # Get landmarks to process
+        landmarks_to_process = get_landmarks_to_process(
+            args.landmark_ids, args.limit, args.page, args.all, args.page_size
+        )
+        if not landmarks_to_process:
+            logger.error("No landmarks to process")
+            sys.exit(1)
+
+        # Process landmarks and time the execution
+        start_time = time.time()
+        stats = process_landmarks_from_ids(
+            landmarks_to_process,
+            args.delete_existing or args.recreate_index,  # Support both flags
+            args.parallel,
+            args.workers,
+            api_key,
+        )
+        elapsed_time = time.time() - start_time
+
+        if "error" in stats:
+            print(f"\nError: {stats['error']}")
+            sys.exit(1)
+
+        stats["elapsed_time"] = f"{elapsed_time:.2f} seconds"
+
+        # Print results and exit
+        exit_code = print_results(len(landmarks_to_process), stats)
+        sys.exit(exit_code)
 
 
 if __name__ == "__main__":
