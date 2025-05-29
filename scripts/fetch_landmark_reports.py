@@ -65,7 +65,8 @@ Advanced Features:
     python scripts/fetch_landmark_reports.py --include-pdf-index --limit 100
 
     # Combine Wikipedia data and PDF index status
-    python scripts/fetch_landmark_reports.py --include-wikipedia --include-pdf-index --limit 50
+    python scripts/fetch_landmark_reports.py --include-wikipedia --include-pdf-index --limit 50 --export-excel
+    python scripts/fetch_landmark_reports.py --include-wikipedia --include-pdf-index --export-excel
 
 Excel Export Option:
     # Export results to Excel (XLSX) format

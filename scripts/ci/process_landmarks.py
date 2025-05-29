@@ -9,13 +9,16 @@ This script implements a processing pipeline for NYC landmarks data:
 5. Generates embeddings from text chunks
 6. Stores embeddings in Pinecone vector database with enhanced metadata
 
-Usage:
-  python scripts/ci/process_landmarks.py --pages 2 --download
+Examples to Test:
+python scripts/ci/process_landmarks.py --page 2 --limit 5 --verbose
+python scripts/ci/process_landmarks.py --landmark-ids LP-00079 --verbose
+python scripts/ci/process_landmarks.py --all --verbose
 """
 
 import argparse
 import concurrent.futures
 import json
+import logging
 import os
 import sys
 import time
@@ -770,10 +773,12 @@ class LandmarkPipeline:
             return {"error": "No landmarks found"}
 
         # Step 2: Process landmarks in parallel
+        # Use ThreadPoolExecutor instead of ProcessPoolExecutor to avoid pickle issues
+        # with network connections (SSL sockets) in the pipeline components
         logger.info(f"Processing {len(landmarks)} landmarks with {workers} workers")
 
         results: List[Dict[str, Any]] = []
-        with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
             future_to_landmark = {
                 executor.submit(self.process_landmark_worker, landmark): landmark
                 for landmark in landmarks
@@ -953,37 +958,153 @@ class LandmarkPipeline:
         return self.stats
 
 
-def main() -> None:
-    """Main entry point with argument parsing."""
-    parser = argparse.ArgumentParser(description="NYC Landmarks Pipeline")
+def get_all_landmark_ids(
+    limit: Optional[int] = None,
+    page: int = 1,
+    page_size: int = 100,
+    fetch_all_pages: bool = False,
+) -> List[str]:
+    """
+    Fetch landmark IDs using the `get_lpc_reports` method from `db_client`.
+
+    Args:
+        limit: Maximum number of landmark IDs to return (optional).
+        page: Page number to fetch (starting from 1) if fetch_all_pages is False.
+        page_size: Number of landmarks per page.
+        fetch_all_pages: Whether to fetch all pages instead of just the specified page.
+
+    Returns:
+        List of landmark IDs.
+    """
+    db_client = get_db_client()
+
+    try:
+        all_landmark_ids = []
+
+        if fetch_all_pages:
+            # Get total record count to determine how many pages to fetch
+            total_records = db_client.get_total_record_count()
+            total_pages = (
+                total_records + page_size - 1
+            ) // page_size  # Ceiling division
+
+            logger.info(
+                f"Fetching all {total_records} landmarks across {total_pages} pages with page size {page_size}..."
+            )
+
+            # Fetch landmarks page by page
+            for current_page in range(1, total_pages + 1):
+                response = db_client.get_lpc_reports(page=current_page, limit=page_size)
+
+                if not response or not response.results:
+                    logger.warning(
+                        f"No landmarks found on page {current_page} with page size {page_size}."
+                    )
+                    continue
+
+                # Extract only the IDs (lpNumber) from the landmarks on this page
+                page_landmark_ids = [
+                    report.lpNumber for report in response.results if report.lpNumber
+                ]
+                all_landmark_ids.extend(page_landmark_ids)
+
+                logger.info(
+                    f"Fetched {len(page_landmark_ids)} landmark IDs from page {current_page}/{total_pages}."
+                )
+
+                # If we've reached the limit, stop fetching more pages
+                if limit is not None and len(all_landmark_ids) >= limit:
+                    all_landmark_ids = all_landmark_ids[:limit]
+                    logger.info(f"Reached limit of {limit} landmarks. Stopping fetch.")
+                    break
+
+            logger.info(f"Total landmarks fetched: {len(all_landmark_ids)}")
+
+        else:
+            # Fetch just the specified page
+            response = db_client.get_lpc_reports(page=page, limit=page_size)
+
+            if not response or not response.results:
+                logger.warning(
+                    f"No landmarks found on page {page} with page size {page_size}."
+                )
+                return []
+
+            # Extract only the IDs (lpNumber) from the landmarks
+            all_landmark_ids = [
+                report.lpNumber for report in response.results if report.lpNumber
+            ]
+
+            # Apply additional limit if specified
+            if limit is not None and limit < len(all_landmark_ids):
+                all_landmark_ids = all_landmark_ids[:limit]
+
+            logger.info(
+                f"Fetched {len(all_landmark_ids)} landmark IDs from page {page}."
+            )
+
+        return all_landmark_ids
+
+    except Exception as e:
+        logger.error(f"Error fetching landmark IDs: {e}")
+        return []
+
+
+def parse_arguments() -> argparse.Namespace:
+    """Parse command line arguments.
+
+    Returns:
+        Parsed command line arguments
+    """
+    parser = argparse.ArgumentParser(description="Process NYC landmarks PDF data")
+    parser.add_argument(
+        "--landmark-ids",
+        type=str,
+        help="Comma-separated list of landmark IDs to process",
+    )
     parser.add_argument(
         "--page-size",
         type=int,
         default=100,
-        help="Number of landmarks per API page fetch (default: 100)",
+        help="Number of landmarks to fetch per API request (default: 100)",
     )
+    parser.add_argument(
+        "--parallel",
+        action="store_true",
+        help="Process landmarks in parallel",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=4,
+        help="Number of parallel workers (only used with --parallel)",
+    )
+    parser.add_argument(
+        "--delete-existing",
+        action="store_true",
+        help="Delete existing PDF vectors before processing",
+    )
+
+    # Legacy arguments for GitHub Actions compatibility
     parser.add_argument(
         "--start-page",
         type=int,
-        required=True,
-        help="Starting page number to fetch (required)",
+        help="Starting page number (legacy mode for batch processing)",
     )
     parser.add_argument(
         "--end-page",
         type=int,
-        required=True,
-        help="Ending page number to fetch (required)",
+        help="Ending page number (legacy mode for batch processing)",
     )
-    # --pages argument removed
     parser.add_argument(
-        "--download",
+        "--recreate-index",
         action="store_true",
-        help="Download PDFs (Note: --limit might behave unexpectedly in parallel mode)",
+        help="Recreate the Pinecone index (legacy mode, equivalent to --delete-existing)",
     )
     parser.add_argument(
         "--limit",
         type=int,
-        help="Limit number of PDFs to download (Use with caution in parallel mode)",
+        help="Maximum number of landmarks to process (only used when no landmark IDs specified)",
     )
     parser.add_argument(
         "--api-key",
@@ -991,45 +1112,315 @@ def main() -> None:
         help="CoreDataStore API key (optional, uses env var if not set)",
     )
 
-    # Vector database management options
-    parser.add_argument(
-        "--recreate-index",
+    # Create mutually exclusive group for processing mode
+    mode_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument(
+        "--all",
         action="store_true",
-        help="Drop and recreate the Pinecone index before processing",
+        help="Process all available landmarks in the database (cannot be used with --page)",
     )
-    parser.add_argument(
-        "--drop-index",
-        action="store_true",
-        help="Drop the Pinecone index without recreating it",
+    mode_group.add_argument(
+        "--page",
+        type=int,
+        default=1,
+        help="Page number to start fetching landmarks from (default: 1, cannot be used with --all)",
     )
 
-    # Parallel processing options
     parser.add_argument(
-        "--parallel", action="store_true", help="Use parallel processing mode"
-    )
-    parser.add_argument(
-        "--workers",
-        type=int,
-        default=4,
-        help="Number of worker processes for parallel processing",
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Enable verbose logging",
     )
 
     args = parser.parse_args()
 
-    # Load API key from environment variable if not provided as argument
-    api_key = args.api_key or os.environ.get("COREDATASTORE_API_KEY")
+    # Additional validation: if someone uses --page with default value and --all
+    if args.all and args.page != 1:
+        parser.error(
+            "Argument --all cannot be used with --page (use either --all or --page N, not both)"
+        )
 
-    # Set download limit based on arguments
-    download_limit = args.limit if args.download else 0
+    return args
+
+
+def setup_logging(verbose: bool) -> None:
+    """Configure logging based on verbosity level.
+
+    Args:
+        verbose: Whether to enable verbose (INFO) logging
+    """
+    if verbose:
+        logging.getLogger().setLevel(logging.INFO)
+    else:
+        logging.getLogger().setLevel(logging.WARNING)
+
+
+def get_landmarks_to_process(
+    landmark_ids: Optional[str],
+    limit: Optional[int],
+    page: int = 1,
+    process_all: bool = False,
+    page_size: int = 100,
+) -> List[str]:
+    """Determine which landmarks to process.
+
+    Args:
+        landmark_ids: Comma-separated list of landmark IDs to process
+        limit: Maximum number of landmarks to process
+        page: Page number to start fetching landmarks from (not used if process_all is True)
+        process_all: Whether to process all available landmarks in the database
+        page_size: Number of landmarks to fetch per API request
+
+    Returns:
+        List of landmark IDs to process
+    """
+    if landmark_ids:
+        # Process specific landmarks
+        landmarks_to_process = [lid.strip() for lid in landmark_ids.split(",")]
+        logger.info(f"Will process {len(landmarks_to_process)} specified landmarks")
+    elif process_all:
+        # Process all available landmarks
+        db_client = get_db_client()
+        total_records = db_client.get_total_record_count()
+        logger.info(f"Retrieved total record count: {total_records}")
+
+        # If limit is provided, use the smaller of limit or total_records
+        effective_limit = (
+            min(limit, total_records) if limit is not None else total_records
+        )
+        logger.info(
+            f"Will process up to {effective_limit} landmarks of {total_records} total"
+        )
+
+        # When process_all is True, we always start from page 1 (due to mutual exclusivity)
+        # Set fetch_all_pages=True to fetch all pages of landmark IDs
+        landmarks_to_process = get_all_landmark_ids(
+            limit=effective_limit, page=1, page_size=page_size, fetch_all_pages=True
+        )
+        logger.info(
+            f"Will process {len(landmarks_to_process)} landmarks from all available pages"
+        )
+    else:
+        # Fetch landmark IDs with the specified limit, page, and page_size
+        landmarks_to_process = get_all_landmark_ids(
+            limit=limit, page=page, page_size=page_size
+        )
+        logger.info(
+            f"Will process {len(landmarks_to_process)} landmarks (page {page}, page_size {page_size})"
+        )
+
+    return landmarks_to_process
+
+
+def fetch_landmarks_by_ids(landmark_ids: List[str]) -> List[Dict[str, Any]]:
+    """Fetch landmark data from database by IDs.
+
+    Args:
+        landmark_ids: List of landmark IDs to fetch
+
+    Returns:
+        List of landmark dictionaries
+    """
+    db_client = get_db_client()
+    landmarks = []
+
+    for landmark_id in landmark_ids:
+        try:
+            # Fetch landmark data by ID
+            landmark_data = db_client.get_landmark_by_id(landmark_id)
+            if landmark_data:
+                # Convert to dict for compatibility with existing pipeline methods
+                if hasattr(landmark_data, "model_dump"):
+                    landmarks.append(landmark_data.model_dump())
+                elif hasattr(landmark_data, "__dict__"):
+                    landmarks.append(landmark_data.__dict__)
+                else:
+                    landmarks.append(landmark_data)
+            else:
+                logger.warning(f"No landmark found for ID: {landmark_id}")
+        except Exception as e:
+            logger.error(f"Error fetching landmark {landmark_id}: {e}")
+
+    return landmarks
+
+
+def process_landmarks_parallel(
+    pipeline: LandmarkPipeline, landmarks: List[Dict[str, Any]], workers: int
+) -> Dict[str, Any]:
+    """Process landmarks in parallel using ThreadPoolExecutor.
+
+    Args:
+        pipeline: LandmarkPipeline instance
+        landmarks: List of landmark dictionaries
+        workers: Number of parallel workers
+
+    Returns:
+        Aggregated processing statistics
+    """
+    logger.info(
+        f"Processing {len(landmarks)} landmarks in parallel with {workers} workers"
+    )
+
+    results = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        future_to_landmark = {
+            executor.submit(pipeline.process_landmark_worker, landmark): landmark
+            for landmark in landmarks
+        }
+
+        for future in tqdm(
+            concurrent.futures.as_completed(future_to_landmark),
+            total=len(future_to_landmark),
+            desc="Processing landmarks",
+        ):
+            try:
+                result = future.result()
+                results.append(result)
+            except Exception as e:
+                landmark = future_to_landmark[future]
+                landmark_id = getattr(landmark, "lpNumber", "unknown")
+                logger.error(f"Worker exception for landmark {landmark_id}: {str(e)}")
+                results.append(
+                    {
+                        "landmark_id": landmark_id,
+                        "status": "failed",
+                        "errors": [str(e)],
+                        "stats": {},
+                    }
+                )
+
+    return pipeline._aggregate_results(results)
+
+
+def process_landmarks_sequential(
+    pipeline: LandmarkPipeline, landmarks: List[Dict[str, Any]]
+) -> Dict[str, Any]:
+    """Process landmarks sequentially using existing pipeline methods.
+
+    Args:
+        pipeline: LandmarkPipeline instance
+        landmarks: List of landmark dictionaries
+
+    Returns:
+        Processing statistics
+    """
+    logger.info(f"Processing {len(landmarks)} landmarks sequentially")
+
+    # landmarks are already dictionaries, no need to convert
+
+    # Download PDFs
+    pdf_items = pipeline.download_pdfs(landmarks)
+
+    # Extract text
+    text_items = pipeline.extract_text(pdf_items)
+
+    # Chunk text
+    chunked_items = pipeline.chunk_texts(text_items)
+
+    # Generate embeddings
+    items_with_embeddings = pipeline.generate_embeddings(chunked_items)
+
+    # Store in vector database
+    pipeline.store_in_vector_db(items_with_embeddings)
+
+    return pipeline.stats
+
+
+def process_landmarks_from_ids(
+    landmark_ids: List[str],
+    delete_existing: bool,
+    use_parallel: bool,
+    workers: int,
+    api_key: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Process landmarks from a list of IDs.
+
+    Args:
+        landmark_ids: List of landmark IDs to process
+        delete_existing: Whether to delete existing vectors
+        use_parallel: Whether to process landmarks in parallel
+        workers: Number of parallel workers
+        api_key: Optional API key
+
+    Returns:
+        Results of processing each landmark
+    """
+    pipeline = LandmarkPipeline(api_key)
+
+    # Fetch landmarks from database
+    landmarks = fetch_landmarks_by_ids(landmark_ids)
+
+    if not landmarks:
+        return {"error": "No valid landmarks found"}
+
+    start_time = time.time()
+
+    # Process landmarks based on mode
+    if use_parallel:
+        stats = process_landmarks_parallel(pipeline, landmarks, workers)
+    else:
+        stats = process_landmarks_sequential(pipeline, landmarks)
+
+    elapsed_time = time.time() - start_time
+    stats["elapsed_time"] = f"{elapsed_time:.2f} seconds"
+
+    return stats
+
+
+def print_results(
+    landmarks_count: int,
+    stats: Dict[str, Any],
+) -> int:
+    """Print results and determine exit code.
+
+    Args:
+        landmarks_count: Total number of landmarks processed
+        stats: Processing statistics
+
+    Returns:
+        Exit code (0 for success/partial success, 1 for complete failure)
+    """
+    print("\n===== LANDMARKS PROCESSING RESULTS =====")
+    print(f"Total landmarks processed: {landmarks_count}")
+    print(f"Landmarks fetched: {stats.get('landmarks_fetched', 0)}")
+    print(f"PDFs downloaded: {stats.get('pdfs_downloaded', 0)}")
+    print(f"PDFs processed: {stats.get('pdfs_processed', 0)}")
+    print(f"Text chunks created: {stats.get('chunks_created', 0)}")
+    print(f"Embeddings generated: {stats.get('embeddings_generated', 0)}")
+    print(f"Vectors stored: {stats.get('vectors_stored', 0)}")
+    print(f"Processing time: {stats.get('elapsed_time', 'N/A')}")
+
+    if stats.get("errors"):
+        print(f"\nErrors: {len(stats['errors'])}")
+        print("Check the logs for details")
+        if stats.get("vectors_stored", 0) == 0:
+            print("\nError: No landmarks were successfully processed")
+            return 1
+        else:
+            print("\nWarning: Some landmarks failed to process")
+            return 0
+    else:
+        print("\nSuccess: All landmarks successfully processed")
+        return 0
+
+
+def run_legacy_mode(args: argparse.Namespace, api_key: Optional[str]) -> None:
+    """Run the legacy page range processing mode."""
+    logger.info(
+        f"Running in legacy mode: processing pages {args.start_page} to {args.end_page}"
+    )
 
     # Initialize pipeline
     pipeline = LandmarkPipeline(api_key)
 
     try:
+        # Validate page range
+        if args.start_page > args.end_page:
+            raise ValueError("Start page cannot be greater than end page.")
+
         # Run in appropriate mode
         if args.parallel:
-            if args.start_page > args.end_page:
-                raise ValueError("Start page cannot be greater than end page.")
             logger.info(
                 f"Using parallel processing mode for pages {args.start_page}-{args.end_page}"
             )
@@ -1037,14 +1428,12 @@ def main() -> None:
                 start_page=args.start_page,
                 end_page=args.end_page,
                 page_size=args.page_size,
-                download_limit=download_limit,
+                download_limit=args.limit,
                 workers=args.workers,
                 recreate_index=args.recreate_index,
-                drop_index=args.drop_index,
+                drop_index=False,
             )
         else:
-            if args.start_page > args.end_page:
-                raise ValueError("Start page cannot be greater than end page.")
             logger.info(
                 f"Using sequential processing mode for pages {args.start_page}-{args.end_page}"
             )
@@ -1052,39 +1441,95 @@ def main() -> None:
                 start_page=args.start_page,
                 end_page=args.end_page,
                 page_size=args.page_size,
-                download_limit=download_limit,
+                download_limit=args.limit,
                 recreate_index=args.recreate_index,
-                drop_index=args.drop_index,
+                drop_index=False,
             )
 
-        # Print summary if we have stats
-        print("\nPipeline Summary:")
+        # Handle errors
+        if "error" in stats:
+            print(f"\nError: {stats['error']}")
+            sys.exit(1)
 
-        if "landmarks_fetched" in stats:
-            print(f"Landmarks fetched: {stats['landmarks_fetched']}")
-            print(f"PDFs downloaded: {stats.get('pdfs_downloaded', 0)}")
-            print(f"PDFs processed: {stats.get('pdfs_processed', 0)}")
-            print(f"Text chunks created: {stats.get('chunks_created', 0)}")
-            print(f"Embeddings generated: {stats.get('embeddings_generated', 0)}")
-            print(f"Vectors stored: {stats.get('vectors_stored', 0)}")
-            print(f"Elapsed time: {stats.get('elapsed_time', 'N/A')}")
-        else:
-            # Handle the case where the pipeline returned an error dictionary
-            if "error" in stats:
-                print(f"Pipeline error: {stats['error']}")
-            else:
-                print("Unknown pipeline result")
-
-        if stats.get("errors") and len(stats["errors"]) > 0:
-            print(f"Errors: {len(stats['errors'])}")
-            print("Check the logs for details")
-        elif "error" not in stats:
-            print("Status: Success")
+        # Print results for legacy mode
+        print_legacy_results(stats)
 
     except Exception as e:
-        print("\nPipeline Execution Error:")
-        print(f"Error: {str(e)}")
-        print("Check the logs for more details.")
+        print(f"\nPipeline Execution Error: {str(e)}")
+        logger.error(f"Pipeline execution failed: {e}")
+        sys.exit(1)
+
+
+def print_legacy_results(stats: dict) -> None:
+    """Print results for legacy mode processing."""
+    print("\n===== LANDMARKS PROCESSING RESULTS =====")
+    if "landmarks_fetched" in stats:
+        print(f"Landmarks fetched: {stats['landmarks_fetched']}")
+        print(f"PDFs downloaded: {stats.get('pdfs_downloaded', 0)}")
+        print(f"PDFs processed: {stats.get('pdfs_processed', 0)}")
+        print(f"Text chunks created: {stats.get('chunks_created', 0)}")
+        print(f"Embeddings generated: {stats.get('embeddings_generated', 0)}")
+        print(f"Vectors stored: {stats.get('vectors_stored', 0)}")
+        print(f"Processing time: {stats.get('elapsed_time', 'N/A')}")
+
+    if stats.get("errors") and len(stats["errors"]) > 0:
+        print(f"\nErrors: {len(stats['errors'])}")
+        print("Check the logs for details")
+        if stats.get("vectors_stored", 0) == 0:
+            print("\nError: No landmarks were successfully processed")
+            sys.exit(1)
+        else:
+            print("\nWarning: Some landmarks failed to process")
+    else:
+        print("\nSuccess: All landmarks successfully processed")
+
+
+def run_unified_mode(args: argparse.Namespace, api_key: Optional[str]) -> None:
+    """Run the new unified landmark ID processing mode."""
+    # Get landmarks to process
+    landmarks_to_process = get_landmarks_to_process(
+        args.landmark_ids, args.limit, args.page, args.all, args.page_size
+    )
+    if not landmarks_to_process:
+        logger.error("No landmarks to process")
+        sys.exit(1)
+
+    # Process landmarks and time the execution
+    start_time = time.time()
+    stats = process_landmarks_from_ids(
+        landmarks_to_process,
+        args.delete_existing or args.recreate_index,  # Support both flags
+        args.parallel,
+        args.workers,
+        api_key,
+    )
+    elapsed_time = time.time() - start_time
+
+    if "error" in stats:
+        print(f"\nError: {stats['error']}")
+        sys.exit(1)
+
+    stats["elapsed_time"] = f"{elapsed_time:.2f} seconds"
+
+    # Print results and exit
+    exit_code = print_results(len(landmarks_to_process), stats)
+    sys.exit(exit_code)
+
+
+def main() -> None:
+    """Main entry point for the script."""
+    # Parse arguments and set up logging
+    args = parse_arguments()
+    setup_logging(args.verbose)
+
+    # Load API key from environment variable if not provided as argument
+    api_key = args.api_key or os.environ.get("COREDATASTORE_API_KEY")
+
+    # Check if we're in legacy mode (GitHub Actions compatibility)
+    if args.start_page is not None and args.end_page is not None:
+        run_legacy_mode(args, api_key)
+    else:
+        run_unified_mode(args, api_key)
 
 
 if __name__ == "__main__":
