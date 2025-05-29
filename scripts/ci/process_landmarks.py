@@ -773,10 +773,12 @@ class LandmarkPipeline:
             return {"error": "No landmarks found"}
 
         # Step 2: Process landmarks in parallel
+        # Use ThreadPoolExecutor instead of ProcessPoolExecutor to avoid pickle issues
+        # with network connections (SSL sockets) in the pipeline components
         logger.info(f"Processing {len(landmarks)} landmarks with {workers} workers")
 
         results: List[Dict[str, Any]] = []
-        with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
             future_to_landmark = {
                 executor.submit(self.process_landmark_worker, landmark): landmark
                 for landmark in landmarks
@@ -1262,8 +1264,10 @@ def process_landmarks_from_ids(
         logger.info(
             f"Processing {len(landmarks)} landmarks in parallel with {workers} workers"
         )
+        # Use ThreadPoolExecutor instead of ProcessPoolExecutor to avoid pickle issues
+        # with network connections (SSL sockets) in the pipeline components
         results = []
-        with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
             future_to_landmark = {
                 executor.submit(pipeline.process_landmark_worker, landmark): landmark
                 for landmark in landmarks
