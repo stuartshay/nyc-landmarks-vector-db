@@ -42,7 +42,7 @@ folium==0.19.5
 fonttools==4.57.0
 fqdn==1.5.1
 google-api-core==2.24.2
-google-auth==2.40.1
+google-auth==2.40.2
 google-cloud-secret-manager==2.23.3
 googleapis-common-protos==1.70.0
 grpc-google-iam-v1==0.14.2
@@ -159,7 +159,7 @@ rich==14.0.0
 rpds-py==0.24.0
 rsa==4.9.1
 scikit-learn==1.6.1
-scipy==1.15.2
+scipy==1.15.3
 seaborn==0.13.2
 Send2Trash==1.8.3
 setuptools==80.2.0

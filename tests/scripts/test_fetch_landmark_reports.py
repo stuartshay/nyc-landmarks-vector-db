@@ -499,7 +499,7 @@ class TestProcessingResult(unittest.TestCase):
 class TestWikipediaAPIError(unittest.TestCase):
     """Test WikipediaAPIError functionality."""
 
-    def test_wikipedia_api_error_without_original_error(self):
+    def test_wikipedia_api_error_without_original_error(self) -> None:
         """Test WikipediaAPIError without an original error."""
         message = "Test error message"
         error = WikipediaAPIError(message)
@@ -509,7 +509,7 @@ class TestWikipediaAPIError(unittest.TestCase):
         self.assertIsNone(error.original_error)
         self.assertIsNone(error.__cause__)
 
-    def test_wikipedia_api_error_with_original_error(self):
+    def test_wikipedia_api_error_with_original_error(self) -> None:
         """Test WikipediaAPIError with an original error."""
         message = "Test error message"
         original_error = requests.exceptions.ConnectionError("Connection failed")
@@ -521,7 +521,7 @@ class TestWikipediaAPIError(unittest.TestCase):
         self.assertIn(message, str(error))
         self.assertIn("Original error", str(error))
 
-    def test_wikipedia_api_error_repr(self):
+    def test_wikipedia_api_error_repr(self) -> None:
         """Test WikipediaAPIError string representation."""
         message = "Test error"
         original_error = ValueError("Original issue")
@@ -531,6 +531,519 @@ class TestWikipediaAPIError(unittest.TestCase):
         self.assertIn("WikipediaAPIError", repr_str)
         self.assertIn(message, repr_str)
         self.assertIn("original_error", repr_str)
+
+
+class TestPDFIndexFunctionality(unittest.TestCase):
+    """Test cases for PDF index functionality in LandmarkReportProcessor."""
+
+    def setUp(self) -> None:
+        """Set up test fixtures before each test method."""
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self) -> None:
+        """Clean up after each test method."""
+        import shutil
+
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+    @patch("scripts.fetch_landmark_reports.get_db_client")
+    @patch("nyc_landmarks.vectordb.pinecone_db.PineconeDB")
+    def test_check_pdf_in_index_success(
+        self, mock_pinecone_db: Mock, mock_get_db_client: Mock
+    ) -> None:
+        """Test successful PDF index checking."""
+        from tests.mocks.fetch_landmark_reports_mocks import (
+            create_mock_db_client_for_processor,
+            create_mock_pinecone_db_for_pdf_index,
+        )
+
+        # Set up mocks
+        mock_db_client = create_mock_db_client_for_processor()
+        mock_get_db_client.return_value = mock_db_client
+
+        mock_pinecone_instance = create_mock_pinecone_db_for_pdf_index()
+        mock_pinecone_db.return_value = mock_pinecone_instance
+
+        processor = LandmarkReportProcessor()
+
+        # Test landmark with PDF in index
+        result = processor.check_pdf_in_index("LP-00001")
+        self.assertTrue(result)
+
+        # Test landmark without PDF in index
+        result = processor.check_pdf_in_index("LP-00004")
+        self.assertFalse(result)
+
+        # Verify PineconeDB was called correctly
+        mock_pinecone_db.assert_called()
+        mock_pinecone_instance.list_vectors.assert_called()
+
+    @patch("scripts.fetch_landmark_reports.get_db_client")
+    @patch("nyc_landmarks.vectordb.pinecone_db.PineconeDB")
+    def test_check_pdf_in_index_error_handling(
+        self, mock_pinecone_db: Mock, mock_get_db_client: Mock
+    ) -> None:
+        """Test error handling in PDF index checking."""
+        from tests.mocks.fetch_landmark_reports_mocks import (
+            create_mock_db_client_for_processor,
+            create_mock_pinecone_db_pdf_index_errors,
+        )
+
+        # Set up mocks
+        mock_db_client = create_mock_db_client_for_processor()
+        mock_get_db_client.return_value = mock_db_client
+
+        mock_pinecone_instance = create_mock_pinecone_db_pdf_index_errors()
+        mock_pinecone_db.return_value = mock_pinecone_instance
+
+        processor = LandmarkReportProcessor()
+
+        # Should return False on error and not crash
+        result = processor.check_pdf_in_index("LP-00001")
+        self.assertFalse(result)
+
+    @patch("scripts.fetch_landmark_reports.get_db_client")
+    @patch("nyc_landmarks.vectordb.pinecone_db.PineconeDB")
+    def test_add_pdf_index_status_enabled(
+        self, mock_pinecone_db: Mock, mock_get_db_client: Mock
+    ) -> None:
+        """Test adding PDF index status when enabled."""
+        from tests.mocks.fetch_landmark_reports_mocks import (
+            create_mock_db_client_for_processor,
+            create_mock_pinecone_db_for_pdf_index,
+            get_mock_lpc_reports,
+        )
+
+        # Set up mocks
+        mock_db_client = create_mock_db_client_for_processor()
+        mock_get_db_client.return_value = mock_db_client
+
+        mock_pinecone_instance = create_mock_pinecone_db_for_pdf_index()
+        mock_pinecone_db.return_value = mock_pinecone_instance
+
+        processor = LandmarkReportProcessor()
+
+        # Get mock reports and convert to dictionary format
+        mock_reports = get_mock_lpc_reports()
+
+        # Convert to list of dictionaries similar to actual processing
+        reports_list = []
+        for report in mock_reports:
+            reports_list.append(
+                {
+                    "lpNumber": report.lpNumber,
+                    "name": report.name,
+                    "lpcId": report.lpcId,
+                    "objectType": report.objectType,
+                }
+            )
+
+        # Initialize metrics
+        metrics = ProcessingMetrics()
+        metrics.pdf_index_enabled = True
+
+        # Test adding PDF index status
+        updated_reports = processor.add_pdf_index_status(reports_list, metrics)
+
+        # Verify PDF index field was added to all reports
+        for report_dict in updated_reports:
+            self.assertIn("in_pdf_index", report_dict)
+
+        # Verify specific results based on mock behavior
+        lp_00001_report = next(
+            (r for r in updated_reports if r["lpNumber"] == "LP-00001"), None
+        )
+        self.assertIsNotNone(lp_00001_report)
+        if lp_00001_report is not None:
+            self.assertEqual(lp_00001_report["in_pdf_index"], "Yes")
+
+        lp_00004_report = next(
+            (r for r in updated_reports if r["lpNumber"] == "LP-00004"), None
+        )
+        self.assertIsNotNone(lp_00004_report)
+        if lp_00004_report is not None:
+            self.assertEqual(lp_00004_report["in_pdf_index"], "No")
+
+        # Verify metrics were updated
+        self.assertTrue(metrics.pdf_index_enabled)
+        self.assertGreater(metrics.landmarks_in_pdf_index, 0)
+
+    @patch("scripts.fetch_landmark_reports.get_db_client")
+    def test_ensure_pdf_index_column_disabled(self, mock_get_db_client: Mock) -> None:
+        """Test ensuring PDF index column when PDF index checking is disabled."""
+        from tests.mocks.fetch_landmark_reports_mocks import (
+            create_mock_db_client_for_processor,
+            get_mock_lpc_reports,
+        )
+
+        # Set up mocks
+        mock_db_client = create_mock_db_client_for_processor()
+        mock_get_db_client.return_value = mock_db_client
+
+        processor = LandmarkReportProcessor()
+
+        # Get mock reports and convert to dictionary format
+        mock_reports = get_mock_lpc_reports()
+
+        reports_list = []
+        for report in mock_reports:
+            reports_list.append(
+                {
+                    "lpNumber": report.lpNumber,
+                    "name": report.name,
+                    "lpcId": report.lpcId,
+                    "objectType": report.objectType,
+                }
+            )
+
+        # Test ensuring PDF index column
+        updated_reports = processor.ensure_pdf_index_column(reports_list)
+
+        # Verify PDF index field was added with "No" values
+        for report_dict in updated_reports:
+            self.assertIn("in_pdf_index", report_dict)
+            self.assertEqual(report_dict["in_pdf_index"], "No")
+
+    @patch("scripts.fetch_landmark_reports.get_db_client")
+    @patch("nyc_landmarks.vectordb.pinecone_db.PineconeDB")
+    def test_process_with_progress_pdf_index_enabled(
+        self, mock_pinecone_db: Mock, mock_get_db_client: Mock
+    ) -> None:
+        """Test process_with_progress with PDF index checking enabled."""
+        from tests.mocks.fetch_landmark_reports_mocks import (
+            create_mock_db_client_for_processor,
+            create_mock_pinecone_db_for_pdf_index,
+        )
+
+        # Set up mocks
+        mock_db_client = create_mock_db_client_for_processor()
+        mock_get_db_client.return_value = mock_db_client
+
+        mock_pinecone_instance = create_mock_pinecone_db_for_pdf_index()
+        mock_pinecone_db.return_value = mock_pinecone_instance
+
+        processor = LandmarkReportProcessor()
+
+        # Test processing with PDF index enabled
+        result = processor.process_with_progress(
+            max_records=2, include_wikipedia=False, include_pdf_index=True
+        )
+
+        # Verify results
+        self.assertIsInstance(result, ProcessingResult)
+        self.assertGreater(len(result.reports), 0)
+
+        # Verify PDF index field exists in all reports
+        for report_dict in result.reports:
+            self.assertIn("in_pdf_index", report_dict)
+
+        # Verify metrics
+        self.assertTrue(result.metrics.pdf_index_enabled)
+
+    @patch("scripts.fetch_landmark_reports.get_db_client")
+    def test_process_with_progress_pdf_index_disabled(
+        self, mock_get_db_client: Mock
+    ) -> None:
+        """Test process_with_progress with PDF index checking disabled."""
+        from tests.mocks.fetch_landmark_reports_mocks import (
+            create_mock_db_client_for_processor,
+        )
+
+        # Set up mocks
+        mock_db_client = create_mock_db_client_for_processor()
+        mock_get_db_client.return_value = mock_db_client
+
+        processor = LandmarkReportProcessor()
+
+        # Test processing with PDF index disabled
+        result = processor.process_with_progress(
+            max_records=2, include_wikipedia=False, include_pdf_index=False
+        )
+
+        # Verify results
+        self.assertIsInstance(result, ProcessingResult)
+        self.assertGreater(len(result.reports), 0)
+
+        # Verify PDF index field exists with "No" values
+        for report_dict in result.reports:
+            self.assertIn("in_pdf_index", report_dict)
+            self.assertEqual(report_dict["in_pdf_index"], "No")
+
+        # Verify metrics
+        self.assertFalse(result.metrics.pdf_index_enabled)
+        self.assertEqual(result.metrics.landmarks_in_pdf_index, 0)
+
+    def test_processing_metrics_pdf_index_fields(self) -> None:
+        """Test ProcessingMetrics initialization with PDF index fields."""
+        metrics = ProcessingMetrics()
+
+        # Verify PDF index fields exist and have correct defaults
+        self.assertFalse(metrics.pdf_index_enabled)
+        self.assertEqual(metrics.landmarks_in_pdf_index, 0)
+        self.assertEqual(metrics.pdf_index_check_failures, 0)
+
+        # Test setting PDF index values
+        metrics.pdf_index_enabled = True
+        metrics.landmarks_in_pdf_index = 5
+        metrics.pdf_index_check_failures = 1
+
+        self.assertTrue(metrics.pdf_index_enabled)
+        self.assertEqual(metrics.landmarks_in_pdf_index, 5)
+        self.assertEqual(metrics.pdf_index_check_failures, 1)
+
+    @patch("scripts.fetch_landmark_reports.get_db_client")
+    @patch("nyc_landmarks.vectordb.pinecone_db.PineconeDB")
+    def test_pdf_index_error_counting(
+        self, mock_pinecone_db: Mock, mock_get_db_client: Mock
+    ) -> None:
+        """Test that PDF index errors are properly counted in metrics."""
+        from tests.mocks.fetch_landmark_reports_mocks import (
+            create_mock_db_client_for_processor,
+            get_mock_lpc_reports,
+        )
+
+        # Set up mocks
+        mock_db_client = create_mock_db_client_for_processor()
+        mock_get_db_client.return_value = mock_db_client
+
+        # Patch the check_pdf_in_index method directly to raise an exception
+        with patch.object(
+            LandmarkReportProcessor,
+            "check_pdf_in_index",
+            side_effect=Exception("Direct PDF index error"),
+        ):
+            processor = LandmarkReportProcessor()
+
+            # Get mock reports and convert to dictionary format
+            mock_reports = get_mock_lpc_reports()[:3]  # Use only first 3 for testing
+
+            reports_list = []
+            for report in mock_reports:
+                reports_list.append(
+                    {
+                        "lpNumber": report.lpNumber,
+                        "name": report.name,
+                        "lpcId": report.lpcId,
+                        "objectType": report.objectType,
+                    }
+                )
+
+            # Initialize metrics
+            metrics = ProcessingMetrics()
+            metrics.pdf_index_enabled = True
+
+            # Test adding PDF index status with errors
+            updated_reports = processor.add_pdf_index_status(reports_list, metrics)
+
+            # Verify all in_pdf_index values are "No" due to errors
+            for report_dict in updated_reports:
+                self.assertIn("in_pdf_index", report_dict)
+                self.assertEqual(report_dict["in_pdf_index"], "No")
+
+            # Verify error count matches number of reports processed
+            self.assertEqual(metrics.pdf_index_check_failures, len(mock_reports))
+
+    @patch("scripts.fetch_landmark_reports.get_db_client")
+    @patch("nyc_landmarks.vectordb.pinecone_db.PineconeDB")
+    def test_pdf_index_json_output_integration(
+        self, mock_pinecone_db: Mock, mock_get_db_client: Mock
+    ) -> None:
+        """Test PDF index integration with JSON output generation."""
+        from tests.mocks.fetch_landmark_reports_mocks import (
+            create_mock_db_client_for_processor,
+            create_mock_pinecone_db_for_pdf_index,
+            get_mock_lpc_reports,
+        )
+
+        # Set up mocks
+        mock_db_client = create_mock_db_client_for_processor()
+        mock_get_db_client.return_value = mock_db_client
+
+        mock_pinecone_instance = create_mock_pinecone_db_for_pdf_index()
+        mock_pinecone_db.return_value = mock_pinecone_instance
+
+        processor = LandmarkReportProcessor()
+
+        # Get mock reports
+        mock_reports = [report.model_dump() for report in get_mock_lpc_reports()[:3]]
+
+        # Add PDF index status
+        metrics = ProcessingMetrics()
+        metrics.pdf_index_enabled = True
+        metrics.landmarks_in_pdf_index = (
+            2  # Set manually since we're not running the actual method
+        )
+        updated_reports = processor.ensure_pdf_index_column(mock_reports)
+
+        # Get PDF info for these reports
+        pdf_info = processor.extract_pdf_urls(updated_reports)
+
+        # Save results to JSON
+        output_files = processor._save_results(
+            updated_reports, pdf_info, self.temp_dir, metrics
+        )
+
+        # Verify files were created
+        self.assertIn("landmark_reports", output_files)
+        self.assertTrue(os.path.exists(output_files["landmark_reports"]))
+
+        # Read the saved JSON file
+        with open(output_files["landmark_reports"], "r") as f:
+            saved_data = json.load(f)
+
+        # Verify PDF index data in metadata
+        self.assertIn("metadata", saved_data)
+        if metrics.pdf_index_enabled:
+            self.assertIn("pdf_index_summary", saved_data["metadata"])
+            pdf_index_summary = saved_data["metadata"]["pdf_index_summary"]
+            self.assertEqual(
+                pdf_index_summary["landmarks_in_pdf_index"],
+                metrics.landmarks_in_pdf_index,
+            )
+
+    @patch("scripts.fetch_landmark_reports.get_db_client")
+    @patch("nyc_landmarks.vectordb.pinecone_db.PineconeDB")
+    def test_pdf_index_empty_result(
+        self, mock_pinecone_db: Mock, mock_get_db_client: Mock
+    ) -> None:
+        """Test PDF index checking with empty vector database results."""
+        from tests.mocks.fetch_landmark_reports_mocks import (
+            create_mock_db_client_for_processor,
+            create_mock_pinecone_db_pdf_index_empty,
+            get_mock_lpc_reports,
+        )
+
+        # Set up mocks
+        mock_db_client = create_mock_db_client_for_processor()
+        mock_get_db_client.return_value = mock_db_client
+
+        mock_pinecone_instance = create_mock_pinecone_db_pdf_index_empty()
+        mock_pinecone_db.return_value = mock_pinecone_instance
+
+        processor = LandmarkReportProcessor()
+
+        # Check index for a landmark that should normally have a PDF
+        result = processor.check_pdf_in_index("LP-00001")
+        self.assertFalse(result)
+
+        # Verify the empty database is properly handled
+        mock_reports = get_mock_lpc_reports()
+        reports_list = []
+        for report in mock_reports:
+            reports_list.append(
+                {
+                    "lpNumber": report.lpNumber,
+                    "name": report.name,
+                    "lpcId": report.lpcId,
+                    "objectType": report.objectType,
+                }
+            )
+
+        metrics = ProcessingMetrics()
+        metrics.pdf_index_enabled = True
+
+        updated_reports = processor.add_pdf_index_status(reports_list, metrics)
+
+        # All reports should have "No" for in_pdf_index
+        for report_dict in updated_reports:
+            self.assertEqual(report_dict["in_pdf_index"], "No")
+
+        # Landmarks in index should be 0
+        self.assertEqual(metrics.landmarks_in_pdf_index, 0)
+
+    @patch("scripts.fetch_landmark_reports.get_db_client")
+    @patch("nyc_landmarks.vectordb.pinecone_db.PineconeDB")
+    def test_pdf_index_with_filtering(
+        self, mock_pinecone_db: Mock, mock_get_db_client: Mock
+    ) -> None:
+        """Test PDF index with borough and object type filtering."""
+        from tests.mocks.fetch_landmark_reports_mocks import (
+            create_mock_db_client_for_processor,
+            create_mock_pinecone_db_for_pdf_index,
+        )
+
+        # Set up mocks
+        mock_db_client = create_mock_db_client_for_processor()
+        mock_get_db_client.return_value = mock_db_client
+
+        mock_pinecone_instance = create_mock_pinecone_db_for_pdf_index()
+        mock_pinecone_db.return_value = mock_pinecone_instance
+
+        processor = LandmarkReportProcessor()
+
+        # Process with borough filter and PDF index
+        result = processor.process_with_progress(
+            borough="Manhattan", include_wikipedia=False, include_pdf_index=True
+        )
+
+        # Verify results
+        self.assertIsInstance(result, ProcessingResult)
+
+        # Only Manhattan reports should be included
+        for report in result.reports:
+            self.assertEqual(report["borough"], "Manhattan")
+            self.assertIn("in_pdf_index", report)
+
+        # Manhattan should have some reports with PDFs in index
+        manhattan_with_pdf = sum(
+            1 for r in result.reports if r["in_pdf_index"] == "Yes"
+        )
+        self.assertGreater(manhattan_with_pdf, 0)
+        self.assertEqual(manhattan_with_pdf, result.metrics.landmarks_in_pdf_index)
+
+    @patch("scripts.fetch_landmark_reports.get_db_client")
+    @patch("nyc_landmarks.vectordb.pinecone_db.PineconeDB")
+    def test_pdf_index_missing_landmark_id(
+        self, mock_pinecone_db: Mock, mock_get_db_client: Mock
+    ) -> None:
+        """Test PDF index behavior with missing landmark IDs."""
+        from tests.mocks.fetch_landmark_reports_mocks import (
+            create_mock_db_client_for_processor,
+            create_mock_pinecone_db_for_pdf_index,
+        )
+
+        # Set up mocks
+        mock_db_client = create_mock_db_client_for_processor()
+        mock_get_db_client.return_value = mock_db_client
+
+        mock_pinecone_instance = create_mock_pinecone_db_for_pdf_index()
+        mock_pinecone_db.return_value = mock_pinecone_instance
+
+        processor = LandmarkReportProcessor()
+
+        # Create reports with missing landmark IDs
+        reports_list = [
+            {"name": "Test Landmark 1", "borough": "Manhattan"},  # Missing lpNumber
+            {
+                "lpNumber": "",
+                "name": "Test Landmark 2",
+                "borough": "Brooklyn",
+            },  # Empty lpNumber
+            {
+                "lpNumber": "LP-00001",
+                "name": "Brooklyn Bridge",
+                "borough": "Manhattan",
+            },  # Valid landmark
+        ]
+
+        metrics = ProcessingMetrics()
+        metrics.pdf_index_enabled = True
+
+        # Process reports with missing IDs
+        updated_reports = processor.add_pdf_index_status(reports_list, metrics)
+
+        # Reports with missing IDs should have "No" for in_pdf_index
+        self.assertEqual(updated_reports[0]["in_pdf_index"], "No")
+        self.assertEqual(updated_reports[1]["in_pdf_index"], "No")
+
+        # Valid landmark should have correct value
+        self.assertEqual(updated_reports[2]["in_pdf_index"], "Yes")
+
+        # Should record failures for the missing IDs
+        self.assertEqual(metrics.pdf_index_check_failures, 2)
+
+        # Should correctly count the one valid landmark in the index
+        self.assertEqual(metrics.landmarks_in_pdf_index, 1)
 
 
 if __name__ == "__main__":

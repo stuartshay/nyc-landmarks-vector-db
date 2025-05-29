@@ -61,13 +61,19 @@ Advanced Features:
     # Include Wikipedia data with Excel export
     python scripts/fetch_landmark_reports.py --include-wikipedia --export-excel --limit 100
 
+    # Include PDF index status for landmark reports
+    python scripts/fetch_landmark_reports.py --include-pdf-index --limit 100
+
+    # Combine Wikipedia data and PDF index status
+    python scripts/fetch_landmark_reports.py --include-wikipedia --include-pdf-index --limit 50
+
 Excel Export Option:
     # Export results to Excel (XLSX) format
     python scripts/fetch_landmark_reports.py --export-excel
 
 Output Files:
     # Files are saved with timestamps in output/ directory (or as specified by --output-dir)
-    output/landmark_reports_20250526_180000.json    # Full landmark data
+    output/landmark_reports_20250526_180000.json    # Full landmark data with Wikipedia and/or PDF index status
     output/pdf_urls_20250526_180000.json           # Extracted PDF URLs
     output/fetch_landmark_YYYY_MM_DD_HH_MM.xlsx    # Excel export (if --export-excel is used)
 
@@ -124,6 +130,10 @@ class ProcessingMetrics:
     landmarks_with_wikipedia: int = 0
     total_wikipedia_articles: int = 0
     wikipedia_api_failures: int = 0
+    # PDF index metrics
+    pdf_index_enabled: bool = False
+    landmarks_in_pdf_index: int = 0
+    pdf_index_check_failures: int = 0
 
 
 @dataclass
@@ -500,6 +510,7 @@ class LandmarkReportProcessor:
         sample_limit: int = 5,
         output_dir: str = "output",
         include_wikipedia: bool = False,
+        include_pdf_index: bool = False,
         **filters: Any,
     ) -> ProcessingResult:
         """Process all records with progress tracking and metrics.
@@ -511,6 +522,7 @@ class LandmarkReportProcessor:
             sample_limit: Number of sample PDFs to download
             output_dir: Directory for output files
             include_wikipedia: Whether to include Wikipedia article counts
+            include_pdf_index: Whether to check if PDFs are indexed in vector database
             **filters: Additional filters (borough, object_type, etc.)
 
         Returns:
@@ -519,6 +531,7 @@ class LandmarkReportProcessor:
         start_time = time.time()
         metrics = ProcessingMetrics()
         metrics.wikipedia_enabled = include_wikipedia
+        metrics.pdf_index_enabled = include_pdf_index
 
         try:
             # Get total count
@@ -542,6 +555,13 @@ class LandmarkReportProcessor:
             else:
                 # Ensure in_wikipedia_index column is present for Excel export consistency
                 reports = self.ensure_wikipedia_index_column(reports)
+
+            # Add PDF index status if requested
+            if include_pdf_index:
+                reports = self.add_pdf_index_status(reports, metrics)
+            else:
+                # Ensure in_pdf_index column is present for consistency
+                reports = self.ensure_pdf_index_column(reports)
 
             # Download sample PDFs if requested
             downloaded_paths = []
@@ -626,6 +646,18 @@ class LandmarkReportProcessor:
                 ),
             }
 
+        # Add PDF index summary if enabled
+        if metrics.pdf_index_enabled:
+            output_data["metadata"]["pdf_index_summary"] = {
+                "landmarks_in_pdf_index": metrics.landmarks_in_pdf_index,
+                "pdf_index_check_failures": metrics.pdf_index_check_failures,
+                "pdf_index_coverage_percentage": (
+                    round((metrics.landmarks_in_pdf_index / len(reports)) * 100, 2)
+                    if len(reports) > 0
+                    else 0
+                ),
+            }
+
         # Save landmark reports with metadata
         with open(landmark_reports_path, "w") as f:
             json.dump(output_data, f, indent=2, default=str)
@@ -681,6 +713,21 @@ class LandmarkReportProcessor:
                 avg_articles = metrics.total_wikipedia_articles / len(reports)
                 logger.info(f"  Average articles per landmark: {avg_articles:.2f}")
 
+        # PDF index summary
+        if metrics.pdf_index_enabled:
+            logger.info("\nPDF Index Status Summary:")
+            logger.info(
+                f"  Landmarks with PDFs in vector index: {metrics.landmarks_in_pdf_index:,}"
+            )
+            logger.info(
+                f"  PDF index check failures: {metrics.pdf_index_check_failures:,}"
+            )
+            if len(reports) > 0:
+                coverage_percentage = (
+                    metrics.landmarks_in_pdf_index / len(reports)
+                ) * 100
+                logger.info(f"  PDF index coverage: {coverage_percentage:.2f}%")
+
         if metrics.errors_encountered:
             logger.warning(f"Errors encountered: {len(metrics.errors_encountered)}")
             for i, error in enumerate(metrics.errors_encountered[:5], 1):
@@ -706,6 +753,113 @@ class LandmarkReportProcessor:
 
         return reports
 
+    def check_pdf_in_index(self, landmark_id: str) -> bool:
+        """Check if a landmark's PDF is indexed in the vector database.
+
+        Args:
+            landmark_id: The landmark identifier
+
+        Returns:
+            True if the PDF is found in the vector index, False otherwise
+        """
+        try:
+            from nyc_landmarks.vectordb.pinecone_db import PineconeDB
+
+            # Initialize Pinecone database connection
+            pinecone_db = PineconeDB()
+
+            # Query for vectors with this landmark_id and source_type "pdf"
+            vectors = pinecone_db.list_vectors(
+                limit=1,  # We only need to know if at least one exists
+                landmark_id=landmark_id,
+                source_type="pdf",
+            )
+
+            # Return True if any vectors are found
+            return len(vectors) > 0
+
+        except Exception as e:
+            logger.warning(f"Error checking PDF index for landmark {landmark_id}: {e}")
+            return False
+
+    def add_pdf_index_status(
+        self, reports: List[Dict[str, Any]], metrics: ProcessingMetrics
+    ) -> List[Dict[str, Any]]:
+        """Add PDF index status to landmark reports.
+
+        Args:
+            reports: List of landmark report dictionaries
+            metrics: Processing metrics to update
+
+        Returns:
+            Updated list of landmark reports with PDF index status
+        """
+        if not metrics.pdf_index_enabled:
+            return reports
+
+        logger.info("Checking PDF index status for landmark reports...")
+
+        for i, report in enumerate(reports):
+            landmark_id = report.get("lpNumber") or report.get("lpcId")
+
+            if not landmark_id:
+                logger.warning(
+                    f"No landmark ID found for report {i + 1}, skipping PDF index check"
+                )
+                report["in_pdf_index"] = "No"
+                metrics.pdf_index_check_failures += 1
+                continue
+
+            try:
+                is_in_index = self.check_pdf_in_index(landmark_id)
+                report["in_pdf_index"] = "Yes" if is_in_index else "No"
+
+                if is_in_index:
+                    metrics.landmarks_in_pdf_index += 1
+
+                if self.verbose and is_in_index:
+                    logger.info(
+                        f"Landmark {landmark_id} PDF found in vector index ({i + 1}/{len(reports)})"
+                    )
+
+            except Exception as e:
+                error_msg = f"Error checking PDF index for landmark {landmark_id}: {e}"
+                logger.error(error_msg)
+                metrics.errors_encountered.append(error_msg)
+                report["in_pdf_index"] = "No"
+                metrics.pdf_index_check_failures += 1
+
+        # Log summary
+        logger.info(f"Completed PDF index checking for {len(reports)} landmarks")
+        logger.info(
+            f"Found {metrics.landmarks_in_pdf_index} landmarks with PDFs in vector index"
+        )
+
+        if metrics.pdf_index_check_failures > 0:
+            logger.warning(
+                f"PDF index check failures: {metrics.pdf_index_check_failures}"
+            )
+
+        return reports
+
+    def ensure_pdf_index_column(
+        self, reports: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Ensure all reports have the in_pdf_index column for consistency.
+
+        Args:
+            reports: List of landmark report dictionaries
+
+        Returns:
+            Updated list of landmark reports with in_pdf_index column
+        """
+        for report in reports:
+            # If the column doesn't exist, set it to "No"
+            if "in_pdf_index" not in report:
+                report["in_pdf_index"] = "No"
+
+        return reports
+
 
 def create_argument_parser() -> argparse.ArgumentParser:
     """Create comprehensive argument parser with all available options.
@@ -725,6 +879,7 @@ Examples:
   %(prog)s --download --samples 10           # Download sample PDFs
   %(prog)s --page 5 --page-size 50           # Fetch specific page
   %(prog)s --include-wikipedia --limit 50    # Include Wikipedia article counts
+  %(prog)s --include-pdf-index --limit 25    # Check PDF vector index status
         """,
     )
     parser.add_argument(
@@ -777,6 +932,13 @@ Examples:
         "--include-wikipedia",
         action="store_true",
         help="Include Wikipedia article counts for each landmark",
+    )
+
+    # PDF index options
+    parser.add_argument(
+        "--include-pdf-index",
+        action="store_true",
+        help="Check if landmark PDFs are indexed in the vector database",
     )
 
     # PDF download options
@@ -876,6 +1038,19 @@ def _handle_page_request(
             metrics = ProcessingMetrics()
             metrics.wikipedia_enabled = False
 
+        # Add PDF index status if requested
+        if args.include_pdf_index:
+            if not hasattr(metrics, "pdf_index_enabled"):
+                metrics.pdf_index_enabled = True
+            else:
+                metrics.pdf_index_enabled = True
+            reports = processor.add_pdf_index_status(reports, metrics)
+        else:
+            # Still ensure the pdf index column is present for consistency
+            reports = processor.ensure_pdf_index_column(reports)
+            if not hasattr(metrics, "pdf_index_enabled"):
+                metrics.pdf_index_enabled = False
+
         pdf_info = processor.extract_pdf_urls(reports)
 
         # Reuse the existing metrics object for saving
@@ -893,6 +1068,9 @@ def _handle_page_request(
             total_articles = sum(r.get("wikipedia_article_count", 0) for r in reports)
             print(f"Records with Wikipedia articles: {wikipedia_count}")
             print(f"Total Wikipedia articles: {total_articles}")
+        if args.include_pdf_index:
+            pdf_index_count = sum(1 for r in reports if r.get("in_pdf_index") == "Yes")
+            print(f"Records with PDFs in vector index: {pdf_index_count}")
         print(f"Results saved to: {output_files['landmark_reports']}")
 
     except Exception as e:
@@ -912,6 +1090,7 @@ def _handle_full_pipeline(
             sample_limit=args.samples,
             output_dir=args.output_dir,
             include_wikipedia=args.include_wikipedia,
+            include_pdf_index=args.include_pdf_index,
             borough=args.borough,
             object_type=args.object_type,
             neighborhood=args.neighborhood,
@@ -933,6 +1112,8 @@ def _handle_full_pipeline(
 
             # Ensure all reports have the in_wikipedia_index column for Excel export
             result.reports = processor.ensure_wikipedia_index_column(result.reports)
+            # Ensure all reports have the in_pdf_index column for Excel export
+            result.reports = processor.ensure_pdf_index_column(result.reports)
 
             # Adjust column widths to accommodate Wikipedia columns
             column_widths = {
@@ -952,7 +1133,8 @@ def _handle_full_pipeline(
                 "N": 40,  # photoUrl
                 "O": 40,  # pdfReportUrl
                 "P": 20,  # wikipedia_article_count
-                "Q": 20,  # in_wikipedia_index (new column)
+                "Q": 20,  # in_wikipedia_index
+                "R": 20,  # in_pdf_index (new column)
             }
             timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")
             excel_path = Path(args.output_dir) / f"fetch_landmark_{timestamp}.xlsx"
@@ -978,6 +1160,15 @@ def _handle_full_pipeline(
             if result.metrics.wikipedia_api_failures > 0:
                 print(
                     f"Wikipedia API failures: {result.metrics.wikipedia_api_failures:,}"
+                )
+
+        if result.metrics.pdf_index_enabled:
+            print(
+                f"Landmarks with PDFs in vector index: {result.metrics.landmarks_in_pdf_index:,}"
+            )
+            if result.metrics.pdf_index_check_failures > 0:
+                print(
+                    f"PDF index check failures: {result.metrics.pdf_index_check_failures:,}"
                 )
 
         print(f"Processing time: {result.metrics.processing_time:.2f} seconds")

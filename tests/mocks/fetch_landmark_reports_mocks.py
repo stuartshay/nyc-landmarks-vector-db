@@ -359,3 +359,93 @@ def get_reports_with_search_bridge() -> List[LpcReportModel]:
     """Get reports that match 'bridge' search term."""
     all_reports = get_mock_lpc_reports()
     return [r for r in all_reports if "bridge" in r.name.lower()]
+
+
+def create_mock_pinecone_db_for_pdf_index() -> Mock:
+    """
+    Create a mock PineconeDB instance specifically for PDF index testing.
+
+    Returns:
+        Mock PineconeDB with PDF vector query behavior
+    """
+    mock_db = Mock()
+
+    # Mock list_vectors behavior for different landmarks
+    def mock_list_vectors(
+        landmark_id: Optional[str] = None,
+        source_type: Optional[str] = None,
+        **kwargs: Any,
+    ) -> List[Dict[str, Any]]:
+        """Mock list_vectors that returns results based on landmark_id."""
+        # Return vectors for specific landmarks that should have PDFs
+        if landmark_id in ["LP-00001", "LP-00002", "LP-00005"] and source_type == "pdf":
+            return [
+                {
+                    "id": f"pdf-{landmark_id}-chunk-0",
+                    "metadata": {
+                        "landmark_id": landmark_id,
+                        "source_type": "pdf",
+                        "chunk_index": 0,
+                    },
+                }
+            ]
+
+        return []  # No matches for other landmarks or source types
+
+    mock_db.list_vectors.side_effect = mock_list_vectors
+
+    # Mock query behavior for different landmarks
+    def mock_query_vectors(
+        filter_dict: Optional[Dict[str, Any]] = None, **kwargs: Any
+    ) -> List[Dict[str, Any]]:
+        """Mock query that returns results based on landmark_id filter."""
+        if filter_dict and "landmark_id" in filter_dict:
+            landmark_id = filter_dict["landmark_id"]
+            source_type = filter_dict.get("source_type", "pdf")
+
+            # Return vectors for specific landmarks that should have PDFs
+            if (
+                landmark_id in ["LP-00001", "LP-00002", "LP-00005"]
+                and source_type == "pdf"
+            ):
+                return [
+                    {
+                        "id": f"pdf-{landmark_id}-chunk-0",
+                        "score": 1.0,
+                        "metadata": {
+                            "landmark_id": landmark_id,
+                            "source_type": "pdf",
+                            "chunk_index": 0,
+                        },
+                    }
+                ]
+
+        return []  # No matches for other landmarks or source types
+
+    mock_db.query_vectors.side_effect = mock_query_vectors
+    return mock_db
+
+
+def create_mock_pinecone_db_pdf_index_empty() -> Mock:
+    """
+    Create a mock PineconeDB instance that returns no PDF vectors.
+
+    Returns:
+        Mock PineconeDB that always returns empty results
+    """
+    mock_db = Mock()
+    mock_db.query_vectors.return_value = []
+    return mock_db
+
+
+def create_mock_pinecone_db_pdf_index_errors() -> Mock:
+    """
+    Create a mock PineconeDB instance that raises errors during PDF index queries.
+
+    Returns:
+        Mock PineconeDB that raises exceptions
+    """
+    mock_db = Mock()
+    mock_db.list_vectors.side_effect = Exception("PDF index query failed")
+    mock_db.query_vectors.side_effect = Exception("PDF index query failed")
+    return mock_db
