@@ -6,6 +6,63 @@
 
 ## Recent Changes
 
+### CI Scripts Alignment - Complete (2025-05-29)
+
+Successfully aligned `scripts/ci/process_landmarks.py` with `scripts/ci/process_wikipedia_articles.py` to provide consistent input requirements:
+
+#### Changes Implemented
+
+1. **Updated Argument Structure:**
+
+   - Replaced `--start-page` and `--end-page` with `--page` and `--all` (mutually exclusive)
+   - Added `--landmark-ids` support for processing specific landmarks
+   - Added `--verbose` flag for detailed logging
+   - Replaced `--recreate-index`/`--drop-index` with `--delete-existing` for consistency
+   - Retained `--page-size`, `--limit`, `--parallel`, `--workers` (already aligned)
+   - Retained `--download` (landmarks-specific functionality)
+
+1. **Added Required Helper Functions:**
+
+   - `get_all_landmark_ids()` - Fetch landmark IDs with pagination support
+   - `parse_arguments()` - Parse command line arguments with mutually exclusive groups
+   - `setup_logging()` - Configure logging based on verbosity level
+   - `get_landmarks_to_process()` - Unified landmark selection logic
+   - `process_landmarks_from_ids()` - Process landmarks from ID list
+   - `print_results()` - Display processing results and determine exit code
+
+1. **Updated Documentation:**
+
+   - Enhanced docstring with three example usage patterns:
+     ```
+     python scripts/ci/process_landmarks.py --page 2 --limit 5 --verbose
+     python scripts/ci/process_landmarks.py --landmark-ids LP-00079 --verbose
+     python scripts/ci/process_landmarks.py --all --verbose
+     ```
+   - Added proper type hints and comprehensive documentation
+
+1. **Maintained Backwards Compatibility:**
+
+   - All existing pipeline functionality preserved
+   - Parallel and sequential processing modes still available
+   - PDF downloading and vector storage capabilities intact
+   - Enhanced metadata collection and error handling retained
+
+#### Technical Implementation
+
+- **Argument Parser Alignment**: Both scripts now use identical argument patterns for `--all`, `--page`, `--landmark-ids`, `--verbose`, `--limit`, `--page-size`
+- **Mutually Exclusive Groups**: Proper handling of `--all` vs `--page` arguments
+- **Logging Integration**: Added `logging` import and `setup_logging()` function
+- **Error Handling**: Consistent error handling and exit codes
+- **Type Safety**: Maintained comprehensive type hints throughout
+
+#### Benefits Achieved
+
+- **Consistent Interface**: Both CI scripts now have identical command-line patterns
+- **Easier Testing**: Same example patterns work for both landmark processing and Wikipedia processing
+- **Unified Documentation**: Both scripts follow the same documentation standards
+- **Operational Consistency**: DevOps and CI/CD processes can use consistent patterns
+- **Enhanced Usability**: `--verbose` flag provides detailed logging for debugging
+
 ### fetch_landmark_reports.py Script Review - Complete (2025-05-28)
 
 Successfully conducted comprehensive review of the landmark reports fetching script and documented enhancement opportunities:
