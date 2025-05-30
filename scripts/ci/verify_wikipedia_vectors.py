@@ -8,41 +8,57 @@ This script checks multiple Wikipedia vectors to ensure they have the required m
 from typing import Dict, List
 
 from nyc_landmarks.utils.logger import get_logger
-from scripts.check_specific_vector import check_wiki_vector as check_vector
+from nyc_landmarks.vectordb.pinecone_db import PineconeDB
+from scripts.vector_utility import validate_vector_metadata
 
 logger = get_logger(__name__)
 
 
-def verify_batch_vectors(vector_ids: List[str]) -> Dict[str, bool]:
+def _validate_single_vector(pinecone_db: PineconeDB, vector_id: str) -> bool:
     """
-    Verify metadata for a batch of vectors.
+    Validate a single vector.
 
     Args:
-        vector_ids: List of vector IDs to check
+        pinecone_db: The PineconeDB client
+        vector_id: The vector ID to validate
 
     Returns:
-        Dictionary mapping vector IDs to validation result (True if valid, False if not)
+        True if valid, False otherwise
     """
-    results = {}
+    print(f"\nChecking vector: {vector_id}")
+    try:
+        # Fetch vector data using PineconeDB
+        # Use "__default__" namespace
+        namespace_to_use = "__default__"
+        vector_data = pinecone_db.fetch_vector_by_id(vector_id, namespace_to_use)
 
-    print(f"Verifying {len(vector_ids)} vectors...")
-    print("=" * 50)
+        if not vector_data:
+            print(f"✗ {vector_id} not found in database")
+            return False
 
-    for vector_id in vector_ids:
-        print(f"\nChecking vector: {vector_id}")
-        try:
-            # Simply run check_vector and note whether it completes successfully
-            # This will print the vector's metadata to the console
-            check_vector(vector_id)
+        # Validate the vector metadata
+        is_valid = validate_vector_metadata(vector_data, verbose=True)
 
-            # If we got here without an exception, the vector exists
-            # The check_vector function prints whether required fields are present
-            results[vector_id] = True
-        except Exception as e:
-            print(f"✗ {vector_id} error: {e}")
-            results[vector_id] = False
+        if is_valid:
+            print(f"✓ {vector_id} validation passed")
+        else:
+            print(f"✗ {vector_id} validation failed")
 
-    # Print summary
+        return is_valid
+
+    except Exception as e:
+        print(f"✗ {vector_id} error: {e}")
+        return False
+
+
+def _print_summary(results: Dict[str, bool], vector_ids: List[str]) -> None:
+    """
+    Print validation summary.
+
+    Args:
+        results: Dictionary mapping vector IDs to validation results
+        vector_ids: List of vector IDs that were checked
+    """
     print("\n" + "=" * 50)
     print("VERIFICATION RESULTS:")
     valid_count = sum(1 for result in results.values() if result)
@@ -55,6 +71,35 @@ def verify_batch_vectors(vector_ids: List[str]) -> Dict[str, bool]:
         for vector_id, is_valid in results.items():
             if not is_valid:
                 print(f"- {vector_id}")
+
+
+def verify_batch_vectors(vector_ids: List[str]) -> Dict[str, bool]:
+    """
+    Verify metadata for a batch of vectors.
+
+    Args:
+        vector_ids: List of vector IDs to check
+
+    Returns:
+        Dictionary mapping vector IDs to validation result (True if valid, False if not)
+    """
+    # Initialize PineconeDB client
+    try:
+        pinecone_db = PineconeDB()
+    except Exception as e:
+        logger.error(f"Failed to initialize PineconeDB: {e}")
+        return dict.fromkeys(vector_ids, False)
+
+    print(f"Verifying {len(vector_ids)} vectors...")
+    print("=" * 50)
+
+    # Validate each vector
+    results = {}
+    for vector_id in vector_ids:
+        results[vector_id] = _validate_single_vector(pinecone_db, vector_id)
+
+    # Print summary
+    _print_summary(results, vector_ids)
 
     return results
 
