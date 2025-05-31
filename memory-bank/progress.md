@@ -18,6 +18,8 @@
 - **Results Reporting Module**: Added `nyc_landmarks/utils/results_reporter.py` for better statistics and reporting
 - **Wikipedia Analysis Script**: Created `scripts/analyze_wikipedia_article.py` for individual article analysis and metadata extraction
 - **Modular Architecture**: Established foundation for the Wikipedia refactoring project with clear separation of concerns
+- **API Enhancement Analysis Script**: Added `scripts/analyze_api_enhancements.py` for testing underutilized CoreDataStore APIs for metadata enhancement opportunities
+- **Package Version Synchronization**: Created `scripts/ci/sync_versions.sh` and updated GitHub workflow to automatically keep requirements.txt and setup.py versions in sync on Dependabot PRs
 
 ## In Progress
 

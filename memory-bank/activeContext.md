@@ -11,6 +11,8 @@ The current focus is on the Wikipedia Processing Script Refactoring & Metadata E
 - **Developed custom Wikipedia analysis script**: Implemented `scripts/analyze_wikipedia_article.py` to analyze individual Wikipedia articles and extract potential metadata attributes.
 - **Added landmarks processing module**: Created `nyc_landmarks/landmarks/landmarks_processing.py` to support the refactoring effort.
 - **Enhanced results reporting**: Added `nyc_landmarks/utils/results_reporter.py` for better statistics and reporting capabilities.
+- **Created API Enhancement Analysis Script**: Added `scripts/analyze_api_enhancements.py` to test underutilized CoreDataStore APIs for Phase 2 of the Wikipedia refactoring project.
+- **Fixed Package Version Synchronization Workflow**: Implemented `scripts/ci/sync_versions.sh` and updated GitHub Actions workflow to automatically sync package versions between requirements.txt and setup.py for Dependabot PRs.
 
 ## Next Steps
 
