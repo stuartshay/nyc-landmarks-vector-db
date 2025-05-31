@@ -1,8 +1,7 @@
 """Wikipedia processing functionality for NYC landmarks."""
 
 import datetime
-import logging
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from transformers.tokenization_utils import PreTrainedTokenizer
 
@@ -13,6 +12,9 @@ from nyc_landmarks.models.wikipedia_models import WikipediaContentModel
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
+if TYPE_CHECKING:
+    from nyc_landmarks.db.db_client import DbClient
+
 logger = get_logger(__name__)
 
 
@@ -21,7 +23,7 @@ class WikipediaProcessor:
 
     def __init__(self) -> None:
         """Initialize the Wikipedia processor components."""
-        self.db_client = None
+        self.db_client: Optional["DbClient"] = None
         self.wiki_fetcher = WikipediaFetcher()
         self.embedding_generator = EmbeddingGenerator()
         self.pinecone_db = PineconeDB()
@@ -30,6 +32,7 @@ class WikipediaProcessor:
         """Initialize database client on demand."""
         if self.db_client is None:
             from nyc_landmarks.db.db_client import get_db_client
+
             self.db_client = get_db_client()
         return self.db_client
 
@@ -52,7 +55,9 @@ class WikipediaProcessor:
             logger.info(f"No Wikipedia articles found for landmark: {landmark_id}")
             return []
 
-        logger.info(f"Found {len(articles)} Wikipedia articles for landmark: {landmark_id}")
+        logger.info(
+            f"Found {len(articles)} Wikipedia articles for landmark: {landmark_id}"
+        )
 
         # Fetch content for each article
         for article in articles:
@@ -258,7 +263,9 @@ class WikipediaProcessor:
             )
             logger.info(f"Collected enhanced metadata for landmark {landmark_id}")
         except Exception as e:
-            logger.warning(f"Could not collect enhanced metadata for {landmark_id}: {e}")
+            logger.warning(
+                f"Could not collect enhanced metadata for {landmark_id}: {e}"
+            )
             enhanced_metadata_dict = {}
 
         total_chunks_embedded = 0
@@ -266,14 +273,18 @@ class WikipediaProcessor:
         for wiki_article in processed_articles:
             # Skip articles with no chunks
             if not hasattr(wiki_article, "chunks") or not wiki_article.chunks:
-                logger.warning(f"No chunks to process for article: {wiki_article.title}")
+                logger.warning(
+                    f"No chunks to process for article: {wiki_article.title}"
+                )
                 continue
 
             # Generate embeddings for the chunks
             logger.info(
                 f"Generating embeddings for {len(wiki_article.chunks)} chunks from article: {wiki_article.title}"
             )
-            chunks_with_embeddings = self.embedding_generator.process_chunks(wiki_article.chunks)
+            chunks_with_embeddings = self.embedding_generator.process_chunks(
+                wiki_article.chunks
+            )
 
             # Get current timestamp for processing_date
             current_time = datetime.datetime.now().isoformat()

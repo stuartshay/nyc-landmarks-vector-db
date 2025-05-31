@@ -110,8 +110,10 @@ def get_vector_db() -> PineconeDB:
 
 def get_db_client() -> DbClient:
     """Get an instance of DbClient."""
-    # Use the default db_client implementation (CoreDataStoreAPI is now private and handled in db_client)
-    return DbClient()
+    # Use the proper get_db_client function from db_client module
+    from nyc_landmarks.db.db_client import get_db_client as get_client
+
+    return get_client()
 
 
 # --- Helper functions ---

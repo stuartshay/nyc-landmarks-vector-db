@@ -1,9 +1,7 @@
 """Results reporting utilities for processing scripts."""
 
-import logging
-import sys
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Set
 
 from nyc_landmarks.utils.logger import get_logger
 
@@ -97,7 +95,9 @@ def print_statistics(
         print(f"Success rate:                    {success_rate:.1f}%")
 
         if stats.landmarks_with_articles > 0:
-            wikipedia_rate = (stats.landmarks_with_articles / stats.total_landmarks) * 100
+            wikipedia_rate = (
+                stats.landmarks_with_articles / stats.total_landmarks
+            ) * 100
             print(f"Wikipedia coverage rate:         {wikipedia_rate:.1f}%")
 
     # Error summary

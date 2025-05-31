@@ -1,6 +1,5 @@
 """Wikipedia processing utilities for NYC landmarks."""
 
-import logging
 from typing import List, Optional
 
 from nyc_landmarks.utils.logger import get_logger

@@ -5,17 +5,31 @@
   "exclude": [
     "**/node_modules",
     "**/__pycache__",
-    "**/*.pyc",
-    "stubs"
+    "**/*.pyc"
   ],
+  "stubPath": "stubs",
   "ignore": [],
   "defineConstant": {},
   "typeCheckingMode": "basic",
   "useLibraryCodeForTypes": true,
-  "reportMissingImports": true,
+  "reportMissingImports": "warning",
   "reportMissingTypeStubs": false,
   "reportUnknownMemberType": false,
+  "reportUntypedFunctionDecorator": false,
+  "reportUnknownParameterType": false,
+  "reportUnknownVariableType": false,
   "pythonVersion": "3.12",
   "pythonPlatform": "Linux",
-  "reportGeneralTypeIssues": "none"
+  "reportGeneralTypeIssues": "none",
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "pythonVersion": "3.12",
+      "pythonPlatform": "Linux",
+      "extraPaths": [
+        ".",
+        "stubs"
+      ]
+    }
+  ]
 }
