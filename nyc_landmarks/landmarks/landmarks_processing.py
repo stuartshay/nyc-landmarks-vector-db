@@ -1,4 +1,4 @@
-"""Wikipedia processing utilities for NYC landmarks."""
+"""Landmark processing utilities for NYC landmarks."""
 
 from typing import List, Optional
 
