@@ -43,11 +43,21 @@ repos:
           - flake8-comprehensions
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.15.0
+    rev: v1.16.0
     hooks:
       - id: mypy
         exclude: ^tests/
         args: ["--config-file=mypy.ini", "--disable-error-code=misc"]
+        additional_dependencies:
+          - types-requests
+          - types-PyYAML
+          - types-tabulate
+
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.401
+    hooks:
+      - id: pyright
+        exclude: ^tests/
         additional_dependencies:
           - types-requests
           - types-PyYAML
