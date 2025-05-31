@@ -65,12 +65,17 @@ class WikipediaProcessor:
 
             # Fetch the actual content from Wikipedia
             logger.info(f"Fetching content from Wikipedia for article: {article.title}")
-            article_content = self.wiki_fetcher.fetch_wikipedia_content(article.url)
+            article_content, rev_id = self.wiki_fetcher.fetch_wikipedia_content(
+                article.url
+            )
             if article_content:
                 article.content = article_content
+                article.rev_id = rev_id  # Store the revision ID
                 logger.info(
                     f"Successfully fetched content for article: {article.title} ({len(article_content)} chars)"
                 )
+                if rev_id:
+                    logger.info(f"Article revision ID: {rev_id}")
             else:
                 logger.warning(f"Failed to fetch content for article: {article.title}")
 
@@ -150,6 +155,9 @@ class WikipediaProcessor:
                             "article_url": article.url,
                             "source_type": SourceType.WIKIPEDIA.value,
                             "landmark_id": landmark_id,
+                            "rev_id": (
+                                article.rev_id if hasattr(article, "rev_id") else None
+                            ),
                         },
                         "total_chunks": len(token_chunks),
                     }
@@ -162,6 +170,7 @@ class WikipediaProcessor:
                 title=article.title,
                 content=article.content,
                 chunks=dict_chunks,
+                rev_id=article.rev_id,  # Include revision ID
             )
 
             processed_articles.append(content_model)
@@ -296,6 +305,13 @@ class WikipediaProcessor:
                 "processing_date": current_time,
                 "source_type": SourceType.WIKIPEDIA.value,
             }
+
+            # Add revision ID to metadata if available
+            if hasattr(wiki_article, "rev_id") and wiki_article.rev_id:
+                article_metadata["rev_id"] = wiki_article.rev_id
+                logger.info(
+                    f"Added revision ID {wiki_article.rev_id} to article metadata"
+                )
 
             # Add metadata to each chunk
             self.add_metadata_to_chunks(chunks_with_embeddings, article_metadata)

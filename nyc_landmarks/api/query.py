@@ -700,7 +700,7 @@ async def search_landmarks_text(
         # Search landmarks in database
         lpc_report_response = db_client.search_landmarks(q)
         # Use the .results attribute and limit the results
-        results = lpc_report_response.results[:limit]
+        results = lpc_report_response.results[:limit]  # type: ignore[attr-defined]
 
         # Convert to LandmarkInfo objects
         landmarks: List[LandmarkInfo] = []

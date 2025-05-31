@@ -949,6 +949,7 @@ class _CoreDataStoreAPI:
                 content=item.get(
                     "content", ""
                 ),  # Get content from the item or use empty string
+                rev_id=item.get("rev_id"),  # Add the missing rev_id parameter
             )
             logger.debug(f"Found Wikipedia article: {article.title}")
             return article

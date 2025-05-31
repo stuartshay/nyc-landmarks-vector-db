@@ -61,65 +61,31 @@ class WikipediaFetcher:
         stop=stop_after_attempt(3),
         reraise=True,
     )
-    def fetch_wikipedia_content(self, url: str) -> Optional[str]:
+    def fetch_wikipedia_content(self, url: str) -> Tuple[Optional[str], Optional[str]]:
         """Fetch the content of a Wikipedia article.
 
         Args:
             url: URL of the Wikipedia article
 
         Returns:
-            The article content as text, or None if an error occurs
+            Tuple of (article content, revision ID) or (None, None) if an error occurs
         """
-        if not url.startswith(("http://", "https://")):
-            logger.warning(f"Invalid URL format: {url}")
-            return None
+        if not self._is_valid_url(url):
+            return None, None
 
         try:
-            logger.info(f"Fetching Wikipedia content from: {url}")
-            response = requests.get(url, headers=self.headers, timeout=30)
-            response.raise_for_status()
+            soup = self._fetch_and_parse_html(url)
+            rev_id = self._extract_revision_id(soup, url)
+            content = self._extract_content(soup, url, rev_id)
 
-            logger.debug(f"HTTP response status: {response.status_code}")
-            logger.debug(f"Response preview: {response.text[:500]}...")
-
-            # Parse HTML content
-            soup = BeautifulSoup(response.text, "html.parser")
-
-            # Extract the main content div
-            content_div = soup.find("div", {"id": "mw-content-text"})
-            if not content_div:
-                logger.warning(f"Could not find main content in Wikipedia page: {url}")
-                return None
-
-            # Find all paragraphs in the content
-            from bs4 import NavigableString
-
-            if not isinstance(content_div, NavigableString) and hasattr(
-                content_div, "find_all"
-            ):  # Ensure content_div has find_all method
-                paragraphs = content_div.find_all("p")
-                content = "\n\n".join([p.get_text() for p in paragraphs])
-            else:
-                logger.warning(
-                    f"Content div doesn't support find_all method: {type(content_div)}"
-                )
-                content = (
-                    content_div.get_text()
-                    if hasattr(content_div, "get_text")
-                    else str(content_div)
-                )
-
-            # Clean up the text
-            content = self._clean_wikipedia_text(content)
+            if content is None:
+                return None, str(rev_id) if rev_id is not None else None
 
             # Add a delay to respect rate limits
             time.sleep(self.rate_limit_delay)
 
-            logger.info(
-                f"Successfully fetched Wikipedia content ({len(content)} chars)"
-            )
-            logger.debug(f"Content after fetching: {content[:500]}...")
-            return content
+            self._log_success(content, rev_id)
+            return content, str(rev_id) if rev_id is not None else None
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Error fetching Wikipedia content from {url}: {e}")
@@ -128,7 +94,166 @@ class WikipediaFetcher:
             logger.error(
                 f"Unexpected error processing Wikipedia content from {url}: {e}"
             )
+            return None, None  # Return None for both content and rev_id on error
+
+    def _is_valid_url(self, url: str) -> bool:
+        """Validate URL format.
+
+        Args:
+            url: URL to validate
+
+        Returns:
+            True if URL is valid, False otherwise
+        """
+        if not url.startswith(("http://", "https://")):
+            logger.warning(f"Invalid URL format: {url}")
+            return False
+        return True
+
+    def _fetch_and_parse_html(self, url: str) -> BeautifulSoup:
+        """Fetch HTML content and parse it.
+
+        Args:
+            url: URL to fetch
+
+        Returns:
+            BeautifulSoup object with parsed HTML
+        """
+        logger.info(f"Fetching Wikipedia content from: {url}")
+        response = requests.get(url, headers=self.headers, timeout=30)
+        response.raise_for_status()
+
+        logger.debug(f"HTTP response status: {response.status_code}")
+        logger.debug(f"Response preview: {response.text[:500]}...")
+
+        return BeautifulSoup(response.text, "html.parser")
+
+    def _extract_revision_id(self, soup: BeautifulSoup, url: str) -> Optional[str]:
+        """Extract revision ID from the Wikipedia page.
+
+        Args:
+            soup: BeautifulSoup object with parsed HTML
+            url: Original URL (for extracting from URL if needed)
+
+        Returns:
+            Revision ID as string or None if not found
+        """
+        # Try to find revision ID in the page info
+        revision_element = soup.select_one('head > meta[property="mw:pageId"]')
+        if revision_element and "content" in revision_element.attrs:
+            rev_id = str(revision_element["content"])
+            logger.info(f"Found revision ID from meta tag: {rev_id}")
+            return rev_id
+
+        # Alternative method - look for it in the page JSON data
+        script_rev_id = self._extract_revision_from_scripts(soup)
+        if script_rev_id:
+            return script_rev_id
+
+        # Another alternative - extract from URL if it contains oldid
+        return self._extract_revision_from_url(url)
+
+    def _extract_revision_from_scripts(self, soup: BeautifulSoup) -> Optional[str]:
+        """Extract revision ID from script tags.
+
+        Args:
+            soup: BeautifulSoup object with parsed HTML
+
+        Returns:
+            Revision ID as string or None if not found
+        """
+        script_tags = soup.find_all("script")
+        for script in script_tags:
+            if script.string and '"wgRevisionId":' in script.string:
+                match = re.search(r'"wgRevisionId":\s*(\d+)', script.string)
+                if match:
+                    rev_id = str(match.group(1))
+                    logger.info(f"Found revision ID from script tag: {rev_id}")
+                    return rev_id
+        return None
+
+    def _extract_revision_from_url(self, url: str) -> Optional[str]:
+        """Extract revision ID from URL if it contains oldid parameter.
+
+        Args:
+            url: Wikipedia URL
+
+        Returns:
+            Revision ID as string or None if not found
+        """
+        if "oldid=" in url:
+            match = re.search(r"oldid=(\d+)", url)
+            if match:
+                rev_id = str(match.group(1))
+                logger.info(f"Found revision ID from URL: {rev_id}")
+                return rev_id
+        return None
+
+    def _extract_content(
+        self, soup: BeautifulSoup, url: str, rev_id: Optional[str]
+    ) -> Optional[str]:
+        """Extract main content from Wikipedia page.
+
+        Args:
+            soup: BeautifulSoup object with parsed HTML
+            url: Original URL for logging
+            rev_id: Revision ID for logging
+
+        Returns:
+            Cleaned article content or None if extraction fails
+        """
+        # Extract the main content div
+        content_div = soup.find("div", {"id": "mw-content-text"})
+        if not content_div:
+            logger.warning(f"Could not find main content in Wikipedia page: {url}")
             return None
+
+        # Extract text content
+        content = self._extract_text_from_content_div(content_div)
+
+        # Clean up the text
+        return self._clean_wikipedia_text(content)
+
+    def _extract_text_from_content_div(self, content_div: Any) -> str:
+        """Extract text from content div, handling different element types.
+
+        Args:
+            content_div: BeautifulSoup element containing content
+
+        Returns:
+            Extracted text content
+        """
+        from bs4 import NavigableString
+
+        if not isinstance(content_div, NavigableString) and hasattr(
+            content_div, "find_all"
+        ):
+            paragraphs = content_div.find_all("p")
+            return "\n\n".join([p.get_text() for p in paragraphs])
+        else:
+            logger.warning(
+                f"Content div doesn't support find_all method: {type(content_div)}"
+            )
+            return (
+                content_div.get_text()
+                if hasattr(content_div, "get_text")
+                else str(content_div)
+            )
+
+    def _log_success(self, content: str, rev_id: Optional[str]) -> None:
+        """Log successful content fetch.
+
+        Args:
+            content: Fetched content
+            rev_id: Revision ID if found
+        """
+        logger.info(f"Successfully fetched Wikipedia content ({len(content)} chars)")
+        logger.debug(f"Content after fetching: {content[:500]}...")
+
+        if rev_id:
+            logger.info(f"Fetched Wikipedia content with revision ID: {rev_id}")
+        else:
+            logger.warning("Could not find revision ID for the Wikipedia page")
 
     def _clean_wikipedia_text(self, text: str) -> str:
         """Clean Wikipedia article text.
@@ -250,12 +375,17 @@ class WikipediaFetcher:
             WikipediaContentModel with content and chunks, or None if an error occurs
         """
         try:
-            # Fetch the article content
-            content = self.fetch_wikipedia_content(article.url)
+            # Fetch the article content and revision ID
+            content, rev_id = self.fetch_wikipedia_content(article.url)
             if not content:
                 logger.error(f"Content is None for URL: {article.url}")
                 return None
             logger.debug(f"Fetched content preview: {content[:500]}...")
+
+            # Update the article model with the revision ID if found
+            if rev_id:
+                article.rev_id = rev_id
+                logger.info(f"Updated article with revision ID: {rev_id}")
 
             # Chunk the content
             chunks = self.chunk_wikipedia_text(content, chunk_size, chunk_overlap)
@@ -266,6 +396,7 @@ class WikipediaFetcher:
                 "article_url": article.url,
                 "source_type": "wikipedia",
                 "landmark_id": article.lpNumber,
+                "rev_id": rev_id,  # Add revision ID to metadata
             }
 
             for chunk in chunks:
@@ -280,6 +411,7 @@ class WikipediaFetcher:
                 title=article.title,
                 content=content,
                 chunks=chunks_as_dicts,
+                rev_id=rev_id,  # Include revision ID
             )
 
             return content_model
