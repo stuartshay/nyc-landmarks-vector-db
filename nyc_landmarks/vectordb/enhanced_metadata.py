@@ -202,7 +202,11 @@ class EnhancedMetadataCollector:
                 pluto_data = self.db_client.get_landmark_pluto_data(landmark_id)
                 if pluto_data:
                     pluto_model = pluto_data[0]
-                    assert isinstance(pluto_model, PlutoDataModel)
+                    if not isinstance(pluto_model, PlutoDataModel):
+                        raise TypeError(
+                            f"Expected pluto_model to be an instance of PlutoDataModel, "
+                            f"but got {type(pluto_model).__name__} instead."
+                        )
                     metadata_dict.update(
                         {
                             "year_built": (
