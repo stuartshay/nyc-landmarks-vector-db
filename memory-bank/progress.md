@@ -12,55 +12,81 @@
 
 ### Recently Completed Features
 
-- Created custom Wikipedia article analysis script that successfully extracts potential metadata fields
-- Implemented pattern-based extraction to identify attributes like year built, architect, architectural style
-- Developed JSON and plain text dump functionality for analyzing Wikipedia content
-- Created comprehensive metadata analysis report with recommendations for enhancements
-- Successfully tested Wikipedia content extraction on sample landmarks
+- **Wikipedia Processor Refactoring**: Successfully extracted Wikipedia processing functionality into `nyc_landmarks/wikipedia/processor.py` with the `WikipediaProcessor` class
+- **Wikipedia Package Structure**: Created proper module organization under `nyc_landmarks/wikipedia/`
+- **Landmarks Processing Module**: Implemented `nyc_landmarks/landmarks/landmarks_processing.py` for enhanced landmark processing capabilities
+- **Results Reporting Module**: Added `nyc_landmarks/utils/results_reporter.py` for better statistics and reporting
+- **Wikipedia Analysis Script**: Created `scripts/analyze_wikipedia_article.py` for individual article analysis and metadata extraction
+- **Modular Architecture**: Established foundation for the Wikipedia refactoring project with clear separation of concerns
 
 ## In Progress
 
-### Wikipedia Metadata Enhancement
+### Wikipedia Refactoring Project (Phase 1)
 
-- Improving extraction patterns for better context understanding
-- Refining architectural style extraction to reduce false positives
-- Expanding extraction capabilities to capture additional metadata fields
+- Completing extraction of utilities to `nyc_landmarks/wikipedia/utils.py`
+- Finalizing the streamlined main script (`scripts/ci/process_wikipedia_articles.py`) to achieve target ~200 lines
+- Testing refactored components to ensure functionality preservation
+- Validating performance parity with original implementation
 
-### Vector Database Improvements
+### Metadata Enhancement (Phase 2 Preparation)
 
-- Preparing schema updates to accommodate new metadata fields from Wikipedia
-- Developing validation strategies for the new metadata fields
+- Preparing for comprehensive Wikipedia article analysis with 25 landmarks
+- Planning integration tests for underutilized CoreDataStore APIs
+- Designing metadata enhancement strategy for Wikipedia content
 
 ## What's Left to Build
 
-### Wikipedia Processing Pipeline Enhancements
+### Wikipedia Refactoring Project Completion
 
-- Implement entity recognition for more accurate metadata extraction
-- Create standardized vocabularies for architectural styles, building materials, etc.
-- Develop improved context-aware extraction patterns
-- Implement validation mechanisms for extracted metadata
+- Complete `nyc_landmarks/wikipedia/utils.py` module with utility functions
+- Finalize main script refactoring to achieve 60%+ size reduction (757 → ~200 lines)
+- Comprehensive testing of refactored components
+- Performance validation and optimization
 
-### Database Schema Updates
+### Wikipedia & API Integration Analysis (Phase 2)
 
-- Update metadata models to include new Wikipedia-derived fields
-- Modify vector database schema to incorporate new metadata
-- Update metadata validators for the new fields
+- Execute Wikipedia processing with refactored components on 25 landmarks
+- Test underutilized CoreDataStore APIs:
+  - Photo Archive API (`get_landmark_photos`)
+  - PLUTO Data API (`get_landmark_pluto_data`)
+  - Building Details API (`get_landmark_buildings`)
+  - Reference Data APIs (neighborhoods, object types, boroughs)
+- Generate comprehensive analysis dump file
+- Create implementation recommendations based on API testing
 
-### Search Enhancements
+### Enhanced Metadata Pipeline (Phase 3)
 
-- Update query API to support filtering by new metadata fields
-- Add capability to search landmarks by architectural style, historical figures, etc.
-- Implement faceted search capabilities using the enhanced metadata
+- Implement highest-value API integrations
+- Create enhanced metadata schema incorporating new data sources
+- Develop improved Wikipedia content extraction patterns
+- Add faceted search capabilities using enhanced metadata
+- Performance optimization for the integrated pipeline
 
 ### Documentation and Testing
 
 - Update API documentation to reflect new metadata fields
-- Create test cases for new metadata extraction
-- Implement integration tests for the enhanced pipeline
+- Create comprehensive test suite for refactored components
+- Implement integration tests for enhanced metadata pipeline
+- Document refactoring patterns and architecture decisions
 
 ## Known Issues
 
-- Regex-based extraction produces false positives for certain metadata fields
-- Architectural style extraction needs refinement to extract clean style names
-- Year extraction sometimes picks up years from later renovations instead of construction
-- Wikipedia URL handling needs improvement for article sections (#section references)
+- **Original Script Dependencies**: Main script still needs to be updated to use refactored components
+- **Metadata Extraction Accuracy**: Wikipedia regex-based extraction needs refinement for better precision
+- **Performance Impact**: Need to measure and optimize performance impact of API integrations
+- **Testing Coverage**: Refactored components need comprehensive test coverage before production use
+
+## Success Metrics Achieved
+
+- ✅ Created modular Wikipedia processor architecture
+- ✅ Established Wikipedia package structure
+- ✅ Implemented results reporting module
+- ✅ Built foundation for metadata enhancement analysis
+- ✅ Maintained backward compatibility during refactoring
+
+## Success Metrics In Progress
+
+- 🔄 Main script size reduction (target: 757 → ~200 lines)
+- 🔄 Complete functionality preservation testing
+- 🔄 Performance validation of refactored components
+- 🔄 API integration testing and analysis
