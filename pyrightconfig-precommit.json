@@ -1,0 +1,42 @@
+{
+  "include": [
+    "nyc_landmarks"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/*.pyc",
+    "scripts/ci",
+    "scripts/test_*.py",
+    "scripts/process_*.py",
+    "scripts/demonstrate_*.py",
+    "setup.py"
+  ],
+  "stubPath": "stubs",
+  "typeCheckingMode": "basic",
+  "useLibraryCodeForTypes": true,
+  "reportMissingImports": "none",
+  "reportMissingTypeStubs": "none",
+  "reportUnknownMemberType": "none",
+  "reportUntypedFunctionDecorator": "none",
+  "reportUnknownParameterType": "none",
+  "reportUnknownVariableType": "none",
+  "reportUnknownArgumentType": "none",
+  "reportPrivateImportUsage": "none",
+  "reportAttributeAccessIssue": "none",
+  "reportArgumentType": "none",
+  "pythonVersion": "3.12",
+  "pythonPlatform": "Linux",
+  "reportGeneralTypeIssues": "none",
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "pythonVersion": "3.12",
+      "pythonPlatform": "Linux",
+      "extraPaths": [
+        ".",
+        "stubs"
+      ]
+    }
+  ]
+}

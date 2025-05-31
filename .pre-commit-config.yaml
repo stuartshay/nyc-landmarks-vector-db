@@ -43,7 +43,7 @@ repos:
           - flake8-comprehensions
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.15.0
+    rev: v1.16.0
     hooks:
       - id: mypy
         exclude: ^tests/
@@ -52,6 +52,20 @@ repos:
           - types-requests
           - types-PyYAML
           - types-tabulate
+
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.401
+    hooks:
+      - id: pyright
+        exclude: ^tests/
+        args: ["--project", "pyrightconfig-precommit.json"]
+        additional_dependencies:
+          - types-requests==2.32.0.20250328
+          - types-PyYAML
+          - types-tabulate
+          - pydantic==2.11.4
+          - pydantic-settings==2.9.1
+          - requests==2.32.3
 
   - repo: https://github.com/PyCQA/bandit
     rev: 1.8.3
