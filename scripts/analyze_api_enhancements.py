@@ -133,8 +133,14 @@ class APIEnhancementAnalyzer:
                     "historic_district": first_record.get("historicDistrict", None),
                     "zoning_district": first_record.get("zoneDist1", None),
                     "lot_area": first_record.get("lotArea", None),
-                    "building_area": first_record.get("buildingArea", None),
+                    "building_area": first_record.get("bldgArea", None),
                     "num_floors": first_record.get("numFloors", None),
+                    "address": first_record.get("address", None),
+                    "borough": first_record.get("borough", None),
+                    "owner_name": first_record.get("ownername", None),
+                    "building_class": first_record.get("bldgclass", None),
+                    "assessed_land_value": first_record.get("assessland", None),
+                    "assessed_total_value": first_record.get("assesstot", None),
                 }
                 logger.info(f"Found PLUTO data for landmark {landmark_id}")
             else:

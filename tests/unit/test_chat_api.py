@@ -193,26 +193,45 @@ class TestChatAPI:
             "This is information about Test Landmark."
         )
 
-        # Test
-        response = test_client.post(
-            "/api/chat/message",
-            json={
-                "message": "Tell me about this landmark.",
-                "landmark_id": "LP-00001",
-            },
+        # Use FastAPI dependency overrides to inject the mock db_client
+        from nyc_landmarks.api.chat import get_db_client
+        from nyc_landmarks.main import app as fastapi_app
+
+        fastapi_app.dependency_overrides[get_db_client] = (
+            lambda: mock_db_client.return_value
         )
 
-        # Assert
-        assert response.status_code == 200
-        assert "conversation_id" in response.json()
-        assert response.json()["response"] == "This is information about Test Landmark."
-        assert response.json()["landmark_id"] == "LP-00001"
-        assert len(response.json()["sources"]) == 1
-        assert response.json()["sources"][0]["landmark_id"] == "LP-00001"
-        # Check if filter_dict was included in the query_vectors call
-        call_kwargs = mock_pinecone_db.return_value.query_vectors.call_args[1]
-        assert call_kwargs.get("filter_dict") == {"landmark_id": "LP-00001"}
-        mock_db_client.return_value.get_landmark_by_id.assert_called_with("LP-00001")
+        try:
+            # Test
+            response = test_client.post(
+                "/api/chat/message",
+                json={
+                    "message": "Tell me about this landmark.",
+                    "landmark_id": "LP-00001",
+                },
+            )
+
+            # Assert
+            assert response.status_code == 200
+            assert "conversation_id" in response.json()
+            assert (
+                response.json()["response"]
+                == "This is information about Test Landmark."
+            )
+            assert response.json()["landmark_id"] == "LP-00001"
+            assert len(response.json()["sources"]) == 1
+            assert response.json()["sources"][0]["landmark_id"] == "LP-00001"
+            # Check if filter_dict was included in the query_vectors call
+            call_kwargs = mock_pinecone_db.return_value.query_vectors.call_args[1]
+            assert call_kwargs.get("filter_dict") == {"landmark_id": "LP-00001"}
+
+            # The get_landmark_by_id should be called because the mock_pinecone_match
+            # has landmark_id "LP-00001" in its metadata, which triggers _get_landmark_name
+            mock_db_client.return_value.get_landmark_by_id.assert_called_with(
+                "LP-00001"
+            )
+        finally:
+            fastapi_app.dependency_overrides = {}
 
     @patch("nyc_landmarks.api.chat.conversation_store")
     def test_get_conversation_history(

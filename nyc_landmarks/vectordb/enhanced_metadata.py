@@ -9,7 +9,8 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from nyc_landmarks.config.settings import settings
-from nyc_landmarks.db.db_client import get_db_client
+from nyc_landmarks.db.db_client import DbClient, get_db_client
+from nyc_landmarks.models.landmark_models import PlutoDataModel
 from nyc_landmarks.models.metadata_models import LandmarkMetadata
 
 # Configure logging
@@ -18,6 +19,9 @@ logging.basicConfig(level=settings.LOG_LEVEL.value)
 
 
 class EnhancedMetadataCollector:
+    """Collects and formats enhanced metadata from CoreDataStore API."""
+
+    db_client: DbClient
 
     def _remove_empty_buildings(self, metadata_dict: dict) -> None:
         if not metadata_dict.get("buildings"):
@@ -198,12 +202,44 @@ class EnhancedMetadataCollector:
                 pluto_data = self.db_client.get_landmark_pluto_data(landmark_id)
                 if pluto_data:
                     pluto_model = pluto_data[0]
+                    assert isinstance(pluto_model, PlutoDataModel)
                     metadata_dict.update(
                         {
-                            "year_built": pluto_model.yearBuilt or "",
+                            "year_built": (
+                                str(pluto_model.yearBuilt)
+                                if pluto_model.yearBuilt
+                                else ""
+                            ),
                             "land_use": pluto_model.landUse or "",
                             "historic_district": pluto_model.historicDistrict or "",
                             "zoning_district": pluto_model.zoneDist1 or "",
+                            "lot_area": (
+                                str(pluto_model.lotArea) if pluto_model.lotArea else ""
+                            ),
+                            "building_area": (
+                                str(pluto_model.bldgArea)
+                                if pluto_model.bldgArea
+                                else ""
+                            ),
+                            "num_floors": (
+                                str(pluto_model.numFloors)
+                                if pluto_model.numFloors
+                                else ""
+                            ),
+                            "property_address": pluto_model.address or "",
+                            "borough_code": pluto_model.borough or "",
+                            "owner_name": pluto_model.ownername or "",
+                            "building_class": pluto_model.bldgclass or "",
+                            "assessed_land_value": (
+                                str(pluto_model.assessland)
+                                if pluto_model.assessland
+                                else ""
+                            ),
+                            "assessed_total_value": (
+                                str(pluto_model.assesstot)
+                                if pluto_model.assesstot
+                                else ""
+                            ),
                         }
                     )
                     logger.info(f"Added PLUTO data fields for landmark {landmark_id}")

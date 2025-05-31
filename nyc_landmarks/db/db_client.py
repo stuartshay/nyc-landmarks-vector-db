@@ -761,7 +761,9 @@ class DbClient:
         """
         if hasattr(self.client, "get_landmark_pluto_data"):
             # Get raw data from client
-            raw_pluto_data = self.client.get_landmark_pluto_data(landmark_id)
+            raw_pluto_data: List[Dict[str, Any]] = self.client.get_landmark_pluto_data(
+                landmark_id
+            )
 
             # Convert to PlutoDataModel objects
             pluto_models: List[PlutoDataModel] = []

@@ -203,16 +203,24 @@ class TestEnhancedMetadataCollectorApiMode(unittest.TestCase):
 
         # Set up mock landmark details response
         self.mock_landmark_details = get_mock_landmark_details()
-        self.mock_db_client.get_landmark_by_id.return_value = self.mock_landmark_details
-
-        # Set up mock PLUTO data as PlutoDataModel instances
-        pluto_dict = {
-            "yearBuilt": "1900",
-            "landUse": "Residential",
-            "historicDistrict": "Greenwich Village",
-            "zoneDist1": "R6",
-        }
-        self.pluto_model = PlutoDataModel(**pluto_dict)
+        self.mock_db_client.get_landmark_by_id.return_value = (
+            self.mock_landmark_details
+        )  # Set up mock PLUTO data as PlutoDataModel instances
+        self.pluto_model = PlutoDataModel(
+            yearBuilt=1900,
+            landUse="Residential",
+            historicDistrict="Greenwich Village",
+            zoneDist1="R6",
+            lotArea=5000,
+            bldgArea=3000,
+            numFloors=3.0,
+            address="47 Fifth Avenue",
+            borough="MN",
+            ownername="Test Owner",
+            bldgclass="R2",
+            assessland=150000.0,
+            assesstot=400000.0,
+        )
         self.mock_pluto_data = [self.pluto_model]
         self.mock_db_client.get_landmark_pluto_data.return_value = self.mock_pluto_data
 
@@ -261,7 +269,7 @@ class TestEnhancedMetadataCollectorApiMode(unittest.TestCase):
         # PLUTO data
         self.assertIn("has_pluto_data", result)
         self.assertTrue(result["has_pluto_data"])
-        self.assertEqual(result["year_built"], self.pluto_model.yearBuilt)
+        self.assertEqual(result["year_built"], str(self.pluto_model.yearBuilt))
         self.assertEqual(result["land_use"], self.pluto_model.landUse)
         self.assertEqual(result["historic_district"], self.pluto_model.historicDistrict)
         self.assertEqual(result["zoning_district"], self.pluto_model.zoneDist1)

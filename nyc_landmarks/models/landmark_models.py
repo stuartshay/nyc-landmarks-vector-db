@@ -290,10 +290,19 @@ class PlutoDataModel(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    yearBuilt: Optional[str] = Field(None, description="Year the structure was built")
-    landUse: Optional[str] = Field(None, description="Land use category")
+    yearBuilt: Optional[int] = Field(None, description="Year the structure was built")
+    landUse: Optional[str] = Field(None, description="Land use category code")
     historicDistrict: Optional[str] = Field(None, description="Historic district name")
     zoneDist1: Optional[str] = Field(None, description="Primary zoning district")
+    lotArea: Optional[int] = Field(None, description="Lot area in square feet")
+    bldgArea: Optional[int] = Field(None, description="Building area in square feet")
+    numFloors: Optional[float] = Field(None, description="Number of floors")
+    address: Optional[str] = Field(None, description="Property address")
+    borough: Optional[str] = Field(None, description="Borough code")
+    ownername: Optional[str] = Field(None, description="Owner name")
+    bldgclass: Optional[str] = Field(None, description="Building class")
+    assessland: Optional[float] = Field(None, description="Assessed land value")
+    assesstot: Optional[float] = Field(None, description="Total assessed value")
 
 
 class ApiError(BaseModel):

@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from nyc_landmarks.db._coredatastore_api import _CoreDataStoreAPI as CoreDataStoreAPI
-from nyc_landmarks.db.db_client import DbClient, SupportsWikipedia
+from nyc_landmarks.db.db_client import DbClient
 from nyc_landmarks.models.landmark_models import (
     LpcReportDetailResponse,
     LpcReportResponse,
@@ -17,21 +17,20 @@ from nyc_landmarks.models.landmark_models import (
 )
 
 
-class TestSupportsWikipediaProtocol(unittest.TestCase):
-    """Tests for the SupportsWikipedia protocol implementation."""
+class TestDbClientWikipediaIntegration(unittest.TestCase):
+    """Tests for the DbClient Wikipedia integration."""
 
-    def test_protocol_methods(self) -> None:
-        """Test the default implementations of the protocol methods."""
+    def test_get_wikipedia_articles_default_implementation(self) -> None:
+        """Test the default implementation of get_wikipedia_articles."""
+        # Create a mock API without get_wikipedia_articles method
+        mock_api = Mock(spec=["get_landmarks_page"])
 
-        # Create a class that just implements the protocol
-        class MinimalWikipediaClient(SupportsWikipedia):
-            pass
+        # Create a DbClient instance with the mock API
+        client = DbClient(mock_api)
 
-        # Instantiate the client
-        client = MinimalWikipediaClient()
-
-        # Test default implementations
-        self.assertEqual(client.get_wikipedia_articles("LP-12345"), [])
+        # Test default implementation returns empty list
+        result = client.get_wikipedia_articles("LP-12345")
+        self.assertEqual(result, [])
 
 
 class TestGetLpcReportsFallback(unittest.TestCase):
@@ -308,13 +307,22 @@ class TestOtherMethods(unittest.TestCase):
 
     def test_get_landmark_pluto_data(self) -> None:
         """Test get_landmark_pluto_data method."""
-        # Set up mock to return pluto data
+        # Set up mock to return pluto data - using the actual API response format
         pluto_data = [
             {
-                "yearBuilt": "1900",
+                "yearBuilt": 1900,  # API returns integer
                 "landUse": "Residential",
                 "historicDistrict": "Greenwich Village",
                 "zoneDist1": "R6",
+                "lotArea": 5000,  # API returns integer
+                "bldgArea": 3000,  # API returns integer
+                "numFloors": 3.0,  # API returns float
+                "address": "123 Test Street",
+                "borough": "MN",
+                "ownername": "Test Owner",
+                "bldgclass": "R2",
+                "assessland": 150000.0,
+                "assesstot": 400000.0,
             }
         ]
         self.mock_api.get_landmark_pluto_data.return_value = pluto_data
@@ -326,7 +334,7 @@ class TestOtherMethods(unittest.TestCase):
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], PlutoDataModel)
-        self.assertEqual(result[0].yearBuilt, "1900")
+        self.assertEqual(result[0].yearBuilt, 1900)  # Now expecting integer
         self.assertEqual(result[0].landUse, "Residential")
         self.assertEqual(result[0].historicDistrict, "Greenwich Village")
         self.assertEqual(result[0].zoneDist1, "R6")
