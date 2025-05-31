@@ -2,96 +2,65 @@
 
 ## What Works
 
-### Core Features
+### Core System Components
 
-- Vector database integration (Pinecone)
-- PDF processing pipeline for landmarks
-- API for landmark queries
-- Chat API for conversational interaction
-- Wikipedia integration for landmark data enrichment
-- Jupyter notebook interfaces for data exploration
+- Core landmark vector database is operational
+- API endpoints for querying landmarks are functional
+- PDF processing pipeline for extracting landmark information works reliably
+- Wikipedia integration for extracting additional landmark information is functional
+- Basic vector search capabilities are implemented and tested
 
-### User Interface
+### Recently Completed Features
 
-- Jupyter notebook widget-based interfaces for data exploration
-- Pagination controls for exploring large datasets
-- Query interfaces for vector database testing
+- Created custom Wikipedia article analysis script that successfully extracts potential metadata fields
+- Implemented pattern-based extraction to identify attributes like year built, architect, architectural style
+- Developed JSON and plain text dump functionality for analyzing Wikipedia content
+- Created comprehensive metadata analysis report with recommendations for enhancements
+- Successfully tested Wikipedia content extraction on sample landmarks
 
-### Testing & Validation
+## In Progress
 
-- Unit and integration test suites
-- Vector database validation tools
-- Metadata consistency checking
+### Wikipedia Metadata Enhancement
 
-## Recent Accomplishments
+- Improving extraction patterns for better context understanding
+- Refining architectural style extraction to reduce false positives
+- Expanding extraction capabilities to capture additional metadata fields
 
-### 2025-05-28: fetch_landmark_reports.py Script Review & Enhancement Planning - Complete ✅
+### Vector Database Improvements
 
-- **Comprehensive Script Assessment**: Conducted thorough review of `scripts/fetch_landmark_reports.py` and confirmed excellent engineering practices
-- **Enhancement Opportunity Analysis**: Identified 24 specific enhancement opportunities across 6 categories (Performance, Data Quality, Reporting, Configuration, Export Formats, Monitoring)
-- **Implementation Priority Framework**: Established three-tier priority system (High Value/Low Effort, Medium Value/Medium Effort, High Value/High Effort) with specific recommendations
-- **Memory Bank Documentation**: Added detailed enhancement roadmap to `memory-bank/research_items.md` with implementation complexity assessments and technical considerations
-- **Current Script Strengths Validated**: Confirmed clean architecture, comprehensive type hints, DbClient integration, Wikipedia/PDF index capabilities, Excel export, and extensive CLI documentation
-
-### 2025-05-27: Test Suite Cleanup - Complete ✅
-
-- **Obsolete Test Removal**: Removed `tests/integration/test_landmark_fetcher_integration.py` which was testing the deprecated `LandmarkReportFetcher` class
-- **Testing Consolidation**: The functionality is now comprehensively covered by the 20 unit tests in `tests/scripts/test_fetch_landmark_reports.py`
-- **Documentation Update**: Updated memory bank to reflect the cleanup and maintain accurate project state documentation
-
-### 2025-05-26: Script Enhancement - fetch_landmark_reports.py - Complete ✅
-
-- **DbClient Integration**: Successfully replaced custom CoreDataStoreClient with unified DbClient interface
-- **Comprehensive Pagination**: Implemented get_total_record_count() and intelligent page-through-all-records functionality
-- **Enhanced Filtering**: Added support for borough, object_type, neighborhood, search_text, and architectural style filtering
-- **Professional Documentation**: Complete module docstring with 20+ usage examples and comprehensive CLI help
-- **Best Practices Implementation**: Type hints, dataclasses, proper error handling, and project logging standards
-- **Performance Optimization**: Configurable page sizes, progress tracking, and intelligent record counting
-- **Output Enhancement**: Timestamped JSON files, processing metrics, and PDF URL extraction
-
-## Recent Improvements
-
-### 2025-05-23: Notebook UI Enhancement
-
-- Fixed pagination layout in `wikipedia_integration_testing.ipynb`
-- Improved usability by placing pager on top and reorganizing controls
-- Created a reusable pattern for widget organization that can be applied to other notebooks
-- Developed a script to automate notebook cell modifications for standardization
-
-### Previous Updates
-
-- Standardized vector ID format across the system
-- Improved error handling in database client
-- Enhanced type checking for better code reliability
-- Created comprehensive test suite for database operations
-- Added Wikipedia article integration to enrich landmark data
+- Preparing schema updates to accommodate new metadata fields from Wikipedia
+- Developing validation strategies for the new metadata fields
 
 ## What's Left to Build
 
-### Short-term Tasks
+### Wikipedia Processing Pipeline Enhancements
 
-- Standardize pagination widget layout across all notebooks
-- Create helper functions for common widget patterns
-- Test notebooks in various environments to ensure consistent rendering
-- Review and update notebook documentation standards
+- Implement entity recognition for more accurate metadata extraction
+- Create standardized vocabularies for architectural styles, building materials, etc.
+- Develop improved context-aware extraction patterns
+- Implement validation mechanisms for extracted metadata
 
-### Medium-term Tasks
+### Database Schema Updates
 
-- Improve performance of vector querying for large datasets
-- Enhance Wikipedia content processing for better semantic search
-- Develop more sophisticated vector filtering options
-- Create advanced visualization tools for data exploration
+- Update metadata models to include new Wikipedia-derived fields
+- Modify vector database schema to incorporate new metadata
+- Update metadata validators for the new fields
 
-### Long-term Goals
+### Search Enhancements
 
-- Develop a web-based frontend for easier access to the data
-- Implement user authentication and permission system
-- Create automated data refresh pipelines
-- Build a comprehensive dashboard for system monitoring
+- Update query API to support filtering by new metadata fields
+- Add capability to search landmarks by architectural style, historical figures, etc.
+- Implement faceted search capabilities using the enhanced metadata
+
+### Documentation and Testing
+
+- Update API documentation to reflect new metadata fields
+- Create test cases for new metadata extraction
+- Implement integration tests for the enhanced pipeline
 
 ## Known Issues
 
-- Some Jupyter notebook compatibility issues with VS Code
-- Potential performance bottlenecks with large datasets
-- Wikipedia article coverage is incomplete for some landmarks
-- Test suite occasionally encounters timeout issues with API calls
+- Regex-based extraction produces false positives for certain metadata fields
+- Architectural style extraction needs refinement to extract clean style names
+- Year extraction sometimes picks up years from later renovations instead of construction
+- Wikipedia URL handling needs improvement for article sections (#section references)
