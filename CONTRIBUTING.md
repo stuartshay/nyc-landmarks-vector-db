@@ -95,7 +95,7 @@ We use several tools to enforce code quality:
 - Store relevant project documentation in the `memory-bank/` directory
 - When documenting changes or improvements, create or update a file in `memory-bank/`
 - Use descriptive filenames with hyphens (e.g., `test-improvements.md`)
-- When documenting code changes, include:
+- When documenting code changes, include:got
   - Summary of changes
   - Motivation for changes
   - Benefits and improvements

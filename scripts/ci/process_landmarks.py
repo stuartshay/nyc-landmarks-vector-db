@@ -33,12 +33,12 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.db_client import get_db_client
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
+from nyc_landmarks.landmarks.landmarks_processing import get_landmarks_to_process
 from nyc_landmarks.pdf.extractor import PDFExtractor
 from nyc_landmarks.pdf.text_chunker import TextChunker
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.enhanced_metadata import get_metadata_collector
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
-from nyc_landmarks.wikipedia.utils import get_landmarks_to_process
 
 # Configure logger for this script
 logger = get_logger(name="process_landmarks")
@@ -959,9 +959,6 @@ class LandmarkPipeline:
         return self.stats
 
 
-# Function removed - now imported from nyc_landmarks.wikipedia.utils
-
-
 def parse_arguments() -> argparse.Namespace:
     """Parse command line arguments.
 
@@ -998,6 +995,7 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     # Legacy arguments for GitHub Actions compatibility
+    # TODO: Remove these after migrating GitHub Actions workflow to use unified mode
     parser.add_argument(
         "--start-page",
         type=int,
@@ -1066,9 +1064,6 @@ def setup_logging(verbose: bool) -> None:
         logging.getLogger().setLevel(logging.INFO)
     else:
         logging.getLogger().setLevel(logging.WARNING)
-
-
-# Function removed - now imported from nyc_landmarks.wikipedia.utils
 
 
 def process_landmarks_parallel(
@@ -1258,7 +1253,19 @@ def print_results(
 
 
 def run_legacy_mode(args: argparse.Namespace, api_key: Optional[str]) -> None:
-    """Run the legacy page range processing mode."""
+    """Run the legacy page range processing mode.
+
+    DEPRECATED: This function is maintained for GitHub Actions compatibility only.
+    The GitHub Actions workflow (.github/workflows/process_landmarks.yml) currently
+    depends on this function for batch processing using --start-page and --end-page.
+
+    TODO: Migrate GitHub Actions to use run_unified_mode() with landmark IDs or --all flag,
+    then remove this legacy function and print_legacy_results().
+
+    Args:
+        args: Parsed command line arguments containing start_page and end_page
+        api_key: Optional API key for CoreDataStore API
+    """
     logger.info(
         f"Running in legacy mode: processing pages {args.start_page} to {args.end_page}"
     )
@@ -1313,7 +1320,17 @@ def run_legacy_mode(args: argparse.Namespace, api_key: Optional[str]) -> None:
 
 
 def print_legacy_results(stats: dict) -> None:
-    """Print results for legacy mode processing."""
+    """Print results for legacy mode processing.
+
+    DEPRECATED: This function is only used by run_legacy_mode() for GitHub Actions.
+    It provides different output formatting compared to the modern print_results().
+
+    TODO: Remove this function when run_legacy_mode() is removed after GitHub Actions
+    migration to unified mode.
+
+    Args:
+        stats: Dictionary containing processing statistics
+    """
     print("\n===== LANDMARKS PROCESSING RESULTS =====")
     if "landmarks_fetched" in stats:
         print(f"Landmarks fetched: {stats['landmarks_fetched']}")
@@ -1378,6 +1395,7 @@ def main() -> None:
     api_key = args.api_key or os.environ.get("COREDATASTORE_API_KEY")
 
     # Check if we're in legacy mode (GitHub Actions compatibility)
+    # TODO: Remove legacy mode support after migrating GitHub Actions workflow
     if args.start_page is not None and args.end_page is not None:
         run_legacy_mode(args, api_key)
     else:

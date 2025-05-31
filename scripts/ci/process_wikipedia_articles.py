@@ -25,9 +25,10 @@ from typing import Any, Dict, List, Set, Tuple
 
 from tqdm import tqdm
 
+from nyc_landmarks.landmarks.landmarks_processing import get_landmarks_to_process
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.utils.results_reporter import print_results
-from nyc_landmarks.wikipedia import WikipediaProcessor, get_landmarks_to_process
+from nyc_landmarks.wikipedia import WikipediaProcessor
 
 # Configure logging
 logger = get_logger(__name__)
