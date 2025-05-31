@@ -2,50 +2,62 @@
 
 ## Current Focus
 
-The current focus is on enhancing the NYC Landmarks project by extracting additional metadata from Wikipedia articles about landmarks. This involves analyzing the Wikipedia content processing pipeline and identifying potential attributes that can enrich the metadata in the vector database.
+The current focus is on the Wikipedia Processing Script Refactoring & Metadata Enhancement Project. This involves refactoring the large `scripts/ci/process_wikipedia_articles.py` script (757 lines) into modular components while conducting comprehensive analysis of Wikipedia articles for metadata enhancement opportunities.
 
 ## Recent Changes
 
-- Successfully ran the Wikipedia processing script for 25 landmarks, which extracted and embedded content from various Wikipedia articles.
-- Created a custom analysis script (`scripts/analyze_wikipedia_article.py`) to fetch, analyze, and extract metadata attributes from Wikipedia articles.
-- Generated dumps of Wikipedia article content and metadata in the `logs/wikipedia_analysis` directory.
-- Identified additional metadata fields that could be extracted from Wikipedia content to enhance landmark data.
-- Created a detailed metadata analysis report outlining current extraction capabilities, challenges, and recommendations for improvement.
+- **Successfully implemented `nyc_landmarks/wikipedia/processor.py`**: Created the `WikipediaProcessor` class as planned in Phase 1 of the refactoring project, extracting core Wikipedia processing functionality from the main script.
+- **Created Wikipedia package structure**: Established `nyc_landmarks/wikipedia/` directory with proper module organization.
+- **Developed custom Wikipedia analysis script**: Implemented `scripts/analyze_wikipedia_article.py` to analyze individual Wikipedia articles and extract potential metadata attributes.
+- **Added landmarks processing module**: Created `nyc_landmarks/landmarks/landmarks_processing.py` to support the refactoring effort.
+- **Enhanced results reporting**: Added `nyc_landmarks/utils/results_reporter.py` for better statistics and reporting capabilities.
 
 ## Next Steps
 
-### Wikipedia Metadata Enhancement
+### Phase 1 Completion (Refactoring)
 
-1. Integrate the recommended metadata fields into the Wikipedia processing pipeline
-1. Improve extraction patterns to handle context-dependent information
-1. Consider implementing named entity recognition for better metadata extraction
-1. Develop a validation mechanism for extracted metadata
+1. Complete extraction of utilities to `nyc_landmarks/wikipedia/utils.py`
+1. Finalize results reporting module improvements
+1. Streamline the main `scripts/ci/process_wikipedia_articles.py` script to target ~200 lines
+1. Verify all functionality is preserved after refactoring
 
-### Vector DB Integration
+### Phase 2 Implementation (API Analysis)
 
-1. Update the vector DB schema to incorporate the new metadata fields
-1. Modify the metadata validators to handle the new fields
-1. Enhance query capabilities to leverage the additional metadata
+1. Execute Wikipedia processing command with 25 landmarks to test refactored components
+1. Test underutilized CoreDataStore APIs (photos, PLUTO data, building details)
+1. Analyze metadata enhancement opportunities from API data
+1. Generate comprehensive analysis dump file
+
+### Phase 3 (Metadata Enhancement)
+
+1. Integrate highest-value API enhancements
+1. Implement improved metadata extraction patterns for Wikipedia content
+1. Create enhanced metadata schema
+1. Performance optimization
 
 ## Active Decisions and Considerations
 
-### Metadata Extraction Approach
+### Refactoring Architecture
 
-- Currently using regex-based extraction for metadata, which works for simple patterns but has limitations with context-dependent information.
-- Need to decide whether to enhance regex patterns or implement more sophisticated NLP techniques.
+- Maintaining backward compatibility while improving modularity
+- Ensuring no breaking changes to existing interfaces
+- Preserving all existing functionality during the transition
 
-### Data Quality Management
+### Metadata Enhancement Strategy
 
-- Considering a human-in-the-loop approach for validating extracted metadata before adding to production.
-- Need to establish data quality metrics for the extracted metadata.
+- Focus on non-intrusive enhancements that don't break current functionality
+- Implement optional enhanced metadata collection that can be enabled/disabled
+- Prioritize API integrations based on data quality and processing performance impact
 
-### Processing Pipeline Improvements
+### Testing and Validation
 
-- The current Wikipedia processing approach fetches entire articles, but some landmarks have sections of larger articles.
-- Need to determine if we should extract only relevant sections or process entire articles.
+- Need to thoroughly test refactored components against original script behavior
+- Validate that Wikipedia processing performance is maintained or improved
+- Ensure proper error handling and logging throughout the refactored modules
 
 ## Current Challenges
 
-- Accuracy of metadata extraction requires improvement, particularly for complex fields like architectural styles.
-- Some Wikipedia articles contain ambiguous information that requires contextual understanding.
-- Need to balance the breadth of metadata extraction with precision.
+- Balancing code modularity with maintaining existing functionality
+- Managing the complexity of multiple API integrations while keeping performance optimal
+- Ensuring comprehensive testing coverage for the refactored components
+- Coordinating the phased approach to avoid disrupting existing workflows
