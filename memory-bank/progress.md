@@ -8,10 +8,12 @@
 - API endpoints for querying landmarks are functional
 - PDF processing pipeline for extracting landmark information works reliably
 - Wikipedia integration for extracting additional landmark information is functional
+- Wikipedia article quality assessment for enhanced metadata and filtering
 - Basic vector search capabilities are implemented and tested
 
 ### Recently Completed Features
 
+- **Wikipedia Article Quality Assessment**: Implemented integration with the Wikimedia Lift Wing articlequality API to assess the quality of Wikipedia articles (FA, GA, B, C, Start, Stub) and include this information in the vector metadata for improved search filtering and result ranking. Each article now includes quality rating, confidence scores, and human-readable quality descriptions.
 - **Wikipedia Revision ID Tracking**: Enhanced Wikipedia fetcher and processor to track article revision IDs, providing better versioning and citation support. Revision IDs are now consistently propagated through the entire pipeline from fetching to vector database storage.
 - **Type Consistency Improvements**: Fixed return type handling in WikipediaFetcher.fetch_wikipedia_content to consistently return a tuple of (content, rev_id) for better error handling and type safety.
 - **Enhanced Metadata in Wikipedia Chunks**: Added revision IDs to chunk metadata for precise article version tracking for citations and provenance tracking.

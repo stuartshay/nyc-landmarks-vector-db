@@ -412,6 +412,7 @@ class WikipediaFetcher:
                 content=content,
                 chunks=chunks_as_dicts,
                 rev_id=rev_id,  # Include revision ID
+                quality=None,  # Quality assessment will be added later
             )
 
             return content_model

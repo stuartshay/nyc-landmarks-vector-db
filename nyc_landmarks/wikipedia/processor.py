@@ -8,9 +8,13 @@ from transformers.tokenization_utils import PreTrainedTokenizer
 from nyc_landmarks.db.wikipedia_fetcher import WikipediaFetcher
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.models.metadata_models import SourceType
-from nyc_landmarks.models.wikipedia_models import WikipediaContentModel
+from nyc_landmarks.models.wikipedia_models import (
+    WikipediaContentModel,
+    WikipediaQualityModel,
+)
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
+from nyc_landmarks.wikipedia.quality_fetcher import WikipediaQualityFetcher
 
 if TYPE_CHECKING:
     from nyc_landmarks.db.db_client import DbClient
@@ -27,6 +31,7 @@ class WikipediaProcessor:
         self.wiki_fetcher = WikipediaFetcher()
         self.embedding_generator = EmbeddingGenerator()
         self.pinecone_db = PineconeDB()
+        self.quality_fetcher = WikipediaQualityFetcher()
 
     def _initialize_db_client(self) -> Any:
         """Initialize database client on demand."""
@@ -136,7 +141,7 @@ class WikipediaProcessor:
             )
 
             # Create dictionary chunks for the WikipediaContentModel
-            dict_chunks = []
+            dict_chunks: List[Dict[str, Any]] = []
             for i, chunk_text in enumerate(token_chunks):
                 token_count = len(tokenizer.encode(chunk_text))
                 # Generate the vector ID that will be used for this chunk
@@ -165,6 +170,27 @@ class WikipediaProcessor:
                     }
                 )
 
+            # Fetch article quality if revision ID is available
+            quality = None
+            if hasattr(article, "rev_id") and article.rev_id:
+                quality_data = self._fetch_article_quality(article.rev_id)
+                if quality_data:
+                    quality = quality_data
+                    logger.info(
+                        f"Added quality assessment for article: {article.title} - {quality.prediction}"
+                    )
+
+                    # Add quality info to chunk metadata
+                    for chunk in dict_chunks:
+                        if "metadata" in chunk:
+                            chunk["metadata"]["article_quality"] = quality.prediction
+                            chunk["metadata"]["article_quality_score"] = str(
+                                quality.probabilities.get(quality.prediction, 0.0)
+                            )
+                            chunk["metadata"][
+                                "article_quality_description"
+                            ] = quality.get_quality_description()
+
             # Create a WikipediaContentModel with the chunks
             content_model = WikipediaContentModel(
                 lpNumber=landmark_id,
@@ -173,12 +199,55 @@ class WikipediaProcessor:
                 content=article.content,
                 chunks=dict_chunks,
                 rev_id=article.rev_id,  # Include revision ID
+                quality=quality,  # Include quality assessment
             )
 
             processed_articles.append(content_model)
             total_chunks += len(dict_chunks)
 
         return processed_articles, total_chunks
+
+    def _fetch_article_quality(self, rev_id: str) -> Optional[WikipediaQualityModel]:
+        """
+        Fetch quality assessment for a Wikipedia article.
+
+        Args:
+            rev_id: Revision ID of the Wikipedia article
+
+        Returns:
+            WikipediaQualityModel with quality assessment or None if fetching fails
+        """
+        if not rev_id:
+            logger.warning("Cannot fetch article quality: No revision ID provided")
+            return None
+
+        try:
+            # Get quality data from the Lift Wing API
+            quality_data = self.quality_fetcher.fetch_article_quality(rev_id)
+
+            if not quality_data:
+                logger.warning(
+                    f"Failed to fetch quality data for revision ID: {rev_id}"
+                )
+                return None
+
+            # Create a WikipediaQualityModel from the quality data
+            quality_model = WikipediaQualityModel(
+                prediction=quality_data["prediction"],
+                probabilities=quality_data["probabilities"],
+                rev_id=quality_data["rev_id"],
+            )
+
+            logger.info(
+                f"Quality assessment for rev_id {rev_id}: {quality_model.prediction} "
+                f"(confidence: {quality_model.probabilities.get(quality_model.prediction, 0.0):.2f})"
+            )
+
+            return quality_model
+
+        except Exception as e:
+            logger.error(f"Error fetching quality assessment for rev_id {rev_id}: {e}")
+            return None
 
     def add_metadata_to_chunks(
         self,
@@ -217,6 +286,20 @@ class WikipediaProcessor:
                     chunk["metadata"]["article_url"] = wiki_article.url
                     chunk["metadata"]["processing_date"] = current_time
                     chunk["metadata"]["source_type"] = SourceType.WIKIPEDIA.value
+
+                    # Add quality information if available
+                    if hasattr(wiki_article, "quality") and wiki_article.quality:
+                        chunk["metadata"][
+                            "article_quality"
+                        ] = wiki_article.quality.prediction
+                        chunk["metadata"]["article_quality_score"] = str(
+                            wiki_article.quality.probabilities.get(
+                                wiki_article.quality.prediction, 0.0
+                            )
+                        )
+                        chunk["metadata"][
+                            "article_quality_description"
+                        ] = wiki_article.quality.get_quality_description()
 
                 logger.info(
                     f"Added article metadata to chunk: article_title={wiki_article.title}, "
@@ -313,6 +396,24 @@ class WikipediaProcessor:
                 article_metadata["rev_id"] = wiki_article.rev_id
                 logger.info(
                     f"Added revision ID {wiki_article.rev_id} to article metadata"
+                )
+
+            # Add quality information to article metadata if available
+            if hasattr(wiki_article, "quality") and wiki_article.quality:
+                article_metadata["article_quality"] = wiki_article.quality.prediction
+                article_metadata["article_quality_score"] = str(
+                    wiki_article.quality.probabilities.get(
+                        wiki_article.quality.prediction, 0.0
+                    )
+                )
+                article_metadata["article_quality_description"] = (
+                    wiki_article.quality.get_quality_description()
+                )
+
+                logger.info(
+                    f"Added quality metadata for article {wiki_article.title}: "
+                    f"{wiki_article.quality.prediction} "
+                    f"(confidence: {wiki_article.quality.probabilities.get(wiki_article.quality.prediction, 0.0):.2f})"
                 )
 
             # Add metadata to each chunk

@@ -101,6 +101,15 @@ class Settings(BaseSettings):
         default=3600
     )  # Time to live for conversation history in seconds
 
+    # Wikipedia API settings
+    WIKIPEDIA_USER_AGENT: str = Field(
+        default="NYCLandmarksVectorDB/1.0 (https://github.com/username/nyc-landmarks-vector-db; "
+        "email@example.com) Python-Requests/2.31.0"
+    )
+    WIKIPEDIA_API_ENDPOINT: str = Field(
+        default="https://api.wikimedia.org/service/lw/inference/v1/models/enwiki-articlequality:predict"
+    )
+
     @field_validator("PINECONE_DIMENSIONS", mode="before")  # type: ignore[misc]
     @classmethod
     def match_embedding_dimensions(cls, v: int, info: ValidationInfo) -> int:
