@@ -52,7 +52,9 @@ class WikipediaProcessor:
         articles = db_client.get_wikipedia_articles(landmark_id)
 
         if not articles:
-            logger.info(f"No Wikipedia articles found for landmark: {landmark_id} - this is normal and not an error")
+            logger.info(
+                f"No Wikipedia articles found for landmark: {landmark_id} - this is normal and not an error"
+            )
             return []
 
         logger.info(
@@ -365,7 +367,9 @@ class WikipediaProcessor:
             # Step 1: Get Wikipedia articles for the landmark
             articles = self.fetch_wikipedia_articles(landmark_id)
             if not articles:
-                logger.info(f"No Wikipedia articles found for landmark: {landmark_id} - this is not an error")
+                logger.info(
+                    f"No Wikipedia articles found for landmark: {landmark_id} - this is not an error"
+                )
                 return True, 0, 0  # Success with zero articles - not a failure
 
             # Step 2: Process the articles into chunks
@@ -376,7 +380,11 @@ class WikipediaProcessor:
                 logger.warning(
                     f"No Wikipedia articles could be processed for landmark: {landmark_id} - articles found but content processing failed"
                 )
-                return False, 0, 0  # This is a real failure - articles exist but couldn't be processed
+                return (
+                    False,
+                    0,
+                    0,
+                )  # This is a real failure - articles exist but couldn't be processed
 
             logger.info(
                 f"Processed {len(processed_articles)} Wikipedia articles with {total_chunks} chunks"

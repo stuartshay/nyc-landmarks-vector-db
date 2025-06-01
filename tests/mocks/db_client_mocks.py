@@ -131,6 +131,15 @@ def get_mock_landmark_pluto_data_lp01973() -> List[PlutoDataModel]:
             landUse="08",  # Educational/Cultural
             historicDistrict="Central Harlem Historic District",  # Add test data
             zoneDist1="C4-4D",
+            lotArea=10000,
+            bldgArea=25000,
+            numFloors=6,
+            address="180 West 135th Street",
+            borough="Manhattan",
+            ownername="YMCA of Greater New York",
+            bldgclass="H3",  # Community Center
+            assessland=1000000,
+            assesstot=5000000,
         )
     ]
 
@@ -281,7 +290,7 @@ def _create_mock_get_landmark_pluto_data() -> Callable[[str], List[PlutoDataMode
             return get_mock_landmark_pluto_data_lp01973()
         elif landmark_id == "LP-00009":
             return _get_mock_landmark_pluto_data_lp00009()
-        return []
+        return []  # Return empty list for unknown landmark IDs
 
     return mock_get_landmark_pluto_data
 
@@ -294,6 +303,15 @@ def _get_mock_landmark_pluto_data_lp00009() -> List[PlutoDataModel]:
             landUse="08",  # Educational/Cultural
             historicDistrict="Stone Street Historic District",
             zoneDist1="C5-1",
+            lotArea=15000,
+            bldgArea=30000,
+            numFloors=3,
+            address="26 Wall Street",
+            borough="Manhattan",
+            ownername="United States Government",
+            bldgclass="M1",  # Museum
+            assessland=2000000,
+            assesstot=10000000,
         )
     ]
 

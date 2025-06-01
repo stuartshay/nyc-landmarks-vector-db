@@ -74,10 +74,14 @@ def process_landmarks_sequential(
             # Note: landmarks with no Wikipedia articles now return success=True
             if not success:
                 # This is a real processing failure, not just "no articles found"
-                logger.warning(f"Failed to process Wikipedia for landmark {landmark_id}")
+                logger.warning(
+                    f"Failed to process Wikipedia for landmark {landmark_id}"
+                )
             elif articles_processed == 0:
                 # Success but no articles - this is normal and not a failure
-                logger.info(f"No Wikipedia articles found for landmark {landmark_id} (normal case)")
+                logger.info(
+                    f"No Wikipedia articles found for landmark {landmark_id} (normal case)"
+                )
                 skipped_landmarks.add(landmark_id)  # Still track for reporting purposes
 
         except Exception as e:
