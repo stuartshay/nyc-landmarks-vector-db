@@ -15,6 +15,7 @@ from tenacity import (
     wait_random_exponential,
 )
 
+from nyc_landmarks.config.settings import Settings
 from nyc_landmarks.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -25,11 +26,9 @@ class WikipediaQualityFetcher:
 
     def __init__(self) -> None:
         """Initialize the Wikipedia quality fetcher."""
-        self.api_endpoint = "https://api.wikimedia.org/service/lw/inference/v1/models/enwiki-articlequality:predict"
-        self.user_agent = (
-            "NYCLandmarksVectorDB/1.0 (https://github.com/username/nyc-landmarks-vector-db; "
-            "email@example.com) Python-Requests/2.31.0"
-        )
+        settings = Settings()
+        self.api_endpoint = settings.WIKIPEDIA_API_ENDPOINT
+        self.user_agent = settings.WIKIPEDIA_USER_AGENT
         self.headers = {
             "User-Agent": self.user_agent,
             "Content-Type": "application/json",
