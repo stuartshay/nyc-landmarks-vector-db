@@ -119,25 +119,4 @@ class WikipediaQualityFetcher:
             )
             return None
 
-    def get_quality_level_description(self, quality_level: str) -> str:
-        """
-        Get a human-readable description of a Wikipedia quality level.
-
-        Args:
-            quality_level: Quality level code (FA, GA, B, C, Start, Stub)
-
-        Returns:
-            Human-readable description of the quality level
-        """
-        descriptions = {
-            "FA": "Featured Article - Wikipedia's highest quality designation",
-            "GA": "Good Article - High quality article that meets the Good Article criteria",
-            "B": "B-Class - Mostly complete with no major issues",
-            "C": "C-Class - Substantial article with room for improvement",
-            "Start": "Start-Class - Basic information but significant expansion needed",
-            "Stub": "Stub-Class - Very basic information, significant expansion needed",
-        }
-
-        return descriptions.get(
-            quality_level, f"Unknown quality level: {quality_level}"
-        )
+# Removed the `get_quality_level_description` method as its functionality is now delegated to `WikipediaQualityModel.get_quality_description()`.
