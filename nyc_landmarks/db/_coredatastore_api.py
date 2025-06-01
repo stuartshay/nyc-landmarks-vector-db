@@ -744,14 +744,23 @@ class _CoreDataStoreAPI:
                 standardized_records: List[Dict[str, Any]] = []
                 for record in response:
                     if isinstance(record, dict):
-                        # Add any missing fields with None value
+                        # Map API response fields to our model fields
                         standardized_record = {
-                            "yearBuilt": record.get("yearBuilt"),
-                            "landUse": record.get("landUse"),
+                            "yearbuilt": record.get("yearbuilt"),  # API uses lowercase
+                            "landUse": record.get("landuse"),  # API uses lowercase
                             "historicDistrict": record.get(
                                 "histdist"
-                            ),  # Map histdist to historicDistrict
-                            "zoneDist1": record.get("zoneDist1"),
+                            ),  # API field name
+                            "zoneDist1": record.get("zonedist1"),  # API uses lowercase
+                            "lotArea": record.get("lotarea"),  # API uses lowercase
+                            "bldgArea": record.get("bldgarea"),  # API uses lowercase
+                            "numFloors": record.get("numfloors"),  # API uses lowercase
+                            "address": record.get("address"),
+                            "borough": record.get("borough"),
+                            "ownername": record.get("ownername"),
+                            "bldgclass": record.get("bldgclass"),
+                            "assessland": record.get("assessland"),
+                            "assesstot": record.get("assesstot"),
                         }
                         standardized_records.append(standardized_record)
 
@@ -940,6 +949,7 @@ class _CoreDataStoreAPI:
                 content=item.get(
                     "content", ""
                 ),  # Get content from the item or use empty string
+                rev_id=item.get("rev_id"),  # Add the missing rev_id parameter
             )
             logger.debug(f"Found Wikipedia article: {article.title}")
             return article

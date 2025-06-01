@@ -12,12 +12,17 @@
 
 ### Recently Completed Features
 
+- **Wikipedia Revision ID Tracking**: Enhanced Wikipedia fetcher and processor to track article revision IDs, providing better versioning and citation support. Revision IDs are now consistently propagated through the entire pipeline from fetching to vector database storage.
+- **Type Consistency Improvements**: Fixed return type handling in WikipediaFetcher.fetch_wikipedia_content to consistently return a tuple of (content, rev_id) for better error handling and type safety.
+- **Enhanced Metadata in Wikipedia Chunks**: Added revision IDs to chunk metadata for precise article version tracking for citations and provenance tracking.
 - **Wikipedia Processor Refactoring**: Successfully extracted Wikipedia processing functionality into `nyc_landmarks/wikipedia/processor.py` with the `WikipediaProcessor` class
 - **Wikipedia Package Structure**: Created proper module organization under `nyc_landmarks/wikipedia/`
 - **Landmarks Processing Module**: Implemented `nyc_landmarks/landmarks/landmarks_processing.py` for enhanced landmark processing capabilities
 - **Results Reporting Module**: Added `nyc_landmarks/utils/results_reporter.py` for better statistics and reporting
 - **Wikipedia Analysis Script**: Created `scripts/analyze_wikipedia_article.py` for individual article analysis and metadata extraction
 - **Modular Architecture**: Established foundation for the Wikipedia refactoring project with clear separation of concerns
+- **API Enhancement Analysis Script**: Added `scripts/analyze_api_enhancements.py` for testing underutilized CoreDataStore APIs for metadata enhancement opportunities
+- **Package Version Synchronization**: Created `scripts/ci/sync_versions.sh` and updated GitHub workflow to automatically keep requirements.txt and setup.py versions in sync on Dependabot PRs
 
 ## In Progress
 
@@ -83,6 +88,7 @@
 - ✅ Implemented results reporting module
 - ✅ Built foundation for metadata enhancement analysis
 - ✅ Maintained backward compatibility during refactoring
+- ✅ Added Wikipedia revision ID tracking for better citation support
 
 ## Success Metrics In Progress
 

@@ -15,7 +15,7 @@ class WikipediaArticleModel(BaseModel):
     Model representing a Wikipedia article associated with a landmark.
 
     This model captures the essential fields of a Wikipedia article including
-    its ID, URL, title, and associated landmark ID.
+    its ID, URL, title, associated landmark ID, and revision ID.
     """
 
     model_config = ConfigDict(from_attributes=True)
@@ -32,6 +32,9 @@ class WikipediaArticleModel(BaseModel):
         None, description="Full content of the Wikipedia article"
     )
     recordType: str = Field("Wikipedia", description="Type of record")
+    rev_id: Optional[str] = Field(
+        None, description="Wikipedia revision ID for version tracking"
+    )
 
     @field_validator("url", mode="after")  # pyright: ignore[misc] # type: ignore
     @classmethod
@@ -60,6 +63,9 @@ class WikipediaContentModel(BaseModel):
     content: str = Field(..., description="Raw content of the Wikipedia article")
     chunks: Optional[List[Dict[str, Any]]] = Field(
         None, description="Processed text chunks for embedding"
+    )
+    rev_id: Optional[str] = Field(
+        None, description="Wikipedia revision ID for version tracking"
     )
 
     @field_validator("url", mode="after")  # pyright: ignore[misc] # type: ignore

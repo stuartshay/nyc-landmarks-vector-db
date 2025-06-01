@@ -6,11 +6,16 @@ The current focus is on the Wikipedia Processing Script Refactoring & Metadata E
 
 ## Recent Changes
 
+- **Added Wikipedia revision ID tracking**: Enhanced the Wikipedia fetcher and processor to track article revision IDs, providing better versioning and citation support for all Wikipedia content. This revision ID is now consistently propagated through the entire pipeline from fetching to storage in the vector database.
+- **Fixed return type in `WikipediaFetcher.fetch_wikipedia_content`**: Updated the method to consistently return a tuple of (content, rev_id) for better error handling and type consistency.
+- **Enhanced metadata in Wikipedia chunks**: Included revision IDs in chunk metadata to enable precise article version tracking for citations and updates.
 - **Successfully implemented `nyc_landmarks/wikipedia/processor.py`**: Created the `WikipediaProcessor` class as planned in Phase 1 of the refactoring project, extracting core Wikipedia processing functionality from the main script.
 - **Created Wikipedia package structure**: Established `nyc_landmarks/wikipedia/` directory with proper module organization.
 - **Developed custom Wikipedia analysis script**: Implemented `scripts/analyze_wikipedia_article.py` to analyze individual Wikipedia articles and extract potential metadata attributes.
 - **Added landmarks processing module**: Created `nyc_landmarks/landmarks/landmarks_processing.py` to support the refactoring effort.
 - **Enhanced results reporting**: Added `nyc_landmarks/utils/results_reporter.py` for better statistics and reporting capabilities.
+- **Created API Enhancement Analysis Script**: Added `scripts/analyze_api_enhancements.py` to test underutilized CoreDataStore APIs for Phase 2 of the Wikipedia refactoring project.
+- **Fixed Package Version Synchronization Workflow**: Implemented `scripts/ci/sync_versions.sh` and updated GitHub Actions workflow to automatically sync package versions between requirements.txt and setup.py for Dependabot PRs.
 
 ## Next Steps
 

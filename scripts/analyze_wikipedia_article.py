@@ -248,7 +248,7 @@ def fetch_wikipedia_article(landmark_id: str) -> List[Dict[str, Any]]:
 
         # Fetch the actual content from Wikipedia
         logger.info(f"Fetching content from Wikipedia for article: {article.title}")
-        article_content = wiki_fetcher.fetch_wikipedia_content(article.url)
+        article_content, rev_id = wiki_fetcher.fetch_wikipedia_content(article.url)
 
         if article_content:
             logger.info(
@@ -257,6 +257,11 @@ def fetch_wikipedia_article(landmark_id: str) -> List[Dict[str, Any]]:
 
             # Extract potential metadata
             potential_metadata = extract_potential_metadata(article_content)
+
+            # Add revision ID to metadata if available
+            if rev_id:
+                logger.info(f"Found revision ID: {rev_id}")
+                potential_metadata["wikipedia_rev_id"] = rev_id
 
             result.append(
                 {

@@ -52,7 +52,9 @@ class WikipediaProcessor:
         articles = db_client.get_wikipedia_articles(landmark_id)
 
         if not articles:
-            logger.info(f"No Wikipedia articles found for landmark: {landmark_id}")
+            logger.info(
+                f"No Wikipedia articles found for landmark: {landmark_id} - this is normal and not an error"
+            )
             return []
 
         logger.info(
@@ -65,12 +67,17 @@ class WikipediaProcessor:
 
             # Fetch the actual content from Wikipedia
             logger.info(f"Fetching content from Wikipedia for article: {article.title}")
-            article_content = self.wiki_fetcher.fetch_wikipedia_content(article.url)
+            article_content, rev_id = self.wiki_fetcher.fetch_wikipedia_content(
+                article.url
+            )
             if article_content:
                 article.content = article_content
+                article.rev_id = rev_id  # Store the revision ID
                 logger.info(
                     f"Successfully fetched content for article: {article.title} ({len(article_content)} chars)"
                 )
+                if rev_id:
+                    logger.info(f"Article revision ID: {rev_id}")
             else:
                 logger.warning(f"Failed to fetch content for article: {article.title}")
 
@@ -150,6 +157,9 @@ class WikipediaProcessor:
                             "article_url": article.url,
                             "source_type": SourceType.WIKIPEDIA.value,
                             "landmark_id": landmark_id,
+                            "rev_id": (
+                                article.rev_id if hasattr(article, "rev_id") else None
+                            ),
                         },
                         "total_chunks": len(token_chunks),
                     }
@@ -162,6 +172,7 @@ class WikipediaProcessor:
                 title=article.title,
                 content=article.content,
                 chunks=dict_chunks,
+                rev_id=article.rev_id,  # Include revision ID
             )
 
             processed_articles.append(content_model)
@@ -297,6 +308,13 @@ class WikipediaProcessor:
                 "source_type": SourceType.WIKIPEDIA.value,
             }
 
+            # Add revision ID to metadata if available
+            if hasattr(wiki_article, "rev_id") and wiki_article.rev_id:
+                article_metadata["rev_id"] = wiki_article.rev_id
+                logger.info(
+                    f"Added revision ID {wiki_article.rev_id} to article metadata"
+                )
+
             # Add metadata to each chunk
             self.add_metadata_to_chunks(chunks_with_embeddings, article_metadata)
 
@@ -349,7 +367,10 @@ class WikipediaProcessor:
             # Step 1: Get Wikipedia articles for the landmark
             articles = self.fetch_wikipedia_articles(landmark_id)
             if not articles:
-                return False, 0, 0
+                logger.info(
+                    f"No Wikipedia articles found for landmark: {landmark_id} - this is not an error"
+                )
+                return True, 0, 0  # Success with zero articles - not a failure
 
             # Step 2: Process the articles into chunks
             processed_articles, total_chunks = self.process_articles_into_chunks(
@@ -357,9 +378,13 @@ class WikipediaProcessor:
             )
             if not processed_articles:
                 logger.warning(
-                    f"No Wikipedia articles processed for landmark: {landmark_id}"
+                    f"No Wikipedia articles could be processed for landmark: {landmark_id} - articles found but content processing failed"
                 )
-                return False, 0, 0
+                return (
+                    False,
+                    0,
+                    0,
+                )  # This is a real failure - articles exist but couldn't be processed
 
             logger.info(
                 f"Processed {len(processed_articles)} Wikipedia articles with {total_chunks} chunks"
