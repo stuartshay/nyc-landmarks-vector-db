@@ -18,6 +18,7 @@ import pytest
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
+from tests.utils.test_helpers import get_pinecone_db_or_skip
 
 # Configure logging for tests
 logger = logging.getLogger(__name__)
@@ -29,13 +30,8 @@ def test_pinecone_null_metadata_handling(
     pinecone_test_db: Optional[PineconeDB],
 ) -> None:
     """Test that null values in metadata are properly filtered out."""
-    # Skip if Pinecone test database is not available
-    if pinecone_test_db is None:
-        pytest.skip("Pinecone test database is not available")
-
-    # Use the test-specific PineconeDB instance
-    assert pinecone_test_db is not None  # for mypy
-    pinecone_db = pinecone_test_db
+    # Get PineconeDB instance or skip test if not available
+    pinecone_db = get_pinecone_db_or_skip(pinecone_test_db)
 
     # Skip test if no Pinecone connection
     if not pinecone_db.index:
@@ -145,13 +141,8 @@ def test_wikipedia_null_metadata_handling(
     pinecone_test_db: Optional[PineconeDB],
 ) -> None:
     """Test that null values in Wikipedia article metadata are properly filtered out."""
-    # Skip if Pinecone test database is not available
-    if pinecone_test_db is None:
-        pytest.skip("Pinecone test database is not available")
-
-    # Use the test-specific PineconeDB instance
-    assert pinecone_test_db is not None  # for mypy
-    pinecone_db = pinecone_test_db
+    # Get PineconeDB instance or skip test if not available
+    pinecone_db = get_pinecone_db_or_skip(pinecone_test_db)
 
     # Skip test if no Pinecone connection
     if not pinecone_db.index:

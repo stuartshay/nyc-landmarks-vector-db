@@ -12,6 +12,7 @@ import pytest
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
+from tests.utils.test_helpers import get_pinecone_db_or_skip
 
 # Set up logger
 logger = get_logger(name="test_basic_fixed_ids_impl")
@@ -24,12 +25,8 @@ def test_basic_fixed_ids_impl(pinecone_test_db: Optional[PineconeDB]) -> None:
     This test focuses on verifying the type safety and correct format of IDs,
     not on actual Pinecone operations which would require a live connection.
     """
-    # Skip if no Pinecone database or connection
-    if pinecone_test_db is None:
-        pytest.skip("Pinecone test database is not available")
-
-    assert pinecone_test_db is not None  # for mypy
-    pinecone_db = pinecone_test_db
+    # Get PineconeDB instance or skip test if not available
+    pinecone_db = get_pinecone_db_or_skip(pinecone_test_db)
 
     # Skip test if no Pinecone connection
     if not pinecone_db.index:
