@@ -19,6 +19,7 @@ import pytest
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
+from tests.utils.test_helpers import get_pinecone_db_or_skip
 
 # Configure logging for tests
 logger = logging.getLogger(__name__)
@@ -272,11 +273,7 @@ def test_retry_logic(
         test_chunks: List of test chunks
     """
     # Skip if Pinecone test database is not available
-    if pinecone_test_db is None:
-        pytest.skip("Pinecone test database is not available")
-
-    # Use the test-specific PineconeDB instance
-    pinecone_db = pinecone_test_db
+    pinecone_db = get_pinecone_db_or_skip(pinecone_test_db)
 
     # Use a test landmark ID
     test_landmark_id = "TEST-RETRY-001"
@@ -307,11 +304,7 @@ def test_retry_logic(
 def test_fixed_id_upsert_behavior(pinecone_test_db: Optional[PineconeDB]) -> None:
     """Test that processing the same landmark twice doesn't create duplicates."""
     # Skip if Pinecone test database is not available
-    if pinecone_test_db is None:
-        pytest.skip("Pinecone test database is not available")
-
-    # Use the test-specific PineconeDB instance
-    pinecone_db = pinecone_test_db
+    pinecone_db = get_pinecone_db_or_skip(pinecone_test_db)
 
     # Skip test if no Pinecone connection
     if not pinecone_db.index:

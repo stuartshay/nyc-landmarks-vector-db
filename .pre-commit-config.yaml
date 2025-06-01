@@ -46,7 +46,6 @@ repos:
     rev: v1.16.0
     hooks:
       - id: mypy
-        exclude: ^tests/
         args: ["--config-file=mypy.ini", "--disable-error-code=misc"]
         additional_dependencies:
           - types-requests
@@ -57,7 +56,6 @@ repos:
     rev: v1.1.401
     hooks:
       - id: pyright
-        exclude: ^tests/
         args: ["--project", "pyrightconfig-precommit.json"]
         additional_dependencies:
           - types-requests==2.32.0.20250328

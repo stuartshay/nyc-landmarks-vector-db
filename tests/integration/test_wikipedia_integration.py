@@ -627,7 +627,7 @@ def _debug_process_wikipedia_articles(
 
     if not articles:
         pytest.skip("No Wikipedia articles found for test landmark")
-        return None, None
+        return [], None
 
     # Create mock Wikipedia content and HTTP response
     mock_response = _create_debug_mock_wikipedia_response()

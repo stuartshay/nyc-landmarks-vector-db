@@ -17,6 +17,7 @@ from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 from nyc_landmarks.vectordb.vector_id_validator import VectorIDValidator
+from tests.utils.test_helpers import get_pinecone_db_or_skip
 
 # Set up logger
 logger = get_logger(name="test_pinecone_fixed_ids")
@@ -29,11 +30,8 @@ def test_fixed_ids_implementation(pinecone_test_db: Optional[PineconeDB]) -> Non
     Note: This test focuses on verifying the type safety and correct format of IDs,
     not on actual Pinecone operations which would require a live connection.
     """
-    # Using the test-specific PineconeDB instance
-    if pinecone_test_db is None:
-        pytest.skip("Pinecone test database is not available")
-
-    pinecone_db: PineconeDB = pinecone_test_db  # Type assertion for mypy
+    # Get PineconeDB instance or skip test if not available
+    pinecone_db = get_pinecone_db_or_skip(pinecone_test_db)
 
     # Skip test if no Pinecone connection
     if not pinecone_db.index:
@@ -95,11 +93,8 @@ def test_store_chunks_with_fixed_ids_flag(
     pinecone_test_db: Optional[PineconeDB],
 ) -> None:
     """Test that store_chunks works with the use_fixed_ids flag."""
-    # Using the test-specific PineconeDB instance
-    if pinecone_test_db is None:
-        pytest.skip("Pinecone test database is not available")
-
-    pinecone_db: PineconeDB = pinecone_test_db  # Type assertion for mypy
+    # Get PineconeDB instance or skip test if not available
+    pinecone_db = get_pinecone_db_or_skip(pinecone_test_db)
 
     # Skip test if no Pinecone connection
     if not pinecone_db.index:
@@ -146,11 +141,8 @@ def test_store_chunks_backward_compatibility(
     pinecone_test_db: Optional[PineconeDB],
 ) -> None:
     """Test that store_chunks maintains backward compatibility."""
-    # Using the test-specific PineconeDB instance
-    if pinecone_test_db is None:
-        pytest.skip("Pinecone test database is not available")
-
-    pinecone_db: PineconeDB = pinecone_test_db  # Type assertion for mypy
+    # Get PineconeDB instance or skip test if not available
+    pinecone_db = get_pinecone_db_or_skip(pinecone_test_db)
 
     # Skip test if no Pinecone connection
     if not pinecone_db.index:
@@ -452,10 +444,8 @@ def test_landmark_fixed_ids(
     pinecone_test_db: Optional[PineconeDB], random_vector: List[float]
 ) -> None:
     """Test fixed IDs for a sample of real landmarks."""
-    if pinecone_test_db is None:
-        pytest.skip("Pinecone test database is not available")
-
-    pinecone_db: PineconeDB = pinecone_test_db  # Type assertion for mypy
+    # Get PineconeDB instance or skip test if not available
+    pinecone_db = get_pinecone_db_or_skip(pinecone_test_db)
 
     # This test is designed to run against the production database with real data.
     # Since we're using a test database, we'll create test data first.
@@ -545,10 +535,8 @@ def test_landmark_fixed_ids(
 @pytest.mark.integration
 def test_pinecone_index_stats(pinecone_test_db: Optional[PineconeDB]) -> None:
     """Test that Pinecone index has expected statistics."""
-    if pinecone_test_db is None:
-        pytest.skip("Pinecone test database is not available")
-
-    pinecone_db: PineconeDB = pinecone_test_db  # Type assertion for mypy
+    # Get PineconeDB instance or skip test if not available
+    pinecone_db = get_pinecone_db_or_skip(pinecone_test_db)
     stats: Dict[str, Any] = pinecone_db.get_index_stats()
 
     # Log key statistics
