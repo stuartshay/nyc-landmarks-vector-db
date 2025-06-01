@@ -2,12 +2,47 @@
 Pydantic models for Wikipedia article data used in NYC Landmarks Vector Database.
 
 This module contains data models for Wikipedia articles associated with landmarks,
-including their metadata and processing information.
+including their metadata, quality assessments, and processing information.
 """
 
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+class WikipediaQualityModel(BaseModel):
+    """
+    Model representing a Wikipedia article quality assessment.
+
+    This model captures the quality assessment of a Wikipedia article,
+    including the quality prediction and probability scores for each
+    quality level (FA, GA, B, C, Start, Stub).
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    prediction: str = Field(
+        ..., description="Quality prediction (FA, GA, B, C, Start, Stub)"
+    )
+    probabilities: Dict[str, float] = Field(
+        ..., description="Probability for each quality level"
+    )
+    rev_id: str = Field(..., description="Wikipedia revision ID")
+
+    def get_quality_description(self) -> str:
+        """Return a human-readable description of the quality level."""
+        descriptions = {
+            "FA": "Featured Article - Wikipedia's highest quality designation",
+            "GA": "Good Article - High quality article that meets the Good Article criteria",
+            "B": "B-Class - Mostly complete with no major issues",
+            "C": "C-Class - Substantial article with room for improvement",
+            "Start": "Start-Class - Basic information but significant expansion needed",
+            "Stub": "Stub-Class - Very basic information, significant expansion needed",
+        }
+
+        return descriptions.get(
+            self.prediction, f"Unknown quality level: {self.prediction}"
+        )
 
 
 class WikipediaArticleModel(BaseModel):
@@ -66,6 +101,9 @@ class WikipediaContentModel(BaseModel):
     )
     rev_id: Optional[str] = Field(
         None, description="Wikipedia revision ID for version tracking"
+    )
+    quality: Optional[WikipediaQualityModel] = Field(
+        None, description="Quality assessment of the article"
     )
 
     @field_validator("url", mode="after")  # pyright: ignore[misc] # type: ignore

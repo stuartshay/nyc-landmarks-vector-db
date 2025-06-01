@@ -6,6 +6,7 @@ The current focus is on the Wikipedia Processing Script Refactoring & Metadata E
 
 ## Recent Changes
 
+- **Added Wikipedia article quality assessment**: Implemented integration with the Wikimedia Lift Wing articlequality API to assess the quality of Wikipedia articles (FA, GA, B, C, Start, Stub). This data is stored in article metadata and propagated to vector chunks for improved search filtering and ranking. Quality assessment includes quality level, confidence scores, and human-readable descriptions.
 - **Added Wikipedia revision ID tracking**: Enhanced the Wikipedia fetcher and processor to track article revision IDs, providing better versioning and citation support for all Wikipedia content. This revision ID is now consistently propagated through the entire pipeline from fetching to storage in the vector database.
 - **Fixed return type in `WikipediaFetcher.fetch_wikipedia_content`**: Updated the method to consistently return a tuple of (content, rev_id) for better error handling and type consistency.
 - **Enhanced metadata in Wikipedia chunks**: Included revision IDs in chunk metadata to enable precise article version tracking for citations and updates.

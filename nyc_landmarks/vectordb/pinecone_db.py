@@ -243,8 +243,20 @@ class PineconeDB:
         self, metadata: Dict[str, Any], chunk: Dict[str, Any]
     ) -> None:
         """Add Wikipedia-specific metadata to the metadata dictionary."""
-        # Try new format first (chunk.metadata)
+        # Extract chunk metadata
         chunk_metadata = chunk.get("metadata", {})
+
+        # Add article quality information if available
+        if chunk_metadata.get("article_quality"):
+            metadata["article_quality"] = chunk_metadata["article_quality"]
+        if chunk_metadata.get("article_quality_score"):
+            metadata["article_quality_score"] = chunk_metadata["article_quality_score"]
+        if chunk_metadata.get("article_quality_description"):
+            metadata["article_quality_description"] = chunk_metadata[
+                "article_quality_description"
+            ]
+
+        # Try new format first (chunk.metadata)
         if chunk_metadata.get("article_title") or chunk_metadata.get("article_url"):
             article_data = {
                 "article_title": chunk_metadata.get("article_title", ""),
