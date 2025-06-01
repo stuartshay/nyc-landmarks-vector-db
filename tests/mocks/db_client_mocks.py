@@ -127,7 +127,7 @@ def get_mock_landmark_pluto_data_lp01973() -> List[PlutoDataModel]:
     """
     return [
         PlutoDataModel(
-            yearBuilt="1932",
+            yearbuilt=1932,
             landUse="08",  # Educational/Cultural
             historicDistrict="Central Harlem Historic District",  # Add test data
             zoneDist1="C4-4D",
@@ -290,7 +290,7 @@ def _get_mock_landmark_pluto_data_lp00009() -> List[PlutoDataModel]:
     """Get mock PLUTO data for LP-00009."""
     return [
         PlutoDataModel(
-            yearBuilt="1842",
+            yearbuilt=1842,
             landUse="08",  # Educational/Cultural
             historicDistrict="Stone Street Historic District",
             zoneDist1="C5-1",

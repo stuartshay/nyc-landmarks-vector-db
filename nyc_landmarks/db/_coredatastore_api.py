@@ -746,7 +746,7 @@ class _CoreDataStoreAPI:
                     if isinstance(record, dict):
                         # Map API response fields to our model fields
                         standardized_record = {
-                            "yearBuilt": record.get("yearbuilt"),  # API uses lowercase
+                            "yearbuilt": record.get("yearbuilt"),  # API uses lowercase
                             "landUse": record.get("landuse"),  # API uses lowercase
                             "historicDistrict": record.get(
                                 "histdist"

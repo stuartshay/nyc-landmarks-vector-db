@@ -307,16 +307,16 @@ class TestOtherMethods(unittest.TestCase):
 
     def test_get_landmark_pluto_data(self) -> None:
         """Test get_landmark_pluto_data method."""
-        # Set up mock to return pluto data - using the actual API response format
+        # Set up mock to return pluto data - this should match PlutoDataModel field names
         pluto_data = [
             {
-                "yearBuilt": 1900,  # API returns integer
-                "landUse": "Residential",
-                "historicDistrict": "Greenwich Village",
-                "zoneDist1": "R6",
-                "lotArea": 5000,  # API returns integer
-                "bldgArea": 3000,  # API returns integer
-                "numFloors": 3.0,  # API returns float
+                "yearbuilt": 1900,  # Matches PlutoDataModel field name
+                "landUse": "Residential",  # Matches PlutoDataModel field name
+                "historicDistrict": "Greenwich Village",  # Matches PlutoDataModel field name
+                "zoneDist1": "R6",  # Matches PlutoDataModel field name
+                "lotArea": 5000,  # Matches PlutoDataModel field name
+                "bldgArea": 3000,  # Matches PlutoDataModel field name
+                "numFloors": 3.0,  # Matches PlutoDataModel field name
                 "address": "123 Test Street",
                 "borough": "MN",
                 "ownername": "Test Owner",
@@ -334,7 +334,7 @@ class TestOtherMethods(unittest.TestCase):
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], PlutoDataModel)
-        self.assertEqual(result[0].yearBuilt, 1900)  # Now expecting integer
+        self.assertEqual(result[0].yearbuilt, 1900)  # Now expecting integer
         self.assertEqual(result[0].landUse, "Residential")
         self.assertEqual(result[0].historicDistrict, "Greenwich Village")
         self.assertEqual(result[0].zoneDist1, "R6")

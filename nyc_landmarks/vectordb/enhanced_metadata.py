@@ -210,8 +210,8 @@ class EnhancedMetadataCollector:
                     metadata_dict.update(
                         {
                             "year_built": (
-                                str(pluto_model.yearBuilt)
-                                if pluto_model.yearBuilt
+                                str(pluto_model.yearbuilt)
+                                if pluto_model.yearbuilt
                                 else ""
                             ),
                             "land_use": pluto_model.landUse or "",

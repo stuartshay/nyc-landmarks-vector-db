@@ -128,7 +128,7 @@ class APIEnhancementAnalyzer:
                 # pluto_data is a List[Dict[str, Any]], so take the first record if available
                 first_record = pluto_data[0] if pluto_data else {}
                 pluto_analysis["pluto_data"] = {
-                    "year_built": first_record.get("yearBuilt", None),
+                    "year_built": first_record.get("yearbuilt", None),
                     "land_use": first_record.get("landUse", None),
                     "historic_district": first_record.get("historicDistrict", None),
                     "zoning_district": first_record.get("zoneDist1", None),

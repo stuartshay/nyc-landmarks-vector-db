@@ -290,7 +290,7 @@ class PlutoDataModel(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    yearBuilt: Optional[int] = Field(None, description="Year the structure was built")
+    yearbuilt: Optional[int] = Field(None, description="Year the structure was built")
     landUse: Optional[str] = Field(None, description="Land use category code")
     historicDistrict: Optional[str] = Field(None, description="Historic district name")
     zoneDist1: Optional[str] = Field(None, description="Primary zoning district")
