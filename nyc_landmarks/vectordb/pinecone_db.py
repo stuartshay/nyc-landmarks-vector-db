@@ -256,7 +256,7 @@ class PineconeDB:
                 "article_quality_description"
             ]
 
-        # Try new format first (chunk.metadata)
+        # Handle new metadata format (chunk.metadata) and check for article details.
         if chunk_metadata.get("article_title") or chunk_metadata.get("article_url"):
             article_data = {
                 "article_title": chunk_metadata.get("article_title", ""),
