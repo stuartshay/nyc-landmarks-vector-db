@@ -27,6 +27,7 @@ def get_mock_wikipedia_articles() -> List[WikipediaArticleModel]:
             title="Harlem YMCA",
             recordType="Wikipedia",
             content="The Harlem YMCA is a historic building located in Harlem, New York City. Built in 1932, it served as an important community center for the African American community. The building features Art Deco architectural elements and was designed by prominent architects. It provided educational, recreational, and social services to the community for decades.",
+            rev_id=None,
         ),
         WikipediaArticleModel(
             id=394,
@@ -35,6 +36,7 @@ def get_mock_wikipedia_articles() -> List[WikipediaArticleModel]:
             title="Federal Hall",
             recordType="Wikipedia",
             content="Federal Hall is a historic building in New York City's Financial District. Originally built as New York's City Hall, it was the site of George Washington's inauguration as the first President of the United States in 1789. The current structure was completed in 1842 and served as a U.S. Custom House. It now operates as a museum and national memorial.",
+            rev_id=None,
         ),
     ]
 

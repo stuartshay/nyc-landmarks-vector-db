@@ -276,6 +276,7 @@ def test_retry_logic(
         pytest.skip("Pinecone test database is not available")
 
     # Use the test-specific PineconeDB instance
+    assert pinecone_test_db is not None  # for mypy
     pinecone_db = pinecone_test_db
 
     # Use a test landmark ID
@@ -311,6 +312,7 @@ def test_fixed_id_upsert_behavior(pinecone_test_db: Optional[PineconeDB]) -> Non
         pytest.skip("Pinecone test database is not available")
 
     # Use the test-specific PineconeDB instance
+    assert pinecone_test_db is not None  # for mypy
     pinecone_db = pinecone_test_db
 
     # Skip test if no Pinecone connection

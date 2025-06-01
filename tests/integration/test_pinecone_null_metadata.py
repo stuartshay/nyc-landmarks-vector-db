@@ -34,6 +34,7 @@ def test_pinecone_null_metadata_handling(
         pytest.skip("Pinecone test database is not available")
 
     # Use the test-specific PineconeDB instance
+    assert pinecone_test_db is not None  # for mypy
     pinecone_db = pinecone_test_db
 
     # Skip test if no Pinecone connection
@@ -149,6 +150,7 @@ def test_wikipedia_null_metadata_handling(
         pytest.skip("Pinecone test database is not available")
 
     # Use the test-specific PineconeDB instance
+    assert pinecone_test_db is not None  # for mypy
     pinecone_db = pinecone_test_db
 
     # Skip test if no Pinecone connection

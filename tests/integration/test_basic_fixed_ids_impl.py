@@ -28,7 +28,8 @@ def test_basic_fixed_ids_impl(pinecone_test_db: Optional[PineconeDB]) -> None:
     if pinecone_test_db is None:
         pytest.skip("Pinecone test database is not available")
 
-    pinecone_db: PineconeDB = pinecone_test_db  # Type assertion for mypy
+    assert pinecone_test_db is not None  # for mypy
+    pinecone_db = pinecone_test_db
 
     # Skip test if no Pinecone connection
     if not pinecone_db.index:

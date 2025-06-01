@@ -33,7 +33,8 @@ def test_fixed_ids_implementation(pinecone_test_db: Optional[PineconeDB]) -> Non
     if pinecone_test_db is None:
         pytest.skip("Pinecone test database is not available")
 
-    pinecone_db: PineconeDB = pinecone_test_db  # Type assertion for mypy
+    assert pinecone_test_db is not None  # for mypy
+    pinecone_db = pinecone_test_db
 
     # Skip test if no Pinecone connection
     if not pinecone_db.index:
@@ -99,7 +100,8 @@ def test_store_chunks_with_fixed_ids_flag(
     if pinecone_test_db is None:
         pytest.skip("Pinecone test database is not available")
 
-    pinecone_db: PineconeDB = pinecone_test_db  # Type assertion for mypy
+    assert pinecone_test_db is not None  # for mypy
+    pinecone_db = pinecone_test_db
 
     # Skip test if no Pinecone connection
     if not pinecone_db.index:
@@ -150,7 +152,8 @@ def test_store_chunks_backward_compatibility(
     if pinecone_test_db is None:
         pytest.skip("Pinecone test database is not available")
 
-    pinecone_db: PineconeDB = pinecone_test_db  # Type assertion for mypy
+    assert pinecone_test_db is not None  # for mypy
+    pinecone_db = pinecone_test_db
 
     # Skip test if no Pinecone connection
     if not pinecone_db.index:
@@ -455,7 +458,8 @@ def test_landmark_fixed_ids(
     if pinecone_test_db is None:
         pytest.skip("Pinecone test database is not available")
 
-    pinecone_db: PineconeDB = pinecone_test_db  # Type assertion for mypy
+    assert pinecone_test_db is not None  # for mypy
+    pinecone_db = pinecone_test_db
 
     # This test is designed to run against the production database with real data.
     # Since we're using a test database, we'll create test data first.
@@ -548,7 +552,8 @@ def test_pinecone_index_stats(pinecone_test_db: Optional[PineconeDB]) -> None:
     if pinecone_test_db is None:
         pytest.skip("Pinecone test database is not available")
 
-    pinecone_db: PineconeDB = pinecone_test_db  # Type assertion for mypy
+    assert pinecone_test_db is not None  # for mypy
+    pinecone_db = pinecone_test_db
     stats: Dict[str, Any] = pinecone_db.get_index_stats()
 
     # Log key statistics
