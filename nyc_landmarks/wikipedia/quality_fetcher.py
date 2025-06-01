@@ -119,4 +119,5 @@ class WikipediaQualityFetcher:
             )
             return None
 
+
 # Removed the `get_quality_level_description` method as its functionality is now delegated to `WikipediaQualityModel.get_quality_description()`.
