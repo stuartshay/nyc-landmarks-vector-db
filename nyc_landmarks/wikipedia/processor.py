@@ -253,22 +253,60 @@ class WikipediaProcessor:
         self,
         chunks_with_embeddings: List[Union[Dict[str, Any], Any]],
         article_metadata: Dict[str, Any],
+        enhanced_metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
-        """Helper function to add metadata to chunks."""
+        """
+        Helper function to add metadata to chunks.
+
+        Args:
+            chunks_with_embeddings: List of chunks with embeddings
+            article_metadata: Article-specific metadata to add
+            enhanced_metadata: Optional enhanced metadata with flattened building data
+        """
         for chunk in chunks_with_embeddings:
             if isinstance(chunk, dict):
+                # Add Wikipedia metadata
                 chunk["metadata"]["wikipedia_metadata"] = article_metadata
+
+                # Add flattened building fields from enhanced metadata if available
+                if enhanced_metadata:
+                    # Only copy fields that start with building_ (these are the flattened fields)
+                    building_fields = {k: v for k, v in enhanced_metadata.items()
+                                      if k.startswith("building_")}
+                    if building_fields:
+                        chunk["metadata"].update(building_fields)
+                        logger.info(f"Added {len(building_fields)} flattened building fields to chunk metadata")
             else:
                 if hasattr(chunk, "metadata") and chunk.metadata is not None:
+                    # Add Wikipedia metadata
                     chunk.metadata["wikipedia_metadata"] = article_metadata
+
+                    # Add flattened building fields from enhanced metadata if available
+                    if enhanced_metadata:
+                        # Only copy fields that start with building_ (these are the flattened fields)
+                        building_fields = {k: v for k, v in enhanced_metadata.items()
+                                          if k.startswith("building_")}
+                        if building_fields:
+                            for k, v in building_fields.items():
+                                chunk.metadata[k] = v
+                            logger.info(f"Added {len(building_fields)} flattened building fields to object-style chunk")
 
     def enrich_chunks_with_article_metadata(
         self,
         chunks_with_embeddings: List[Union[Dict[str, Any], Any]],
         wiki_article: WikipediaContentModel,
         current_time: str,
+        enhanced_metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
-        """Add article metadata to chunks."""
+        """
+        Add article metadata to chunks.
+
+        Args:
+            chunks_with_embeddings: List of chunks with embeddings
+            wiki_article: Wikipedia article model
+            current_time: Current timestamp
+            enhanced_metadata: Optional enhanced metadata with building data
+        """
         for chunk in chunks_with_embeddings:
             if isinstance(chunk, dict):
                 # Add article_metadata field which is used by PineconeDB._create_metadata_for_chunk
@@ -301,6 +339,16 @@ class WikipediaProcessor:
                             "article_quality_description"
                         ] = wiki_article.quality.get_quality_description()
 
+                    # Add flattened building fields if available
+                    if enhanced_metadata:
+                        building_fields = {k: v for k, v in enhanced_metadata.items()
+                                          if k.startswith("building_")}
+                        if building_fields:
+                            chunk["metadata"].update(building_fields)
+                            logger.info(
+                                f"Added {len(building_fields)} flattened building fields to chunk metadata"
+                            )
+
                 logger.info(
                     f"Added article metadata to chunk: article_title={wiki_article.title}, "
                     f"article_url={wiki_article.url}, processing_date={current_time}"
@@ -322,6 +370,17 @@ class WikipediaProcessor:
                     chunk.metadata["article_url"] = wiki_article.url
                     chunk.metadata["processing_date"] = current_time
                     chunk.metadata["source_type"] = SourceType.WIKIPEDIA.value
+
+                    # Add flattened building fields if available
+                    if enhanced_metadata:
+                        building_fields = {k: v for k, v in enhanced_metadata.items()
+                                          if k.startswith("building_")}
+                        if building_fields:
+                            for k, v in building_fields.items():
+                                chunk.metadata[k] = v
+                            logger.info(
+                                f"Added {len(building_fields)} flattened building fields to object-style chunk"
+                            )
 
                 logger.info(
                     f"Added article metadata to object-style chunk: {wiki_article.title} "
@@ -353,9 +412,25 @@ class WikipediaProcessor:
             collector = EnhancedMetadataCollector()
             enhanced_metadata_obj = collector.collect_landmark_metadata(landmark_id)
             enhanced_metadata_dict = (
-                enhanced_metadata_obj.model_dump() if enhanced_metadata_obj else {}
+                enhanced_metadata_obj.model_dump(exclude_none=True) if enhanced_metadata_obj else {}
             )
             logger.info(f"Collected enhanced metadata for landmark {landmark_id}")
+
+            # DEBUG: Log all metadata keys
+            logger.info(f"DEBUG: Wikipedia processor enhanced metadata keys: {list(enhanced_metadata_dict.keys())}")
+
+            # Log flattened building data information if available
+            building_fields = {k: v for k, v in enhanced_metadata_dict.items()
+                              if k.startswith("building_")}
+            logger.info(f"DEBUG: Wikipedia processor found {len(building_fields)} building fields")
+            if building_fields:
+                building_count = len([k for k in building_fields.keys() if k.startswith("building_") and k.endswith("_name")])
+                logger.info(f"Found {building_count} buildings in flattened metadata format ({len(building_fields)} total fields)")
+
+                # Log building names if building_names array is available
+                if "building_names" in enhanced_metadata_dict:
+                    names = enhanced_metadata_dict["building_names"]
+                    logger.info(f"Building names: {', '.join(names)}")
         except Exception as e:
             logger.warning(
                 f"Could not collect enhanced metadata for {landmark_id}: {e}"
@@ -416,12 +491,19 @@ class WikipediaProcessor:
                     f"(confidence: {wiki_article.quality.probabilities.get(wiki_article.quality.prediction, 0.0):.2f})"
                 )
 
-            # Add metadata to each chunk
-            self.add_metadata_to_chunks(chunks_with_embeddings, article_metadata)
+            # Add metadata to each chunk with enhanced metadata
+            self.add_metadata_to_chunks(
+                chunks_with_embeddings,
+                article_metadata,
+                enhanced_metadata_dict
+            )
 
-            # Add article metadata to chunks
+            # Add article metadata to chunks with enhanced metadata
             self.enrich_chunks_with_article_metadata(
-                chunks_with_embeddings, wiki_article, current_time
+                chunks_with_embeddings,
+                wiki_article,
+                current_time,
+                enhanced_metadata_dict
             )
 
             # Store in Pinecone with deterministic IDs

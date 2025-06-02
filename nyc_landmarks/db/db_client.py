@@ -11,13 +11,10 @@ from typing import Any, Dict, List, Optional, Protocol, Union, cast
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db._coredatastore_api import _CoreDataStoreAPI
 from nyc_landmarks.models.landmark_models import (
-    LpcReportResponse,  # Ensure LpcReportResponse is here
-)
-from nyc_landmarks.models.landmark_models import (
     LandmarkDetail,
     LpcReportDetailResponse,
     LpcReportModel,
-    PlutoDataModel,
+    LpcReportResponse,  # Ensure LpcReportResponse is here
 )
 from nyc_landmarks.models.metadata_models import LandmarkMetadata
 from nyc_landmarks.models.wikipedia_models import WikipediaArticleModel
@@ -514,6 +511,7 @@ class DbClient:
         return None
 
     @staticmethod
+    @staticmethod
     def _map_borough_id_to_name(borough_id: Optional[str]) -> Optional[str]:
         """Maps a borough ID to its corresponding name."""
         if borough_id is None:
@@ -638,77 +636,141 @@ class DbClient:
         )
         return model_results
 
-    def _fetch_buildings_from_client(
-        self, landmark_id: str, limit: int
-    ) -> List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]]:
-        """Fetch buildings from the client API.
+    def _convert_building_items_to_landmark_details(
+        self,
+        items: List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]],
+        lp_number: str,
+    ) -> List[LandmarkDetail]:
+        """Convert building items to LandmarkDetail objects, preserving all building metadata.
 
         Args:
-            landmark_id: ID of the landmark
-            limit: Maximum number of buildings to return
+            items: List of building items
+            lp_number: Standardized LP number for context
 
         Returns:
-            List of building items
+            List of LandmarkDetail objects with full building metadata
         """
-        if not hasattr(self.client, "get_landmark_buildings"):
+        if not items:
             return []
 
-        try:
-            buildings = self.client.get_landmark_buildings(landmark_id, limit)
-            # Cast to the union type since LandmarkDetail is compatible
-            return cast(
-                List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]], buildings
+        landmark_details: List[LandmarkDetail] = []
+        for item in items:
+            landmark_details.append(
+                self._convert_item_to_landmark_detail(
+                    item, landmark_lp_number_context=lp_number
+                )
             )
-        except Exception as e:
-            logger.error(
-                f"Error fetching buildings from client for landmark {landmark_id}: {e}"
-            )
-            return []
 
-    def _fetch_buildings_from_landmark_detail(
-        self, landmark_id: str, limit: int
-    ) -> List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]]:
-        """Fetch buildings from landmark detail response.
+        logger.info(
+            f"Processed {len(landmark_details)} LandmarkDetail objects for landmark {lp_number}."
+        )
+        return landmark_details
 
-        Args:
-            landmark_id: ID of the landmark
-            limit: Maximum number of buildings to return
-
-        Returns:
-            List of building items
+    def _convert_item_to_landmark_detail(
+        self,
+        item: Union[Dict[str, Any], LandmarkDetail, LpcReportModel],
+        landmark_lp_number_context: Optional[str] = None,
+    ) -> LandmarkDetail:
         """
+        Converts a given item (dict, LandmarkDetail, or LpcReportModel)
+        into a LandmarkDetail instance, preserving all building metadata.
+        """
+        if isinstance(item, LandmarkDetail):
+            return item
+
+        if isinstance(item, LpcReportModel):
+            # Convert LpcReportModel to LandmarkDetail (limited fields available)
+            return LandmarkDetail(
+                name=item.name,
+                lpNumber=item.lpNumber,
+                bbl=None,
+                binNumber=None,
+                boroughId=self._map_borough_name_to_id(item.borough),
+                objectType=item.objectType,
+                block=None,
+                lot=None,
+                plutoAddress=None,
+                designatedAddress=item.street,  # Use street as designatedAddress
+                number=None,
+                street=item.street,
+                city=None,
+                designatedDate=item.dateDesignated,
+                calendaredDate=None,
+                publicHearingDate=None,
+                historicDistrict=item.neighborhood,
+                otherHearingDate=None,
+                isCurrent=None,
+                status=None,
+                lastAction=None,
+                priorStatus=None,
+                recordType=None,
+                isBuilding=None,
+                isVacantLot=None,
+                isSecondaryBuilding=None,
+                latitude=None,
+                longitude=None,
+                # Note: LpcReportModel doesn't have building-specific fields like bbl, binNumber, etc.
+            )
+
+        # If execution reaches here, 'item' must be a dict due to the Union type hint
         try:
-            response = self.get_landmark_by_id(landmark_id)
-            if not isinstance(response, LpcReportDetailResponse):
-                return []
-
-            if not hasattr(response, "landmarks"):
-                return []
-
-            landmarks = response.landmarks
-            if not isinstance(landmarks, list):
-                return []
-
-            # Filter out invalid items and limit results
-            valid_items = []
-            for item in landmarks:
-                if isinstance(item, (dict, LandmarkDetail)):
-                    valid_items.append(item)
-                    if len(valid_items) >= limit:
-                        break
-
-            return cast(
-                List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]], valid_items
-            )
+            # Attempt to directly create LandmarkDetail from dict
+            return LandmarkDetail(**item)
         except Exception as e:
-            logger.error(
-                f"Error fetching buildings from landmark detail for {landmark_id}: {e}"
+            logger.warning(
+                f"Error converting dict to LandmarkDetail for LP {landmark_lp_number_context}: {e}. Dict keys: {list(item.keys())}"
             )
-            return []
+            # Fallback to a default model if direct conversion fails
+            return LandmarkDetail(
+                name=item.get("name", "Unknown Building (dict conversion error)"),
+                lpNumber=item.get(
+                    "lpNumber", landmark_lp_number_context or "Unknown LP"
+                ),
+                bbl=item.get("bbl"),
+                binNumber=item.get("binNumber"),
+                boroughId=item.get("boroughId"),
+                objectType=item.get("objectType"),
+                block=item.get("block"),
+                lot=item.get("lot"),
+                plutoAddress=item.get("plutoAddress"),
+                designatedAddress=item.get("designatedAddress"),
+                number=item.get("number"),
+                street=item.get("street"),
+                city=item.get("city"),
+                designatedDate=item.get("designatedDate"),
+                calendaredDate=item.get("calendaredDate"),
+                publicHearingDate=item.get("publicHearingDate"),
+                historicDistrict=item.get("historicDistrict"),
+                otherHearingDate=item.get("otherHearingDate"),
+                isCurrent=item.get("isCurrent"),
+                status=item.get("status"),
+                lastAction=item.get("lastAction"),
+                priorStatus=item.get("priorStatus"),
+                recordType=item.get("recordType"),
+                isBuilding=item.get("isBuilding"),
+                isVacantLot=item.get("isVacantLot"),
+                isSecondaryBuilding=item.get("isSecondaryBuilding"),
+                latitude=item.get("latitude"),
+                longitude=item.get("longitude"),
+            )
+
+    def _map_borough_name_to_id(self, borough_name: Optional[str]) -> Optional[str]:
+        """Map borough name to borough ID."""
+        if not borough_name:
+            return None
+
+        borough_mapping = {
+            "Manhattan": "1",
+            "Bronx": "2",
+            "Brooklyn": "3",
+            "Queens": "4",
+            "Staten Island": "5"
+        }
+        return borough_mapping.get(borough_name)
 
     def get_landmark_buildings(
         self, landmark_id: str, limit: int = 50
-    ) -> List[LpcReportModel]:
+    ) -> List[LandmarkDetail]:
         """Get buildings associated with a landmark.
 
         Args:
@@ -716,7 +778,7 @@ class DbClient:
             limit: Maximum number of buildings to return
 
         Returns:
-            List of buildings (as LpcReportModel objects)
+            List of buildings (as LandmarkDetail objects with full building metadata)
         """
         # Standardize the landmark ID
         lp_number = self._standardize_lp_number(landmark_id)
@@ -728,8 +790,8 @@ class DbClient:
         if not buildings:
             buildings = self._fetch_buildings_from_landmark_detail(lp_number, limit)
 
-        # Convert to LpcReportModel objects
-        return self._convert_building_items_to_models(buildings, lp_number)
+        # Convert to LandmarkDetail objects (preserving all building metadata)
+        return self._convert_building_items_to_landmark_details(buildings, lp_number)
 
     def get_wikipedia_articles(self, landmark_id: str) -> List[WikipediaArticleModel]:
         """Get Wikipedia articles associated with a landmark.
@@ -748,127 +810,74 @@ class DbClient:
                     f"Error fetching Wikipedia articles for landmark {landmark_id}: {e}"
                 )
                 return []
-        return []
+        else:
+            logger.debug(
+                f"Client does not support Wikipedia articles for landmark {landmark_id}"
+            )
+            return []
 
-    def get_landmark_pluto_data(self, landmark_id: str) -> List[PlutoDataModel]:
-        """Get PLUTO data for a landmark.
+    def _fetch_buildings_from_client(
+        self, lp_number: str, limit: int
+    ) -> List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]]:
+        """Fetch buildings from the client API.
 
         Args:
-            landmark_id: ID of the landmark
+            lp_number: Standardized LP number
+            limit: Maximum number of buildings to return
 
         Returns:
-            List of PLUTO data records as PlutoDataModel objects
-        """
-        if hasattr(self.client, "get_landmark_pluto_data"):
-            # Get raw data from client
-            raw_pluto_data: List[Dict[str, Any]] = self.client.get_landmark_pluto_data(
-                landmark_id
-            )
-
-            # Convert to PlutoDataModel objects
-            pluto_models: List[PlutoDataModel] = []
-            for data in raw_pluto_data:
-                try:
-                    pluto_models.append(PlutoDataModel(**data))
-                except Exception as e:
-                    logger.warning(
-                        f"Error converting PLUTO data to model for landmark {landmark_id}: {e}"
-                    )
-
-            return pluto_models
-        return []
-
-    def get_total_record_count(self) -> int:
-        """Get the total number of landmarks available in the database.
-
-        This method tries to make a minimal API request to get metadata including
-        the total record count. If that fails, it tries to estimate the count by
-        paging through records. If both methods fail, it falls back to a default value.
-
-        Returns:
-            int: Total number of landmark records
+            List of building items (could be dicts, LandmarkDetail, or LpcReportModel objects)
         """
         try:
-            # Attempt to get the count from the API metadata
-            count_from_metadata = self._get_count_from_api_metadata()
-            if count_from_metadata > 0:
-                return count_from_metadata
-
-            # If metadata count not available, try to estimate by paging
-            logger.info("Metadata count not available, trying to estimate from pages")
-            count_from_pages = self._estimate_count_from_pages()
-            if count_from_pages > 0:
-                return count_from_pages
-
-            # If no count available from either method, return a reasonable default
-            logger.info("Could not determine exact record count, using default")
-            return 100
-
+            # Use the client's get_landmark_buildings method which returns List[LandmarkDetail]
+            if hasattr(self.client, "get_landmark_buildings"):
+                buildings = self.client.get_landmark_buildings(lp_number, limit)
+                logger.info(f"Retrieved {len(buildings)} buildings from client API for {lp_number}")
+                # Convert to the expected return type
+                return cast(List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]], buildings)
+            else:
+                logger.warning("Client does not support get_landmark_buildings method")
+                return []
         except Exception as e:
-            logger.error(f"Error getting total record count: {e}")
-            return 100  # Return a reasonable default if all else fails
+            logger.error(f"Error fetching buildings from client for {lp_number}: {e}")
+            return []
 
-    def _get_count_from_api_metadata(self) -> int:
-        """Try to get the record count from API metadata.
+    def _fetch_buildings_from_landmark_detail(
+        self, lp_number: str, limit: int
+    ) -> List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]]:
+        """Fetch buildings from landmark detail response as fallback.
+
+        Args:
+            lp_number: Standardized LP number
+            limit: Maximum number of buildings to return
 
         Returns:
-            int: The total record count or 0 if not found
+            List of building items (could be dicts, LandmarkDetail, or LpcReportModel objects)
         """
         try:
-            # Get the first page with minimal records
-            response = self.get_lpc_reports(page=1, limit=1)
-            if hasattr(response, "total"):
-                return response.total
-            return 0
+            # Get the landmark detail response
+            landmark_response = self.get_landmark_by_id(lp_number)
+            if not landmark_response:
+                logger.warning(f"No landmark response found for {lp_number}")
+                return []
+
+            # Extract buildings from the landmarks field
+            if hasattr(landmark_response, 'landmarks') and landmark_response.landmarks:
+                buildings = landmark_response.landmarks[:limit]  # Apply limit
+                logger.info(f"Retrieved {len(buildings)} buildings from landmark detail for {lp_number}")
+                # Convert to the expected return type
+                return cast(List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]], buildings)
+            else:
+                logger.info(f"No buildings found in landmark detail for {lp_number}")
+                return []
         except Exception as e:
-            logger.warning(f"Error getting total record count from API metadata: {e}")
-            return 0
-
-    def _estimate_count_from_pages(self) -> int:
-        """Estimate the total record count by paging through results.
-
-        This method fetches pages of landmarks until it reaches an empty page,
-        then sums the total number of records found.
-
-        Returns:
-            int: The estimated total record count
-        """
-        try:
-            page_size = 50  # Use a larger page size for efficiency
-            page = 1
-            total_count = 0
-
-            while True:
-                # Get the current page of landmarks
-                landmarks = self.get_landmarks_page(page_size=page_size, page=page)
-
-                # Break if we get an empty page
-                if not landmarks:
-                    break
-
-                # Add count of landmarks on this page
-                total_count += len(landmarks)
-
-                # If we got fewer landmarks than the page size, we've reached the end
-                if len(landmarks) < page_size:
-                    break
-
-                # Move to the next page
-                page += 1
-
-            logger.info(f"Estimated total record count: {total_count}")
-            return total_count
-        except Exception as e:
-            logger.warning(f"Error estimating total record count from pages: {e}")
-            return 0
-
+            logger.error(f"Error fetching buildings from landmark detail for {lp_number}: {e}")
+            return []
 
 def get_db_client() -> DbClient:
-    """Get a database client instance.
+    """Get a configured database client.
 
     Returns:
         DbClient instance
     """
-    logger.info("Using CoreDataStore API client")
-    api_client = _CoreDataStoreAPI()
-    return DbClient(api_client)
+    return DbClient()

@@ -150,6 +150,32 @@ Enhanced metadata collection follows these patterns:
 - Graceful fallback when sources are unavailable
 - Strong typing for metadata representation
 
+## Flattened Complex Metadata
+
+To handle complex, nested data structures within vector database metadata constraints:
+
+- Structured arrays are flattened to key-value pairs using consistent naming conventions
+- For example, building data is transformed from:
+  ```
+  "buildings": [
+    {"name": "Building A", "address": "123 Main St"},
+    {"name": "Building B", "address": "456 Elm St"}
+  ]
+  ```
+  to:
+  ```
+  "building_0_name": "Building A",
+  "building_0_address": "123 Main St",
+  "building_1_name": "Building B",
+  "building_1_address": "456 Elm St",
+  "building_names": ["Building A", "Building B"]
+  ```
+- Array indices are incorporated into key names (`building_0_name`, `building_1_name`)
+- Common search fields are preserved as arrays for filtering (e.g., `building_names` array)
+- Transformation happens at collection time through specialized helper methods (e.g., `_flatten_buildings_metadata`)
+- Original structured data is preserved internally for processing but flattened before storage
+- String conversion ensures consistency with Pinecone metadata constraints (except for boolean values)
+
 ## Vector ID Standardization
 
 Vector IDs follow a consistent pattern:

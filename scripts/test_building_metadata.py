@@ -1,269 +1,276 @@
 #!/usr/bin/env python3
 """
-Test script for the multiple buildings metadata implementation.
+Test script to diagnose and fix building metadata integration issues.
 
-This script:
-1. Fetches a landmark by ID using the CoreDataStore API
-2. Collects enhanced metadata including all buildings and BBLs
-3. Formats the data for the vector database
-4. Prints the results for verification
+This script tests how the landmark building data is being processed by:
+1. Directly calling the CoreDataStore API
+2. Using the DbClient's get_landmark_buildings method
+3. Using the EnhancedMetadataCollector to populate building metadata
+
+By comparing these approaches, we can identify where the building metadata
+processing is failing and implement appropriate fixes.
 """
 
 import argparse
 import json
 import logging
-import uuid
-from typing import Any, Dict, List, Optional, Tuple, TypedDict
+import sys
+from typing import Any, Dict, List
 
-from nyc_landmarks.db._coredatastore_api import _CoreDataStoreAPI as CoreDataStoreAPI
-from nyc_landmarks.models.landmark_models import LandmarkDetail, LpcReportDetailResponse
-from nyc_landmarks.models.metadata_models import LandmarkMetadata
-from nyc_landmarks.utils.logger import get_logger
-from nyc_landmarks.vectordb.enhanced_metadata import EnhancedMetadataCollector
-from nyc_landmarks.vectordb.pinecone_db import PineconeDB
+import requests
 
-
-# TypedDict for Pinecone vector structure
-class PineconeVector(TypedDict):
-    id: str
-    values: List[float]
-    metadata: Dict[str, Any]
-
+from nyc_landmarks.db.db_client import get_db_client
+from nyc_landmarks.models.landmark_models import LpcReportModel
+from nyc_landmarks.vectordb.enhanced_metadata import get_metadata_collector
 
 # Configure logging
-logger = get_logger(__name__)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
-def initialize_components() -> (
-    Tuple[CoreDataStoreAPI, EnhancedMetadataCollector, PineconeDB]
-):
-    """Initialize API client, metadata collector, and Pinecone DB."""
-    api_client = CoreDataStoreAPI()
-    metadata_collector = EnhancedMetadataCollector()
-    pinecone_db = PineconeDB()
-    return api_client, metadata_collector, pinecone_db
-
-
-def get_landmark_info(
-    api_client: CoreDataStoreAPI, landmark_id: str
-) -> Tuple[Optional[LpcReportDetailResponse], List[LandmarkDetail]]:
-    """Retrieve landmark information and buildings from the API."""
-    # Get landmark details
-    landmark = api_client.get_landmark_by_id(landmark_id)
-    if not landmark:
-        logger.error(f"Landmark not found: {landmark_id}")
-        return None, []
-
-    logger.info(f"Found landmark: {landmark.name}")
-
-    # Get buildings for the landmark
-    buildings = api_client.get_landmark_buildings(landmark_id)
-    logger.info(f"Found {len(buildings)} buildings for this landmark")
-
-    return landmark, buildings
-
-
-def print_building_details(buildings: List[LandmarkDetail], verbose: bool) -> None:
-    """Print detailed information about buildings if verbose mode is enabled."""
-    if verbose:
-        for i, building in enumerate(buildings):
-            logger.info(f"Building {i + 1}:")
-            # Convert LandmarkDetail to dict for iteration
-            building_dict = building.model_dump()
-            for key, value in building_dict.items():
-                if value:  # Only show non-empty fields
-                    logger.info(f"  {key}: {value}")
-
-
-def print_enhanced_metadata(enhanced_metadata: LandmarkMetadata, verbose: bool) -> None:
-    """Print information about enhanced metadata structure."""
-    logger.info("Enhanced Metadata Structure:")
-    if "buildings" in enhanced_metadata and enhanced_metadata["buildings"]:
-        logger.info(f"- Number of buildings: {len(enhanced_metadata['buildings'])}")
-
-        # Print BBL values from buildings
-        if verbose:
-            for i, building in enumerate(enhanced_metadata["buildings"]):
-                bbl = building.get("bbl", "None")
-                name = building.get("name", "Unnamed")
-                address = building.get("address", "No address")
-                logger.info(f"- Building {i + 1}: {name}, {address}, BBL: {bbl}")
-                # Print all properties for debugging
-                for key, value in building.items():
-                    logger.info(f"    - {key}: {value}")
-
-    # Note: We no longer have standalone all_bbls and bbl fields
-    # as that information is now stored in the buildings complex object
-    logger.info("- BBLs are now stored in the buildings complex object")
-
-
-def convert_enhanced_metadata_to_dict(
-    enhanced_metadata: LandmarkMetadata,
-) -> Dict[str, Any]:
-    """Convert enhanced metadata to dictionary format."""
-    if hasattr(enhanced_metadata, "model_dump"):
-        return dict(enhanced_metadata.model_dump())
-    elif hasattr(enhanced_metadata, "dict"):
-        return dict(enhanced_metadata.dict())
-    else:
-        # Handle edge cases to ensure Dict[str, Any] return type
-        if isinstance(enhanced_metadata, dict):
-            return dict(enhanced_metadata)
-        else:
-            try:
-                return dict(enhanced_metadata)
-            except (TypeError, ValueError):
-                logger.warning(
-                    "Could not convert enhanced_metadata to dict, returning empty dict"
-                )
-                return {}
-
-
-def create_pinecone_metadata(
-    pinecone_db: PineconeDB, landmark_id: str, enhanced_metadata_dict: Dict[str, Any]
-) -> Dict[str, Any]:
-    """Create metadata for Pinecone from enhanced metadata."""
-    mock_chunk = {"text": "Test chunk", "embedding": [0.1] * 1536}
-
-    return pinecone_db._create_metadata_for_chunk(
-        chunk=mock_chunk,
-        source_type="test",
-        chunk_index=0,
-        landmark_id=landmark_id,
-        enhanced_metadata=enhanced_metadata_dict,
-    )
-
-
-def print_pinecone_metadata(pinecone_metadata: Dict[str, Any], verbose: bool) -> None:
-    """Print formatted metadata for Pinecone."""
-    logger.info("Formatted Metadata for Pinecone:")
-    if verbose:
-        # Pretty print the metadata
-        formatted_json = json.dumps(pinecone_metadata, indent=2)
-        logger.info(f"{formatted_json}")
-    else:
-        # Just print the keys
-        logger.info(f"- Metadata fields: {', '.join(pinecone_metadata.keys())}")
-
-        # Look for building-related fields
-        building_fields = [
-            k for k in pinecone_metadata.keys() if k.startswith("building_")
-        ]
-        if building_fields:
-            logger.info(f"- Building fields: {', '.join(building_fields)}")
-
-        # Look for BBL fields
-        bbl_fields = [k for k in pinecone_metadata.keys() if "bbl" in k.lower()]
-        if bbl_fields:
-            for field in bbl_fields:
-                logger.info(f"- {field}: {pinecone_metadata[field]}")
-
-
-def create_and_upload_test_vector(
-    pinecone_db: PineconeDB, pinecone_metadata: Dict[str, Any]
-) -> str:
-    """Create and upload a test vector to Pinecone."""
-    logger.info("Creating and uploading a test vector to Pinecone...")
-    test_vector_id = str(uuid.uuid4())
-    embedding_dimension = 1536  # Standard dimension for OpenAI embeddings
-
-    # Create dummy embedding values
-    embedding_values = [0.5] * embedding_dimension
-
-    # Format the vector as expected by store_vectors_batch method
-    # This method expects a List[Tuple[str, List[float], Dict[str, Any]]]
-    vectors_batch = [(test_vector_id, embedding_values, pinecone_metadata)]
-
-    # Use the centralized method instead of direct index access
-    success = pinecone_db.store_vectors_batch(vectors_batch)
-
-    if not success:
-        logger.error("Failed to upload test vector to Pinecone")
-    else:
-        logger.info(f"Uploaded test vector to Pinecone with ID: {test_vector_id}")
-
-    return test_vector_id
-
-
-def test_landmark_metadata(
-    landmark_id: str, verbose: bool = False, create_vector: bool = False
-) -> None:
+def direct_api_call(landmark_id: str) -> Dict[str, Any]:
     """
-    Test the collection of metadata for a landmark, including multiple buildings.
+    Call the CoreDataStore API directly to get landmark data.
 
     Args:
-        landmark_id: ID of the landmark to process
-        verbose: Whether to print detailed results
-        create_vector: Whether to create a test vector in Pinecone
+        landmark_id: The LP number of the landmark
+
+    Returns:
+        The JSON response from the API
+    """
+    # Format the landmark ID to ensure LP prefix
+    if not landmark_id.startswith("LP-"):
+        landmark_id = f"LP-{landmark_id.zfill(5)}"
+
+    # Construct the API URL - this is based on the curl example you provided
+    url = f"https://api.coredatastore.com/api/LpcReport/landmark/10/1?LpcNumber={landmark_id}"
+
+    headers = {
+        "accept": "application/json"
+    }
+
+    try:
+        logger.info(f"Calling CoreDataStore API directly for landmark: {landmark_id}")
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()  # Raise exception for non-2xx responses
+
+        data = response.json()
+        logger.info(f"Direct API call successful. Results count: {len(data.get('results', []))}")
+        return data
+    except Exception as e:
+        logger.error(f"Error in direct API call: {e}")
+        error_dict: Dict[str, Any] = {"error": str(e), "results": []}
+        return error_dict
+
+
+def test_db_client_buildings(landmark_id: str) -> List[LpcReportModel]:
+    """
+    Test the DbClient's get_landmark_buildings method.
+
+    Args:
+        landmark_id: The LP number of the landmark
+
+    Returns:
+        List of building models returned by DbClient
     """
     try:
-        logger.info(f"Testing metadata collection for landmark: {landmark_id}")
+        logger.info(f"Testing DbClient.get_landmark_buildings for landmark: {landmark_id}")
+        db_client = get_db_client()
+        buildings = db_client.get_landmark_buildings(landmark_id)
 
-        # Step 1: Initialize components
-        api_client, metadata_collector, pinecone_db = initialize_components()
-
-        # Step 2: Get landmark details and buildings
-        landmark, buildings = get_landmark_info(api_client, landmark_id)
-        if not landmark:
-            return  # Exit if landmark not found
-
-        # Step 3: Print building details if verbose
-        print_building_details(buildings, verbose)
-
-        # Step 4: Collect enhanced metadata
-        enhanced_metadata = metadata_collector.collect_landmark_metadata(landmark_id)
-
-        # Step 5: Print the enhanced metadata
-        print_enhanced_metadata(enhanced_metadata, verbose)
-
-        # Step 6: Test how this would be formatted for Pinecone
-        # Convert enhanced_metadata to dict for compatibility
-        enhanced_metadata_dict = convert_enhanced_metadata_to_dict(enhanced_metadata)
-
-        # Create metadata for Pinecone
-        pinecone_metadata = create_pinecone_metadata(
-            pinecone_db, landmark_id, enhanced_metadata_dict
-        )
-
-        # Print formatted metadata for Pinecone
-        print_pinecone_metadata(pinecone_metadata, verbose)
-
-        # Step 7: (Optional) Create and upload a test vector to Pinecone
-        if create_vector:
-            create_and_upload_test_vector(pinecone_db, pinecone_metadata)
-
+        logger.info(f"DbClient returned {len(buildings)} buildings")
+        return buildings
     except Exception as e:
-        logger.error(f"Error testing landmark metadata: {e}", exc_info=True)
+        logger.error(f"Error in db_client.get_landmark_buildings: {e}")
+        return []
 
 
-def main() -> None:
-    """Main function to run the test script."""
-    parser = argparse.ArgumentParser(
-        description="Test the collection of metadata for landmarks with multiple buildings"
-    )
-    parser.add_argument(
-        "landmark_id", help="ID of the landmark to process (e.g., LP-00001)"
-    )
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Print detailed results"
-    )
-    parser.add_argument(
-        "--create-vector",
-        action="store_true",
-        help="Create and upload a test vector to Pinecone",
-    )
+def test_enhanced_metadata(landmark_id: str) -> Dict[str, Any]:
+    """
+    Test the EnhancedMetadataCollector's building metadata collection.
+
+    Args:
+        landmark_id: The LP number of the landmark
+
+    Returns:
+        The metadata dictionary with building data
+    """
+    try:
+        logger.info(f"Testing EnhancedMetadataCollector for landmark: {landmark_id}")
+        collector = get_metadata_collector()
+        metadata = collector.collect_landmark_metadata(landmark_id)
+
+        # Convert to dictionary for display
+        if hasattr(metadata, "dict"):
+            metadata_dict = metadata.dict()
+        else:
+            metadata_dict = dict(metadata)
+
+        # Check if buildings data exists (look for flattened building fields)
+        building_keys = [k for k in metadata_dict.keys() if k.startswith("building_")]
+        has_buildings = len(building_keys) > 0
+        logger.info(f"EnhancedMetadataCollector has buildings data: {has_buildings}")
+        if has_buildings:
+            # Count unique building indices
+            building_indices = set()
+            for key in building_keys:
+                # Extract building index from keys like "building_0_name", "building_1_bbl"
+                parts = key.split('_')
+                if len(parts) >= 2 and parts[1].isdigit():
+                    building_indices.add(int(parts[1]))
+            logger.info(f"Number of buildings: {len(building_indices)}")
+            logger.info(f"Building fields found: {sorted(building_keys)}")
+
+        return metadata_dict
+    except Exception as e:
+        logger.error(f"Error in EnhancedMetadataCollector: {e}")
+        return {}
+
+
+def debug_api_and_client_mismatch(api_data: Dict[str, Any], client_buildings: List[LpcReportModel]) -> None:
+    """
+    Debug the mismatch between API data and client data.
+
+    Args:
+        api_data: Data from direct API call
+        client_buildings: Buildings from DbClient
+    """
+    logger.info("=== Analyzing API vs Client Data Mismatch ===")
+
+    # Check if API returned buildings in results
+    api_buildings = api_data.get("results", [])
+    logger.info(f"API returned {len(api_buildings)} building(s) in results")
+
+    # Compare counts
+    logger.info(f"DbClient returned {len(client_buildings)} building(s)")
+
+    # Check if the API results are being interpreted correctly
+    if api_buildings and not client_buildings:
+        logger.warning("API returned buildings but DbClient did not - potential parsing issue")
+
+        # Check the structure of API buildings to see what fields are available
+        first_api_building = api_buildings[0] if api_buildings else {}
+        logger.info(f"API building fields: {', '.join(first_api_building.keys())}")
+
+        # Check specifically for expected fields that might be missing
+        expected_fields = ["bbl", "binNumber", "block", "lot", "latitude", "longitude", "designatedAddress", "name"]
+        for field in expected_fields:
+            if field in first_api_building:
+                logger.info(f"Field '{field}' exists in API response with value: {first_api_building.get(field)}")
+            else:
+                logger.warning(f"Field '{field}' is MISSING in API response")
+
+
+def fix_recommendations(landmark_id: str, api_data: Dict[str, Any], metadata: Dict[str, Any]) -> None:
+    """
+    Provide recommendations for fixing the building metadata issue.
+
+    Args:
+        landmark_id: The LP number of the landmark
+        api_data: Data from direct API call
+        metadata: Enhanced metadata
+    """
+    logger.info("=== Fix Recommendations ===")
+
+    # Check if API has results
+    api_buildings = api_data.get("results", [])
+    if not api_buildings:
+        logger.info("No buildings found in API response - may be correct for this landmark")
+        return
+
+    # Check if metadata has buildings
+    has_buildings = "buildings" in metadata and metadata["buildings"]
+
+    if not has_buildings and api_buildings:
+        logger.warning("API has building data but metadata does not - likely a processing issue")
+
+        # Create a potential fix example
+        fixed_buildings = []
+        for api_building in api_buildings:
+            building_info = {
+                "bbl": api_building.get("bbl"),
+                "binNumber": api_building.get("binNumber"),
+                "block": api_building.get("block"),
+                "lot": api_building.get("lot"),
+                "latitude": api_building.get("latitude"),
+                "longitude": api_building.get("longitude"),
+                "address": api_building.get("designatedAddress") or api_building.get("plutoAddress", ""),
+                "name": api_building.get("name", "")
+            }
+            # Only add if it has meaningful data
+            if any(v is not None and v != "" for v in building_info.values()):
+                fixed_buildings.append(building_info)
+
+        logger.info(f"Potential fixed building data (would add {len(fixed_buildings)} buildings):")
+        if fixed_buildings:
+            logger.info(json.dumps(fixed_buildings, indent=2))
+
+
+def main() -> int:
+    """Main function to run the tests."""
+    parser = argparse.ArgumentParser(description="Test building metadata integration")
+    parser.add_argument("landmark_id", help="Landmark ID to test (LP number)")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
 
     args = parser.parse_args()
 
-    # Set up logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
+    # Set log level
+    if args.verbose:
+        logger.setLevel(logging.DEBUG)
+        for handler in logger.handlers:
+            handler.setLevel(logging.DEBUG)
 
-    # Run the test
-    test_landmark_metadata(args.landmark_id, args.verbose, args.create_vector)
+    landmark_id = args.landmark_id
+
+    logger.info(f"Testing building metadata integration for landmark: {landmark_id}")
+
+    # Step 1: Direct API call
+    api_data = direct_api_call(landmark_id)
+    print("\nDirect API Response:")
+    print(json.dumps(api_data, indent=2))
+
+    # Step 2: Test DbClient buildings
+    client_buildings = test_db_client_buildings(landmark_id)
+    print("\nDbClient Buildings:")
+    for i, building in enumerate(client_buildings):
+        print(f"\nBuilding {i+1}:")
+        if hasattr(building, "model_dump"):
+            print(json.dumps(building.model_dump(), indent=2))
+        else:
+            print(json.dumps(dict(building), indent=2))
+
+    # Step 3: Test enhanced metadata
+    metadata = test_enhanced_metadata(landmark_id)
+    print("\nEnhanced Metadata (buildings only):")
+    # Look for flattened building fields
+    building_keys = [k for k in metadata.keys() if k.startswith("building_")]
+
+    if building_keys:
+        print("Found flattened building data:")
+        # Group by building index
+        buildings_by_index: Dict[int, Dict[str, Any]] = {}
+        for key in building_keys:
+            parts = key.split('_', 2)  # Split into ["building", "0", "name"] format
+            if len(parts) >= 3 and parts[1].isdigit():
+                index = int(parts[1])
+                field_name = parts[2]
+                if index not in buildings_by_index:
+                    buildings_by_index[index] = {}
+                buildings_by_index[index][field_name] = metadata[key]
+
+        for index in sorted(buildings_by_index.keys()):
+            print(f"Building {index}: {json.dumps(buildings_by_index[index], indent=2)}")
+    else:
+        print("No buildings data in metadata")
+
+    # Step 4: Debug mismatches
+    debug_api_and_client_mismatch(api_data, client_buildings)
+
+    # Step 5: Provide fix recommendations
+    fix_recommendations(landmark_id, api_data, metadata)
+
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
