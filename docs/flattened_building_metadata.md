@@ -46,21 +46,25 @@ Into a flattened format:
 ### Key Components
 
 1. **New Flattening Method**: Added `_flatten_buildings_metadata` method to `EnhancedMetadataCollector` that:
+
    - Transforms building objects to flat key-value pairs with indexed keys
    - Preserves an array of building names for easier filtering
    - Converts values to strings for Pinecone compatibility (except booleans)
 
-2. **Updated Metadata Collection**: Modified `_add_building_data` to:
+1. **Updated Metadata Collection**: Modified `_add_building_data` to:
+
    - Collect building data as before
    - Apply the flattening transformation before adding to metadata_dict
    - Remove the buildings array from the final metadata
 
-3. **Updated Database Integration**: Modified PineconeDB to:
+1. **Updated Database Integration**: Modified PineconeDB to:
+
    - Remove direct handling of buildings arrays
    - Allow the `building_names` array for filtering
    - Use flattened building fields in vector metadata
 
-4. **Updated Wikipedia Processing**: Modified WikipediaProcessor to:
+1. **Updated Wikipedia Processing**: Modified WikipediaProcessor to:
+
    - Process flattened building fields instead of buildings arrays
    - Preserve building information in both dictionary and object-style chunks
    - Update logging to reflect the new structure
@@ -68,9 +72,9 @@ Into a flattened format:
 ### Benefits
 
 1. **Pinecone Compatibility**: Ensures full compatibility with Pinecone's metadata constraints
-2. **Preserved Information**: Maintains all building data fields in a searchable format
-3. **Filtering Capability**: Enables filtering by building attributes and names
-4. **Consistent Structure**: Provides a standard pattern for handling nested data
+1. **Preserved Information**: Maintains all building data fields in a searchable format
+1. **Filtering Capability**: Enables filtering by building attributes and names
+1. **Consistent Structure**: Provides a standard pattern for handling nested data
 
 ### Implementation Details
 
@@ -82,20 +86,20 @@ Into a flattened format:
 ## Files Modified
 
 1. `nyc_landmarks/vectordb/enhanced_metadata.py`: Added flattening method and updated building data collection
-2. `nyc_landmarks/vectordb/pinecone_db.py`: Updated metadata filtering and vector storage
-3. `nyc_landmarks/wikipedia/processor.py`: Updated metadata handling for Wikipedia processing
+1. `nyc_landmarks/vectordb/pinecone_db.py`: Updated metadata filtering and vector storage
+1. `nyc_landmarks/wikipedia/processor.py`: Updated metadata handling for Wikipedia processing
 
 ## Documentation Updates
 
 1. `memory-bank/activeContext.md`: Added flattened building metadata to recent changes
-2. `memory-bank/systemPatterns.md`: Documented the flattened complex metadata pattern
-3. `memory-bank/progress.md`: Added flattened building metadata implementation to completed features
+1. `memory-bank/systemPatterns.md`: Documented the flattened complex metadata pattern
+1. `memory-bank/progress.md`: Added flattened building metadata implementation to completed features
 
 ## Testing
 
 The implementation can be tested by:
 
 1. Processing landmarks with building data
-2. Verifying the flattened building fields appear in vector metadata
-3. Testing filtering by building attributes via the query API
-4. Confirming building information displays properly in vector utility output
+1. Verifying the flattened building fields appear in vector metadata
+1. Testing filtering by building attributes via the query API
+1. Confirming building information displays properly in vector utility output

@@ -121,9 +121,15 @@ class PineconeDB:
         if enhanced_metadata_obj:
             # Use model_dump() method to include extra fields like flattened building data
             metadata_dict = enhanced_metadata_obj.model_dump()
-            logger.info(f"DEBUG: Enhanced metadata dict keys: {list(metadata_dict.keys())}")
-            building_fields = [k for k in metadata_dict.keys() if k.startswith('building_')]
-            logger.info(f"DEBUG: Building fields in enhanced metadata: {building_fields}")
+            logger.info(
+                f"DEBUG: Enhanced metadata dict keys: {list(metadata_dict.keys())}"
+            )
+            building_fields = [
+                k for k in metadata_dict.keys() if k.startswith("building_")
+            ]
+            logger.info(
+                f"DEBUG: Building fields in enhanced metadata: {building_fields}"
+            )
             return metadata_dict
         else:
             return {}
@@ -194,7 +200,9 @@ class PineconeDB:
         # Check for flattened building data
         building_keys = [k for k in metadata.keys() if k.startswith("building_")]
         if building_keys:
-            logger.info(f"Final metadata contains {len(building_keys)} flattened building fields")
+            logger.info(
+                f"Final metadata contains {len(building_keys)} flattened building fields"
+            )
         else:
             logger.warning("No building data fields in final metadata")
 
@@ -239,8 +247,12 @@ class PineconeDB:
         filtered_metadata = {}
         try:
             # Debug logging
-            building_fields_input = {k: v for k, v in enhanced_metadata.items() if k.startswith("building_")}
-            logger.info(f"Input enhanced metadata has {len(building_fields_input)} building fields")
+            building_fields_input = {
+                k: v for k, v in enhanced_metadata.items() if k.startswith("building_")
+            }
+            logger.info(
+                f"Input enhanced metadata has {len(building_fields_input)} building fields"
+            )
 
             # Process metadata fields
             for k, v in enhanced_metadata.items():
@@ -250,14 +262,20 @@ class PineconeDB:
                 if k == "source_type":
                     continue
                 # Skip unsupported data types (lists and dicts)
-                if isinstance(v, (list, dict)) and k != "building_names":  # Allow building_names array for filtering
+                if (
+                    isinstance(v, (list, dict)) and k != "building_names"
+                ):  # Allow building_names array for filtering
                     logger.warning(f"Skipping unsupported metadata field: {k}")
                     continue
                 filtered_metadata[k] = v
 
             # Debug logging
-            building_fields_output = {k: v for k, v in filtered_metadata.items() if k.startswith("building_")}
-            logger.info(f"Filtered enhanced metadata has {len(building_fields_output)} building fields")
+            building_fields_output = {
+                k: v for k, v in filtered_metadata.items() if k.startswith("building_")
+            }
+            logger.info(
+                f"Filtered enhanced metadata has {len(building_fields_output)} building fields"
+            )
 
             # The flattened building fields like building_0_name will be included automatically
             # as they are already flat key-value pairs

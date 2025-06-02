@@ -24,7 +24,9 @@ from nyc_landmarks.models.landmark_models import LpcReportModel
 from nyc_landmarks.vectordb.enhanced_metadata import get_metadata_collector
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -45,9 +47,7 @@ def direct_api_call(landmark_id: str) -> Dict[str, Any]:
     # Construct the API URL - this is based on the curl example you provided
     url = f"https://api.coredatastore.com/api/LpcReport/landmark/10/1?LpcNumber={landmark_id}"
 
-    headers = {
-        "accept": "application/json"
-    }
+    headers = {"accept": "application/json"}
 
     try:
         logger.info(f"Calling CoreDataStore API directly for landmark: {landmark_id}")
@@ -55,7 +55,9 @@ def direct_api_call(landmark_id: str) -> Dict[str, Any]:
         response.raise_for_status()  # Raise exception for non-2xx responses
 
         data = response.json()
-        logger.info(f"Direct API call successful. Results count: {len(data.get('results', []))}")
+        logger.info(
+            f"Direct API call successful. Results count: {len(data.get('results', []))}"
+        )
         return data
     except Exception as e:
         logger.error(f"Error in direct API call: {e}")
@@ -74,7 +76,9 @@ def test_db_client_buildings(landmark_id: str) -> List[LpcReportModel]:
         List of building models returned by DbClient
     """
     try:
-        logger.info(f"Testing DbClient.get_landmark_buildings for landmark: {landmark_id}")
+        logger.info(
+            f"Testing DbClient.get_landmark_buildings for landmark: {landmark_id}"
+        )
         db_client = get_db_client()
         buildings = db_client.get_landmark_buildings(landmark_id)
 
@@ -115,7 +119,7 @@ def test_enhanced_metadata(landmark_id: str) -> Dict[str, Any]:
             building_indices = set()
             for key in building_keys:
                 # Extract building index from keys like "building_0_name", "building_1_bbl"
-                parts = key.split('_')
+                parts = key.split("_")
                 if len(parts) >= 2 and parts[1].isdigit():
                     building_indices.add(int(parts[1]))
             logger.info(f"Number of buildings: {len(building_indices)}")
@@ -127,7 +131,9 @@ def test_enhanced_metadata(landmark_id: str) -> Dict[str, Any]:
         return {}
 
 
-def debug_api_and_client_mismatch(api_data: Dict[str, Any], client_buildings: List[LpcReportModel]) -> None:
+def debug_api_and_client_mismatch(
+    api_data: Dict[str, Any], client_buildings: List[LpcReportModel]
+) -> None:
     """
     Debug the mismatch between API data and client data.
 
@@ -146,22 +152,37 @@ def debug_api_and_client_mismatch(api_data: Dict[str, Any], client_buildings: Li
 
     # Check if the API results are being interpreted correctly
     if api_buildings and not client_buildings:
-        logger.warning("API returned buildings but DbClient did not - potential parsing issue")
+        logger.warning(
+            "API returned buildings but DbClient did not - potential parsing issue"
+        )
 
         # Check the structure of API buildings to see what fields are available
         first_api_building = api_buildings[0] if api_buildings else {}
         logger.info(f"API building fields: {', '.join(first_api_building.keys())}")
 
         # Check specifically for expected fields that might be missing
-        expected_fields = ["bbl", "binNumber", "block", "lot", "latitude", "longitude", "designatedAddress", "name"]
+        expected_fields = [
+            "bbl",
+            "binNumber",
+            "block",
+            "lot",
+            "latitude",
+            "longitude",
+            "designatedAddress",
+            "name",
+        ]
         for field in expected_fields:
             if field in first_api_building:
-                logger.info(f"Field '{field}' exists in API response with value: {first_api_building.get(field)}")
+                logger.info(
+                    f"Field '{field}' exists in API response with value: {first_api_building.get(field)}"
+                )
             else:
                 logger.warning(f"Field '{field}' is MISSING in API response")
 
 
-def fix_recommendations(landmark_id: str, api_data: Dict[str, Any], metadata: Dict[str, Any]) -> None:
+def fix_recommendations(
+    landmark_id: str, api_data: Dict[str, Any], metadata: Dict[str, Any]
+) -> None:
     """
     Provide recommendations for fixing the building metadata issue.
 
@@ -175,14 +196,18 @@ def fix_recommendations(landmark_id: str, api_data: Dict[str, Any], metadata: Di
     # Check if API has results
     api_buildings = api_data.get("results", [])
     if not api_buildings:
-        logger.info("No buildings found in API response - may be correct for this landmark")
+        logger.info(
+            "No buildings found in API response - may be correct for this landmark"
+        )
         return
 
     # Check if metadata has buildings
     has_buildings = "buildings" in metadata and metadata["buildings"]
 
     if not has_buildings and api_buildings:
-        logger.warning("API has building data but metadata does not - likely a processing issue")
+        logger.warning(
+            "API has building data but metadata does not - likely a processing issue"
+        )
 
         # Create a potential fix example
         fixed_buildings = []
@@ -194,14 +219,17 @@ def fix_recommendations(landmark_id: str, api_data: Dict[str, Any], metadata: Di
                 "lot": api_building.get("lot"),
                 "latitude": api_building.get("latitude"),
                 "longitude": api_building.get("longitude"),
-                "address": api_building.get("designatedAddress") or api_building.get("plutoAddress", ""),
-                "name": api_building.get("name", "")
+                "address": api_building.get("designatedAddress")
+                or api_building.get("plutoAddress", ""),
+                "name": api_building.get("name", ""),
             }
             # Only add if it has meaningful data
             if any(v is not None and v != "" for v in building_info.values()):
                 fixed_buildings.append(building_info)
 
-        logger.info(f"Potential fixed building data (would add {len(fixed_buildings)} buildings):")
+        logger.info(
+            f"Potential fixed building data (would add {len(fixed_buildings)} buildings):"
+        )
         if fixed_buildings:
             logger.info(json.dumps(fixed_buildings, indent=2))
 
@@ -210,7 +238,9 @@ def main() -> int:
     """Main function to run the tests."""
     parser = argparse.ArgumentParser(description="Test building metadata integration")
     parser.add_argument("landmark_id", help="Landmark ID to test (LP number)")
-    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Enable verbose output"
+    )
 
     args = parser.parse_args()
 
@@ -233,7 +263,7 @@ def main() -> int:
     client_buildings = test_db_client_buildings(landmark_id)
     print("\nDbClient Buildings:")
     for i, building in enumerate(client_buildings):
-        print(f"\nBuilding {i+1}:")
+        print(f"\nBuilding {i + 1}:")
         if hasattr(building, "model_dump"):
             print(json.dumps(building.model_dump(), indent=2))
         else:
@@ -250,7 +280,7 @@ def main() -> int:
         # Group by building index
         buildings_by_index: Dict[int, Dict[str, Any]] = {}
         for key in building_keys:
-            parts = key.split('_', 2)  # Split into ["building", "0", "name"] format
+            parts = key.split("_", 2)  # Split into ["building", "0", "name"] format
             if len(parts) >= 3 and parts[1].isdigit():
                 index = int(parts[1])
                 field_name = parts[2]
@@ -259,7 +289,9 @@ def main() -> int:
                 buildings_by_index[index][field_name] = metadata[key]
 
         for index in sorted(buildings_by_index.keys()):
-            print(f"Building {index}: {json.dumps(buildings_by_index[index], indent=2)}")
+            print(
+                f"Building {index}: {json.dumps(buildings_by_index[index], indent=2)}"
+            )
     else:
         print("No buildings data in metadata")
 

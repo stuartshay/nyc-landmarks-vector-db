@@ -76,15 +76,21 @@ class EnhancedMetadataCollector:
         self._sanitize_string_fields(metadata_dict)
 
         # DEBUG: Log metadata dict keys before cleaning
-        logger.info(f"DEBUG: metadata_dict before cleaning has {len(metadata_dict)} keys")
-        building_fields = [k for k in metadata_dict.keys() if k.startswith('building_')]
+        logger.info(
+            f"DEBUG: metadata_dict before cleaning has {len(metadata_dict)} keys"
+        )
+        building_fields = [k for k in metadata_dict.keys() if k.startswith("building_")]
         logger.info(f"DEBUG: Building fields before cleaning: {building_fields}")
 
         clean_metadata = {k: v for k, v in metadata_dict.items() if v is not None}
 
         # DEBUG: Log clean_metadata keys after cleaning
-        logger.info(f"DEBUG: clean_metadata after cleaning has {len(clean_metadata)} keys")
-        building_fields_clean = [k for k in clean_metadata.keys() if k.startswith('building_')]
+        logger.info(
+            f"DEBUG: clean_metadata after cleaning has {len(clean_metadata)} keys"
+        )
+        building_fields_clean = [
+            k for k in clean_metadata.keys() if k.startswith("building_")
+        ]
         logger.info(f"DEBUG: Building fields after cleaning: {building_fields_clean}")
 
         return LandmarkMetadata(**clean_metadata)
@@ -133,7 +139,9 @@ class EnhancedMetadataCollector:
             logger.error(f"Error getting landmark details: {e}")
         return None, False
 
-    def _flatten_buildings_metadata(self, buildings: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _flatten_buildings_metadata(
+        self, buildings: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """
         Flatten building data to be compatible with Pinecone metadata requirements.
 
@@ -158,7 +166,9 @@ class EnhancedMetadataCollector:
             for key, value in building.items():
                 if value is not None and value != "":
                     flattened_key = f"building_{i}_{key}"
-                    flattened_metadata[flattened_key] = str(value) if not isinstance(value, bool) else value
+                    flattened_metadata[flattened_key] = (
+                        str(value) if not isinstance(value, bool) else value
+                    )
 
             # Add name to the list of building names (for filtering)
             if building.get("name") and building.get("name") != "":
@@ -212,7 +222,7 @@ class EnhancedMetadataCollector:
                             "objectType": building.get("objectType"),
                             "city": building.get("city"),
                             "designatedDate": building.get("designatedDate"),
-                            "historicDistrict": building.get("historicDistrict")
+                            "historicDistrict": building.get("historicDistrict"),
                         }
                     else:
                         # Handle object building data (from actual API)
@@ -234,7 +244,9 @@ class EnhancedMetadataCollector:
                             "objectType": getattr(building, "objectType", None),
                             "city": getattr(building, "city", None),
                             "designatedDate": getattr(building, "designatedDate", None),
-                            "historicDistrict": getattr(building, "historicDistrict", None)
+                            "historicDistrict": getattr(
+                                building, "historicDistrict", None
+                            ),
                         }
 
                     # Only add building if it has meaningful data
@@ -243,7 +255,9 @@ class EnhancedMetadataCollector:
 
                 # Add flattened building data to metadata_dict
                 if building_data:
-                    flattened_buildings = self._flatten_buildings_metadata(building_data)
+                    flattened_buildings = self._flatten_buildings_metadata(
+                        building_data
+                    )
                     metadata_dict.update(flattened_buildings)
                     logger.info(
                         f"Added {len(building_data)} buildings as flattened metadata for landmark {landmark_id}"
@@ -251,7 +265,9 @@ class EnhancedMetadataCollector:
                 else:
                     logger.warning(f"No building data found for landmark {landmark_id}")
             else:
-                logger.warning(f"No buildings returned from db_client for landmark {landmark_id}")
+                logger.warning(
+                    f"No buildings returned from db_client for landmark {landmark_id}"
+                )
 
             return building_data
 
@@ -344,7 +360,9 @@ class EnhancedMetadataCollector:
         """
         try:
             metadata = self.db_client.get_landmark_metadata(landmark_id)
-            metadata_dict = dict(metadata) if not isinstance(metadata, dict) else metadata
+            metadata_dict = (
+                dict(metadata) if not isinstance(metadata, dict) else metadata
+            )
 
             # Ensure the required fields exist
             if "landmark_id" not in metadata_dict:
@@ -353,7 +371,9 @@ class EnhancedMetadataCollector:
             if "name" not in metadata_dict:
                 # Set a default name if none exists
                 metadata_dict["name"] = f"Landmark {landmark_id}"
-                logger.warning(f"No name found for landmark {landmark_id}, using default")
+                logger.warning(
+                    f"No name found for landmark {landmark_id}, using default"
+                )
 
             if not self.using_api:
                 logger.info(
@@ -379,7 +399,9 @@ class EnhancedMetadataCollector:
 
         except Exception as outer_e:
             # If we can't even get basic metadata, create a minimal valid object
-            logger.error(f"Critical error getting metadata for landmark {landmark_id}: {outer_e}")
+            logger.error(
+                f"Critical error getting metadata for landmark {landmark_id}: {outer_e}"
+            )
             # Create a minimal valid metadata object
             minimal_metadata = {
                 "landmark_id": landmark_id,
@@ -391,7 +413,7 @@ class EnhancedMetadataCollector:
                 "architect": None,
                 "style": None,
                 "neighborhood": None,
-                "has_pluto_data": False
+                "has_pluto_data": False,
             }
             return LandmarkMetadata(**minimal_metadata)
 

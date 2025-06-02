@@ -11,10 +11,12 @@ from typing import Any, Dict, List, Optional, Protocol, Union, cast
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db._coredatastore_api import _CoreDataStoreAPI
 from nyc_landmarks.models.landmark_models import (
+    LpcReportResponse,  # Ensure LpcReportResponse is here
+)
+from nyc_landmarks.models.landmark_models import (
     LandmarkDetail,
     LpcReportDetailResponse,
     LpcReportModel,
-    LpcReportResponse,  # Ensure LpcReportResponse is here
 )
 from nyc_landmarks.models.metadata_models import LandmarkMetadata
 from nyc_landmarks.models.wikipedia_models import WikipediaArticleModel
@@ -764,7 +766,7 @@ class DbClient:
             "Bronx": "2",
             "Brooklyn": "3",
             "Queens": "4",
-            "Staten Island": "5"
+            "Staten Island": "5",
         }
         return borough_mapping.get(borough_name)
 
@@ -832,9 +834,14 @@ class DbClient:
             # Use the client's get_landmark_buildings method which returns List[LandmarkDetail]
             if hasattr(self.client, "get_landmark_buildings"):
                 buildings = self.client.get_landmark_buildings(lp_number, limit)
-                logger.info(f"Retrieved {len(buildings)} buildings from client API for {lp_number}")
+                logger.info(
+                    f"Retrieved {len(buildings)} buildings from client API for {lp_number}"
+                )
                 # Convert to the expected return type
-                return cast(List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]], buildings)
+                return cast(
+                    List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]],
+                    buildings,
+                )
             else:
                 logger.warning("Client does not support get_landmark_buildings method")
                 return []
@@ -862,17 +869,25 @@ class DbClient:
                 return []
 
             # Extract buildings from the landmarks field
-            if hasattr(landmark_response, 'landmarks') and landmark_response.landmarks:
+            if hasattr(landmark_response, "landmarks") and landmark_response.landmarks:
                 buildings = landmark_response.landmarks[:limit]  # Apply limit
-                logger.info(f"Retrieved {len(buildings)} buildings from landmark detail for {lp_number}")
+                logger.info(
+                    f"Retrieved {len(buildings)} buildings from landmark detail for {lp_number}"
+                )
                 # Convert to the expected return type
-                return cast(List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]], buildings)
+                return cast(
+                    List[Union[Dict[str, Any], LandmarkDetail, LpcReportModel]],
+                    buildings,
+                )
             else:
                 logger.info(f"No buildings found in landmark detail for {lp_number}")
                 return []
         except Exception as e:
-            logger.error(f"Error fetching buildings from landmark detail for {lp_number}: {e}")
+            logger.error(
+                f"Error fetching buildings from landmark detail for {lp_number}: {e}"
+            )
             return []
+
 
 def get_db_client() -> DbClient:
     """Get a configured database client.

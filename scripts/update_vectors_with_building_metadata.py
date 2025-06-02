@@ -22,10 +22,7 @@ logger = get_logger(__name__)
 
 
 def update_vector_with_building_metadata(
-    pinecone_db: PineconeDB,
-    vector_data: Dict,
-    landmark_id: str,
-    dry_run: bool = False
+    pinecone_db: PineconeDB, vector_data: Dict, landmark_id: str, dry_run: bool = False
 ) -> bool:
     """
     Update a single vector with building metadata.
@@ -40,7 +37,7 @@ def update_vector_with_building_metadata(
         True if successful, False otherwise
     """
     try:
-        vector_id = vector_data['id']
+        vector_id = vector_data["id"]
         logger.info(f"Processing vector {vector_id} for landmark {landmark_id}")
 
         # Get enhanced metadata including building data
@@ -54,20 +51,28 @@ def update_vector_with_building_metadata(
             new_metadata_dict = dict(enhanced_metadata)
 
         # Check if building metadata exists
-        building_keys = [k for k in new_metadata_dict.keys() if k.startswith("building_")]
+        building_keys = [
+            k for k in new_metadata_dict.keys() if k.startswith("building_")
+        ]
         if not building_keys:
             logger.warning(f"No building metadata found for landmark {landmark_id}")
             return False
 
-        logger.info(f"Found {len(building_keys)} building metadata fields for {landmark_id}")
+        logger.info(
+            f"Found {len(building_keys)} building metadata fields for {landmark_id}"
+        )
 
         # Get existing metadata and merge with new building metadata
-        existing_metadata = vector_data.get('metadata', {})
+        existing_metadata = vector_data.get("metadata", {})
 
         # Check if building metadata already exists
-        existing_building_keys = [k for k in existing_metadata.keys() if k.startswith("building_")]
+        existing_building_keys = [
+            k for k in existing_metadata.keys() if k.startswith("building_")
+        ]
         if existing_building_keys:
-            logger.info(f"Vector already has {len(existing_building_keys)} building fields - updating")
+            logger.info(
+                f"Vector already has {len(existing_building_keys)} building fields - updating"
+            )
 
         # Merge metadata (new building metadata will overwrite existing)
         updated_metadata = existing_metadata.copy()
@@ -75,16 +80,18 @@ def update_vector_with_building_metadata(
             updated_metadata[key] = new_metadata_dict[key]
 
         if dry_run:
-            logger.info(f"DRY RUN: Would update vector {vector_id} with building metadata")
+            logger.info(
+                f"DRY RUN: Would update vector {vector_id} with building metadata"
+            )
             for key in sorted(building_keys)[:5]:  # Show first 5
                 logger.info(f"  {key}: {new_metadata_dict[key]}")
             return True
 
         # Create vector for upsert (preserving existing values)
         vector_to_upsert = {
-            'id': vector_id,
-            'values': vector_data.get('values', []),
-            'metadata': updated_metadata
+            "id": vector_id,
+            "values": vector_data.get("values", []),
+            "metadata": updated_metadata,
         }
 
         # Use the internal upsert method to update the vector
@@ -99,9 +106,7 @@ def update_vector_with_building_metadata(
 
 
 def update_vectors_for_landmarks(
-    landmark_ids: List[str],
-    namespace: Optional[str] = None,
-    dry_run: bool = False
+    landmark_ids: List[str], namespace: Optional[str] = None, dry_run: bool = False
 ) -> Dict[str, bool]:
     """
     Update vectors with building metadata for specified landmarks.
@@ -128,7 +133,7 @@ def update_vectors_for_landmarks(
                 query_vector=None,  # List operation
                 landmark_id=landmark_id,
                 top_k=100,  # Get all vectors for this landmark
-                namespace_override=namespace
+                namespace_override=namespace,
             )
 
             if not vectors:
@@ -167,24 +172,17 @@ def main() -> None:
         "--landmark-ids",
         type=str,
         required=True,
-        help="Comma-separated list of landmark IDs to process"
+        help="Comma-separated list of landmark IDs to process",
     )
     parser.add_argument(
-        "--namespace",
-        type=str,
-        default="landmarks",
-        help="Pinecone namespace to use"
+        "--namespace", type=str, default="landmarks", help="Pinecone namespace to use"
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Show what would be updated without making changes"
+        help="Show what would be updated without making changes",
     )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Enable verbose logging"
-    )
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
 
     args = parser.parse_args()
 
@@ -203,9 +201,7 @@ def main() -> None:
 
     # Update vectors
     results = update_vectors_for_landmarks(
-        landmark_ids,
-        namespace=args.namespace,
-        dry_run=args.dry_run
+        landmark_ids, namespace=args.namespace, dry_run=args.dry_run
     )
 
     # Report results
