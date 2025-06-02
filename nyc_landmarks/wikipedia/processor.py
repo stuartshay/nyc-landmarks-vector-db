@@ -319,89 +319,126 @@ class WikipediaProcessor:
         """
         for chunk in chunks_with_embeddings:
             if isinstance(chunk, dict):
-                # Add article_metadata field which is used by PineconeDB._create_metadata_for_chunk
-                if "article_metadata" not in chunk:
-                    chunk["article_metadata"] = {}
-                chunk["article_metadata"]["title"] = wiki_article.title
-                chunk["article_metadata"]["url"] = wiki_article.url
-
-                # Add processing_date to be picked up by PineconeDB._create_metadata_for_chunk
-                chunk["processing_date"] = current_time
-
-                # Also add directly to metadata for backwards compatibility
-                if "metadata" in chunk and chunk["metadata"] is not None:
-                    chunk["metadata"]["article_title"] = wiki_article.title
-                    chunk["metadata"]["article_url"] = wiki_article.url
-                    chunk["metadata"]["processing_date"] = current_time
-                    chunk["metadata"]["source_type"] = SourceType.WIKIPEDIA.value
-
-                    # Add quality information if available
-                    if hasattr(wiki_article, "quality") and wiki_article.quality:
-                        chunk["metadata"][
-                            "article_quality"
-                        ] = wiki_article.quality.prediction
-                        chunk["metadata"]["article_quality_score"] = str(
-                            wiki_article.quality.probabilities.get(
-                                wiki_article.quality.prediction, 0.0
-                            )
-                        )
-                        chunk["metadata"][
-                            "article_quality_description"
-                        ] = wiki_article.quality.get_quality_description()
-
-                    # Add flattened building fields if available
-                    if enhanced_metadata:
-                        building_fields = {
-                            k: v
-                            for k, v in enhanced_metadata.items()
-                            if k.startswith("building_")
-                        }
-                        if building_fields:
-                            chunk["metadata"].update(building_fields)
-                            logger.info(
-                                f"Added {len(building_fields)} flattened building fields to chunk metadata"
-                            )
-
-                logger.info(
-                    f"Added article metadata to chunk: article_title={wiki_article.title}, "
-                    f"article_url={wiki_article.url}, processing_date={current_time}"
+                self._enrich_dict_chunk(
+                    chunk, wiki_article, current_time, enhanced_metadata
                 )
             else:
-                # Handle object-style chunks
-                # Add article_metadata field
-                if not hasattr(chunk, "article_metadata"):
-                    setattr(chunk, "article_metadata", {})
-                chunk.article_metadata["title"] = wiki_article.title
-                chunk.article_metadata["url"] = wiki_article.url
-
-                # Add processing_date to be picked up by PineconeDB._create_metadata_for_chunk
-                setattr(chunk, "processing_date", current_time)
-
-                # Also add directly to metadata for backwards compatibility
-                if hasattr(chunk, "metadata") and chunk.metadata is not None:
-                    chunk.metadata["article_title"] = wiki_article.title
-                    chunk.metadata["article_url"] = wiki_article.url
-                    chunk.metadata["processing_date"] = current_time
-                    chunk.metadata["source_type"] = SourceType.WIKIPEDIA.value
-
-                    # Add flattened building fields if available
-                    if enhanced_metadata:
-                        building_fields = {
-                            k: v
-                            for k, v in enhanced_metadata.items()
-                            if k.startswith("building_")
-                        }
-                        if building_fields:
-                            for k, v in building_fields.items():
-                                chunk.metadata[k] = v
-                            logger.info(
-                                f"Added {len(building_fields)} flattened building fields to object-style chunk"
-                            )
-
-                logger.info(
-                    f"Added article metadata to object-style chunk: {wiki_article.title} "
-                    f"with processing_date={current_time}"
+                self._enrich_object_chunk(
+                    chunk, wiki_article, current_time, enhanced_metadata
                 )
+
+    def _enrich_dict_chunk(
+        self,
+        chunk: Dict[str, Any],
+        wiki_article: WikipediaContentModel,
+        current_time: str,
+        enhanced_metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Enrich a dictionary-style chunk with article metadata."""
+        # Add article_metadata field which is used by PineconeDB._create_metadata_for_chunk
+        if "article_metadata" not in chunk:
+            chunk["article_metadata"] = {}
+        chunk["article_metadata"]["title"] = wiki_article.title
+        chunk["article_metadata"]["url"] = wiki_article.url
+
+        # Add processing_date to be picked up by PineconeDB._create_metadata_for_chunk
+        chunk["processing_date"] = current_time
+
+        # Also add directly to metadata for backwards compatibility
+        if "metadata" in chunk and chunk["metadata"] is not None:
+            self._add_metadata_to_dict(chunk["metadata"], wiki_article, current_time)
+            self._add_quality_metadata_to_dict(chunk["metadata"], wiki_article)
+            self._add_building_fields_to_dict(chunk["metadata"], enhanced_metadata)
+
+        logger.info(
+            f"Added article metadata to chunk: article_title={wiki_article.title}, "
+            f"article_url={wiki_article.url}, processing_date={current_time}"
+        )
+
+    def _enrich_object_chunk(
+        self,
+        chunk: Any,
+        wiki_article: WikipediaContentModel,
+        current_time: str,
+        enhanced_metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Enrich an object-style chunk with article metadata."""
+        # Add article_metadata field
+        if not hasattr(chunk, "article_metadata"):
+            setattr(chunk, "article_metadata", {})
+        chunk.article_metadata["title"] = wiki_article.title
+        chunk.article_metadata["url"] = wiki_article.url
+
+        # Add processing_date to be picked up by PineconeDB._create_metadata_for_chunk
+        setattr(chunk, "processing_date", current_time)
+
+        # Also add directly to metadata for backwards compatibility
+        if hasattr(chunk, "metadata") and chunk.metadata is not None:
+            self._add_metadata_to_dict(chunk.metadata, wiki_article, current_time)
+            self._add_building_fields_to_object(chunk.metadata, enhanced_metadata)
+
+        logger.info(
+            f"Added article metadata to object-style chunk: {wiki_article.title} "
+            f"with processing_date={current_time}"
+        )
+
+    def _add_metadata_to_dict(
+        self,
+        metadata: Dict[str, Any],
+        wiki_article: WikipediaContentModel,
+        current_time: str,
+    ) -> None:
+        """Add basic metadata fields to a dictionary."""
+        metadata["article_title"] = wiki_article.title
+        metadata["article_url"] = wiki_article.url
+        metadata["processing_date"] = current_time
+        metadata["source_type"] = SourceType.WIKIPEDIA.value
+
+    def _add_quality_metadata_to_dict(
+        self, metadata: Dict[str, Any], wiki_article: WikipediaContentModel
+    ) -> None:
+        """Add quality metadata if available."""
+        if hasattr(wiki_article, "quality") and wiki_article.quality:
+            metadata["article_quality"] = wiki_article.quality.prediction
+            metadata["article_quality_score"] = str(
+                wiki_article.quality.probabilities.get(
+                    wiki_article.quality.prediction, 0.0
+                )
+            )
+            metadata["article_quality_description"] = (
+                wiki_article.quality.get_quality_description()
+            )
+
+    def _add_building_fields_to_dict(
+        self, metadata: Dict[str, Any], enhanced_metadata: Optional[Dict[str, Any]]
+    ) -> None:
+        """Add building fields to dictionary metadata."""
+        if enhanced_metadata:
+            building_fields = self._extract_building_fields(enhanced_metadata)
+            if building_fields:
+                metadata.update(building_fields)
+                logger.info(
+                    f"Added {len(building_fields)} flattened building fields to chunk metadata"
+                )
+
+    def _add_building_fields_to_object(
+        self, metadata: Any, enhanced_metadata: Optional[Dict[str, Any]]
+    ) -> None:
+        """Add building fields to object metadata."""
+        if enhanced_metadata:
+            building_fields = self._extract_building_fields(enhanced_metadata)
+            if building_fields:
+                for k, v in building_fields.items():
+                    metadata[k] = v
+                logger.info(
+                    f"Added {len(building_fields)} flattened building fields to object-style chunk"
+                )
+
+    def _extract_building_fields(
+        self, enhanced_metadata: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Extract building fields from enhanced metadata."""
+        return {k: v for k, v in enhanced_metadata.items() if k.startswith("building_")}
 
     def generate_embeddings_and_store(
         self,

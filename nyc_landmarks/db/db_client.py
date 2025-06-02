@@ -17,6 +17,7 @@ from nyc_landmarks.models.landmark_models import (
     LandmarkDetail,
     LpcReportDetailResponse,
     LpcReportModel,
+    PlutoDataModel,
 )
 from nyc_landmarks.models.metadata_models import LandmarkMetadata
 from nyc_landmarks.models.wikipedia_models import WikipediaArticleModel
@@ -211,6 +212,14 @@ class DbClient:
             logger.error(f"Error getting landmarks page: {e}")
             return []
 
+    def get_total_record_count(self) -> int:
+        """Get the total count of landmarks in the database.
+
+        Returns:
+            Total number of landmark records available
+        """
+        return self.client.get_total_record_count()
+
     def search_landmarks(self, search_term: str) -> LpcReportResponse:
         """Search for landmarks by name or other attributes.
 
@@ -322,6 +331,22 @@ class DbClient:
                 historic_district=raw_metadata.get("historic_district"),
                 zoning_district=raw_metadata.get("zoning_district"),
             )
+
+    def get_landmark_pluto_data(self, landmark_id: str) -> List[PlutoDataModel]:
+        """Get PLUTO data for a landmark.
+
+        Args:
+            landmark_id: ID of the landmark (LP number)
+
+        Returns:
+            List of PlutoDataModel objects containing property data
+        """
+        try:
+            raw_pluto_data = self.client.get_landmark_pluto_data(landmark_id)
+            return [PlutoDataModel(**data) for data in raw_pluto_data]
+        except Exception as e:
+            logger.error(f"Error retrieving PLUTO data for landmark {landmark_id}: {e}")
+            return []
 
     def get_lpc_reports(
         self,
