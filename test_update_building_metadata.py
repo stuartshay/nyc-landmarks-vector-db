@@ -13,6 +13,7 @@ from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
 logger = get_logger(__name__)
 
+
 def main():
     try:
         print("=== Testing Building Metadata Update ===")
@@ -89,6 +90,7 @@ def main():
         print(f"❌ Error: {e}")
         import traceback
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     main()
