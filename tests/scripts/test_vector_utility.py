@@ -3,6 +3,11 @@ Comprehensive tests for the scripts/vector_utility.py script.
 
 This module tests all vector utility functionality including fetch, check-landmark,
 list-vectors, validate, compare-vectors, and verify-vectors commands.
+
+Test Categories:
+- @pytest.mark.unit: Tests individual functions in isolation
+- @pytest.mark.functional: Tests command functionality end-to-end with mocked dependencies
+- @pytest.mark.integration: Tests that require external services (none in this file)
 """
 
 import io
@@ -10,6 +15,8 @@ import json
 import tempfile
 import unittest
 from unittest.mock import Mock, patch
+
+import pytest
 
 from scripts.vector_utility import (  # Constants; Classes; Helper functions; Core functionality; Utility functions; Command functions
     REQUIRED_METADATA,
@@ -68,7 +75,9 @@ from tests.mocks.vector_utility_mocks import (  # Mock arguments
 class TestFetchCommand(unittest.TestCase):
     """Test cases for the fetch command functionality."""
 
+    @pytest.mark.functional
     @patch("scripts.vector_utility.PineconeDB")
+    @pytest.mark.functional
     def test_fetch_command_success(self, mock_pinecone_class: Mock) -> None:
         """Test successful vector fetching."""
         mock_db = create_mock_pinecone_db()
@@ -87,6 +96,7 @@ class TestFetchCommand(unittest.TestCase):
         self.assertIn("VECTOR ID", output)
 
     @patch("scripts.vector_utility.PineconeDB")
+    @pytest.mark.functional
     def test_fetch_command_specific_namespace(self, mock_pinecone_class: Mock) -> None:
         """Test fetching from specific namespace."""
         mock_db = create_mock_pinecone_db()
@@ -102,6 +112,7 @@ class TestFetchCommand(unittest.TestCase):
         mock_db.fetch_vector_by_id.assert_called_with(args.vector_id, "landmarks")
 
     @patch("scripts.vector_utility.PineconeDB")
+    @pytest.mark.functional
     def test_fetch_command_vector_not_found(self, mock_pinecone_class: Mock) -> None:
         """Test handling when vector is not found."""
         mock_db = create_mock_pinecone_db()
@@ -117,6 +128,7 @@ class TestFetchCommand(unittest.TestCase):
         self.assertTrue(True)  # If we get here, no exception was raised
 
     @patch("scripts.vector_utility.PineconeDB")
+    @pytest.mark.functional
     def test_fetch_command_error_handling(self, mock_pinecone_class: Mock) -> None:
         """Test error handling in fetch command."""
         mock_db = create_mock_pinecone_db_with_errors()
@@ -130,6 +142,7 @@ class TestFetchCommand(unittest.TestCase):
         # If we get here, no unhandled exception was raised
         self.assertTrue(True)
 
+    @pytest.mark.unit
     def test_print_vector_metadata(self) -> None:
         """Test vector metadata printing."""
         vector_data = get_mock_vector_data()
@@ -143,6 +156,7 @@ class TestFetchCommand(unittest.TestCase):
         self.assertIn("METADATA", output)
         self.assertIn("landmark_id", output)
 
+    @pytest.mark.unit
     def test_vector_data_class(self) -> None:
         """Test VectorData class initialization."""
         vector_dict = get_mock_vector_data()
@@ -157,6 +171,7 @@ class TestCheckLandmarkCommand(unittest.TestCase):
     """Test cases for the check-landmark command functionality."""
 
     @patch("scripts.vector_utility.PineconeDB")
+    @pytest.mark.functional
     def test_check_landmark_command_success(self, mock_pinecone_class: Mock) -> None:
         """Test successful landmark checking."""
         mock_db = create_mock_pinecone_db()
@@ -175,6 +190,7 @@ class TestCheckLandmarkCommand(unittest.TestCase):
         self.assertIn("Checking vectors for landmark", output)
 
     @patch("scripts.vector_utility.PineconeDB")
+    @pytest.mark.functional
     def test_check_landmark_command_no_vectors(self, mock_pinecone_class: Mock) -> None:
         """Test landmark checking when no vectors found."""
         mock_db = create_mock_pinecone_db_empty()
@@ -188,6 +204,7 @@ class TestCheckLandmarkCommand(unittest.TestCase):
         output = mock_stdout.getvalue()
         self.assertIn("No vectors found", output)
 
+    @pytest.mark.unit
     def test_extract_metadata(self) -> None:
         """Test metadata extraction from match objects."""
         vector_data = get_mock_vector_data()
@@ -197,6 +214,7 @@ class TestCheckLandmarkCommand(unittest.TestCase):
 
         self.assertEqual(metadata, vector_data["metadata"])
 
+    @pytest.mark.unit
     def test_get_vector_id(self) -> None:
         """Test vector ID extraction from match objects."""
         vector_data = get_mock_vector_data()
@@ -206,6 +224,7 @@ class TestCheckLandmarkCommand(unittest.TestCase):
 
         self.assertEqual(vector_id, vector_data["id"])
 
+    @pytest.mark.unit
     def test_check_deprecated_fields(self) -> None:
         """Test checking for deprecated metadata fields."""
         metadata = get_mock_deprecated_metadata()
@@ -217,6 +236,7 @@ class TestCheckLandmarkCommand(unittest.TestCase):
         self.assertIn("WARNING", output)
         self.assertIn("Deprecated", output)
 
+    @pytest.mark.unit
     def test_process_building_data(self) -> None:
         """Test processing building data from metadata."""
         metadata = {
@@ -232,6 +252,7 @@ class TestCheckLandmarkCommand(unittest.TestCase):
         self.assertIn("Building count: 2", output)
         self.assertIn("Building BBLs", output)
 
+    @pytest.mark.unit
     def test_display_metadata_verbose(self) -> None:
         """Test metadata display in verbose mode."""
         metadata = get_mock_vector_data()["metadata"]
@@ -247,6 +268,7 @@ class TestListVectorsCommand(unittest.TestCase):
     """Test cases for the list-vectors command functionality."""
 
     @patch("scripts.vector_utility.PineconeDB")
+    @pytest.mark.functional
     def test_list_vectors_command_success(self, mock_pinecone_class: Mock) -> None:
         """Test successful vector listing."""
         mock_db = create_mock_pinecone_db()
@@ -265,6 +287,7 @@ class TestListVectorsCommand(unittest.TestCase):
         self.assertIn("Found", output)
 
     @patch("scripts.vector_utility.PineconeDB")
+    @pytest.mark.functional
     def test_list_vectors_command_empty_results(
         self, mock_pinecone_class: Mock
     ) -> None:
@@ -280,6 +303,7 @@ class TestListVectorsCommand(unittest.TestCase):
         output = mock_stdout.getvalue()
         self.assertIn("No vectors found", output)
 
+    @pytest.mark.unit
     def test_filter_matches_by_prefix(self) -> None:
         """Test filtering matches by prefix."""
         vector_batch = get_mock_vector_batch()
@@ -293,6 +317,7 @@ class TestListVectorsCommand(unittest.TestCase):
         for match in filtered:
             self.assertTrue(match.id.startswith("wiki-"))
 
+    @pytest.mark.unit
     def test_filter_matches_no_prefix(self) -> None:
         """Test filtering with no prefix (should return all)."""
         vector_batch = get_mock_vector_batch()
@@ -302,6 +327,7 @@ class TestListVectorsCommand(unittest.TestCase):
 
         self.assertEqual(len(filtered), len(matches))
 
+    @pytest.mark.unit
     def test_convert_matches_to_dicts(self) -> None:
         """Test converting match objects to dictionaries."""
         vector_batch = get_mock_vector_batch()
@@ -320,6 +346,7 @@ class TestValidateCommand(unittest.TestCase):
     """Test cases for the validate command functionality."""
 
     @patch("scripts.vector_utility.PineconeDB")
+    @pytest.mark.functional
     def test_validate_vector_command_success(self, mock_pinecone_class: Mock) -> None:
         """Test successful vector validation."""
         mock_db = create_mock_pinecone_db()
@@ -338,6 +365,7 @@ class TestValidateCommand(unittest.TestCase):
         self.assertIn("has all required metadata fields", output)
 
     @patch("scripts.vector_utility.PineconeDB")
+    @pytest.mark.functional
     def test_validate_vector_command_not_found(self, mock_pinecone_class: Mock) -> None:
         """Test validation when vector not found."""
         mock_db = create_mock_pinecone_db()
@@ -352,6 +380,7 @@ class TestValidateCommand(unittest.TestCase):
         output = mock_stdout.getvalue()
         self.assertIn("not found", output)
 
+    @pytest.mark.unit
     def test_validate_vector_metadata_valid(self) -> None:
         """Test validating valid vector metadata."""
         vector_data = get_mock_vector_data()
@@ -361,6 +390,7 @@ class TestValidateCommand(unittest.TestCase):
 
         self.assertTrue(is_valid)
 
+    @pytest.mark.unit
     def test_validate_vector_metadata_invalid(self) -> None:
         """Test validating invalid vector metadata."""
         vector_data = get_mock_invalid_vector()
@@ -370,6 +400,7 @@ class TestValidateCommand(unittest.TestCase):
 
         self.assertFalse(is_valid)
 
+    @pytest.mark.unit
     def test_check_required_metadata_fields(self) -> None:
         """Test checking for required metadata fields."""
         # Test valid metadata
@@ -389,6 +420,7 @@ class TestCompareVectorsCommand(unittest.TestCase):
     """Test cases for the compare-vectors command functionality."""
 
     @patch("scripts.vector_utility.PineconeDB")
+    @pytest.mark.functional
     def test_compare_vectors_command_success(self, mock_pinecone_class: Mock) -> None:
         """Test successful vector comparison."""
         mock_db = create_mock_pinecone_db()
@@ -407,6 +439,7 @@ class TestCompareVectorsCommand(unittest.TestCase):
         self.assertIn("COMPARING VECTORS", output)
 
     @patch("scripts.vector_utility.PineconeDB")
+    @pytest.mark.unit
     def test_compare_vectors_function_text_format(
         self, mock_pinecone_class: Mock
     ) -> None:
@@ -426,6 +459,7 @@ class TestCompareVectorsCommand(unittest.TestCase):
         self.assertIn("Different Values", output)
 
     @patch("scripts.vector_utility.PineconeDB")
+    @pytest.mark.unit
     def test_compare_vectors_function_json_format(
         self, mock_pinecone_class: Mock
     ) -> None:
@@ -472,6 +506,7 @@ class TestCompareVectorsCommand(unittest.TestCase):
             self.fail(f"No JSON found in output: {output}")
 
     @patch("scripts.vector_utility.PineconeDB")
+    @pytest.mark.unit
     def test_compare_vectors_first_not_found(self, mock_pinecone_class: Mock) -> None:
         """Test comparison when first vector not found."""
         mock_db = create_mock_pinecone_db()
@@ -485,6 +520,7 @@ class TestCompareVectorsCommand(unittest.TestCase):
         self.assertFalse(result)
 
     @patch("scripts.vector_utility.PineconeDB")
+    @pytest.mark.unit
     def test_compare_vectors_second_not_found(self, mock_pinecone_class: Mock) -> None:
         """Test comparison when second vector not found."""
         mock_db = create_mock_pinecone_db()
@@ -497,6 +533,7 @@ class TestCompareVectorsCommand(unittest.TestCase):
         # Should return False when second vector not found
         self.assertFalse(result)
 
+    @pytest.mark.unit
     def test_categorize_metadata_differences(self) -> None:
         """Test categorizing metadata differences."""
         vector1, vector2 = get_mock_comparison_vectors()
@@ -521,6 +558,7 @@ class TestVerifyVectorsCommand(unittest.TestCase):
     """Test cases for the verify-vectors command functionality."""
 
     @patch("scripts.vector_utility.PineconeDB")
+    @pytest.mark.functional
     def test_verify_vectors_command_success(self, mock_pinecone_class: Mock) -> None:
         """Test successful vector verification."""
         mock_db = create_mock_pinecone_db()
@@ -540,6 +578,7 @@ class TestVerifyVectorsCommand(unittest.TestCase):
         self.assertIn("VERIFYING PINECONE VECTORS", output)
 
     @patch("scripts.vector_utility.PineconeDB")
+    @pytest.mark.unit
     def test_verify_vectors_function(self, mock_pinecone_class: Mock) -> None:
         """Test verify_vectors function."""
         mock_db = create_mock_pinecone_db()
@@ -558,6 +597,7 @@ class TestVerifyVectorsCommand(unittest.TestCase):
         self.assertEqual(result["total"], 5)
 
     @patch("scripts.vector_utility.PineconeDB")
+    @pytest.mark.functional
     def test_verify_batch_command_success(self, mock_pinecone_class: Mock) -> None:
         """Test successful batch verification."""
         mock_db = create_mock_pinecone_db()
@@ -577,6 +617,7 @@ class TestVerifyVectorsCommand(unittest.TestCase):
         self.assertIn("BATCH VERIFICATION", output)
 
     @patch("scripts.vector_utility.PineconeDB")
+    @pytest.mark.unit
     def test_verify_batch_with_file(self, mock_pinecone_class: Mock) -> None:
         """Test batch verification with file input."""
         mock_db = create_mock_pinecone_db()
@@ -603,6 +644,7 @@ class TestVerifyVectorsCommand(unittest.TestCase):
 
             os.unlink(temp_file)
 
+    @pytest.mark.unit
     def test_verify_id_format(self) -> None:
         """Test vector ID format verification."""
         # Test valid Wikipedia format
@@ -618,6 +660,7 @@ class TestVerifyVectorsCommand(unittest.TestCase):
         # Test invalid format
         self.assertFalse(verify_id_format("invalid-format", "wikipedia", "LP-00079"))
 
+    @pytest.mark.unit
     def test_check_vector_has_embeddings(self) -> None:
         """Test checking if vector has valid embeddings."""
         # Test vector with valid embeddings
@@ -632,6 +675,7 @@ class TestVerifyVectorsCommand(unittest.TestCase):
         no_values_vector = {"id": "test", "metadata": {}}
         self.assertFalse(check_vector_has_embeddings(no_values_vector))
 
+    @pytest.mark.unit
     def test_verify_article_title(self) -> None:
         """Test Wikipedia article title verification."""
         # Test valid Wikipedia vector
@@ -652,6 +696,7 @@ class TestVerifyVectorsCommand(unittest.TestCase):
         pdf_vector = get_mock_vector_data("LP-00001-chunk-0")
         self.assertTrue(verify_article_title(pdf_vector["id"], pdf_vector["metadata"]))
 
+    @pytest.mark.unit
     def test_verify_single_vector(self) -> None:
         """Test single vector verification."""
         valid_vector = get_mock_vector_data()
@@ -669,6 +714,7 @@ class TestVerifyVectorsCommand(unittest.TestCase):
 
         self.assertGreater(len(issues), 0)
 
+    @pytest.mark.unit
     def test_verify_batch_function(self) -> None:
         """Test verify_batch function directly."""
         with patch("scripts.vector_utility.PineconeDB") as mock_pinecone_class:
@@ -688,6 +734,7 @@ class TestVerifyVectorsCommand(unittest.TestCase):
 class TestUtilityFunctions(unittest.TestCase):
     """Test cases for utility functions and constants."""
 
+    @pytest.mark.unit
     def test_required_metadata_constants(self) -> None:
         """Test that required metadata constants are defined."""
         self.assertIsInstance(REQUIRED_METADATA, list)
@@ -700,6 +747,7 @@ class TestUtilityFunctions(unittest.TestCase):
         self.assertIn("article_title", REQUIRED_WIKI_METADATA)
         self.assertIn("article_url", REQUIRED_WIKI_METADATA)
 
+    @pytest.mark.unit
     def test_constants_coverage(self) -> None:
         """Test that all required fields are covered in validation."""
         # This ensures our mock data includes all required fields
@@ -722,6 +770,7 @@ class TestErrorHandling(unittest.TestCase):
     """Test cases for error handling scenarios."""
 
     @patch("scripts.vector_utility.PineconeDB")
+    @pytest.mark.functional
     def test_fetch_command_with_connection_error(
         self, mock_pinecone_class: Mock
     ) -> None:
@@ -738,6 +787,7 @@ class TestErrorHandling(unittest.TestCase):
         self.assertTrue(True)
 
     @patch("scripts.vector_utility.PineconeDB")
+    @pytest.mark.unit
     def test_verify_vectors_with_errors(self, mock_pinecone_class: Mock) -> None:
         """Test vector verification with errors."""
         mock_db = create_mock_pinecone_db_with_errors()
@@ -750,6 +800,7 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(result["total"], 0)
 
     @patch("scripts.vector_utility.PineconeDB")
+    @pytest.mark.unit
     def test_list_command_with_errors(self, mock_pinecone_class: Mock) -> None:
         """Test list command with connection errors."""
         mock_db = create_mock_pinecone_db_with_errors()
@@ -765,6 +816,7 @@ class TestErrorHandling(unittest.TestCase):
         self.assertIn("Error", output)
 
     @patch("scripts.vector_utility.PineconeDB")
+    @pytest.mark.functional
     def test_check_landmark_command_with_errors(
         self, mock_pinecone_class: Mock
     ) -> None:
