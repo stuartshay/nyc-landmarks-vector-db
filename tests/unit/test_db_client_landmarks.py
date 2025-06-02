@@ -394,7 +394,7 @@ class TestDbClientBuildingsMethods(unittest.TestCase):
         self.mock_api.get_landmark_buildings.return_value = buildings
 
         # Call the method
-        result = self.client._fetch_buildings_from_client("LP-00001", 10)
+        result = self.client._fetch_buildings_from_client("LP-00001", 10)  # type: ignore
 
         # Verify API was called correctly
         self.mock_api.get_landmark_buildings.assert_called_once_with("LP-00001", 10)
@@ -409,7 +409,7 @@ class TestDbClientBuildingsMethods(unittest.TestCase):
         self.mock_api.get_landmark_buildings.side_effect = Exception("API error")
 
         # Call the method
-        result = self.client._fetch_buildings_from_client("LP-00001", 10)
+        result = self.client._fetch_buildings_from_client("LP-00001", 10)  # type: ignore
 
         # Verify empty list is returned and error is logged
         self.assertEqual(result, [])
@@ -423,7 +423,7 @@ class TestDbClientBuildingsMethods(unittest.TestCase):
         limited_client = DbClient(limited_mock_api)
 
         # Call the method
-        result = limited_client._fetch_buildings_from_client("LP-00001", 10)
+        result = limited_client._fetch_buildings_from_client("LP-00001", 10)  # type: ignore
 
         # Verify empty list is returned
         self.assertEqual(result, [])
@@ -447,7 +447,7 @@ class TestDbClientBuildingsMethods(unittest.TestCase):
             self.client, "get_landmark_by_id", return_value=mock_response
         ):
             # Call the method
-            result = self.client._fetch_buildings_from_landmark_detail("LP-00001", 10)
+            result = self.client._fetch_buildings_from_landmark_detail("LP-00001", 10)  # type: ignore
 
             # Verify result
             self.assertEqual(len(result), 2)
@@ -490,7 +490,7 @@ class TestDbClientBuildingsMethods(unittest.TestCase):
             self.client, "get_landmark_by_id", return_value=mock_response
         ):
             # Call the method
-            result = self.client._fetch_buildings_from_landmark_detail("LP-00001", 10)
+            result = self.client._fetch_buildings_from_landmark_detail("LP-00001", 10)  # type: ignore
 
             # Verify result
             self.assertEqual(len(result), 2)
@@ -584,7 +584,7 @@ class TestDbClientBuildingsMethods(unittest.TestCase):
         ]
 
         # Call the method
-        result = self.client._convert_building_items_to_models(items, "LP-00001")
+        result = self.client._convert_building_items_to_models(items, "LP-00001")  # type: ignore
 
         # Verify result
         self.assertEqual(len(result), 3)

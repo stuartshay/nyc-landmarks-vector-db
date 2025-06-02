@@ -30,26 +30,26 @@ class TestDbClientCore(unittest.TestCase):
     def test_format_landmark_id(self) -> None:
         """Test _format_landmark_id method."""
         # Test that the method adds "LP-" prefix if not present
-        self.assertEqual(self.client._format_landmark_id("12345"), "LP-12345")
+        self.assertEqual(self.client._format_landmark_id("12345"), "LP-12345")  # type: ignore
         # Check that it doesn't add the prefix if already present with exact capitalization
-        self.assertEqual(self.client._format_landmark_id("LP-12345"), "LP-12345")
+        self.assertEqual(self.client._format_landmark_id("LP-12345"), "LP-12345")  # type: ignore
         # Test with a lowercase "lp-" prefix - implementation doesn't recognize this as having prefix
         # and adds "LP-" to it
-        self.assertEqual(self.client._format_landmark_id("lp-12345"), "LP-lp-12345")
+        self.assertEqual(self.client._format_landmark_id("lp-12345"), "LP-lp-12345")  # type: ignore
 
     def test_standardize_lp_number(self) -> None:
         """Test _standardize_lp_number method."""
         # Test that the method adds "LP-" prefix and zero-pads to 5 digits if needed
-        self.assertEqual(self.client._standardize_lp_number("123"), "LP-00123")
+        self.assertEqual(self.client._standardize_lp_number("123"), "LP-00123")  # type: ignore
         # Test that the method doesn't change "LP-" prefix but adds zero padding
-        self.assertEqual(self.client._standardize_lp_number("LP-123"), "LP-123")
+        self.assertEqual(self.client._standardize_lp_number("LP-123"), "LP-123")  # type: ignore
         # Test with a lowercase "lp-" prefix - implementation doesn't recognize this as having prefix
         # and treats it as needing both "LP-" prefix and zero padding
-        self.assertEqual(self.client._standardize_lp_number("lp-123"), "LP-lp-123")
+        self.assertEqual(self.client._standardize_lp_number("lp-123"), "LP-lp-123")  # type: ignore
         # Test with 5 digits (no padding needed)
-        self.assertEqual(self.client._standardize_lp_number("12345"), "LP-12345")
+        self.assertEqual(self.client._standardize_lp_number("12345"), "LP-12345")  # type: ignore
         # Test with no padding needed
-        self.assertEqual(self.client._standardize_lp_number("LP-12345"), "LP-12345")
+        self.assertEqual(self.client._standardize_lp_number("LP-12345"), "LP-12345")  # type: ignore
 
     def test_get_landmark_by_id_success(self) -> None:
         """Test get_landmark_by_id method with successful API call."""
@@ -188,15 +188,15 @@ class TestDbClientCore(unittest.TestCase):
 
         if isinstance(first_item, dict):
             self.assertEqual(first_item.get("id"), "LP-00001")
-        elif hasattr(first_item, "id"):
-            self.assertEqual(first_item.id, "LP-00001")
+        elif hasattr(first_item, "lpNumber"):
+            self.assertEqual(first_item.lpNumber, "LP-00001")  # type: ignore
         else:
             self.fail(f"Unexpected type for result item: {type(first_item)}")
 
         if isinstance(last_item, dict):
             self.assertEqual(last_item.get("id"), "LP-00005")
-        elif hasattr(last_item, "id"):
-            self.assertEqual(last_item.id, "LP-00005")
+        elif hasattr(last_item, "lpNumber"):
+            self.assertEqual(last_item.lpNumber, "LP-00005")  # type: ignore
         else:
             self.fail(f"Unexpected type for result item: {type(last_item)}")
 
@@ -215,15 +215,15 @@ class TestDbClientCore(unittest.TestCase):
 
         if isinstance(first_item, dict):
             self.assertEqual(first_item.get("id"), "LP-00006")
-        elif hasattr(first_item, "id"):
-            self.assertEqual(first_item.id, "LP-00006")
+        elif hasattr(first_item, "lpNumber"):
+            self.assertEqual(first_item.lpNumber, "LP-00006")  # type: ignore
         else:
             self.fail(f"Unexpected type for result item: {type(first_item)}")
 
         if isinstance(last_item, dict):
             self.assertEqual(last_item.get("id"), "LP-00010")
-        elif hasattr(last_item, "id"):
-            self.assertEqual(last_item.id, "LP-00010")
+        elif hasattr(last_item, "lpNumber"):
+            self.assertEqual(last_item.lpNumber, "LP-00010")  # type: ignore
         else:
             self.fail(f"Unexpected type for result item: {type(last_item)}")
 
@@ -233,7 +233,7 @@ class TestDbClientCore(unittest.TestCase):
         landmark_dict = {"lpNumber": "LP-00001", "name": "Test Landmark"}
 
         # Call the method with lpc_id parameter
-        result = self.client._parse_landmark_response(landmark_dict, "LP-00001")
+        result = self.client._parse_landmark_response(landmark_dict, "LP-00001")  # type: ignore
 
         # Verify result
         self.assertIsNotNone(result)
@@ -253,7 +253,7 @@ class TestDbClientCore(unittest.TestCase):
         landmark_dict = {"id": "LP-00001", "name": "Test Landmark"}
 
         # Call the method with lpc_id parameter
-        result = self.client._parse_landmark_response(landmark_dict, "LP-00001")
+        result = self.client._parse_landmark_response(landmark_dict, "LP-00001")  # type: ignore
 
         # Verify result - id should be copied to lpNumber
         self.assertIsNotNone(result)
@@ -273,7 +273,7 @@ class TestDbClientCore(unittest.TestCase):
         landmark_dict = {"name": "Test Landmark", "borough": "Manhattan"}
 
         # Call the method with lpc_id parameter
-        result = self.client._parse_landmark_response(landmark_dict, "LP-99999")
+        result = self.client._parse_landmark_response(landmark_dict, "LP-99999")  # type: ignore
 
         # Verify result - supplied lpc_id should be used for lpNumber
         self.assertIsNotNone(result)
@@ -308,22 +308,22 @@ class TestDbClientCore(unittest.TestCase):
     def test_map_borough_id_to_name(self) -> None:
         """Test _map_borough_id_to_name method."""
         # Test various borough IDs
-        self.assertEqual(self.client._map_borough_id_to_name("1"), "Manhattan")
-        self.assertEqual(self.client._map_borough_id_to_name("2"), "Bronx")
-        self.assertEqual(self.client._map_borough_id_to_name("3"), "Brooklyn")
-        self.assertEqual(self.client._map_borough_id_to_name("4"), "Queens")
-        self.assertEqual(self.client._map_borough_id_to_name("5"), "Staten Island")
+        self.assertEqual(self.client._map_borough_id_to_name("1"), "Manhattan")  # type: ignore
+        self.assertEqual(self.client._map_borough_id_to_name("2"), "Bronx")  # type: ignore
+        self.assertEqual(self.client._map_borough_id_to_name("3"), "Brooklyn")  # type: ignore
+        self.assertEqual(self.client._map_borough_id_to_name("4"), "Queens")  # type: ignore
+        self.assertEqual(self.client._map_borough_id_to_name("5"), "Staten Island")  # type: ignore
         # Test with string IDs (integer IDs are not supported by the implementation)
-        self.assertEqual(self.client._map_borough_id_to_name("3"), "Brooklyn")
+        self.assertEqual(self.client._map_borough_id_to_name("3"), "Brooklyn")  # type: ignore
         # Test with unknown ID
         self.assertEqual(
-            self.client._map_borough_id_to_name("0"), "0"
+            self.client._map_borough_id_to_name("0"), "0"  # type: ignore
         )  # Original value is returned
         self.assertEqual(
-            self.client._map_borough_id_to_name("6"), "6"
+            self.client._map_borough_id_to_name("6"), "6"  # type: ignore
         )  # Original value is returned
         self.assertEqual(
-            self.client._map_borough_id_to_name(None), None
+            self.client._map_borough_id_to_name(None), None  # type: ignore
         )  # None is returned
 
 
@@ -359,7 +359,7 @@ class TestConversionMethods(unittest.TestCase):
         )
 
         # Call the method
-        result = self.client._convert_item_to_lpc_report_model(model, "LP-00001")
+        result = self.client._convert_item_to_lpc_report_model(model, "LP-00001")  # type: ignore
 
         # Verify the result is the same object (pass-through)
         self.assertIs(result, model)
@@ -399,7 +399,7 @@ class TestConversionMethods(unittest.TestCase):
         )
 
         # Call the method
-        result = self.client._convert_item_to_lpc_report_model(detail, "LP-00001")
+        result = self.client._convert_item_to_lpc_report_model(detail, "LP-00001")  # type: ignore
 
         # Verify result is an LpcReportModel with data from detail
         self.assertIsInstance(result, LpcReportModel)
@@ -432,7 +432,7 @@ class TestConversionMethods(unittest.TestCase):
         }
 
         # Call the method
-        result = self.client._convert_item_to_lpc_report_model(item_dict, "LP-00001")
+        result = self.client._convert_item_to_lpc_report_model(item_dict, "LP-00001")  # type: ignore
 
         # Verify result is an LpcReportModel with data from dict
         self.assertIsInstance(result, LpcReportModel)
@@ -458,7 +458,7 @@ class TestConversionMethods(unittest.TestCase):
         invalid_dict = {"name": "Test Landmark"}
 
         # Call the method
-        result = self.client._convert_item_to_lpc_report_model(invalid_dict, "LP-00001")
+        result = self.client._convert_item_to_lpc_report_model(invalid_dict, "LP-00001")  # type: ignore
 
         # Verify result has default values for missing fields
         self.assertIsInstance(result, LpcReportModel)

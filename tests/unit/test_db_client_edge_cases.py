@@ -173,7 +173,7 @@ class TestConversionMethods(unittest.TestCase):
         }
 
         # Call the method with a landmark ID context
-        result = self.client._convert_item_to_lpc_report_model(minimal_dict, "LP-12345")
+        result = self.client._convert_item_to_lpc_report_model(minimal_dict, "LP-12345")  # type: ignore
 
         # Verify result has expected values
         self.assertEqual(result.name, "Test Landmark")
@@ -201,7 +201,7 @@ class TestBuildingMethods(unittest.TestCase):
         limited_client = DbClient(limited_mock_api)
 
         # Call the method
-        result = limited_client._fetch_buildings_from_client("LP-12345", 10)
+        result = limited_client._fetch_buildings_from_client("LP-12345", 10)  # type: ignore
 
         # Verify an empty list is returned
         self.assertEqual(result, [])
@@ -213,7 +213,7 @@ class TestBuildingMethods(unittest.TestCase):
             self.client, "get_landmark_by_id", return_value={"name": "Test"}
         ):
             # Call the method
-            result = self.client._fetch_buildings_from_landmark_detail("LP-12345", 10)
+            result = self.client._fetch_buildings_from_landmark_detail("LP-12345", 10)  # type: ignore
 
             # Verify an empty list is returned
             self.assertEqual(result, [])
@@ -228,7 +228,7 @@ class TestBuildingMethods(unittest.TestCase):
             self.client, "get_landmark_by_id", return_value=mock_response
         ):
             # Call the method
-            result = self.client._fetch_buildings_from_landmark_detail("LP-12345", 10)
+            result = self.client._fetch_buildings_from_landmark_detail("LP-12345", 10)  # type: ignore
 
             # Verify an empty list is returned
             self.assertEqual(result, [])
@@ -244,7 +244,7 @@ class TestBuildingMethods(unittest.TestCase):
             self.client, "get_landmark_by_id", return_value=mock_response
         ):
             # Call the method
-            result = self.client._fetch_buildings_from_landmark_detail("LP-12345", 10)
+            result = self.client._fetch_buildings_from_landmark_detail("LP-12345", 10)  # type: ignore
 
             # Verify the invalid item is returned (current implementation doesn't filter)
             self.assertEqual(result, ["not a dict or LandmarkDetail"])
@@ -252,7 +252,7 @@ class TestBuildingMethods(unittest.TestCase):
     def test_convert_building_items_to_models_empty_list(self) -> None:
         """Test _convert_building_items_to_models with empty list."""
         # Call the method with an empty list
-        result = self.client._convert_building_items_to_models([], "LP-12345")
+        result = self.client._convert_building_items_to_models([], "LP-12345")  # type: ignore
 
         # Verify an empty list is returned
         self.assertEqual(result, [])
@@ -334,10 +334,10 @@ class TestOtherMethods(unittest.TestCase):
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], PlutoDataModel)
-        self.assertEqual(result[0].yearbuilt, 1900)  # Now expecting integer
-        self.assertEqual(result[0].landUse, "Residential")
-        self.assertEqual(result[0].historicDistrict, "Greenwich Village")
-        self.assertEqual(result[0].zoneDist1, "R6")
+        self.assertEqual(result[0].yearbuilt, 1900)  # type: ignore  # Now expecting integer
+        self.assertEqual(result[0].landUse, "Residential")  # type: ignore
+        self.assertEqual(result[0].historicDistrict, "Greenwich Village")  # type: ignore
+        self.assertEqual(result[0].zoneDist1, "R6")  # type: ignore
         self.mock_api.get_landmark_pluto_data.assert_called_once_with("LP-12345")
 
     def test_get_landmark_pluto_data_client_lacks_method(self) -> None:

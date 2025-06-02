@@ -1,6 +1,7 @@
 {
   "include": [
-    "nyc_landmarks"
+    "nyc_landmarks",
+    "tests"
   ],
   "exclude": [
     "**/node_modules",
