@@ -250,7 +250,10 @@ class TestCheckLandmarkCommand(unittest.TestCase):
 
         output = mock_stdout.getvalue()
         self.assertIn("Building count: 2", output)
-        self.assertIn("Building BBLs", output)
+        self.assertIn("BBL: 1000477501", output)
+        self.assertIn("BBL: 1000477502", output)
+        self.assertIn("Building 1:", output)
+        self.assertIn("Building 2:", output)
 
     @pytest.mark.unit
     def test_display_metadata_verbose(self) -> None:

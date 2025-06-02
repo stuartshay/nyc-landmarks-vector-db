@@ -1,7 +1,7 @@
 {
   "include": [
     "nyc_landmarks",
-    "scripts/ci",
+    "scripts",
     "tests"
   ],
   "exclude": [
