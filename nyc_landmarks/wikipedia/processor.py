@@ -341,6 +341,10 @@ class WikipediaProcessor:
         chunk["article_metadata"]["title"] = wiki_article.title
         chunk["article_metadata"]["url"] = wiki_article.url
 
+        # Add revision ID for version tracking if available
+        if hasattr(wiki_article, "rev_id") and wiki_article.rev_id:
+            chunk["article_metadata"]["rev_id"] = wiki_article.rev_id
+
         # Add processing_date to be picked up by PineconeDB._create_metadata_for_chunk
         chunk["processing_date"] = current_time
 
@@ -353,6 +357,7 @@ class WikipediaProcessor:
         logger.info(
             f"Added article metadata to chunk: article_title={wiki_article.title}, "
             f"article_url={wiki_article.url}, processing_date={current_time}"
+            f"{', rev_id=' + wiki_article.rev_id if hasattr(wiki_article, 'rev_id') and wiki_article.rev_id else ''}"
         )
 
     def _enrich_object_chunk(
@@ -369,6 +374,10 @@ class WikipediaProcessor:
         chunk.article_metadata["title"] = wiki_article.title
         chunk.article_metadata["url"] = wiki_article.url
 
+        # Add revision ID for version tracking if available
+        if hasattr(wiki_article, "rev_id") and wiki_article.rev_id:
+            chunk.article_metadata["rev_id"] = wiki_article.rev_id
+
         # Add processing_date to be picked up by PineconeDB._create_metadata_for_chunk
         setattr(chunk, "processing_date", current_time)
 
@@ -380,6 +389,7 @@ class WikipediaProcessor:
         logger.info(
             f"Added article metadata to object-style chunk: {wiki_article.title} "
             f"with processing_date={current_time}"
+            f"{', rev_id=' + wiki_article.rev_id if hasattr(wiki_article, 'rev_id') and wiki_article.rev_id else ''}"
         )
 
     def _add_metadata_to_dict(
@@ -393,6 +403,10 @@ class WikipediaProcessor:
         metadata["article_url"] = wiki_article.url
         metadata["processing_date"] = current_time
         metadata["source_type"] = SourceType.WIKIPEDIA.value
+
+        # Add revision ID for version tracking if available
+        if hasattr(wiki_article, "rev_id") and wiki_article.rev_id:
+            metadata["article_rev_id"] = wiki_article.rev_id
 
     def _add_quality_metadata_to_dict(
         self, metadata: Dict[str, Any], wiki_article: WikipediaContentModel
