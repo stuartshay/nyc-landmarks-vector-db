@@ -6,6 +6,9 @@ The current focus is on the Wikipedia Processing Script Refactoring & Metadata E
 
 ## Recent Changes
 
+- **Completed Wikipedia Processing Refactoring**: Successfully refactored the large `scripts/ci/process_wikipedia_articles.py` script (757 lines) to use the modular `WikipediaProcessor` class. The main script now focuses on orchestration logic, command-line argument handling, and results reporting while delegating core Wikipedia processing functionality to the dedicated `WikipediaProcessor` class.
+- **Enhanced Vector Query Capabilities in PineconeDB**: Significantly improved the vector database query functionality with enhanced filtering options, better namespace handling, and more robust error recovery. Consolidated multiple query methods into a single, more powerful `query_vectors` method with comprehensive options for different use cases.
+- **Enhanced Vector Utility Tool**: Extensively improved the `scripts/vector_utility.py` tool with comprehensive capabilities for vector inspection, validation, and comparison. Added robust handling of different building metadata formats and better formatting for displaying vector information.
 - **Implemented flattened building metadata**: Refactored the building metadata storage approach from nested arrays to flattened key-value pairs (e.g., `building_0_name`, `building_0_address`) to ensure compatibility with Pinecone's metadata constraints and enable filtering by building attributes. Created the `_flatten_buildings_metadata` method in the `EnhancedMetadataCollector` class and updated dependent code in PineconeDB and WikipediaProcessor to handle the new format while preserving all building information. Added support for `building_names` array field for simplified filtering by building name.
 - **Added Wikipedia article quality assessment**: Implemented integration with the Wikimedia Lift Wing articlequality API to assess the quality of Wikipedia articles (FA, GA, B, C, Start, Stub). This data is stored in article metadata and propagated to vector chunks for improved search filtering and ranking. Quality assessment includes quality level, confidence scores, and human-readable descriptions.
 - **Added Wikipedia revision ID tracking**: Enhanced the Wikipedia fetcher and processor to track article revision IDs, providing better versioning and citation support for all Wikipedia content. This revision ID is now consistently propagated through the entire pipeline from fetching to storage in the vector database.
@@ -29,18 +32,19 @@ The current focus is on the Wikipedia Processing Script Refactoring & Metadata E
 
 1. Complete extraction of utilities to `nyc_landmarks/wikipedia/utils.py`
 1. Finalize results reporting module improvements
-1. Streamline the main `scripts/ci/process_wikipedia_articles.py` script to target ~200 lines
-1. Verify all functionality is preserved after refactoring
+1. ✅ Streamlined the main `scripts/ci/process_wikipedia_articles.py` script - Successfully reduced from 757 lines to approximately 200 lines while maintaining all functionality
+1. Verify all functionality is preserved after refactoring with comprehensive testing
 
 ### Phase 2 Implementation (API Analysis)
 
-1. Execute Wikipedia processing command with 25 landmarks to test refactored components
+1. ✅ Execute Wikipedia processing command with 25 landmarks to test refactored components
 1. ✅ Test underutilized CoreDataStore APIs: Building data integration has been fixed and tested
 1. ✅ Update vector_utility.py to properly display building data in vector inspection output
 1. ✅ Test flattened building metadata in queries by updating `notebooks/landmark_query_testing.ipynb`
-1. Continue testing other underutilized APIs (photos, PLUTO data)
-1. Analyze metadata enhancement opportunities from API data
-1. Generate comprehensive analysis dump file
+1. ✅ Complete testing of other underutilized APIs (photos, PLUTO data, Reference Data)
+1. ✅ Analyze metadata enhancement opportunities from API data
+1. ✅ Generate comprehensive analysis dump file
+1. ✅ Create implementation recommendations based on API testing
 
 ### Phase 3 (Metadata Enhancement)
 
@@ -68,9 +72,10 @@ The current focus is on the Wikipedia Processing Script Refactoring & Metadata E
 
 - Identified redundant API call pattern: both direct `requests` call and DbClient method were calling the same endpoint (`https://api.coredatastore.com/api/LpcReport/landmark/{limit}/1?LpcNumber={lp_id}`)
 - Simplified implementation to use only the DbClient method, removing unnecessary complexity
-- Discovered field mapping issue where data from LandmarkDetail isn't fully preserved when converted to LpcReportModel in DbClient
-- Created documentation with analysis of the issue and potential solutions
-- Need to update `_convert_item_to_lpc_report_model` method in DbClient to better preserve building field data
+- ✅ Resolved field mapping issue by implementing comprehensive field preservation in the `_add_building_data` method
+- ✅ Created the `_flatten_buildings_metadata` method which properly transforms nested building data into Pinecone-compatible flattened format while preserving all critical fields
+- ✅ Implemented careful handling of both dictionary and object building data to ensure consistent field extraction
+- ✅ Verified the solution with the processing script and vector utility tool
 - ✅ Updated vector_utility.py to properly display building metadata in inspection output with improved handling of:
   - Empty building arrays (display "No building data found" message)
   - Non-dictionary building data (handle string or other simple types)
@@ -89,3 +94,6 @@ The current focus is on the Wikipedia Processing Script Refactoring & Metadata E
 - Managing the complexity of multiple API integrations while keeping performance optimal
 - Ensuring comprehensive testing coverage for the refactored components
 - Coordinating the phased approach to avoid disrupting existing workflows
+- Testing vector operations with different metadata formats to ensure backward compatibility
+- Validating that the streamlined main script maintains feature parity with the original implementation
+- Ensuring the improved vector query capabilities work correctly with all filtering combinations

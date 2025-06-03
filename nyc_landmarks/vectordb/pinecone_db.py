@@ -302,6 +302,10 @@ class PineconeDB:
                 "article_quality_description"
             ]
 
+        # Add revision ID if available
+        if chunk_metadata.get("article_rev_id"):
+            metadata["article_rev_id"] = chunk_metadata["article_rev_id"]
+
         # Handle new metadata format (chunk.metadata) and check for article details.
         if chunk_metadata.get("article_title") or chunk_metadata.get("article_url"):
             article_data = {
@@ -318,6 +322,9 @@ class PineconeDB:
                 "article_title": article_meta.get("title", ""),
                 "article_url": article_meta.get("url", ""),
             }
+            # Add revision ID from legacy format if available
+            if article_meta.get("rev_id"):
+                article_data["article_rev_id"] = article_meta["rev_id"]
             metadata.update({k: v for k, v in article_data.items() if v})
 
     def _upsert_vectors_in_batches(

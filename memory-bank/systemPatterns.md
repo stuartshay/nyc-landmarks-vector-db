@@ -178,12 +178,17 @@ To handle complex, nested data structures within vector database metadata constr
 
 ## Vector ID Standardization
 
-Vector IDs follow a consistent pattern:
+Vector IDs follow source-specific patterns with consistent validation:
 
-- Format: `LP-XXXXX-N` for all vector entries
-- Landmark ID followed by chunk number
-- Consistent formatting enforced at creation time
-- Validation to ensure uniqueness and retrievability
+- **Source-specific Prefixes**: Different content sources use distinct prefixes:
+  - `wiki-` for Wikipedia articles
+  - No prefix for PDF documents
+- **Standard Wikipedia Format**: `wiki-{article_title}-{landmark_id}-chunk-{index}` (e.g., `wiki-Empire_State_Building-LP-00123-chunk-0`)
+- **Standard PDF Format**: `{landmark_id}-chunk-{index}` (e.g., `LP-00123-chunk-0`)
+- **Validation System**: Comprehensive validation through the `VectorIDValidator` class
+- **Consistent Enforcement**: ID formats are enforced at creation time
+- **Pattern Recognition**: System can detect source type from ID format
+- **Deterministic Generation**: IDs are generated deterministically to support updates without duplication
 
 ## Text Processing
 
@@ -195,12 +200,49 @@ Text processing follows consistent approaches:
 - Clean text representation with normalized spacing
 - Source attribution for traceability
 
+## Vector Database Operations
+
+Vector database operations follow a consistent pattern:
+
+- **Unified Query Interface**: Core query functionality is exposed through a unified method (`query_vectors`) with comprehensive options
+- **Namespace Management**: Consistent handling of namespaces across operations
+- **Error Recovery**: Robust error handling with appropriate fallbacks
+- **Result Formatting**: Standardized result formats regardless of underlying vector store
+- **Metadata Enrichment**: Metadata is consistently enriched at storage time with source attribution
+- **Filtering Options**: Query filtering is handled uniformly across different data types
+
+## Vector Utility Pattern
+
+The vector utility tool follows a command-pattern architecture:
+
+- **Command-based Interface**: Each operation is implemented as a distinct command
+- **Consistent Parameter Handling**: Commands use standardized parameter patterns
+- **Progressive Disclosure**: Basic functionality is simple while advanced options are available
+- **Unified Output Formatting**: Results are formatted consistently across commands
+- **Error Boundary Management**: Each command handles its own errors without affecting others
+- **Cross-cutting Concerns**: Shared functionality like formatting and logging is implemented once
+
+## Modular Processing Architecture
+
+The system employs a modular processing architecture that separates concerns into focused, single-responsibility components:
+
+- **Processor Classes**: Core processing logic is encapsulated in dedicated processor classes (e.g., `WikipediaProcessor`)
+- **Orchestration Scripts**: High-level scripts handle orchestration, command-line arguments, and execution flow
+- **Utility Modules**: Common functionality is extracted into utility modules for reuse
+- **Results Reporting**: Processing results are collected and reported through standardized interfaces
+
+This pattern improves maintainability, testability, and allows for independent evolution of components while maintaining a consistent API.
+
 ## Wikipedia Integration
 
 Wikipedia content processing follows these patterns:
 
+- **Modular Processing Pipeline**: Content flows through a series of specialized processing steps
+- **Quality Assessment**: Articles are evaluated for quality using the Wikimedia Lift Wing API
+- **Revision Tracking**: Article revision IDs are captured and propagated through the pipeline
+- **Token-based Chunking**: Content is chunked based on token count rather than character count
+- **Metadata Enrichment**: Each chunk is enriched with article metadata including quality ratings
 - Article fetching by landmark name
 - Content cleaning and normalization
-- Chunking based on semantic boundaries
 - Integration with existing landmark vectors
 - Source labeling for query filtering

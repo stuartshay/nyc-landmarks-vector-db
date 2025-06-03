@@ -24,7 +24,7 @@ Example usage:
     python scripts/vector_utility.py fetch wiki-Manhattan_Municipal_Building-LP-00079-chunk-0 --namespace landmarks --pretty
 
     # Check all vectors for a specific landmark:
-    python scripts/vector_utility.py check-landmark LP-00001 --namespace landmarks --verbose
+    python scripts/vector_utility.py check-landmark LP-00079 --namespace landmarks --verbose
 
     # List up to 10 vectors starting with a specific prefix:
     python scripts/vector_utility.py list-vectors --prefix wiki-Manhattan --limit 10 --pretty --namespace landmarks

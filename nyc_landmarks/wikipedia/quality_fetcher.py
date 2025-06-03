@@ -118,6 +118,3 @@ class WikipediaQualityFetcher:
                 f"Unexpected error processing quality assessment for rev_id {rev_id}: {e}"
             )
             return None
-
-
-# Removed the `get_quality_level_description` method as its functionality is now delegated to `WikipediaQualityModel.get_quality_description()`.
