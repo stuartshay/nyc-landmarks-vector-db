@@ -1,15 +1,10 @@
 """
-Simplified functional tests for Pinecone vector storage functionality.
+Integration tests for Pinecone vector storage and retrieval functionality.
 
-This module provides tests to verify essential Pinecone vector database operations:
-1. Vector database connection and index stats retrieval
-2. Vector storage capability using a real landmark ID (LP-00011)
-3. Vector retrieval capability with similarity search
-4. End-to-end workflow from storage to retrieval
-
-These tests use a dedicated test index in Pinecone (created by the pinecone_test_db fixture)
-to ensure test isolation from production data. Each test session creates a unique index
-with a timestamp and random identifier, which is cleaned up after tests complete.
+This module tests the complete workflow of storing vectors in Pinecone and
+retrieving them through similarity search. These tests involve actual data
+modification and are potentially destructive, making them integration tests
+rather than functional tests.
 """
 
 import logging
@@ -27,53 +22,6 @@ logging.basicConfig(level=settings.LOG_LEVEL.value)
 
 
 @pytest.mark.integration
-@pytest.mark.functional
-def test_pinecone_connection(pinecone_test_db: PineconeDB) -> None:
-    """
-    Test basic Pinecone connection and index stats retrieval.
-
-    This test verifies:
-    1. The connection to the Pinecone test index can be established
-    2. The PineconeDB.index object is properly initialized
-    3. Index statistics can be retrieved successfully via get_index_stats()
-    4. The returned stats are in the expected format (a dict without errors)
-    5. Key index properties like dimension, vector count, and namespaces are accessible
-
-    Args:
-        pinecone_test_db: Fixture providing a PineconeDB instance connected to a test index
-    """
-    logger.info("=== Testing Pinecone connection ===")
-
-    # Use test-specific Pinecone client provided by the fixture
-    # This connects to a dedicated test index isolated from production data
-    pinecone_db = pinecone_test_db
-
-    # Verify index connection - this checks that the Pinecone client is properly initialized
-    # and connected to the serverless test index created by the fixture
-    assert pinecone_db.index is not None, "Failed to connect to Pinecone index"
-
-    # Get index stats - this calls Pinecone's describe_index_stats API
-    # to retrieve metadata about the index such as vector count and dimension
-    stats = pinecone_db.get_index_stats()
-
-    # Verify the stats were returned as a dictionary
-    assert isinstance(stats, dict), "Failed to retrieve index stats"
-
-    # Verify there are no errors in the stats response
-    # Pinecone will include an "error" key if something went wrong
-    assert "error" not in stats, f"Error in stats: {stats.get('error')}"
-
-    # Log useful information
-    logger.info(f"Connected to Pinecone index: {pinecone_db.index_name}")
-    logger.info(f"Current vector count: {stats.get('total_vector_count', 0)}")
-    logger.info(f"Dimension: {stats.get('dimension', 0)}")
-    logger.info(f"Namespaces: {stats.get('namespaces', {})}")
-
-    logger.info("=== Pinecone connection test passed ===")
-
-
-@pytest.mark.integration
-@pytest.mark.functional
 def test_vector_storage_and_retrieval(pinecone_test_db: PineconeDB) -> None:
     """
     Test vector storage and retrieval capabilities using a real landmark ID.
@@ -96,6 +44,7 @@ def test_vector_storage_and_retrieval(pinecone_test_db: PineconeDB) -> None:
         - Using LP-00011 as a real landmark ID helps validate the metadata handling
         - The embedding vector is synthetic ([0.1] * dimensions) for test simplicity
         - The test uses a wait period to account for Pinecone's eventual consistency
+        - This is an integration test because it modifies data in Pinecone
     """
     logger.info("=== Testing vector storage and retrieval ===")
 

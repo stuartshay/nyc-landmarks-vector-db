@@ -6,6 +6,7 @@ The current focus is on the Wikipedia Processing Script Refactoring & Metadata E
 
 ## Recent Changes
 
+- **Implemented flattened building metadata**: Refactored the building metadata storage approach from nested arrays to flattened key-value pairs (e.g., `building_0_name`, `building_0_address`) to ensure compatibility with Pinecone's metadata constraints and enable filtering by building attributes. Created the `_flatten_buildings_metadata` method in the `EnhancedMetadataCollector` class and updated dependent code in PineconeDB and WikipediaProcessor to handle the new format while preserving all building information. Added support for `building_names` array field for simplified filtering by building name.
 - **Added Wikipedia article quality assessment**: Implemented integration with the Wikimedia Lift Wing articlequality API to assess the quality of Wikipedia articles (FA, GA, B, C, Start, Stub). This data is stored in article metadata and propagated to vector chunks for improved search filtering and ranking. Quality assessment includes quality level, confidence scores, and human-readable descriptions.
 - **Added Wikipedia revision ID tracking**: Enhanced the Wikipedia fetcher and processor to track article revision IDs, providing better versioning and citation support for all Wikipedia content. This revision ID is now consistently propagated through the entire pipeline from fetching to storage in the vector database.
 - **Fixed return type in `WikipediaFetcher.fetch_wikipedia_content`**: Updated the method to consistently return a tuple of (content, rev_id) for better error handling and type consistency.
@@ -17,6 +18,10 @@ The current focus is on the Wikipedia Processing Script Refactoring & Metadata E
 - **Enhanced results reporting**: Added `nyc_landmarks/utils/results_reporter.py` for better statistics and reporting capabilities.
 - **Created API Enhancement Analysis Script**: Added `scripts/analyze_api_enhancements.py` to test underutilized CoreDataStore APIs for Phase 2 of the Wikipedia refactoring project.
 - **Fixed Package Version Synchronization Workflow**: Implemented `scripts/ci/sync_versions.sh` and updated GitHub Actions workflow to automatically sync package versions between requirements.txt and setup.py for Dependabot PRs.
+- **Simplified Building Metadata Integration**: Refactored `EnhancedMetadataCollector._add_building_data` method to remove redundant direct API calls and rely solely on the DbClient method, which already calls the same CoreDataStore API endpoint. This simplifies the code, removes duplication, and maintains all functionality.
+- **Documented Building Metadata Integration**: Created comprehensive documentation in `docs/building_metadata_integration.md` explaining the implementation, known issues with field mapping, and potential future improvements.
+- **Tested Building Metadata Integration**: Successfully tested the updated implementation with `scripts/test_building_metadata.py` and identified a field mapping issue where some building data fields aren't properly preserved during model conversion.
+- **Enhanced Building Data Display in Vector Utility**: Improved the `process_building_data` function in `scripts/vector_utility.py` to better handle building data in vector metadata, including handling for empty arrays, non-dictionary data types, and more robust detection of missing data. This allows for consistent display of building information across various data formats.
 
 ## Next Steps
 
@@ -30,7 +35,10 @@ The current focus is on the Wikipedia Processing Script Refactoring & Metadata E
 ### Phase 2 Implementation (API Analysis)
 
 1. Execute Wikipedia processing command with 25 landmarks to test refactored components
-1. Test underutilized CoreDataStore APIs (photos, PLUTO data, building details)
+1. ✅ Test underutilized CoreDataStore APIs: Building data integration has been fixed and tested
+1. ✅ Update vector_utility.py to properly display building data in vector inspection output
+1. ✅ Test flattened building metadata in queries by updating `notebooks/landmark_query_testing.ipynb`
+1. Continue testing other underutilized APIs (photos, PLUTO data)
 1. Analyze metadata enhancement opportunities from API data
 1. Generate comprehensive analysis dump file
 
@@ -54,6 +62,20 @@ The current focus is on the Wikipedia Processing Script Refactoring & Metadata E
 - Focus on non-intrusive enhancements that don't break current functionality
 - Implement optional enhanced metadata collection that can be enabled/disabled
 - Prioritize API integrations based on data quality and processing performance impact
+- Use direct API requests when CoreDataStore client methods are insufficient, with proper error handling
+
+### Building Metadata Integration
+
+- Identified redundant API call pattern: both direct `requests` call and DbClient method were calling the same endpoint (`https://api.coredatastore.com/api/LpcReport/landmark/{limit}/1?LpcNumber={lp_id}`)
+- Simplified implementation to use only the DbClient method, removing unnecessary complexity
+- Discovered field mapping issue where data from LandmarkDetail isn't fully preserved when converted to LpcReportModel in DbClient
+- Created documentation with analysis of the issue and potential solutions
+- Need to update `_convert_item_to_lpc_report_model` method in DbClient to better preserve building field data
+- ✅ Updated vector_utility.py to properly display building metadata in inspection output with improved handling of:
+  - Empty building arrays (display "No building data found" message)
+  - Non-dictionary building data (handle string or other simple types)
+  - Multiple buildings in a single landmark (proper formatting for each building)
+  - Missing or null field values (skip displaying them instead of showing "None")
 
 ### Testing and Validation
 

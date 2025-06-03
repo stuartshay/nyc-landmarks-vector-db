@@ -1,15 +1,13 @@
 {
   "include": [
-    "nyc_landmarks"
+    "nyc_landmarks",
+    "scripts",
+    "tests"
   ],
   "exclude": [
     "**/node_modules",
     "**/__pycache__",
     "**/*.pyc",
-    "scripts/ci",
-    "scripts/test_*.py",
-    "scripts/process_*.py",
-    "scripts/demonstrate_*.py",
     "setup.py"
   ],
   "stubPath": "stubs",

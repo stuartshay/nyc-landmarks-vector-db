@@ -166,24 +166,188 @@ def process_building_data(metadata: Dict[str, Any]) -> None:
     Args:
         metadata: Vector metadata dictionary
     """
+    # Three possible formats for building data:
+    # 1. Primary format: "buildings" array containing building objects
+    # 2. Legacy format: Indexed with "building_" prefix (building_0_bbl, building_1_bbl, etc.)
+    # 3. Legacy format: Direct top-level fields (bbl, binNumber, latitude, etc.)
+
+    # First check for the primary format - "buildings" array
+    if "buildings" in metadata and isinstance(metadata["buildings"], list):
+        _process_buildings_array(metadata["buildings"])
+        return
+
+    # Look for legacy building data formats
     building_fields = [k for k in metadata.keys() if k.startswith("building_")]
-    if building_fields:
-        building_count = metadata.get("building_count", 0)
-        print(f"Building count: {building_count}")
+    building_indicators = ["bbl", "binNumber", "block", "lot", "latitude", "longitude"]
+    has_direct_building_data = any(
+        indicator in metadata for indicator in building_indicators
+    )
 
-        # Find all building BBLs
-        building_bbls = []
-        for i in range(building_count):
-            bbl_field = f"building_{i}_bbl"
-            if bbl_field in metadata:
-                building_bbls.append(metadata[bbl_field])
-
-        if building_bbls:
-            print(f"Building BBLs: {building_bbls}")
-        else:
-            print("No building BBLs found")
-    else:
+    # If no building data in any format, return
+    if not building_fields and not has_direct_building_data:
         print("No building data found")
+        return
+
+    print("\nWARNING: Using legacy building data format")
+
+    # Process legacy formats
+    if building_fields:
+        _process_prefixed_building_fields(metadata, building_fields)
+    elif has_direct_building_data:
+        _process_direct_building_data(metadata)
+
+
+def _process_buildings_array(buildings: List[Any]) -> None:
+    """Process building data from the primary 'buildings' array format."""
+    if not buildings:
+        print("No building data found")
+        return
+
+    print(f"\nBuilding count: {len(buildings)}")
+
+    for idx, building in enumerate(buildings):
+        print(f"\nBuilding {idx + 1}:")
+
+        if isinstance(building, dict):
+            _display_building_dict(building)
+        else:
+            print(f"  Building data: {building}")
+
+
+def _process_prefixed_building_fields(
+    metadata: Dict[str, Any], building_fields: List[str]
+) -> None:
+    """Process building data from legacy prefixed fields format."""
+    building_count = metadata.get("building_count", 0)
+    print(f"Building count: {building_count}")
+
+    # Group fields by building index
+    building_indices = set()
+    for field in building_fields:
+        if field == "building_count":
+            continue
+
+        parts = field.split("_")
+        if len(parts) >= 3 and parts[1].isdigit():
+            building_indices.add(int(parts[1]))
+
+    # Process each building
+    for idx in sorted(building_indices):
+        print(f"\nBuilding {idx + 1}:")
+
+        # Collect all fields for this building
+        bldg_fields = {
+            k.split("_", 2)[2]: metadata[k]
+            for k in building_fields
+            if k.startswith(f"building_{idx}_") and len(k.split("_", 2)) >= 3
+        }
+
+        _display_building_dict(bldg_fields)
+
+
+def _process_direct_building_data(metadata: Dict[str, Any]) -> None:
+    """Process building data from legacy direct top-level fields format."""
+    print("\nBuilding data (direct format):")
+    _display_building_dict(metadata)
+
+
+def _display_building_dict(building: Dict[str, Any]) -> None:
+    """Display building information from a dictionary."""
+    # Display key information first
+    _display_basic_building_info(building)
+    _display_location_info(building)
+    _display_borough_info(building)
+    _display_building_characteristics(building)
+    _display_other_building_fields(building)
+
+
+def _display_basic_building_info(building: Dict[str, Any]) -> None:
+    """Display basic building information."""
+    if building.get("name"):
+        print(f"  Name: {building['name']}")
+
+    # Handle address vs location
+    if building.get("address"):
+        print(f"  Address: {building['address']}")
+    elif building.get("location"):
+        print(f"  Location: {building['location']}")
+
+    if building.get("bbl"):
+        print(f"  BBL: {building['bbl']}")
+    if building.get("binNumber"):
+        print(f"  BIN: {building['binNumber']}")
+
+
+def _display_location_info(building: Dict[str, Any]) -> None:
+    """Display location-related information."""
+    if building.get("block"):
+        print(f"  Block: {building['block']}")
+    if building.get("lot"):
+        print(f"  Lot: {building['lot']}")
+
+    if building.get("latitude") and building.get("longitude"):
+        print(f"  Coordinates: ({building['latitude']}, {building['longitude']})")
+
+
+def _display_borough_info(building: Dict[str, Any]) -> None:
+    """Display borough information."""
+    if building.get("borough"):
+        print(f"  Borough: {building['borough']}")
+    elif building.get("boroughId"):
+        borough_codes = {
+            "MN": "Manhattan",
+            "BK": "Brooklyn",
+            "QN": "Queens",
+            "BX": "Bronx",
+            "SI": "Staten Island",
+        }
+        borough = borough_codes.get(building["boroughId"], building["boroughId"])
+        print(f"  Borough: {borough}")
+
+
+def _display_building_characteristics(building: Dict[str, Any]) -> None:
+    """Display building characteristics and metadata."""
+    characteristics = [
+        ("objectType", "Object Type"),
+        ("designatedDate", "Designated Date"),
+        ("historicDistrict", "Historic District"),
+        ("style", "Style"),
+        ("architect", "Architect"),
+    ]
+
+    for key, label in characteristics:
+        if building.get(key):
+            print(f"  {label}: {building[key]}")
+
+
+def _display_other_building_fields(building: Dict[str, Any]) -> None:
+    """Display any other fields not already shown."""
+    displayed_fields = {
+        "name",
+        "address",
+        "location",
+        "bbl",
+        "binNumber",
+        "block",
+        "lot",
+        "latitude",
+        "longitude",
+        "borough",
+        "boroughId",
+        "objectType",
+        "designatedDate",
+        "historicDistrict",
+        "style",
+        "architect",
+    }
+
+    other_fields = {k: v for k, v in building.items() if k not in displayed_fields}
+
+    if other_fields:
+        print("  Other fields:")
+        for k, v in sorted(other_fields.items()):
+            if v is not None and v != "":
+                print(f"    {k}: {v}")
 
 
 def display_metadata(metadata: Dict[str, Any], verbose: bool = False) -> None:

@@ -113,7 +113,25 @@ class LandmarkPipeline:
                 landmarks = self.db_client.get_landmarks_page(page_size, page)
 
                 if landmarks:
-                    all_landmarks.extend(landmarks)
+                    # Convert any LpcReportModel instances to dictionaries
+                    landmarks_dicts = []
+                    for landmark in landmarks:
+                        if hasattr(landmark, "model_dump"):
+                            # Handle Pydantic v2 models
+                            landmarks_dicts.append(landmark.model_dump())  # type: ignore
+                        elif hasattr(landmark, "dict") and callable(
+                            getattr(landmark, "dict")
+                        ):
+                            # Handle Pydantic v1 models
+                            landmarks_dicts.append(landmark.dict())  # type: ignore
+                        elif isinstance(landmark, dict):
+                            # Already a dictionary
+                            landmarks_dicts.append(landmark)
+                        else:
+                            # Try to convert to dict
+                            landmarks_dicts.append(dict(landmark))  # type: ignore
+
+                    all_landmarks.extend(landmarks_dicts)
                     logger.info(f"Found {len(landmarks)} landmarks on page {page}")
                 else:
                     logger.warning(f"No results found on page {page}")
@@ -1181,12 +1199,12 @@ def process_landmarks_from_ids(
                 # Convert to dict for compatibility with existing pipeline methods
                 if hasattr(landmark_data, "model_dump"):
                     # Handle Pydantic v2 models
-                    landmarks.append(landmark_data.model_dump())
+                    landmarks.append(landmark_data.model_dump())  # type: ignore
                 elif hasattr(landmark_data, "dict") and callable(
                     getattr(landmark_data, "dict")
                 ):
                     # Handle Pydantic v1 models
-                    landmarks.append(landmark_data.dict())
+                    landmarks.append(landmark_data.dict())  # type: ignore
                 elif hasattr(landmark_data, "__dict__"):
                     # Handle regular Python objects
                     landmarks.append(landmark_data.__dict__)

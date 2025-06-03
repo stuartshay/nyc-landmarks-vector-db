@@ -190,6 +190,12 @@ class LandmarkMetadata(RootMetadataModel):
         result.update(self._extra_fields)
         return result
 
+    def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
+        """Return a dictionary of all fields including extras (Pydantic v2 compatibility)."""
+        result: Dict[str, Any] = super().model_dump(**kwargs)
+        result.update(self._extra_fields)
+        return result
+
 
 class WikipediaMetadata(RootMetadataModel):
     """

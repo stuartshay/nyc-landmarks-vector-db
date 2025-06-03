@@ -1,7 +1,7 @@
 """
-Functional tests for the Query API endpoints.
+Integration tests for the Query API endpoints.
 
-These tests verify the API logic using mocked components to isolate
+These tests verify the API endpoints using mocked components to isolate
 the endpoint functionality from external dependencies.
 """
 
@@ -37,6 +37,10 @@ def mock_vector_db() -> Mock:
     # Default empty response
     mock.query_vectors.return_value = []
     mock.get_index_stats.return_value = {"total_vector_count": 100}
+
+    # Set string attributes for Pydantic validation
+    mock.index_name = "test-landmarks-index"
+    mock.namespace = "test-namespace"
 
     return mock
 
@@ -92,7 +96,7 @@ def create_mock_search_results(count: int = 2) -> List[Dict[str, Any]]:
     return results
 
 
-@pytest.mark.functional
+@pytest.mark.integration
 @patch("nyc_landmarks.api.query.get_db_client")
 @patch("nyc_landmarks.api.query.PineconeDB")
 @patch("nyc_landmarks.api.query.EmbeddingGenerator")
@@ -155,7 +159,7 @@ def test_query_api_successful_search(
     assert call_args[0][2] is None  # filter_dict
 
 
-@pytest.mark.functional
+@pytest.mark.integration
 @patch("nyc_landmarks.api.query.get_db_client")
 @patch("nyc_landmarks.api.query.PineconeDB")
 @patch("nyc_landmarks.api.query.EmbeddingGenerator")
@@ -208,7 +212,7 @@ def test_query_api_with_landmark_filter(
     assert filter_dict["landmark_id"] == "LP-00123"
 
 
-@pytest.mark.functional
+@pytest.mark.integration
 @patch("nyc_landmarks.api.query.get_db_client")
 @patch("nyc_landmarks.api.query.PineconeDB")
 @patch("nyc_landmarks.api.query.EmbeddingGenerator")
@@ -263,7 +267,7 @@ def test_query_api_with_source_type_filter(
     assert filter_dict["source_type"] == "wikipedia"
 
 
-@pytest.mark.functional
+@pytest.mark.integration
 @patch("nyc_landmarks.api.query.get_db_client")
 @patch("nyc_landmarks.api.query.PineconeDB")
 @patch("nyc_landmarks.api.query.EmbeddingGenerator")
@@ -307,7 +311,7 @@ def test_query_api_no_results(
     mock_vector_db.query_vectors.assert_called_once()
 
 
-@pytest.mark.functional
+@pytest.mark.integration
 @patch("nyc_landmarks.api.query.get_db_client")
 @patch("nyc_landmarks.api.query.PineconeDB")
 @patch("nyc_landmarks.api.query.EmbeddingGenerator")
@@ -340,7 +344,7 @@ def test_query_api_embedding_error(
     assert "OpenAI API error" in response.json()["detail"]
 
 
-@pytest.mark.functional
+@pytest.mark.integration
 @patch("nyc_landmarks.api.query.get_db_client")
 @patch("nyc_landmarks.api.query.PineconeDB")
 @patch("nyc_landmarks.api.query.EmbeddingGenerator")
@@ -371,7 +375,7 @@ def test_query_api_vector_db_error(
     assert "Pinecone connection error" in response.json()["detail"]
 
 
-@pytest.mark.functional
+@pytest.mark.integration
 @patch("nyc_landmarks.api.query.PineconeDB")
 @patch("nyc_landmarks.api.query.EmbeddingGenerator")
 def test_query_api_landmark_name_enrichment(
@@ -426,7 +430,7 @@ def test_query_api_landmark_name_enrichment(
         fastapi_app.dependency_overrides = {}
 
 
-@pytest.mark.functional
+@pytest.mark.integration
 def test_query_api_validation_errors() -> None:
     """Test various validation errors."""
 
@@ -449,7 +453,7 @@ def test_query_api_validation_errors() -> None:
     assert response.status_code == 422
 
 
-@pytest.mark.functional
+@pytest.mark.integration
 @patch("nyc_landmarks.api.query.get_db_client")
 @patch("nyc_landmarks.api.query.PineconeDB")
 @patch("nyc_landmarks.api.query.EmbeddingGenerator")
@@ -488,7 +492,7 @@ def test_query_api_landmark_specific_endpoint(
     assert "landmark_id is required" in response.json()["detail"]
 
 
-@pytest.mark.functional
+@pytest.mark.integration
 def test_query_api_empire_state_building_mock() -> None:
     """Test the exact Empire State Building query with mocked successful response."""
 
@@ -519,6 +523,9 @@ def test_query_api_empire_state_building_mock() -> None:
             }
         ]
         mock_vector_db.query_vectors.return_value = mock_search_results
+        # Set string attributes for Pydantic validation
+        mock_vector_db.index_name = "test-landmarks-index"
+        mock_vector_db.namespace = "test-namespace"
         mock_vector_db_cls.return_value = mock_vector_db
 
         mock_db_client = Mock()
