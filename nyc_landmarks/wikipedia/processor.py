@@ -113,6 +113,9 @@ class WikipediaProcessor:
         Returns:
             Tuple of (processed_articles, total_chunks)
         """
+        # Define low-quality article levels to skip
+        LOW_QUALITY_LEVELS = ["Stub", "Start"]
+
         # Initialize for token-based chunking
         from transformers import GPT2Tokenizer
 
@@ -124,6 +127,7 @@ class WikipediaProcessor:
 
         processed_articles = []
         total_chunks = 0
+        skipped_articles = []
 
         for article in articles:
             logger.debug(f"Processing article: {article.title}")
@@ -180,6 +184,14 @@ class WikipediaProcessor:
                         f"Added quality assessment for article: {article.title} - {quality.prediction}"
                     )
 
+                    # Quality check - skip low-quality articles
+                    if quality.prediction in LOW_QUALITY_LEVELS:
+                        logger.info(
+                            f"Skipping low-quality article '{article.title}' with quality '{quality.prediction}'"
+                        )
+                        skipped_articles.append(article.title)
+                        continue  # Skip to next article
+
                     # Add quality info to chunk metadata
                     for chunk in dict_chunks:
                         if "metadata" in chunk:
@@ -204,6 +216,11 @@ class WikipediaProcessor:
 
             processed_articles.append(content_model)
             total_chunks += len(dict_chunks)
+
+        if skipped_articles:
+            logger.info(
+                f"Skipped {len(skipped_articles)} low-quality articles: {', '.join(skipped_articles)}"
+            )
 
         return processed_articles, total_chunks
 
