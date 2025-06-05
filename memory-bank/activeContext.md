@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-The current focus is on the Wikipedia Processing Script Refactoring & Metadata Enhancement Project. This involves refactoring the large `scripts/ci/process_wikipedia_articles.py` script (757 lines) into modular components while conducting comprehensive analysis of Wikipedia articles for metadata enhancement opportunities.
+The current focus has shifted to the Wikipedia API Improvement Project. Having successfully completed the refactoring of `scripts/ci/process_wikipedia_articles.py` into modular components, we are now focusing on improving the API calls within the Wikipedia processing components to enhance performance, reliability, and efficiency.
 
 ## Recent Changes
 
@@ -28,14 +28,45 @@ The current focus is on the Wikipedia Processing Script Refactoring & Metadata E
 
 ## Next Steps
 
-### Phase 1 Completion (Refactoring)
+### Wikipedia API Improvement Project
+
+#### Phase 1 - Quick Wins
+
+1. Implement connection pooling with `requests.Session()` in Wikipedia fetcher
+1. Add persistent session management for HTTP requests
+1. Configure proper keep-alive settings for better connection reuse
+1. Enhance timeout handling with separate connect vs. read timeouts
+1. Implement metadata caching per landmark to avoid redundant collection
+1. Enhance error handling and logging with more detailed information
+
+#### Phase 2 - Performance Optimization
+
+1. Implement async content fetching for concurrent Wikipedia article retrieval
+1. Add comprehensive response caching with TTL for Wikipedia content
+1. Cache article quality assessments to reduce API calls
+1. Implement disk-based cache for larger responses
+1. Add proper cache invalidation based on revision IDs
+1. Improve rate limiting with adaptive strategies based on response headers
+
+#### Phase 3 - Robustness Improvements
+
+1. Enhance content extraction with fallback parsers for different page structures
+1. Consider direct Wikipedia API integration as an alternative to HTML scraping
+1. Implement the circuit breaker pattern for Wikipedia API calls
+1. Add different retry strategies for different types of failures
+1. Implement streaming parsers for large Wikipedia responses
+1. Optimize memory usage during processing with generators
+
+### Previous Project Phases (For Reference)
+
+#### Phase 1 Completion (Refactoring)
 
 1. Complete extraction of utilities to `nyc_landmarks/wikipedia/utils.py`
 1. Finalize results reporting module improvements
 1. ✅ Streamlined the main `scripts/ci/process_wikipedia_articles.py` script - Successfully reduced from 757 lines to approximately 200 lines while maintaining all functionality
 1. Verify all functionality is preserved after refactoring with comprehensive testing
 
-### Phase 2 Implementation (API Analysis)
+#### Phase 2 Implementation (API Analysis)
 
 1. ✅ Execute Wikipedia processing command with 25 landmarks to test refactored components
 1. ✅ Test underutilized CoreDataStore APIs: Building data integration has been fixed and tested
@@ -46,7 +77,7 @@ The current focus is on the Wikipedia Processing Script Refactoring & Metadata E
 1. ✅ Generate comprehensive analysis dump file
 1. ✅ Create implementation recommendations based on API testing
 
-### Phase 3 (Metadata Enhancement)
+#### Phase 3 (Metadata Enhancement)
 
 1. Integrate highest-value API enhancements
 1. Implement improved metadata extraction patterns for Wikipedia content
@@ -97,3 +128,54 @@ The current focus is on the Wikipedia Processing Script Refactoring & Metadata E
 - Testing vector operations with different metadata formats to ensure backward compatibility
 - Validating that the streamlined main script maintains feature parity with the original implementation
 - Ensuring the improved vector query capabilities work correctly with all filtering combinations
+
+## Wikipedia API Improvement Analysis
+
+### Identified Issues in Current Implementation
+
+1. **HTTP Request Inefficiencies**:
+
+   - No connection pooling or session reuse
+   - Basic timeout configuration
+   - Limited HTTP client configuration
+   - Inefficient sequential processing of requests
+
+1. **Lack of Caching**:
+
+   - No caching mechanism for Wikipedia content or API responses
+   - Redundant fetching of the same content
+   - No TTL-based invalidation strategy
+
+1. **Simplistic Rate Limiting**:
+
+   - Fixed delay regardless of response times or API requirements
+   - No adaptive rate limiting based on response headers
+   - Lacks sophisticated backoff strategies
+
+1. **Basic Error Handling**:
+
+   - Limited retry logic for specific exception types
+   - No circuit breaker pattern to prevent cascading failures
+   - Insufficient logging for debugging purposes
+
+1. **Content Extraction Limitations**:
+
+   - BeautifulSoup parsing could be more robust
+   - No fallback mechanisms for different page structures
+   - HTML scraping instead of direct API integration
+
+1. **Metadata Collection Inefficiencies**:
+
+   - Collecting metadata separately for each article
+   - No reuse of metadata across related articles
+   - Limited bulk processing capabilities
+
+1. **API Response Processing**:
+
+   - Immediate processing of entire responses
+   - Memory-intensive operations for large articles
+   - No streaming or generator-based processing
+
+### Improvement Strategy
+
+The implementation strategy will follow a phased approach, starting with quick wins that provide immediate benefits while laying the groundwork for more comprehensive improvements in later phases. Each phase will include thorough testing to ensure backward compatibility and maintain system integrity.

@@ -5,8 +5,9 @@ This module handles the collection and formatting of rich metadata from
 the CoreDataStore API to enhance vector database entries.
 """
 
+import datetime
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.db_client import DbClient, get_db_client
@@ -22,6 +23,23 @@ class EnhancedMetadataCollector:
     """Collects and formats enhanced metadata from CoreDataStore API."""
 
     db_client: DbClient
+
+    # Cache constants
+    DEFAULT_CACHE_TTL_HOURS = 24  # Cache validity period in hours
+
+    def __init__(self) -> None:
+        """Initialize the metadata collector with database client and cache."""
+        self.db_client = get_db_client()
+        # Check if we're using the CoreDataStore API
+        self.using_api = settings.COREDATASTORE_USE_API
+
+        # Initialize metadata cache
+        self._metadata_cache: Dict[str, Tuple[datetime.datetime, LandmarkMetadata]] = {}
+        self._cache_ttl = datetime.timedelta(hours=self.DEFAULT_CACHE_TTL_HOURS)
+
+        logger.info(
+            f"Initialized EnhancedMetadataCollector with {self.DEFAULT_CACHE_TTL_HOURS}h cache TTL"
+        )
 
     def _remove_empty_buildings(self, metadata_dict: dict) -> None:
         if not metadata_dict.get("buildings"):
@@ -341,14 +359,6 @@ class EnhancedMetadataCollector:
         except Exception as e:
             logger.error(f"Error getting PLUTO data: {e}")
 
-    """Collects and formats enhanced metadata from CoreDataStore API."""
-
-    def __init__(self) -> None:
-        """Initialize the metadata collector with database client."""
-        self.db_client = get_db_client()
-        # Check if we're using the CoreDataStore API
-        self.using_api = settings.COREDATASTORE_USE_API
-
     def collect_landmark_metadata(self, landmark_id: str) -> LandmarkMetadata:
         """Collect comprehensive metadata for a landmark from CoreDataStore API.
 
@@ -358,6 +368,21 @@ class EnhancedMetadataCollector:
         Returns:
             LandmarkMetadata object containing enhanced landmark metadata
         """
+        # Check cache first
+        if landmark_id in self._metadata_cache:
+            timestamp, cached_metadata = self._metadata_cache[landmark_id]
+            # Check if cache is still valid
+            if datetime.datetime.now() - timestamp < self._cache_ttl:
+                logger.info(
+                    f"Using cached metadata for landmark {landmark_id} (from {timestamp.isoformat()})"
+                )
+                return cached_metadata
+            else:
+                logger.info(
+                    f"Cached metadata for landmark {landmark_id} expired (from {timestamp.isoformat()})"
+                )
+                # We'll proceed to fetch fresh metadata
+
         try:
             metadata = self.db_client.get_landmark_metadata(landmark_id)
             metadata_dict = (
@@ -392,7 +417,16 @@ class EnhancedMetadataCollector:
                 )
                 self._add_pluto_data(landmark_id, metadata_dict)
                 logger.info(f"Collected enhanced metadata for landmark {landmark_id}")
-                return self._postprocess_metadata(metadata_dict)
+                processed_metadata = self._postprocess_metadata(metadata_dict)
+
+                # Store in cache
+                self._metadata_cache[landmark_id] = (
+                    datetime.datetime.now(),
+                    processed_metadata,
+                )
+                logger.info(f"Cached metadata for landmark {landmark_id}")
+
+                return processed_metadata
             except Exception as e:
                 logger.error(f"Error collecting enhanced metadata: {e}")
                 return self._fallback_metadata(metadata, metadata_dict)
@@ -415,7 +449,16 @@ class EnhancedMetadataCollector:
                 "neighborhood": None,
                 "has_pluto_data": False,
             }
-            return LandmarkMetadata(**minimal_metadata)
+            minimal_metadata_obj = LandmarkMetadata(**minimal_metadata)
+
+            # Cache even minimal metadata to prevent repeated failures
+            self._metadata_cache[landmark_id] = (
+                datetime.datetime.now(),
+                minimal_metadata_obj,
+            )
+            logger.info(f"Cached minimal fallback metadata for landmark {landmark_id}")
+
+            return minimal_metadata_obj
 
     def collect_batch_metadata(self, landmark_ids: List[str]) -> Dict[str, dict]:
         """Collect enhanced metadata for multiple landmarks.
@@ -427,9 +470,24 @@ class EnhancedMetadataCollector:
             Dictionary mapping landmark IDs to their enhanced metadata as dicts
         """
         result = {}
+        cache_hits = 0
+        cache_misses = 0
+
         for landmark_id in landmark_ids:
             try:
+                # This will use cache if available
                 meta = self.collect_landmark_metadata(landmark_id)
+
+                # Track cache hit/miss statistics
+                if landmark_id in self._metadata_cache:
+                    timestamp, _ = self._metadata_cache[landmark_id]
+                    if datetime.datetime.now() - timestamp < self._cache_ttl:
+                        cache_hits += 1
+                    else:
+                        cache_misses += 1
+                else:
+                    cache_misses += 1
+
                 # Convert to dict for test compatibility, removing None values
                 if hasattr(meta, "dict"):
                     d = meta.dict()
@@ -442,6 +500,13 @@ class EnhancedMetadataCollector:
                 # Skip this landmark and continue with others
                 continue
 
+        # Log cache statistics
+        total = cache_hits + cache_misses
+        hit_ratio = cache_hits / total if total > 0 else 0
+        logger.info(
+            f"Metadata cache statistics: {cache_hits} hits, {cache_misses} misses, {hit_ratio:.1%} hit ratio"
+        )
+
         return result
 
 
@@ -453,3 +518,14 @@ def get_metadata_collector() -> EnhancedMetadataCollector:
         EnhancedMetadataCollector instance
     """
     return EnhancedMetadataCollector()
+
+
+def clear_metadata_cache() -> None:
+    """Clear the metadata cache in all collector instances.
+
+    This is useful for testing or when you need to force fresh metadata fetching.
+    """
+    collector = get_metadata_collector()
+    cache_size = len(collector._metadata_cache)
+    collector._metadata_cache.clear()
+    logger.info(f"Cleared metadata cache ({cache_size} entries)")
