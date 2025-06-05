@@ -34,6 +34,18 @@ repos:
       - id: isort
         args: ["--profile", "black", "--filter-files"]
 
+  - repo: https://github.com/pycqa/autoflake
+    rev: v2.3.1
+    hooks:
+      - id: autoflake
+        args:
+          [
+            "--in-place",
+            "--remove-all-unused-imports",
+            "--remove-unused-variables",
+          ]
+        files: ^(scripts|nyc_landmarks|tests|utils)/.*\.py$
+
   - repo: https://github.com/pycqa/flake8
     rev: 7.2.0
     hooks:

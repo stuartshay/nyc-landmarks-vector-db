@@ -179,7 +179,6 @@ class DbClient:
         except Exception as e:
             logger.warning(f"Error using Pydantic model for landmarks page: {e}")
             # Fall back to the dictionary-based approach
-            pass
 
         # Use the legacy approach as fallback
         # If we're using the CoreDataStore API, it supports pagination directly

@@ -489,22 +489,33 @@ class WikipediaProcessor:
             Total chunks embedded
         """
         # Collect enhanced metadata once for this landmark
-        from nyc_landmarks.vectordb.enhanced_metadata import EnhancedMetadataCollector
+        from nyc_landmarks.vectordb.enhanced_metadata import get_metadata_collector
 
         enhanced_metadata_dict = {}
         try:
-            collector = EnhancedMetadataCollector()
+            # Use the factory function to get a singleton-like instance with caching
+            collector = get_metadata_collector()
+
+            # This will use cached metadata if available
+            start_time = datetime.datetime.now()
             enhanced_metadata_obj = collector.collect_landmark_metadata(landmark_id)
+            fetch_time = datetime.datetime.now() - start_time
+
             enhanced_metadata_dict = (
                 enhanced_metadata_obj.model_dump(exclude_none=True)
                 if enhanced_metadata_obj
                 else {}
             )
-            logger.info(f"Collected enhanced metadata for landmark {landmark_id}")
 
-            # DEBUG: Log all metadata keys
+            # Log metadata collection details
+            is_cached = landmark_id in collector._metadata_cache and (
+                datetime.datetime.now() - collector._metadata_cache[landmark_id][0]
+                < collector._cache_ttl
+            )
+            cache_status = "cached" if is_cached else "fresh"
             logger.info(
-                f"DEBUG: Wikipedia processor enhanced metadata keys: {list(enhanced_metadata_dict.keys())}"
+                f"Collected enhanced metadata for landmark {landmark_id} "
+                f"({cache_status}, fetch time: {fetch_time.total_seconds():.3f}s)"
             )
 
             # Log flattened building data information if available
@@ -513,9 +524,6 @@ class WikipediaProcessor:
                 for k, v in enhanced_metadata_dict.items()
                 if k.startswith("building_")
             }
-            logger.info(
-                f"DEBUG: Wikipedia processor found {len(building_fields)} building fields"
-            )
             if building_fields:
                 building_count = len(
                     [
