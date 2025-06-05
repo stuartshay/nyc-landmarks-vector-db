@@ -25,12 +25,18 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # Install requirements first without failing on errors
-          if [ -f requirements.txt ]; then pip install -r requirements.txt || echo "Some requirements failed to install, continuing"; fi
+          # Install requirements first
+          echo "Installing base requirements..."
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+            echo "Base requirements installed successfully"
+          fi
           # Install the package itself in development mode
+          echo "Installing package in development mode..."
           pip install -e ".[dev]"
-          # Install testing tools
-          pip install pytest pytest-cov flake8 "black[jupyter]" isort mypy bandit
+          echo "Development installation completed"
+          # Verify critical packages are available
+          python -c "import pytest, black, isort, mypy, flake8; print('All testing tools imported successfully')"
 
       - name: Lint with flake8
         run: |
