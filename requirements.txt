@@ -107,7 +107,7 @@ pandocfilters==1.5.1
 parso==0.8.4
 pathspec==0.12.1
 pbr==6.1.1
-pdfminer.six==20250506
+pdfminer.six==20250327
 pdfplumber==0.11.6
 pexpect==4.9.0
 pillow==11.2.1
