@@ -102,7 +102,7 @@ openai==1.84.0
 openpyxl==3.1.5
 overrides==7.7.0
 packaging==24.2
-pandas==2.2.3
+pandas==2.3.0
 pandas-stubs==2.2.3.250527
 pandocfilters==1.5.1
 parso==0.8.4

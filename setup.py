@@ -121,7 +121,7 @@ setup(
             "nbstripout>=0.6.1",  # Added for notebook cleaning
             "pytest-cov>=6.1.1",  # Added for coverage
             "pytest-dotenv>=0.5.2",  # Added for loading .env files in tests
-            "pandas>=2.2.3",  # Added explicitly for tests
+            "pandas>=2.3.0",  # Updated to match main requirements - Added explicitly for tests
             "numpy>=2.2.5",  # Added explicitly for tests - latest version as of May 2025
             "pandas-stubs>=2.1.1.0",  # Added for pandas type checking
             "pytest-asyncio>=0.26.0",  # Added for asyncio support in tests
