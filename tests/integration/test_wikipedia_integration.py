@@ -60,11 +60,13 @@ def _verify_stored_vectors(
     test_embedding = embedding_generator.generate_embedding("test query")
 
     # Try querying with no filter first to see if any vectors exist
+    # Use namespace_override to match the storage namespace
     try:
         all_results = pinecone_db.query_vectors(
             query_vector=test_embedding,
             top_k=10,
             filter_dict={},  # No filter to see all vectors
+            namespace_override=pinecone_db.namespace,  # Use the same namespace as storage
         )
         logger.info(f"Found {len(all_results)} total vectors in index")
 
@@ -73,6 +75,7 @@ def _verify_stored_vectors(
             query_vector=test_embedding,
             top_k=10,
             filter_dict={"landmark_id": landmark_id},
+            namespace_override=pinecone_db.namespace,  # Use the same namespace as storage
         )
         logger.info(f"Found {len(landmark_results)} vectors for landmark {landmark_id}")
 
@@ -432,6 +435,7 @@ def _query_vectors_for_verification(
             "landmark_id": TEST_LANDMARK_ID,
             "source_type": expected_source_type,
         },
+        namespace_override=pinecone_db.namespace,  # Use the same namespace as storage
     )
 
     assert results, f"Should retrieve vectors with source_type '{expected_source_type}'"
