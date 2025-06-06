@@ -261,14 +261,10 @@ def process_landmarks(
         logger.info(
             f"Processing {len(landmarks)} landmarks in parallel with {workers} workers"
         )
-        return process_landmarks_parallel(
-            landmarks, delete_existing, workers
-        )
+        return process_landmarks_parallel(landmarks, delete_existing, workers)
     else:
         logger.info(f"Processing {len(landmarks)} landmarks sequentially")
-        return process_landmarks_sequential(
-            landmarks, delete_existing
-        )
+        return process_landmarks_sequential(landmarks, delete_existing)
 
 
 def main() -> None:

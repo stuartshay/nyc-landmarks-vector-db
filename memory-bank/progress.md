@@ -13,6 +13,7 @@ Project Progress
 
 ### Recently Completed Features
 
+- **Identified GitHub Workflow Parameter Cleanup (PR #148)**: Reviewed the `.github/workflows/process_wikipedia.yml` workflow file and identified unused parameters that can be safely removed. The workflow defines `chunk_size` and `chunk_overlap` parameters and passes them to the `scripts/ci/process_wikipedia_articles.py` script, but the script doesn't accept these parameters in its argument parser. The `WikipediaProcessor` class now handles text chunking internally with default values or configuration elsewhere. Removing these parameters will make the workflow file more accurate without affecting functionality.
 - **Improved Landmark Metrics Concurrency**: Enhanced `scripts/fetch_landmark_reports.py` with parallel processing for both Wikipedia article count fetching and PDF index status checking using ThreadPoolExecutor. This implementation replaces sequential processing with concurrent execution, allowing multiple API requests to execute simultaneously. Testing confirmed successful parallel execution with visible performance benefits even on small datasets (5 landmarks), as multiple Wikipedia requests and PDF index checks were processed concurrently.
 - **Complete Phase 2 API Integration Tests**: Successfully executed and completed all planned API integration tests for the CoreDataStore APIs, including Photo Archive API, PLUTO Data API, and Reference Data APIs. Executed Wikipedia processing with refactored components on 25 landmarks, generated comprehensive analysis results, and created implementation recommendations based on API testing.
 - **Main Wikipedia Processing Script Refactoring**: Successfully refactored and streamlined the large `scripts/ci/process_wikipedia_articles.py` script from 757 lines down to approximately 200 lines while maintaining all functionality. The script now focuses on orchestration logic and delegates core Wikipedia processing to the modular `WikipediaProcessor` class.
@@ -52,6 +53,11 @@ Project Progress
 - Completing extraction of utilities to `nyc_landmarks/wikipedia/utils.py`
 - Testing refactored components to ensure functionality preservation
 - Validating performance parity with original implementation
+
+### GitHub Workflow Improvements
+
+- Reviewing and cleaning up GitHub Actions workflow files to ensure parameters align with script capabilities
+- Simplifying workflow files by removing unused parameters and streamlining configuration options
 
 ## What's Left to Build
 
@@ -128,6 +134,7 @@ Project Progress
 - **Performance Impact**: Need to measure and optimize performance impact of API integrations
 - **Testing Coverage**: Refactored components need comprehensive test coverage before production use
 - **API Error Handling**: Some CoreDataStore API endpoints return 404 for valid landmarks that simply don't have the requested data, requiring careful error handling to distinguish between actual errors and expected "no data" responses
+- **Workflow Parameter Mismatch**: Some GitHub Actions workflow files contain parameters that aren't actually used by the scripts they invoke, making the workflow files more complex than necessary
 
 ## Success Metrics Achieved
 
@@ -164,8 +171,14 @@ Project Progress
 - ✅ Tested all CoreDataStore APIs (Photo Archive, PLUTO Data, Reference Data)
 - ✅ Generated implementation recommendations based on API testing results
 
+### CI/CD Workflow Improvements
+
+- ✅ Identified unused parameters in GitHub workflow files (PR #148)
+- ✅ Documented workflow parameter mismatch for cleanup
+
 ## Success Metrics In Progress
 
 - 🔄 Implementing Wikipedia API improvements for better performance and reliability
 - 🔄 Complete functionality preservation testing
 - 🔄 Performance validation of refactored components
+- 🔄 Cleaning up GitHub Actions workflow files to align with script capabilities
