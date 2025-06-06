@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple, TypedDict
 
 import requests
 from bs4 import BeautifulSoup
+from requests.adapters import HTTPAdapter
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -43,15 +44,31 @@ class WikipediaFetcher:
     """Wikipedia content fetcher for landmark articles."""
 
     def __init__(self) -> None:
-        """Initialize the Wikipedia fetcher."""
+        """Initialize the Wikipedia fetcher with a persistent session."""
         # Set up basic configuration
         self.user_agent = (
             "NYCLandmarksVectorDB/1.0 (https://github.com/username/nyc-landmarks-vector-db; "
             "email@example.com) Python-Requests/2.31.0"
         )
-        self.headers = {"User-Agent": self.user_agent}
+
+        # Create a persistent session with connection pooling
+        self.session = requests.Session()
+        self.session.headers.update({"User-Agent": self.user_agent})
+
+        # Configure connection pooling with retry capability
+        adapter = HTTPAdapter(
+            pool_connections=10,  # Number of connection objects to keep in pool
+            pool_maxsize=20,  # Maximum number of connections in the pool
+            max_retries=3,  # Default retry configuration
+            pool_block=False,  # Whether to block when pool is full
+        )
+        self.session.mount("http://", adapter)
+        self.session.mount("https://", adapter)
+
+        # Configure rate limiting
         self.rate_limit_delay = 1.0  # Seconds between requests to be polite
-        logger.info("Initialized Wikipedia content fetcher")
+
+        logger.info("Initialized Wikipedia content fetcher with connection pooling")
 
     @retry(  # type: ignore[misc]
         retry=retry_if_exception_type(
@@ -120,13 +137,40 @@ class WikipediaFetcher:
             BeautifulSoup object with parsed HTML
         """
         logger.info(f"Fetching Wikipedia content from: {url}")
-        response = requests.get(url, headers=self.headers, timeout=30)
-        response.raise_for_status()
 
-        logger.debug(f"HTTP response status: {response.status_code}")
-        logger.debug(f"Response preview: {response.text[:500]}...")
+        try:
+            # Use persistent session with separate connect and read timeouts
+            # - connect_timeout: time to establish the connection (3.05s)
+            # - read_timeout: time to receive the full response (27s)
+            response = self.session.get(
+                url,
+                timeout=(3.05, 27),  # (connect_timeout, read_timeout)
+            )
+            response.raise_for_status()
 
-        return BeautifulSoup(response.text, "html.parser")
+            # Enhance logging for better debugging
+            logger.debug(f"HTTP response status: {response.status_code}")
+            logger.debug(f"Response headers: {dict(response.headers)}")
+            logger.debug(f"Response size: {len(response.text)} bytes")
+            logger.debug(f"Response preview: {response.text[:500]}...")
+
+            return BeautifulSoup(response.text, "html.parser")
+
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"Connection error fetching {url}: {e}", exc_info=True)
+            raise
+        except requests.exceptions.Timeout as e:
+            logger.error(f"Timeout error fetching {url}: {e}", exc_info=True)
+            raise
+        except requests.exceptions.HTTPError as e:
+            logger.error(
+                f"HTTP error fetching {url}: {response.status_code} - {e}",
+                exc_info=True,
+            )
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error fetching {url}: {e}", exc_info=True)
+            raise
 
     def _extract_revision_id(self, soup: BeautifulSoup, url: str) -> Optional[str]:
         """Extract revision ID from the Wikipedia page.
