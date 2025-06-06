@@ -15,7 +15,7 @@ Upgraded pandas from version 2.2.3 to 2.3.0 to leverage the latest improvements 
 
 - **Previous Version**: pandas 2.2.3
 - **New Version**: pandas 2.3.0
-- **Pandas-stubs**: Kept at 2.2.3.250527 (still compatible)
+- **Pandas-stubs**: Using >=2.2.3.250308 (as specified in setup.py)
 
 ## Compatibility Assessment
 
@@ -40,18 +40,31 @@ Based on the pandas 2.3.0 release notes, the changes include:
 
 ## Dependencies
 
+### Project Dependency Specifications
+
+- **setup.py main requirements**: `pandas>=2.3.0`, `numpy>=2.2.5`
+- **setup.py dev requirements**: `pandas>=2.3.0`, `numpy>=2.2.5`, `pandas-stubs>=2.2.3.250308`
+- **requirements.txt (pinned)**: `pandas==2.3.0`, `numpy==2.1.3`, `pandas-stubs==2.2.3.250527`
+
+### pandas 2.3.0 Requirements
+
 - pandas 2.3.0 requires:
-  - numpy>=1.26.0 ✓ (current: 2.2.6)
+  - numpy>=1.26.0 ✓ (project requires: numpy>=2.2.5, current: 2.2.6)
   - python-dateutil>=2.8.2 ✓
   - pytz>=2020.1 ✓
   - tzdata>=2022.7 ✓
+
+### Notes
+
+- The project specifies higher minimum versions than pandas requires for numpy
+- pandas-stubs version in requirements.txt (2.2.3.250527) is compatible with setup.py specification (>=2.2.3.250308)
 
 ## Impact Assessment
 
 - **No breaking changes** detected in codebase
 - **Performance improvements** from pandas 2.3.0
 - **Maintained compatibility** with existing functionality
-- **Type checking** still works with pandas-stubs 2.2.3.250527
+- **Type checking** still works with pandas-stubs (requirements.txt: 2.2.3.250527, setup.py: >=2.2.3.250308)
 
 ## Rollback Plan
 
