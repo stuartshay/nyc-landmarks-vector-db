@@ -28,16 +28,11 @@ logging.basicConfig(level=settings.LOG_LEVEL.value)
 
 def get_vector_metadata(pinecone_db: PineconeDB, vector_id: str) -> Dict[str, Any]:
     """Get the metadata for a specific vector ID."""
-    # Query Pinecone for the specific vector ID
-    filter_dict: Dict[str, str] = {"id": vector_id}
-    results: List[Dict[str, Any]] = pinecone_db.query_vectors(
-        query_vector=[],  # No need for a query vector
-        top_k=1,  # Only need one result
-        filter_dict=filter_dict,
-    )
+    # Use fetch_vector_by_id for direct vector retrieval
+    vector_data = pinecone_db.fetch_vector_by_id(vector_id)
 
     # Return the metadata of the found vector, or an empty dict if not found
-    return results[0].get("metadata", {}) if results else {}
+    return vector_data.get("metadata", {}) if vector_data else {}
 
 
 def get_vector_count(

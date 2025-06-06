@@ -107,9 +107,20 @@ class TestPDFIndexFunctionality(unittest.TestCase):
                 dumped_data = mock_json.dump.call_args[0][
                     0
                 ]  # Extract the first positional argument
+
+                # The dumped data should be the complex structure with metadata and landmarks
+                expected_landmarks = [
+                    {"lpNumber": "LP-00001", "name": "Test 1", "in_pdf_index": "Yes"},
+                    {"lpNumber": "LP-00002", "name": "Test 2", "in_pdf_index": "No"},
+                ]
+
+                # Check that the landmarks section contains the expected data
+                self.assertIn(
+                    "landmarks", dumped_data, "landmarks key not found in dumped data"
+                )
                 self.assertEqual(
-                    dumped_data,
-                    reports,
+                    dumped_data["landmarks"],
+                    expected_landmarks,
                     "PDF index status not correctly included in JSON output",
                 )
 

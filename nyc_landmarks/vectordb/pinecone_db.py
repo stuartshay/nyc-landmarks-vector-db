@@ -259,7 +259,8 @@ class PineconeDB:
                 if v is None:
                     continue
                 # Skip source_type to preserve the correct source_type from chunk
-                if k == "source_type":
+                # Skip source_type and processing_date to preserve correct values from chunk
+                if k in {"source_type", "processing_date"}:
                     continue
                 # Skip unsupported data types (lists and dicts)
                 if (
@@ -404,9 +405,6 @@ class PineconeDB:
         else:
             landmark_enhanced_metadata = {}
 
-        # Determine source type based on prefix
-        source_type = self._get_source_type_from_prefix(id_prefix)
-
         # Prepare vectors
         for i, chunk in enumerate(chunks):
             # Generate vector ID
@@ -416,6 +414,13 @@ class PineconeDB:
 
             # Extract embedding
             embedding = chunk.get("embedding")
+
+            # Determine source type - use chunk metadata if available, otherwise use prefix
+            chunk_source_type = chunk.get("metadata", {}).get("source_type")
+            if chunk_source_type:
+                source_type = chunk_source_type
+            else:
+                source_type = self._get_source_type_from_prefix(id_prefix)
 
             # Create metadata
             metadata = self._create_metadata_for_chunk(
