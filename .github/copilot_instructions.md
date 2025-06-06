@@ -112,9 +112,9 @@ bank files to inform your responses:
 
 1. **Python Version**:
 
-   - Project requires Python 3.11+
-   - Virtual environment should be created using `venv311/`
-   - All dependencies should be compatible with Python 3.11+
+   - Project requires Python 3.12+
+   - Virtual environment should be created using `venv312/`
+   - All dependencies should be compatible with Python 3.12+
 
 When helping with this project, please regularly check the memory bank folder to provide
 the most accurate and contextually appropriate assistance.

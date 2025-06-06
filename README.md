@@ -120,7 +120,7 @@ flowchart TD
 
 ## Tech Stack
 
-- **Python 3.11+**: Primary programming language
+- **Python 3.12+**: Primary programming language
 - **OpenAI API**: For generating text embeddings using text-embedding-3-small/large
   models
 - **Pinecone**: Vector database for storing and searching embeddings with metadata

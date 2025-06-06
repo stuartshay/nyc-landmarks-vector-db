@@ -58,6 +58,7 @@ Advanced Features:
     # Process specific page range
     python scripts/fetch_landmark_reports.py --page 5 --limit 50
 
+    # fmt: off
     # Include Wikipedia data with Excel export
     python scripts/fetch_landmark_reports.py --include-wikipedia --export-excel --limit 100
 
@@ -67,6 +68,7 @@ Advanced Features:
     # Combine Wikipedia data and PDF index status
     python scripts/fetch_landmark_reports.py --include-wikipedia --include-pdf-index --limit 50 --export-excel
     python scripts/fetch_landmark_reports.py --include-wikipedia --include-pdf-index --export-excel
+    # fmt: on
 
 Excel Export Option:
     # Export results to Excel (XLSX) format
@@ -841,7 +843,9 @@ class LandmarkReportProcessor:
 
         total = len(reports)
         futures = {}
-        with concurrent.futures.ThreadPoolExecutor(max_workers=min(32, os.cpu_count() or 1)) as executor:
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=min(32, os.cpu_count() or 1)
+        ) as executor:
             for i, report in enumerate(reports):
                 landmark_id = report.get("lpNumber") or report.get("lpcId")
 
