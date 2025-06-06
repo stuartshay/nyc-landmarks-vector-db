@@ -259,10 +259,8 @@ class PineconeDB:
                 if v is None:
                     continue
                 # Skip source_type to preserve the correct source_type from chunk
-                if k == "source_type":
-                    continue
-                # Skip processing_date to preserve the correct processing_date from chunk
-                if k == "processing_date":
+                # Skip source_type and processing_date to preserve correct values from chunk
+                if k in {"source_type", "processing_date"}:
                     continue
                 # Skip unsupported data types (lists and dicts)
                 if (
