@@ -6,6 +6,7 @@ The current focus has shifted to the Wikipedia API Improvement Project. Having s
 
 ## Recent Changes
 
+- **Improved Landmark Metrics Concurrency**: Implemented parallel processing in `scripts/fetch_landmark_reports.py` for both Wikipedia article count fetching and PDF index status checking using ThreadPoolExecutor. This enhancement replaces sequential processing with concurrent execution, significantly improving performance for large datasets by allowing multiple requests to be processed simultaneously.
 - **Completed Wikipedia Processing Refactoring**: Successfully refactored the large `scripts/ci/process_wikipedia_articles.py` script (757 lines) to use the modular `WikipediaProcessor` class. The main script now focuses on orchestration logic, command-line argument handling, and results reporting while delegating core Wikipedia processing functionality to the dedicated `WikipediaProcessor` class.
 - **Enhanced Vector Query Capabilities in PineconeDB**: Significantly improved the vector database query functionality with enhanced filtering options, better namespace handling, and more robust error recovery. Consolidated multiple query methods into a single, more powerful `query_vectors` method with comprehensive options for different use cases.
 - **Enhanced Vector Utility Tool**: Extensively improved the `scripts/vector_utility.py` tool with comprehensive capabilities for vector inspection, validation, and comparison. Added robust handling of different building metadata formats and better formatting for displaying vector information.

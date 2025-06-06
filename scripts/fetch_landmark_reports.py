@@ -92,6 +92,7 @@ consistency with the rest of the project.
 """
 
 import argparse
+import concurrent.futures
 import datetime
 import json
 import os
@@ -101,7 +102,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import concurrent.futures
 import requests
 
 # Add the project root to the path so we can import nyc_landmarks modules
@@ -851,9 +851,11 @@ class LandmarkReportProcessor:
                     metrics.pdf_index_check_failures += 1
                     continue
 
-                futures[
-                    executor.submit(self.check_pdf_in_index, landmark_id)
-                ] = (i, report, landmark_id)
+                futures[executor.submit(self.check_pdf_in_index, landmark_id)] = (
+                    i,
+                    report,
+                    landmark_id,
+                )
 
             for future in concurrent.futures.as_completed(futures):
                 i, report, landmark_id = futures[future]
@@ -870,7 +872,9 @@ class LandmarkReportProcessor:
                         )
 
                 except Exception as e:
-                    error_msg = f"Error checking PDF index for landmark {landmark_id}: {e}"
+                    error_msg = (
+                        f"Error checking PDF index for landmark {landmark_id}: {e}"
+                    )
                     logger.error(error_msg)
                     metrics.errors_encountered.append(error_msg)
                     report["in_pdf_index"] = "No"
