@@ -101,7 +101,7 @@ numpy==2.2.6
 openai==1.84.0
 openpyxl==3.1.5
 overrides==7.7.0
-packaging==25.0
+packaging==24.2
 pandas==2.2.3
 pandas-stubs==2.2.3.250527
 pandocfilters==1.5.1
@@ -112,7 +112,8 @@ pdfminer.six==20250327
 pdfplumber==0.11.6
 pexpect==4.9.0
 pillow==11.2.1
-pinecone==6.0.2
+pinecone==7.0.2
+pinecone-plugin-assistant==1.6.1
 pinecone-plugin-interface==0.0.7
 pip-tools==7.4.1
 platformdirs==4.3.8

@@ -75,10 +75,9 @@ setup(
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
     ],
-    python_requires=">=3.11",
+    python_requires=">=3.12",
     cmdclass={
         "develop": PostDevelopCommand,
         "install": PostInstallCommand,
@@ -87,7 +86,7 @@ setup(
         "fastapi>=0.115.12",
         "uvicorn>=0.34.2",
         "openai>=1.82.0",
-        "pinecone>=6.0.2",  # Updated from pinecone-client to pinecone
+        "pinecone>=7.0.2",  # Updated to Pinecone 7.0.2 with 2025-04 API
         "pypdf>=5.4.0",  # Updated from pypdf2 to pypdf
         "pdfplumber>=0.11.6",
         "azure-storage-blob>=12.25.1",
@@ -97,13 +96,13 @@ setup(
         "python-dotenv>=1.1.0",
         "tiktoken>=0.9.0",
         "numpy>=2.2.5",  # Added for vector tests - latest version as of May 2025
-        "pandas>=2.2.3",  # Added for dataframe tests
+        "pandas>=2.3.0",  # Updated to latest version - Added for dataframe tests
         "tenacity>=9.1.2",  # Added for retry logic in API calls
         "beautifulsoup4>=4.13.4",  # Added for Wikipedia scraping
         "requests>=2.32.3",  # Added for HTTP requests
         "matplotlib>=3.10.3",  # Added for notebooks
         "folium>=0.19.5",  # Added for map visualizations in notebooks
-        "scikit-learn>=1.6.1",  # Added for clustering in notebooks
+        "scikit-learn>=1.7.0",  # Updated to latest version - Added for clustering in notebooks
         "transformers>=4.52.3",
         "openpyxl>=3.1.5",  # Added for Excel file manipulation
     ],
