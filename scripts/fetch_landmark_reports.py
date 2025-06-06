@@ -326,7 +326,7 @@ class LandmarkReportProcessor:
 
         total = len(reports)
         futures = {}
-        with concurrent.futures.ThreadPoolExecutor() as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(32, os.cpu_count() or 1)) as executor:
             for i, report in enumerate(reports):
                 landmark_id = report.get("lpNumber") or report.get("lpcId")
 
