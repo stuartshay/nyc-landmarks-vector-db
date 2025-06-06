@@ -26,7 +26,7 @@ def _build_command(
     verbose: bool,
 ) -> list[str]:
     """Build the command line arguments for the fetch_landmark_reports.py script."""
-    cmd = ["python", "scripts/fetch_landmark_reports.py", "--limit", str(limit)]
+    cmd = [sys.executable, "scripts/fetch_landmark_reports.py", "--limit", str(limit)]
 
     if include_wikipedia:
         cmd.append("--include-wikipedia")
