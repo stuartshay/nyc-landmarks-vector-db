@@ -47,10 +47,8 @@ class TestWikipediaProcessingFix(unittest.TestCase):
         mock_fetch.return_value = []
 
         # Process the landmark
-        success, articles_processed, chunks_embedded = (
-            processor.process_landmark_wikipedia(
-                "LP-12345", chunk_size=1000, chunk_overlap=200, delete_existing=False
-            )
+        success, articles_processed, chunks_embedded = processor.process_landmark_wikipedia(
+            "LP-12345", delete_existing=False
         )
 
         # Verify that no articles found is treated as success, not failure
@@ -94,10 +92,8 @@ class TestWikipediaProcessingFix(unittest.TestCase):
         mock_process.return_value = ([], 0)
 
         # Process the landmark
-        success, articles_processed, chunks_embedded = (
-            processor.process_landmark_wikipedia(
-                "LP-12345", chunk_size=1000, chunk_overlap=200, delete_existing=False
-            )
+        success, articles_processed, chunks_embedded = processor.process_landmark_wikipedia(
+            "LP-12345", delete_existing=False
         )
 
         # Verify that articles found but processing failed is treated as failure
@@ -151,10 +147,8 @@ class TestWikipediaProcessingFix(unittest.TestCase):
         mock_store.return_value = 3  # 3 chunks embedded
 
         # Process the landmark
-        success, articles_processed, chunks_embedded = (
-            processor.process_landmark_wikipedia(
-                "LP-12345", chunk_size=1000, chunk_overlap=200, delete_existing=False
-            )
+        success, articles_processed, chunks_embedded = processor.process_landmark_wikipedia(
+            "LP-12345", delete_existing=False
         )
 
         # Verify successful processing

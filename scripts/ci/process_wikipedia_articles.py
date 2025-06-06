@@ -36,8 +36,6 @@ logger = get_logger(__name__)
 
 def process_landmarks_sequential(
     landmarks: List[str],
-    chunk_size: int,
-    chunk_overlap: int,
     delete_existing: bool,
 ) -> Dict[str, Any]:
     """
@@ -45,8 +43,6 @@ def process_landmarks_sequential(
 
     Args:
         landmarks: List of landmark IDs to process
-        chunk_size: Target size of each chunk in characters
-        chunk_overlap: Number of characters to overlap between chunks
         delete_existing: Whether to delete existing vectors for landmarks
 
     Returns:
@@ -61,7 +57,7 @@ def process_landmarks_sequential(
         try:
             success, articles_processed, chunks_embedded = (
                 processor.process_landmark_wikipedia(
-                    landmark_id, chunk_size, chunk_overlap, delete_existing
+                    landmark_id, delete_existing=delete_existing
                 )
             )
             results[landmark_id] = {
@@ -104,8 +100,6 @@ def process_landmarks_sequential(
 
 def process_landmarks_parallel(
     landmarks: List[str],
-    chunk_size: int,
-    chunk_overlap: int,
     delete_existing: bool,
     workers: int,
 ) -> Dict[str, Any]:
@@ -114,8 +108,6 @@ def process_landmarks_parallel(
 
     Args:
         landmarks: List of landmark IDs to process
-        chunk_size: Target size of each chunk in characters
-        chunk_overlap: Number of characters to overlap between chunks
         delete_existing: Whether to delete existing vectors for landmarks
         workers: Number of parallel workers
 
@@ -131,7 +123,7 @@ def process_landmarks_parallel(
         processor = WikipediaProcessor()
         success, articles_processed, chunks_embedded = (
             processor.process_landmark_wikipedia(
-                landmark_id, chunk_size, chunk_overlap, delete_existing
+                landmark_id, delete_existing=delete_existing
             )
         )
         return landmark_id, success, articles_processed, chunks_embedded
@@ -191,18 +183,6 @@ def parse_arguments() -> argparse.Namespace:
         "--landmark-ids",
         type=str,
         help="Comma-separated list of landmark IDs to process",
-    )
-    parser.add_argument(
-        "--chunk-size",
-        type=int,
-        default=1000,
-        help="Target size of each chunk in characters",
-    )
-    parser.add_argument(
-        "--chunk-overlap",
-        type=int,
-        default=200,
-        help="Number of characters to overlap between chunks",
     )
     parser.add_argument(
         "--parallel",
@@ -272,8 +252,6 @@ def setup_logging(verbose: bool) -> None:
 
 def process_landmarks(
     landmarks: List[str],
-    chunk_size: int,
-    chunk_overlap: int,
     delete_existing: bool,
     use_parallel: bool,
     workers: int,
@@ -284,12 +262,12 @@ def process_landmarks(
             f"Processing {len(landmarks)} landmarks in parallel with {workers} workers"
         )
         return process_landmarks_parallel(
-            landmarks, chunk_size, chunk_overlap, delete_existing, workers
+            landmarks, delete_existing, workers
         )
     else:
         logger.info(f"Processing {len(landmarks)} landmarks sequentially")
         return process_landmarks_sequential(
-            landmarks, chunk_size, chunk_overlap, delete_existing
+            landmarks, delete_existing
         )
 
 
@@ -311,8 +289,6 @@ def main() -> None:
     start_time = time.time()
     results = process_landmarks(
         landmarks_to_process,
-        args.chunk_size,
-        args.chunk_overlap,
         args.delete_existing,
         args.parallel,
         args.workers,

@@ -635,8 +635,6 @@ class WikipediaProcessor:
     def process_landmark_wikipedia(
         self,
         landmark_id: str,
-        chunk_size: int = 1000,
-        chunk_overlap: int = 200,
         delete_existing: bool = False,
     ) -> Tuple[bool, int, int]:
         """
@@ -644,8 +642,6 @@ class WikipediaProcessor:
 
         Args:
             landmark_id: ID of the landmark to process
-            chunk_size: Target size of each chunk in characters
-            chunk_overlap: Number of characters to overlap between chunks
             delete_existing: Whether to delete existing vectors for the landmark
 
         Returns:
