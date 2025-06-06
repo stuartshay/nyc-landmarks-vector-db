@@ -101,6 +101,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import concurrent.futures
 import requests
 
 # Add the project root to the path so we can import nyc_landmarks modules
@@ -323,8 +324,44 @@ class LandmarkReportProcessor:
 
         logger.info("Adding Wikipedia article counts to landmark reports...")
 
-        for i, report in enumerate(reports):
-            self._process_single_report_wikipedia(report, i, len(reports), metrics)
+        total = len(reports)
+        futures = {}
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            for i, report in enumerate(reports):
+                landmark_id = report.get("lpNumber") or report.get("lpcId")
+
+                if not landmark_id:
+                    logger.warning(
+                        f"No landmark ID found for report {i + 1}, skipping Wikipedia lookup"
+                    )
+                    report["wikipedia_article_count"] = 0
+                    report["in_wikipedia_index"] = "No"
+                    continue
+
+                futures[
+                    executor.submit(
+                        self._fetch_wikipedia_articles_for_landmark,
+                        landmark_id,
+                        i,
+                        total,
+                    )
+                ] = (i, report, landmark_id)
+
+            for future in concurrent.futures.as_completed(futures):
+                i, report, landmark_id = futures[future]
+                try:
+                    article_count = future.result()
+                    report["wikipedia_article_count"] = article_count
+                    report["in_wikipedia_index"] = "Yes" if article_count > 0 else "No"
+
+                    if article_count > 0:
+                        metrics.landmarks_with_wikipedia += 1
+                        metrics.total_wikipedia_articles += article_count
+
+                except Exception as e:
+                    self._handle_wikipedia_fetch_error(e, landmark_id, metrics)
+                    report["wikipedia_article_count"] = 0
+                    report["in_wikipedia_index"] = "No"
 
         self._log_wikipedia_summary(metrics, len(reports))
         return reports
@@ -800,35 +837,44 @@ class LandmarkReportProcessor:
 
         logger.info("Checking PDF index status for landmark reports...")
 
-        for i, report in enumerate(reports):
-            landmark_id = report.get("lpNumber") or report.get("lpcId")
+        total = len(reports)
+        futures = {}
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            for i, report in enumerate(reports):
+                landmark_id = report.get("lpNumber") or report.get("lpcId")
 
-            if not landmark_id:
-                logger.warning(
-                    f"No landmark ID found for report {i + 1}, skipping PDF index check"
-                )
-                report["in_pdf_index"] = "No"
-                metrics.pdf_index_check_failures += 1
-                continue
-
-            try:
-                is_in_index = self.check_pdf_in_index(landmark_id)
-                report["in_pdf_index"] = "Yes" if is_in_index else "No"
-
-                if is_in_index:
-                    metrics.landmarks_in_pdf_index += 1
-
-                if self.verbose and is_in_index:
-                    logger.info(
-                        f"Landmark {landmark_id} PDF found in vector index ({i + 1}/{len(reports)})"
+                if not landmark_id:
+                    logger.warning(
+                        f"No landmark ID found for report {i + 1}, skipping PDF index check"
                     )
+                    report["in_pdf_index"] = "No"
+                    metrics.pdf_index_check_failures += 1
+                    continue
 
-            except Exception as e:
-                error_msg = f"Error checking PDF index for landmark {landmark_id}: {e}"
-                logger.error(error_msg)
-                metrics.errors_encountered.append(error_msg)
-                report["in_pdf_index"] = "No"
-                metrics.pdf_index_check_failures += 1
+                futures[
+                    executor.submit(self.check_pdf_in_index, landmark_id)
+                ] = (i, report, landmark_id)
+
+            for future in concurrent.futures.as_completed(futures):
+                i, report, landmark_id = futures[future]
+                try:
+                    is_in_index = future.result()
+                    report["in_pdf_index"] = "Yes" if is_in_index else "No"
+
+                    if is_in_index:
+                        metrics.landmarks_in_pdf_index += 1
+
+                    if self.verbose and is_in_index:
+                        logger.info(
+                            f"Landmark {landmark_id} PDF found in vector index ({i + 1}/{total})"
+                        )
+
+                except Exception as e:
+                    error_msg = f"Error checking PDF index for landmark {landmark_id}: {e}"
+                    logger.error(error_msg)
+                    metrics.errors_encountered.append(error_msg)
+                    report["in_pdf_index"] = "No"
+                    metrics.pdf_index_check_failures += 1
 
         # Log summary
         logger.info(f"Completed PDF index checking for {len(reports)} landmarks")
