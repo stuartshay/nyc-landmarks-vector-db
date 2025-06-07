@@ -241,7 +241,8 @@ def parse_arguments() -> argparse.Namespace:
         help="Number of landmarks to fetch per API request",
     )
 
-    # Create mutually exclusive group for processing mode
+    # Create mutually exclusive group for processing mode. This group enforces
+    # that --all and --page cannot be used together.
     mode_group = parser.add_mutually_exclusive_group()
     mode_group.add_argument(
         "--all",
@@ -263,10 +264,6 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     args = parser.parse_args()
-
-    # Additional validation
-    if args.all and args.page != 1:
-        parser.error("Cannot use --all with --page (they are mutually exclusive)")
 
     return args
 
