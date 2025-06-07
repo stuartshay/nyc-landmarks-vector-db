@@ -20,6 +20,7 @@ import argparse
 import concurrent.futures
 import logging
 import sys
+import threading
 import time
 from typing import Any, Dict, List, Set, Tuple
 
@@ -32,6 +33,28 @@ from nyc_landmarks.wikipedia import WikipediaProcessor
 
 # Configure logging
 logger = get_logger(__name__)
+
+
+_thread_local = threading.local()
+
+
+def _get_processor() -> WikipediaProcessor:
+    """Return a thread-local ``WikipediaProcessor`` instance.
+
+    Example
+    -------
+    Use within a worker function to share a single processor per thread::
+
+        def worker(landmark_id: str) -> None:
+            processor = _get_processor()
+            processor.process_landmark_wikipedia(landmark_id)
+    """
+
+    processor = getattr(_thread_local, "processor", None)
+    if processor is None:
+        processor = WikipediaProcessor()
+        _thread_local.processor = processor
+    return processor
 
 
 def process_landmarks_sequential(
@@ -113,6 +136,10 @@ def process_landmarks_parallel(
 
     Returns:
         Dictionary mapping landmark IDs to processing results
+
+    Example
+    -------
+    >>> process_landmarks_parallel(["LP-00079"], False, workers=4)
     """
     results: Dict[str, Any] = {}
     errors: List[str] = []
@@ -120,7 +147,7 @@ def process_landmarks_parallel(
 
     def process_single_landmark(landmark_id: str) -> Tuple[str, bool, int, int]:
         """Process a single landmark and return results."""
-        processor = WikipediaProcessor()
+        processor = _get_processor()
         success, articles_processed, chunks_embedded = (
             processor.process_landmark_wikipedia(
                 landmark_id, delete_existing=delete_existing
