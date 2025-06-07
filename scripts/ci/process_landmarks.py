@@ -1040,7 +1040,8 @@ def parse_arguments() -> argparse.Namespace:
         help="CoreDataStore API key (optional, uses env var if not set)",
     )
 
-    # Create mutually exclusive group for processing mode
+    # Create mutually exclusive group for processing mode. This group enforces
+    # that --all and --page cannot be used together.
     mode_group = parser.add_mutually_exclusive_group()
     mode_group.add_argument(
         "--all",
@@ -1062,12 +1063,6 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     args = parser.parse_args()
-
-    # Additional validation: if someone uses --page with default value and --all
-    if args.all and args.page != 1:
-        parser.error(
-            "Argument --all cannot be used with --page (use either --all or --page N, not both)"
-        )
 
     return args
 
