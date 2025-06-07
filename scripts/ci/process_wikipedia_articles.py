@@ -71,7 +71,7 @@ def process_landmarks_sequential(
     Returns:
         Dictionary mapping landmark IDs to processing results
     """
-    processor = WikipediaProcessor()
+    processor = _get_processor()
     results: Dict[str, Any] = {}
     errors: List[str] = []
     skipped_landmarks: Set[str] = set()
