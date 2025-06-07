@@ -5,6 +5,8 @@ import time
 from typing import Any, Dict, List, Tuple
 from unittest.mock import Mock, patch
 
+import pytest
+
 # Add the project root to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
@@ -317,25 +319,6 @@ class TestProcessLandmarksParallel:
         assert "__metadata__" in result
 
     @patch('scripts.ci.process_wikipedia_articles._get_processor')
-    def test_process_landmarks_parallel_skips_zero_articles(
-        self, mock_get_processor: Mock
-    ) -> None:
-        """Landmarks with zero articles should be tracked as skipped."""
-        mock_processor = Mock()
-        mock_processor.process_landmark_wikipedia.side_effect = [
-            (True, 0, 0),
-            (False, 0, 0),
-        ]
-        mock_get_processor.return_value = mock_processor
-
-        result = process_landmarks_parallel(
-            ["landmark_1", "landmark_2"], delete_existing=False, workers=2
-        )
-
-        skipped = result["__metadata__"]["skipped_landmarks"]
-        assert skipped == {"landmark_1", "landmark_2"}
-
-    @patch('scripts.ci.process_wikipedia_articles._get_processor')
     def test_process_landmarks_parallel_concurrent_execution(
         self, mock_get_processor: Mock
     ) -> None:
@@ -460,20 +443,6 @@ class TestProcessLandmarksSequential:
         mock_processor.process_landmark_wikipedia.assert_not_called()
 
     @patch('scripts.ci.process_wikipedia_articles._get_processor')
-    def test_process_landmarks_sequential_skips_zero_articles(
-        self, mock_get_processor: Mock
-    ) -> None:
-        """Landmarks with zero articles should be tracked as skipped."""
-        mock_processor = Mock()
-        mock_processor.process_landmark_wikipedia.return_value = (True, 0, 0)
-        mock_get_processor.return_value = mock_processor
-
-        result = process_landmarks_sequential(["landmark_1"], delete_existing=False)
-
-        skipped = result["__metadata__"]["skipped_landmarks"]
-        assert skipped == {"landmark_1"}
-
-    @patch('scripts.ci.process_wikipedia_articles._get_processor')
     def test_process_landmarks_sequential_exception_handling(
         self, mock_get_processor: Mock
     ) -> None:
@@ -595,4 +564,49 @@ class TestConcurrencyAndThreadSafety:
         # Verify all landmarks were processed exactly once
         processed_landmarks = [landmark_id for landmark_id, _ in results_tracking]
         assert set(processed_landmarks) == set(landmark_ids)
-        assert len(processed_landmarks) == len(landmark_ids)
+
+
+class TestProcessLandmarksZeroArticles:
+    """Test zero articles handling across both processing modes."""
+
+    @pytest.mark.parametrize(
+        "processing_function,test_landmarks,expected_side_effect",
+        [
+            (
+                process_landmarks_parallel,
+                ["landmark_1", "landmark_2"],
+                [(True, 0, 0), (False, 0, 0)],  # side_effect for parallel
+            ),
+            (
+                process_landmarks_sequential,
+                ["landmark_1"],
+                (True, 0, 0),  # return_value for sequential
+            ),
+        ],
+    )
+    @patch('scripts.ci.process_wikipedia_articles._get_processor')
+    def test_process_landmarks_skips_zero_articles(
+        self,
+        mock_get_processor: Mock,
+        processing_function: Any,
+        test_landmarks: List[str],
+        expected_side_effect: Any,
+    ) -> None:
+        """Landmarks with zero articles should be tracked as skipped."""
+        mock_processor = Mock()
+        mock_get_processor.return_value = mock_processor
+
+        # Configure mock based on whether it's parallel or sequential
+        if processing_function == process_landmarks_parallel:
+            mock_processor.process_landmark_wikipedia.side_effect = expected_side_effect
+            result = processing_function(
+                test_landmarks, delete_existing=False, workers=2
+            )
+        else:  # sequential
+            mock_processor.process_landmark_wikipedia.return_value = (
+                expected_side_effect
+            )
+            result = processing_function(test_landmarks, delete_existing=False)
+
+        skipped = result["__metadata__"]["skipped_landmarks"]
+        assert skipped == set(test_landmarks)
