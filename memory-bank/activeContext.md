@@ -6,6 +6,8 @@ The current focus has shifted to the Wikipedia API Improvement Project. Having s
 
 ## Recent Changes
 
+- **Implemented PR #149 - Thread-Local Optimization for WikipediaProcessor**: Enhanced the parallel processing capabilities in `scripts/ci/process_wikipedia_articles.py` by implementing thread-local storage for `WikipediaProcessor` instances. Added the `_get_processor()` helper function to manage thread-local instances, ensuring each thread reuses a single processor instance rather than creating new ones for each landmark. This optimization reduces overhead and improves performance in multi-threaded environments, particularly for large-scale processing jobs.
+- **Reviewed PR #148 - Workflow Parameter Cleanup**: Analyzed the GitHub workflow file `.github/workflows/process_wikipedia.yml` and identified unused parameters that can be safely removed. Specifically, the `chunk_size` and `chunk_overlap` parameters are defined in the workflow inputs and passed to the processing script, but the script itself doesn't accept these parameters in its argument parser. The `WikipediaProcessor` class likely handles text chunking internally with default values or configuration elsewhere. Removing these parameters will make the workflow file more accurate without affecting functionality.
 - **Improved Landmark Metrics Concurrency**: Implemented parallel processing in `scripts/fetch_landmark_reports.py` for both Wikipedia article count fetching and PDF index status checking using ThreadPoolExecutor. This enhancement replaces sequential processing with concurrent execution, significantly improving performance for large datasets by allowing multiple requests to be processed simultaneously.
 - **Completed Wikipedia Processing Refactoring**: Successfully refactored the large `scripts/ci/process_wikipedia_articles.py` script (757 lines) to use the modular `WikipediaProcessor` class. The main script now focuses on orchestration logic, command-line argument handling, and results reporting while delegating core Wikipedia processing functionality to the dedicated `WikipediaProcessor` class.
 - **Enhanced Vector Query Capabilities in PineconeDB**: Significantly improved the vector database query functionality with enhanced filtering options, better namespace handling, and more robust error recovery. Consolidated multiple query methods into a single, more powerful `query_vectors` method with comprehensive options for different use cases.
@@ -113,6 +115,12 @@ The current focus has shifted to the Wikipedia API Improvement Project. Having s
   - Non-dictionary building data (handle string or other simple types)
   - Multiple buildings in a single landmark (proper formatting for each building)
   - Missing or null field values (skip displaying them instead of showing "None")
+
+### CI/CD Workflow Improvements
+
+- Identify and remove unused workflow parameters to keep GitHub Actions workflows accurate and maintainable
+- Ensure that workflow inputs align with the actual parameters accepted by the scripts they invoke
+- Periodically review workflow files to identify opportunities for optimization or cleanup
 
 ### Testing and Validation
 

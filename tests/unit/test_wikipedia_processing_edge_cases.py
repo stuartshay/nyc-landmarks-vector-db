@@ -48,9 +48,7 @@ class TestWikipediaProcessingFix(unittest.TestCase):
 
         # Process the landmark
         success, articles_processed, chunks_embedded = (
-            processor.process_landmark_wikipedia(
-                "LP-12345", chunk_size=1000, chunk_overlap=200, delete_existing=False
-            )
+            processor.process_landmark_wikipedia("LP-12345", delete_existing=False)
         )
 
         # Verify that no articles found is treated as success, not failure
@@ -95,9 +93,7 @@ class TestWikipediaProcessingFix(unittest.TestCase):
 
         # Process the landmark
         success, articles_processed, chunks_embedded = (
-            processor.process_landmark_wikipedia(
-                "LP-12345", chunk_size=1000, chunk_overlap=200, delete_existing=False
-            )
+            processor.process_landmark_wikipedia("LP-12345", delete_existing=False)
         )
 
         # Verify that articles found but processing failed is treated as failure
@@ -152,9 +148,7 @@ class TestWikipediaProcessingFix(unittest.TestCase):
 
         # Process the landmark
         success, articles_processed, chunks_embedded = (
-            processor.process_landmark_wikipedia(
-                "LP-12345", chunk_size=1000, chunk_overlap=200, delete_existing=False
-            )
+            processor.process_landmark_wikipedia("LP-12345", delete_existing=False)
         )
 
         # Verify successful processing
