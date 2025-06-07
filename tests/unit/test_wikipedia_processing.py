@@ -317,6 +317,25 @@ class TestProcessLandmarksParallel:
         assert "__metadata__" in result
 
     @patch('scripts.ci.process_wikipedia_articles._get_processor')
+    def test_process_landmarks_parallel_skips_zero_articles(
+        self, mock_get_processor: Mock
+    ) -> None:
+        """Landmarks with zero articles should be tracked as skipped."""
+        mock_processor = Mock()
+        mock_processor.process_landmark_wikipedia.side_effect = [
+            (True, 0, 0),
+            (False, 0, 0),
+        ]
+        mock_get_processor.return_value = mock_processor
+
+        result = process_landmarks_parallel(
+            ["landmark_1", "landmark_2"], delete_existing=False, workers=2
+        )
+
+        skipped = result["__metadata__"]["skipped_landmarks"]
+        assert skipped == {"landmark_1", "landmark_2"}
+
+    @patch('scripts.ci.process_wikipedia_articles._get_processor')
     def test_process_landmarks_parallel_concurrent_execution(
         self, mock_get_processor: Mock
     ) -> None:
@@ -439,6 +458,20 @@ class TestProcessLandmarksSequential:
         # Should still get processor but not call process_landmark_wikipedia
         mock_get_processor.assert_called_once()
         mock_processor.process_landmark_wikipedia.assert_not_called()
+
+    @patch('scripts.ci.process_wikipedia_articles._get_processor')
+    def test_process_landmarks_sequential_skips_zero_articles(
+        self, mock_get_processor: Mock
+    ) -> None:
+        """Landmarks with zero articles should be tracked as skipped."""
+        mock_processor = Mock()
+        mock_processor.process_landmark_wikipedia.return_value = (True, 0, 0)
+        mock_get_processor.return_value = mock_processor
+
+        result = process_landmarks_sequential(["landmark_1"], delete_existing=False)
+
+        skipped = result["__metadata__"]["skipped_landmarks"]
+        assert skipped == {"landmark_1"}
 
     @patch('scripts.ci.process_wikipedia_articles._get_processor')
     def test_process_landmarks_sequential_exception_handling(

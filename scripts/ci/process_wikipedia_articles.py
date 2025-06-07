@@ -180,8 +180,9 @@ def process_landmarks_parallel(
                     "chunks_embedded": chunks_embedded,
                 }
 
-                # Track landmarks with no articles separately
-                if not success and articles_processed == 0:
+                # Track landmarks that had no articles processed
+                # regardless of whether processing succeeded or failed
+                if articles_processed == 0:
                     skipped_landmarks.add(landmark_id)
 
             except Exception as e:
