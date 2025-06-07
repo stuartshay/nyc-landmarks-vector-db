@@ -146,15 +146,15 @@ def process_landmarks_parallel(
     errors: List[str] = []
     skipped_landmarks: Set[str] = set()
 
-    def process_single_landmark(landmark_id: str) -> Tuple[str, bool, int, int]:
-        """Process a single landmark and return results."""
+    def process_single_landmark(landmark_id: str) -> Tuple[bool, int, int]:
+        """Process a single landmark and return the processing results."""
         processor = _get_processor()
         success, articles_processed, chunks_embedded = (
             processor.process_landmark_wikipedia(
                 landmark_id, delete_existing=delete_existing
             )
         )
-        return landmark_id, success, articles_processed, chunks_embedded
+        return success, articles_processed, chunks_embedded
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
         # Submit all tasks
@@ -171,17 +171,16 @@ def process_landmarks_parallel(
         ):
             landmark_id = future_to_landmark[future]
             try:
-                returned_id, success, articles_processed, chunks_embedded = (
-                    future.result()
-                )
+                success, articles_processed, chunks_embedded = future.result()
                 results[landmark_id] = {
                     "success": success,
                     "articles_processed": articles_processed,
                     "chunks_embedded": chunks_embedded,
                 }
 
-                # Track landmarks with no articles separately
-                if not success and articles_processed == 0:
+                # Track landmarks that had no articles processed
+                # regardless of whether processing succeeded or failed
+                if articles_processed == 0:
                     skipped_landmarks.add(landmark_id)
 
             except Exception as e:
@@ -240,7 +239,8 @@ def parse_arguments() -> argparse.Namespace:
         help="Number of landmarks to fetch per API request",
     )
 
-    # Create mutually exclusive group for processing mode
+    # Create mutually exclusive group for processing mode. This group enforces
+    # that --all and --page cannot be used together.
     mode_group = parser.add_mutually_exclusive_group()
     mode_group.add_argument(
         "--all",
@@ -262,10 +262,6 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     args = parser.parse_args()
-
-    # Additional validation
-    if args.all and args.page != 1:
-        parser.error("Cannot use --all with --page (they are mutually exclusive)")
 
     return args
 

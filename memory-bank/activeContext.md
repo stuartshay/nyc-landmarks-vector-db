@@ -6,6 +6,7 @@ The current focus has shifted to the Wikipedia API Improvement Project. Having s
 
 ## Recent Changes
 
+- **Implemented PR #154 - Wikipedia API Improvements**: Implemented Phase 1 "Quick Wins" of the Wikipedia API Improvement project, focusing on enhancing performance, reliability, and efficiency of API calls. Key improvements include: (1) Connection pooling with `requests.Session()`, (2) Enhanced timeout handling with separate connect and read timeouts, (3) Improved error handling with better categorization and detailed logging, (4) Metadata caching to avoid redundant collection, and (5) Tenacity-based retry mechanism with exponential backoff. Added the test script `scripts/test_wikipedia_improvements.py` to validate these improvements.
 - **Implemented PR #149 - Thread-Local Optimization for WikipediaProcessor**: Enhanced the parallel processing capabilities in `scripts/ci/process_wikipedia_articles.py` by implementing thread-local storage for `WikipediaProcessor` instances. Added the `_get_processor()` helper function to manage thread-local instances, ensuring each thread reuses a single processor instance rather than creating new ones for each landmark. This optimization reduces overhead and improves performance in multi-threaded environments, particularly for large-scale processing jobs.
 - **Reviewed PR #148 - Workflow Parameter Cleanup**: Analyzed the GitHub workflow file `.github/workflows/process_wikipedia.yml` and identified unused parameters that can be safely removed. Specifically, the `chunk_size` and `chunk_overlap` parameters are defined in the workflow inputs and passed to the processing script, but the script itself doesn't accept these parameters in its argument parser. The `WikipediaProcessor` class likely handles text chunking internally with default values or configuration elsewhere. Removing these parameters will make the workflow file more accurate without affecting functionality.
 - **Improved Landmark Metrics Concurrency**: Implemented parallel processing in `scripts/fetch_landmark_reports.py` for both Wikipedia article count fetching and PDF index status checking using ThreadPoolExecutor. This enhancement replaces sequential processing with concurrent execution, significantly improving performance for large datasets by allowing multiple requests to be processed simultaneously.
@@ -33,16 +34,7 @@ The current focus has shifted to the Wikipedia API Improvement Project. Having s
 
 ### Wikipedia API Improvement Project
 
-#### Phase 1 - Quick Wins
-
-1. Implement connection pooling with `requests.Session()` in Wikipedia fetcher
-1. Add persistent session management for HTTP requests
-1. Configure proper keep-alive settings for better connection reuse
-1. Enhance timeout handling with separate connect vs. read timeouts
-1. Implement metadata caching per landmark to avoid redundant collection
-1. Enhance error handling and logging with more detailed information
-
-#### Phase 2 - Performance Optimization
+#### Phase 2 - Performance Optimization (Current Focus)
 
 1. Implement async content fetching for concurrent Wikipedia article retrieval
 1. Add comprehensive response caching with TTL for Wikipedia content

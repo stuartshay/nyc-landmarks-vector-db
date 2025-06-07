@@ -5,10 +5,7 @@ ignore = E203, W503, E501, E402
 per-file-ignores =
     __init__.py:F401,F403
     tests/*:E501
-    tests/functional/test_vector_storage_pipeline_fixed.py:C901
-    tests/integration/verify_metadata_consistency.py:C901
     notebooks/*.ipynb:E226,E741,C401,F811
-    scripts/process_wikipedia_articles.py:C901
 max-complexity = 10
 docstring-convention = google
 inline-quotes = double
