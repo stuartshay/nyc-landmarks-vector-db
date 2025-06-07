@@ -120,24 +120,23 @@ def _search_pinecone_semantic(
         query_vector=query_vector, top_k=10, filter_dict=None
     )
 
-    if results_semantic:
-        # See if any of the results match our landmark_id
-        for result in results_semantic:
-            if (
-                "metadata" in result
-                and result["metadata"].get("landmark_id") == landmark_id
-            ):
-                logger.info("Found match through semantic search")
-                issues = [
-                    "Metadata filter not working, but found through semantic search"
-                ]
-                return result.get("metadata", {}), 1, issues
-
-        logger.warning("No matching vectors found through semantic search")
-        return None, 0, ["No matching vectors found through semantic search"]
-    else:
+    if not results_semantic:
         logger.warning("No vectors found in index")
         return None, 0, ["No vectors found in index"]
+
+    # See if any of the results match our landmark_id
+    for result in results_semantic:
+        if (
+            "metadata" in result
+            and result["metadata"].get("landmark_id") == landmark_id
+        ):
+            logger.info("Found match through semantic search")
+            issues = ["Metadata filter not working, but found through semantic search"]
+            return result.get("metadata", {}), 1, issues
+
+    # No matching results found
+    logger.warning("No matching vectors found through semantic search")
+    return None, 0, ["No matching vectors found through semantic search"]
 
 
 def _get_pinecone_metadata(
