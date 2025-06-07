@@ -146,15 +146,15 @@ def process_landmarks_parallel(
     errors: List[str] = []
     skipped_landmarks: Set[str] = set()
 
-    def process_single_landmark(landmark_id: str) -> Tuple[str, bool, int, int]:
-        """Process a single landmark and return results."""
+    def process_single_landmark(landmark_id: str) -> Tuple[bool, int, int]:
+        """Process a single landmark and return the processing results."""
         processor = _get_processor()
         success, articles_processed, chunks_embedded = (
             processor.process_landmark_wikipedia(
                 landmark_id, delete_existing=delete_existing
             )
         )
-        return landmark_id, success, articles_processed, chunks_embedded
+        return success, articles_processed, chunks_embedded
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
         # Submit all tasks
@@ -171,9 +171,7 @@ def process_landmarks_parallel(
         ):
             landmark_id = future_to_landmark[future]
             try:
-                returned_id, success, articles_processed, chunks_embedded = (
-                    future.result()
-                )
+                success, articles_processed, chunks_embedded = future.result()
                 results[landmark_id] = {
                     "success": success,
                     "articles_processed": articles_processed,
