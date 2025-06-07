@@ -12,8 +12,8 @@ This script:
 Examples:
     python scripts/ci/process_wikipedia_articles.py --page 1 --limit 25 --verbose
     python scripts/ci/process_wikipedia_articles.py --landmark-ids LP-00079 --verbose
-    python scripts/ci/process_wikipedia_articles.py --all --verbose
-
+    python scripts/ci/process_wikipedia_articles.py --all --verbose --parallel
+    python scripts/ci/process_wikipedia_articles.py --all --verbose --parallel --workers 8
 """
 
 import argparse
