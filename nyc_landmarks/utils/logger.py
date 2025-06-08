@@ -57,6 +57,7 @@ class StructuredFormatter(logging.Formatter):
             "line": record.lineno,
             "process_id": record.process,
             "thread_id": record.thread,
+            "environment": settings.ENV.value,
         }
 
         # Add request context if available
@@ -195,14 +196,14 @@ class LoggerSetup:
                 # Create CloudLoggingHandler with a specific logger name for filtering
                 logger_name = f"{settings.LOG_NAME_PREFIX}.{self.name}"
 
-                # Create the Cloud Logging handler
-                # We'll use standard CloudLoggingHandler for all environments
-                cloud_handler = CloudLoggingHandler(client, name=logger_name)
+                # Create the Cloud Logging handler with environment labels
+                cloud_handler = CloudLoggingHandler(
+                    client, name=logger_name, labels={"environment": settings.ENV.value}
+                )
 
-                # No need for extra configuration - Cloud Logging automatically
-                # handles structured logging
+                # Set a custom formatter for Cloud Logging to ensure environment is included
+                cloud_handler.setFormatter(json_formatter)
 
-                # Don't set formatter for Cloud Logging - let it handle structured logging
                 self.logger.addHandler(cloud_handler)
             except Exception as e:
                 # Fallback to standard logging if Cloud Logging fails

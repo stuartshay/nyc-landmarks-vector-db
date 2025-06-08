@@ -61,6 +61,12 @@ When the Cloud Run instance starts:
 gcloud logging read 'logName=~"nyc-landmarks-vector-db"' --project=YOUR_PROJECT_ID --limit=50
 ```
 
+### View Production Environment Logs Only
+
+```bash
+gcloud logging read 'logName=~"nyc-landmarks-vector-db" AND jsonPayload.environment="production"' --project=YOUR_PROJECT_ID --limit=50
+```
+
 ### View Validation Warnings (Security Events)
 
 ```bash

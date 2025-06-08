@@ -64,11 +64,14 @@ logName=~"nyc-landmarks-vector-db.nyc_landmarks.utils.validation" AND severity="
 # View all application logs
 gcloud logging read 'logName=~"nyc-landmarks-vector-db"' --project=YOUR_PROJECT_ID --limit=50
 
+# View production environment logs only
+gcloud logging read 'logName=~"nyc-landmarks-vector-db" AND jsonPayload.environment="production"' --project=YOUR_PROJECT_ID --limit=50
+
 # View validation warnings
 gcloud logging read 'logName=~"nyc-landmarks-vector-db.nyc_landmarks.utils.validation" AND severity="WARNING"' --project=YOUR_PROJECT_ID --limit=20
 
-# View recent API logs
-gcloud logging read 'logName=~"nyc-landmarks-vector-db.nyc_landmarks.api" AND timestamp>="2025-06-08T00:00:00Z"' --project=YOUR_PROJECT_ID --limit=30
+# View recent API logs in production
+gcloud logging read 'logName=~"nyc-landmarks-vector-db.nyc_landmarks.api" AND jsonPayload.environment="production" AND timestamp>="2025-06-08T00:00:00Z"' --project=YOUR_PROJECT_ID --limit=30
 ```
 
 ## Log Features
@@ -80,6 +83,7 @@ All logs are automatically formatted as structured JSON with fields including:
 - `timestamp` - Log timestamp
 - `severity` - Log level (INFO, WARNING, ERROR, etc.)
 - `message` - Log message
+- `environment` - Application environment (production, staging, development)
 - `request_id` - Unique request identifier
 - `request_path` - API endpoint path
 - `client_ip` - Client IP address
