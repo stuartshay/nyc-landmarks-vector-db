@@ -96,12 +96,16 @@ class LoggerSetup:
         if provider == LogProvider.GOOGLE and GCP_LOGGING_AVAILABLE:
             try:
                 client = gcp_logging.Client()
-                cloud_handler = CloudLoggingHandler(client)
+                # Create CloudLoggingHandler with a specific logger name for filtering
+                logger_name = f"{settings.LOG_NAME_PREFIX}.{self.name}"
+                cloud_handler = CloudLoggingHandler(client, name=logger_name)
                 cloud_handler.setFormatter(formatter)
                 self.logger.addHandler(cloud_handler)
-            except Exception:
+            except Exception as e:
                 # Fallback to standard logging if Cloud Logging fails
-                self.logger.error("Failed to initialize Google Cloud Logging")
+                self.logger.exception(
+                    "Failed to initialize Google Cloud Logging: %s", str(e)
+                )
 
         self._configured = True
         return self.logger

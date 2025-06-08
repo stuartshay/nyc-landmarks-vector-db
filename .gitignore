@@ -159,6 +159,9 @@ logs/
 temp/
 test_output/
 
+# Google Cloud credentials
+.gcp/
+
 # Database
 *.db
 *.sqlite3

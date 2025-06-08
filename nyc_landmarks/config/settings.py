@@ -61,6 +61,7 @@ class Settings(BaseSettings):
     ENV: Environment = Field(default=Environment.DEVELOPMENT)
     LOG_LEVEL: LogLevel = Field(default=LogLevel.INFO)
     LOG_PROVIDER: LogProvider = Field(default=LogProvider.STDOUT)
+    LOG_NAME_PREFIX: str = Field(default="nyc-landmarks-vector-db")
 
     # Google Cloud Secret Manager settings
     GCP_PROJECT_ID: Optional[str] = Field(default=None)
