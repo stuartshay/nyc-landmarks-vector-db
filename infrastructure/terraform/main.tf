@@ -46,3 +46,5 @@ resource "google_monitoring_dashboard" "api_dashboard" {
     log_name_prefix = var.log_name_prefix
   })
 }
+
+# Test comment for pre-commit validation
