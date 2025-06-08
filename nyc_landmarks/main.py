@@ -4,7 +4,6 @@ Main application module for NYC Landmarks Vector Database.
 This module initializes the FastAPI application and registers all routes.
 """
 
-import logging
 import time
 from typing import Any, Dict, List
 
@@ -15,10 +14,10 @@ from pydantic import AnyUrl, BaseModel, Field
 
 from nyc_landmarks.api import chat, query
 from nyc_landmarks.config.settings import settings
+from nyc_landmarks.utils.logger import get_logger
 
 # Configure logging
-logging.basicConfig(level=settings.LOG_LEVEL.value)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 # Response models for basic endpoints

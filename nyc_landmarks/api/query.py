@@ -5,7 +5,6 @@ This module provides API endpoints for vector search and querying
 landmark information.
 """
 
-import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -13,6 +12,7 @@ from fastapi import Query as QueryParam
 from pydantic import BaseModel, Field
 
 from nyc_landmarks.config.settings import settings
+from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.db.db_client import DbClient
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.examples.search_examples import (
@@ -22,8 +22,7 @@ from nyc_landmarks.examples.search_examples import (
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
 # Configure logging
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=settings.LOG_LEVEL.value)
+logger = get_logger(__name__)
 
 # Create API router
 router = APIRouter(
@@ -161,6 +160,13 @@ async def search_text(
         SearchResponse with results
     """
     try:
+        logger.info(
+            "search_text request: query=%s landmark_id=%s source_type=%s top_k=%s",
+            query.query,
+            query.landmark_id,
+            query.source_type,
+            query.top_k,
+        )
         # Generate embedding for the query
         query_embedding = embedding_generator.generate_embedding(query.query)
 

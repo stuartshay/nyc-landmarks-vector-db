@@ -47,12 +47,20 @@ class LogLevel(str, Enum):
     CRITICAL = "CRITICAL"
 
 
+class LogProvider(str, Enum):
+    """Available logging providers."""
+
+    STDOUT = "stdout"
+    GOOGLE = "google"
+
+
 class Settings(BaseSettings):
     """Application settings and configuration."""
 
     # Environment settings
     ENV: Environment = Field(default=Environment.DEVELOPMENT)
     LOG_LEVEL: LogLevel = Field(default=LogLevel.INFO)
+    LOG_PROVIDER: LogProvider = Field(default=LogProvider.STDOUT)
 
     # Google Cloud Secret Manager settings
     GCP_PROJECT_ID: Optional[str] = Field(default=None)

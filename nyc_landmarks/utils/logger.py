@@ -14,6 +14,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Union
 
+from nyc_landmarks.config.settings import LogProvider, settings
+
+try:
+    from google.cloud import logging as gcp_logging  # type: ignore
+    from google.cloud.logging_v2.handlers import CloudLoggingHandler  # type: ignore
+    GCP_LOGGING_AVAILABLE = True
+except Exception:  # pragma: no cover - optional dependency
+    GCP_LOGGING_AVAILABLE = False
+
 
 class LoggerSetup:
     """Centralized logging configuration for NYC Landmarks Vector DB."""
@@ -32,6 +41,7 @@ class LoggerSetup:
         log_dir: Union[str, Path] = "logs",
         log_filename: Optional[str] = None,
         log_format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        provider: LogProvider = settings.LOG_PROVIDER,
     ) -> logging.Logger:
         """
         Configure and return a logger with the specified settings.
@@ -43,6 +53,7 @@ class LoggerSetup:
             log_dir: Directory to store log files (default: "logs")
             log_filename: Custom log filename (default: None, generates timestamped filename)
             log_format: Format string for log messages
+            provider: Logging provider to use (default: settings.LOG_PROVIDER)
 
         Returns:
             Configured logger instance
@@ -80,6 +91,17 @@ class LoggerSetup:
             file_handler.setFormatter(formatter)
             self.logger.addHandler(file_handler)
 
+        # Add provider-specific handlers
+        if provider == LogProvider.GOOGLE and GCP_LOGGING_AVAILABLE:
+            try:
+                client = gcp_logging.Client()
+                cloud_handler = CloudLoggingHandler(client)
+                cloud_handler.setFormatter(formatter)
+                self.logger.addHandler(cloud_handler)
+            except Exception:
+                # Fallback to standard logging if Cloud Logging fails
+                self.logger.error("Failed to initialize Google Cloud Logging")
+
         self._configured = True
         return self.logger
 
@@ -106,6 +128,7 @@ def get_logger(
     log_level: int = logging.INFO,
     log_to_console: bool = True,
     log_to_file: bool = True,
+    provider: LogProvider = settings.LOG_PROVIDER,
 ) -> logging.Logger:
     """
     Convenience function to get a configured logger.
@@ -122,9 +145,15 @@ def get_logger(
     if name:
         logger_setup = LoggerSetup(name)
         return logger_setup.setup(
-            log_level=log_level, log_to_console=log_to_console, log_to_file=log_to_file
+            log_level=log_level,
+            log_to_console=log_to_console,
+            log_to_file=log_to_file,
+            provider=provider,
         )
 
     return default_logger.setup(
-        log_level=log_level, log_to_console=log_to_console, log_to_file=log_to_file
+        log_level=log_level,
+        log_to_console=log_to_console,
+        log_to_file=log_to_file,
+        provider=provider,
     )
