@@ -154,9 +154,10 @@ def run_command(command: str, description: str) -> Optional[str]:
 def check_gcp_service_account_key() -> bool:
     """Check if the GCP service account key file exists and is valid."""
     # Handle different possible paths
+    repo_root = Path(__file__).resolve().parent.parent
     possible_paths = [
-        Path(".gcp/service-account-key.json"),
-        Path("/workspaces/nyc-landmarks-vector-db/.gcp/service-account-key.json"),
+        repo_root / ".gcp/service-account-key.json",
+        Path(os.getenv("GCP_KEY_PATH", "")),  # Fallback to environment variable if set
     ]
 
     found_key_path: Optional[Path] = None
