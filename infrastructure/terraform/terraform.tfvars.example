@@ -1,0 +1,14 @@
+# Example Terraform variables configuration
+# Copy this file to terraform.tfvars and update with your values
+
+# GCP Project Configuration
+project_id = "your-gcp-project-id"
+
+# Path to your GCP service account key file (relative to this directory)
+credentials_file = "../../.gcp/service-account-key.json"
+
+# GCP region for resources
+region = "us-central1"
+
+# Log name prefix for the application
+log_name_prefix = "nyc-landmarks-vector-db"
