@@ -246,6 +246,19 @@ pre-installed.
    python -m nyc_landmarks.main
    ```
 
+1. **Configuration:**
+
+   - Copy `.env.sample` to `.env` and add your API keys and configuration
+   - Everything else is automatically set up by the devcontainer
+   - **Google Cloud Platform**: GCP authentication is automatically configured using the service account key in `.gcp/service-account-key.json`. See [GCP Setup Documentation](./docs/gcp_setup.md) for details.
+
+1. **Verify Setup:**
+
+   Use VS Code tasks to verify your environment:
+
+   - `Ctrl+Shift+P` → "Tasks: Run Task" → "Check Development Environment"
+   - `Ctrl+Shift+P` → "Tasks: Run Task" → "Verify GCP Authentication"
+
 ## Development Environment Options
 
 ### Method 1: Using VS Code Development Container (Recommended)
@@ -272,6 +285,14 @@ the Dev Containers extension, which automatically configures everything for you.
 
    - Copy `.env.sample` to `.env` and add your API keys and configuration
    - Everything else is automatically set up by the devcontainer
+   - **Google Cloud Platform**: GCP authentication is automatically configured using the service account key in `.gcp/service-account-key.json`. See [GCP Setup Documentation](./docs/gcp_setup.md) for details.
+
+1. **Verify Setup:**
+
+   Use VS Code tasks to verify your environment:
+
+   - `Ctrl+Shift+P` → "Tasks: Run Task" → "Check Development Environment"
+   - `Ctrl+Shift+P` → "Tasks: Run Task" → "Verify GCP Authentication"
 
 ### Method 2: Local Development Setup
 

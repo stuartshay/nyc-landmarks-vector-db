@@ -120,6 +120,42 @@ pre-commit install
 pre-commit run --all-files
 ```
 
+### Code Cleanup Guidelines
+
+When performing code cleanup, refactoring, or addressing linting issues, follow these steps:
+
+1. **Always run pre-commit on all files** to ensure consistent code quality:
+
+   ```bash
+   pre-commit run --all-files
+   ```
+
+1. **Address all pre-commit findings** before considering the cleanup complete
+
+1. **Use the Makefile targets** for common cleanup tasks:
+
+   ```bash
+   # Run linting checks
+   make lint
+
+   # Format code
+   make format
+
+   # Run pre-commit on all files
+   make pre-commit
+
+   # Check development environment
+   make check-env
+   ```
+
+1. **Verify functionality** after cleanup by running tests:
+
+   ```bash
+   make test
+   ```
+
+> **Important**: Code cleanup should never break existing functionality. Always run the full test suite after cleanup to ensure no regressions were introduced.
+
 ### Security Scanning
 
 The project includes automated security scanning with Bandit:

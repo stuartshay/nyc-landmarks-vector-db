@@ -1,4 +1,4 @@
-.PHONY: help setup lint format test clean run diff pre-commit pre-commit-update
+.PHONY: help setup lint format test clean run diff pre-commit pre-commit-update check-env
 
 help:
 	@echo "NYC Landmarks Vector DB Makefile"
@@ -9,6 +9,7 @@ help:
 	@echo "test               - Run tests with pytest"
 	@echo "clean              - Clean cache files and build artifacts"
 	@echo "run                - Run the FastAPI server"
+	@echo "check-env          - Check development environment and display configuration"
 	@echo "pre-commit         - Pre-commit All Files"
 	@echo "pre-commit-update  - Update pre-commit hooks to latest versions and install them"
 
@@ -49,3 +50,6 @@ clean:
 
 run:
 	python -m uvicorn nyc_landmarks.main:app --reload
+
+check-env:
+	python utils/check_dev_env.py
