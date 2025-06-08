@@ -3,7 +3,6 @@
 *.tfstate.backup
 *.tfstate.lock.info
 .terraform/
-.terraform.lock.hcl
 terraform.tfvars
 tfplan
 *.log
