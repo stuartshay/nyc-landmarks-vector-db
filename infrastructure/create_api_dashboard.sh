@@ -1,4 +1,5 @@
 #!/bin/bash
+# DEPRECATED: Use Terraform in infrastructure/terraform instead.
 
 # Create the infrastructure directory if it doesn't exist
 mkdir -p infrastructure
