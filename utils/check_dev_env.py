@@ -140,7 +140,7 @@ def check_development_tools() -> bool:
     return all_tools_working
 
 
-def run_command(command: str, description: str) -> Optional[str]:
+def run_command(command: str) -> Optional[str]:
     """Run a shell command and return the result."""
     try:
         result = subprocess.run(
