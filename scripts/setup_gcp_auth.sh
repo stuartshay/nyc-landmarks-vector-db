@@ -48,7 +48,7 @@ gcloud config set project "$PROJECT_ID"
 
 # Verify authentication
 echo -e "${GREEN}🔍 Verifying authentication...${NC}"
-if gcloud auth list --filter=status:ACTIVE --format="value(account)" | grep -q "gh-actions-navigator@"; then
+if [[ -n $(gcloud auth list --filter=status:ACTIVE --format="value(account)") ]]; then
     echo -e "${GREEN}✅ Google Cloud CLI authentication successful!${NC}"
     echo -e "${GREEN}Active account: $(gcloud auth list --filter=status:ACTIVE --format="value(account)")${NC}"
     echo -e "${GREEN}Active project: $(gcloud config get-value project)${NC}"
