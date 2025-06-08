@@ -7,14 +7,15 @@ This module initializes the FastAPI application and registers all routes.
 import time
 from typing import Any, Dict, List
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import AnyUrl, BaseModel, Field
 
 from nyc_landmarks.api import chat, query
+from nyc_landmarks.api.middleware import setup_api_middleware
 from nyc_landmarks.config.settings import settings
-from nyc_landmarks.utils.logger import get_logger
+from nyc_landmarks.utils.logger import get_logger, log_error
 
 # Configure logging
 logger = get_logger(__name__)
@@ -94,6 +95,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Setup API middleware for request tracking and performance monitoring
+setup_api_middleware(app)
+
 # Register routers
 app.include_router(query.router)
 app.include_router(chat.router)
@@ -103,7 +107,25 @@ app.include_router(chat.router)
 @app.exception_handler(Exception)  # type: ignore[misc]
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Global exception handler for the application."""
-    logger.error(f"Global exception handler caught: {exc}")
+    # Don't catch HTTPException - let FastAPI handle validation errors properly
+    if isinstance(exc, HTTPException):
+        # Re-raise HTTPException to let FastAPI handle it with proper status codes
+        raise exc
+
+    # Log the error with standardized classification and structure
+    log_error(
+        logger,
+        error=exc,
+        error_type="server",
+        message=f"Global exception handler caught: {exc}",
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+            "client_host": request.client.host if request.client else None,
+            "error_location": "global_handler",
+        },
+    )
+
     return JSONResponse(
         status_code=500,
         content={"detail": str(exc)},
@@ -145,7 +167,14 @@ async def health_check() -> HealthResponse:
                 "timestamp": time.time(),
             }
     except Exception as e:
-        logger.error(f"Pinecone health check failed: {e}")
+        # Use structured error logging
+        log_error(
+            logger,
+            error=e,
+            error_type="dependency",
+            message="Pinecone health check failed",
+            extra={"component": "pinecone", "operation": "health_check"},
+        )
         services["pinecone"] = {
             "status": "error",
             "error": str(e),
@@ -178,7 +207,16 @@ if __name__ == "__main__":
     """Run the application using Uvicorn when this module is executed directly."""
     import uvicorn
 
-    logger.info(f"Starting application on {settings.APP_HOST}:{settings.APP_PORT}")
+    logger.info(
+        f"Starting application on {settings.APP_HOST}:{settings.APP_PORT}",
+        extra={
+            "environment": settings.ENV,
+            "app_host": settings.APP_HOST,
+            "app_port": settings.APP_PORT,
+            "log_provider": settings.LOG_PROVIDER.value,
+            "startup_event": "application_start",
+        },
+    )
     uvicorn.run(
         "nyc_landmarks.main:app",
         host=settings.APP_HOST,

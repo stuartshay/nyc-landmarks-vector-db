@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Query as QueryParam
+from fastapi import Request
 from pydantic import BaseModel, Field
 
 from nyc_landmarks.db.db_client import DbClient
@@ -18,6 +19,7 @@ from nyc_landmarks.examples.search_examples import (
     get_text_query_examples,
 )
 from nyc_landmarks.utils.logger import get_logger
+from nyc_landmarks.utils.validation import ValidationLogger, get_client_info
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
 # Configure logging
@@ -143,6 +145,7 @@ def get_db_client() -> DbClient:
 )  # type: ignore[misc]
 async def search_text(
     query: TextQuery,
+    request: Request,
     embedding_generator: EmbeddingGenerator = Depends(get_embedding_generator),
     vector_db: PineconeDB = Depends(get_vector_db),
     db_client: DbClient = Depends(get_db_client),
@@ -151,6 +154,7 @@ async def search_text(
 
     Args:
         query: Text query model
+        request: FastAPI request object for logging
         embedding_generator: EmbeddingGenerator instance
         vector_db: PineconeDB instance
         db_client: DbClient instance
@@ -159,6 +163,35 @@ async def search_text(
         SearchResponse with results
     """
     try:
+        # Get client information for logging
+        client_ip, user_agent = get_client_info(request)
+        endpoint = "/api/query/search"
+
+        # Validate all input parameters
+        ValidationLogger.validate_text_query(
+            query.query, endpoint, client_ip, user_agent
+        )
+        ValidationLogger.validate_landmark_id(
+            query.landmark_id, endpoint, client_ip, user_agent
+        )
+        ValidationLogger.validate_top_k(query.top_k, endpoint, client_ip, user_agent)
+        ValidationLogger.validate_source_type(
+            query.source_type, endpoint, client_ip, user_agent
+        )
+
+        # Log successful validation
+        ValidationLogger.log_validation_success(
+            endpoint,
+            {
+                "query": query.query,
+                "landmark_id": query.landmark_id,
+                "source_type": query.source_type,
+                "top_k": query.top_k,
+            },
+            client_ip,
+            user_agent,
+        )
+
         logger.info(
             "search_text request: query=%s landmark_id=%s source_type=%s top_k=%s",
             query.query,
@@ -246,6 +279,8 @@ async def search_text(
             index_name=index_name,
             namespace=namespace,
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error searching text: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -265,6 +300,7 @@ async def search_text(
 )  # type: ignore[misc]
 async def search_text_by_landmark(
     query: TextQuery,
+    request: Request,
     embedding_generator: EmbeddingGenerator = Depends(get_embedding_generator),
     vector_db: PineconeDB = Depends(get_vector_db),
     db_client: DbClient = Depends(get_db_client),
@@ -275,13 +311,24 @@ async def search_text_by_landmark(
     """
     # Ensure landmark_id is provided
     if not query.landmark_id:
+        # Get client information for logging
+        client_ip, user_agent = get_client_info(request)
+        logger.warning(
+            "Invalid API request: landmark_id required but not provided",
+            extra={
+                "validation_error": "missing_landmark_id",
+                "endpoint": "/api/query/search_by_landmark",
+                "client_ip": client_ip,
+                "user_agent": user_agent,
+            },
+        )
         raise HTTPException(
             status_code=400, detail="landmark_id is required for this endpoint"
         )
 
     # Use the existing search_text functionality
     result: SearchResponse = await search_text(
-        query, embedding_generator, vector_db, db_client
+        query, request, embedding_generator, vector_db, db_client
     )
     return result
 
@@ -337,6 +384,8 @@ async def get_landmarks(
             landmarks=landmarks,
             count=len(landmarks),
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error getting landmarks: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -738,6 +787,8 @@ async def search_landmarks_text(
             landmarks=landmarks,
             count=len(landmarks),
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error searching landmarks: {e}")
         raise HTTPException(status_code=500, detail=str(e))
