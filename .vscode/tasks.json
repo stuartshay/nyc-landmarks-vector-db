@@ -143,6 +143,33 @@
                 "clear": true
             },
             "problemMatcher": []
+        },
+        {
+            "label": "Setup GCP Authentication",
+            "type": "shell",
+            "command": "${workspaceFolder}/scripts/setup_gcp_auth.sh",
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Verify GCP Authentication",
+            "type": "shell",
+            "command": "${command:python.interpreterPath}",
+            "args": [
+                "${workspaceFolder}/utils/check_dev_env.py"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": []
         }
     ]
 }

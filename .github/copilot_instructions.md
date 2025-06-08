@@ -65,6 +65,50 @@ bank files to inform your responses:
 - Environmental variables are managed through the .env file and should be referenced in
   code through the config module
 
+## Code Cleanup and Quality Guidelines
+
+When performing code cleanup, refactoring, or addressing linting issues:
+
+1. **Always run pre-commit on all files** to ensure consistent code quality:
+
+   ```bash
+   pre-commit run --all-files
+   ```
+
+1. **Use Makefile targets** for standard development tasks:
+
+   ```bash
+   # Run linting checks
+   make lint
+
+   # Format code
+   make format
+
+   # Run pre-commit on all files
+   make pre-commit
+
+   # Check development environment
+   make check-env
+
+   # Run tests
+   make test
+   ```
+
+1. **Code cleanup workflow**:
+
+   - Address all pre-commit findings before considering cleanup complete
+   - Verify functionality after cleanup by running the test suite
+   - Never break existing functionality during cleanup activities
+   - Use `utils/check_dev_env.py` to verify environment setup after changes
+
+1. **Quality standards**:
+
+   - Follow PEP 8 style guide
+   - Use Black for code formatting (88 character line length)
+   - Sort imports with isort
+   - Use type hints for all functions and methods
+   - Maintain at least 80% test coverage
+
 ## Package Management Guidelines
 
 1. **Dual Dependency Management**:

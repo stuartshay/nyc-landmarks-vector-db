@@ -6,10 +6,11 @@
     "${localWorkspaceFolder}/.env"
   ],
   "postCreateCommand": "pip install -e .[dev] && pre-commit install && mkdir -p test_output/notebooks",
-  "postStartCommand": "echo 'Verifying environment...' && python -m pytest --version",
+  "postStartCommand": "echo 'Verifying environment...' && python -m pytest --version && echo 'Setting up GCP authentication...' && /workspaces/nyc-landmarks-vector-db/scripts/setup_gcp_auth.sh",
   "remoteUser": "vscode",
   "containerEnv": {
-    "PYTHONPATH": "${containerWorkspaceFolder}"
+    "PYTHONPATH": "${containerWorkspaceFolder}",
+    "GOOGLE_APPLICATION_CREDENTIALS": "${containerWorkspaceFolder}/.gcp/service-account-key.json"
   },
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
