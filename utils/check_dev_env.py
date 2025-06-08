@@ -215,7 +215,7 @@ def check_gcp_environment_variables() -> bool:
 def check_gcp_authentication() -> bool:
     """Check GCP authentication status."""
     # Check if gcloud command is available
-    if not run_command("which gcloud", "Checking gcloud availability"):
+    if not run_command("which gcloud"):
         print("❌ gcloud CLI not found in PATH")
         return False
 
@@ -223,8 +223,7 @@ def check_gcp_authentication() -> bool:
 
     # Check if gcloud is authenticated
     auth_list = run_command(
-        "gcloud auth list --format='value(account)' --filter='status:ACTIVE'",
-        "Checking gcloud authentication",
+        "gcloud auth list --format='value(account)' --filter='status:ACTIVE'"
     )
 
     if not auth_list:
@@ -236,7 +235,7 @@ def check_gcp_authentication() -> bool:
     print(f"✅ Active gcloud account: {auth_list}")
 
     # Check project configuration
-    project = run_command("gcloud config get-value project", "Getting active project")
+    project = run_command("gcloud config get-value project")
     if project and project != "(unset)":
         print(f"✅ Active project: {project}")
     else:
@@ -249,8 +248,7 @@ def check_gcp_api_access() -> bool:
     """Test basic GCP API access if authentication is available."""
     # Only test if we have active authentication
     auth_list = run_command(
-        "gcloud auth list --format='value(account)' --filter='status:ACTIVE'",
-        "Checking for active authentication",
+        "gcloud auth list --format='value(account)' --filter='status:ACTIVE'"
     )
 
     if not auth_list:
@@ -258,10 +256,7 @@ def check_gcp_api_access() -> bool:
         return True
 
     # Try to access GCP APIs
-    result = run_command(
-        "gcloud projects list --limit=1 --format='value(projectId)'",
-        "Testing GCP API access",
-    )
+    result = run_command("gcloud projects list --limit=1 --format='value(projectId)'")
 
     if result:
         print("✅ GCP API access working")

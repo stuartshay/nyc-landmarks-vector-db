@@ -123,6 +123,7 @@ pre-commit run --all-files
 ### Code Cleanup Guidelines {#code-cleanup-guidelines}
 
 For detailed steps on code cleanup, please refer to the [Code Cleanup Guidelines](../../CONTRIBUTING.md#code-cleanup-guidelines) section in the `CONTRIBUTING.md` file.
+
 ### Security Scanning
 
 The project includes automated security scanning with Bandit:
