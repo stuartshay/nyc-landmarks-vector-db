@@ -12,7 +12,7 @@ This script implements a processing pipeline for NYC landmarks data:
 Examples to Test:
 python scripts/ci/process_landmarks.py --page 1 --limit 10 --verbose
 python scripts/ci/process_landmarks.py --landmark-ids LP-00079 --verbose
-python scripts/ci/process_landmarks.py --all --verbose
+python scripts/ci/process_landmarks.py --all --parallel --verbose
 """
 
 import argparse

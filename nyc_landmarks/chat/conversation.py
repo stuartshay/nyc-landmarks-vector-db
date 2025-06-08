@@ -5,16 +5,15 @@ This module handles the storage and retrieval of conversation history
 for the chatbot functionality.
 """
 
-import logging
 import time
 import uuid
 from typing import Any, Dict, List, Optional
 
 from nyc_landmarks.config.settings import settings
+from nyc_landmarks.utils.logger import get_logger
 
 # Configure logging
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=settings.LOG_LEVEL.value)
+logger = get_logger(__name__)
 
 
 class Conversation:

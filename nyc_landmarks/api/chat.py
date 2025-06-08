@@ -9,7 +9,7 @@ to interact with the NYC Landmarks database using natural language.
 from typing import Any, Dict, List, Optional, Protocol, Tuple
 
 import openai
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel, Field
 
@@ -17,6 +17,7 @@ from nyc_landmarks.chat.conversation import Conversation, conversation_store
 from nyc_landmarks.db.db_client import DbClient
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.utils.logger import get_logger
+from nyc_landmarks.utils.validation import ValidationLogger, get_client_info
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
 
@@ -393,7 +394,8 @@ def _convert_to_chat_messages(conversation: Conversation) -> List[ChatMessage]:
 
 @router.post("/message", response_model=ChatResponse)  # type: ignore[misc]
 async def chat_message(
-    request: ChatRequest,
+    chat_request: ChatRequest,
+    request: Request,
     embedding_generator: EmbeddingGenerator = Depends(get_embedding_generator),
     vector_db: PineconeDB = Depends(get_vector_db),
     db_client: DbClient = Depends(get_db_client),
@@ -401,7 +403,8 @@ async def chat_message(
     """Process a chat message and generate a response.
 
     Args:
-        request: Chat request model
+        chat_request: Chat request model
+        request: FastAPI request object for logging
         embedding_generator: EmbeddingGenerator instance
         vector_db: PineconeDB instance
         db_client: Database client instance
@@ -410,19 +413,46 @@ async def chat_message(
         ChatResponse with assistant's response and conversation history
     """
     try:
+        # Get client information for logging
+        client_ip, user_agent = get_client_info(request)
+        endpoint = "/api/chat/message"
+
+        # Validate chat message input
+        ValidationLogger.validate_text_query(
+            chat_request.message, endpoint, client_ip, user_agent
+        )
+        ValidationLogger.validate_session_id(
+            chat_request.conversation_id, endpoint, client_ip, user_agent
+        )
+        ValidationLogger.validate_landmark_id(
+            chat_request.landmark_id, endpoint, client_ip, user_agent
+        )
+
+        # Log successful validation
+        ValidationLogger.log_validation_success(
+            endpoint,
+            {
+                "message": chat_request.message,
+                "conversation_id": chat_request.conversation_id,
+                "landmark_id": chat_request.landmark_id,
+            },
+            client_ip,
+            user_agent,
+        )
+
         # Get or create conversation
-        conversation = _get_or_create_conversation(request.conversation_id)
+        conversation = _get_or_create_conversation(chat_request.conversation_id)
 
         # Add user message to conversation
-        conversation.add_message("user", request.message)
+        conversation.add_message("user", chat_request.message)
 
         # Get relevant context from vector database
         context_text, sources = _get_context_from_vector_db(
-            request.message,
+            chat_request.message,
             embedding_generator,
             vector_db,
             db_client,
-            request.landmark_id,
+            chat_request.landmark_id,
         )
 
         # Prepare messages for chat completion API
@@ -453,10 +483,12 @@ async def chat_message(
             conversation_id=conversation.conversation_id,
             response=assistant_response,
             messages=chat_messages,
-            landmark_id=request.landmark_id,
+            landmark_id=chat_request.landmark_id,
             sources=sources,
             source_types=source_types,
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error processing chat message: {e}")
         raise HTTPException(status_code=500, detail=str(e))
