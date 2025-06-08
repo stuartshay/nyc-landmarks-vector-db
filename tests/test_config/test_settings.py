@@ -5,7 +5,7 @@ Tests for the configuration settings module.
 import os
 from unittest.mock import patch
 
-from nyc_landmarks.config.settings import Environment, LogLevel, Settings
+from nyc_landmarks.config.settings import Environment, LogLevel, LogProvider, Settings
 
 
 def test_settings_defaults() -> None:
@@ -15,6 +15,7 @@ def test_settings_defaults() -> None:
     # Check default environment settings
     assert settings.ENV == Environment.DEVELOPMENT
     assert settings.LOG_LEVEL == LogLevel.INFO
+    assert settings.LOG_PROVIDER == LogProvider.STDOUT
 
     # Check default Google Cloud Secret Manager settings
     assert settings.USE_SECRET_MANAGER is False
@@ -56,6 +57,13 @@ def test_pinecone_dimensions_match_embedding_dimensions() -> None:
         )  # Should match OPENAI_EMBEDDING_DIMENSIONS
 
 
+def test_log_provider_env_override() -> None:
+    """Test that LOG_PROVIDER can be overridden by environment."""
+    with patch.dict(os.environ, {"LOG_PROVIDER": "google"}):
+        settings = Settings()
+        assert settings.LOG_PROVIDER == LogProvider.GOOGLE
+
+
 def test_environment_enum() -> None:
     """Test the Environment enum."""
     assert Environment.DEVELOPMENT.value == "development"
@@ -70,3 +78,9 @@ def test_log_level_enum() -> None:
     assert LogLevel.WARNING.value == "WARNING"
     assert LogLevel.ERROR.value == "ERROR"
     assert LogLevel.CRITICAL.value == "CRITICAL"
+
+
+def test_log_provider_enum() -> None:
+    """Test the LogProvider enum."""
+    assert LogProvider.STDOUT.value == "stdout"
+    assert LogProvider.GOOGLE.value == "google"
