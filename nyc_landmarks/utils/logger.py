@@ -19,6 +19,7 @@ from nyc_landmarks.config.settings import LogProvider, settings
 try:
     from google.cloud import logging as gcp_logging  # type: ignore
     from google.cloud.logging_v2.handlers import CloudLoggingHandler  # type: ignore
+
     GCP_LOGGING_AVAILABLE = True
 except Exception:  # pragma: no cover - optional dependency
     GCP_LOGGING_AVAILABLE = False

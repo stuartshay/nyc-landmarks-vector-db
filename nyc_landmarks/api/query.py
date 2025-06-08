@@ -11,14 +11,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Query as QueryParam
 from pydantic import BaseModel, Field
 
-from nyc_landmarks.config.settings import settings
-from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.db.db_client import DbClient
 from nyc_landmarks.embeddings.generator import EmbeddingGenerator
 from nyc_landmarks.examples.search_examples import (
     get_landmark_filter_examples,
     get_text_query_examples,
 )
+from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
 # Configure logging
