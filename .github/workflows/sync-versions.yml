@@ -6,6 +6,9 @@ on:
       - "requirements.txt"
     types: [opened, synchronize]
 
+permissions:
+  contents: write
+
 jobs:
   sync-versions:
     runs-on: ubuntu-latest
@@ -16,6 +19,7 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -28,8 +32,14 @@ jobs:
           pip install pip-tools
 
       - name: Run version synchronization script
+        id: sync
         run: |
-          ./scripts/ci/sync_versions.sh
+          if ./scripts/ci/sync_versions.sh; then
+            echo "sync_completed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "sync_completed=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
 
       - name: Check if changes were made
         id: git-check
@@ -37,7 +47,7 @@ jobs:
           git diff --exit-code setup.py || echo "changes=true" >> "$GITHUB_OUTPUT"
 
       - name: Commit and push changes
-        if: steps.git-check.outputs.changes == 'true'
+        if: steps.git-check.outputs.changes == 'true' && steps.sync.outputs.sync_completed == 'true'
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"

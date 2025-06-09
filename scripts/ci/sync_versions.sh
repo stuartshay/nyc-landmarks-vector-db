@@ -22,9 +22,18 @@ fi
 
 # Create a temporary file for processing
 TEMP_FILE=$(mktemp)
-trap 'rm -f "$TEMP_FILE"' EXIT
 
 echo "Extracting package versions from requirements.txt..."
+
+# First, extract direct dependencies from setup.py
+DIRECT_DEPS_FILE=$(mktemp)
+trap 'rm -f "$TEMP_FILE" "$DIRECT_DEPS_FILE"' EXIT
+
+echo "Extracting direct dependencies from setup.py..."
+grep -E '^\s*"[a-zA-Z0-9_.-]+[>=<~]' setup.py | sed 's/.*"\([^"]*\)".*/\1/' | sed 's/[>=<~!].*//' > "$DIRECT_DEPS_FILE"
+
+echo "Direct dependencies found in setup.py:"
+cat "$DIRECT_DEPS_FILE"
 
 # Extract package names and versions from requirements.txt
 # Format: package==version or package>=version
@@ -41,6 +50,12 @@ while IFS= read -r line; do
 
         # Convert package name to lowercase for case-insensitive comparison
         package_lower=$(echo "$package" | tr '[:upper:]' '[:lower:]')
+
+        # Check if this package is a direct dependency
+        if ! grep -q -i "^${package}$" "$DIRECT_DEPS_FILE" && ! grep -q -i "^${package_lower}$" "$DIRECT_DEPS_FILE"; then
+            echo "  Skipping $package (transitive dependency)"
+            continue
+        fi
 
         # Special cases for package name mapping
         case "$package_lower" in
