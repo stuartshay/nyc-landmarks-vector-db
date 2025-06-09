@@ -27,3 +27,18 @@ output "dashboard_name" {
   description = "The monitoring dashboard display name"
   value       = jsondecode(google_monitoring_dashboard.api_dashboard.dashboard_json)["displayName"]
 }
+
+output "dashboard_url" {
+  description = "Direct URL to the monitoring dashboard"
+  value       = "https://console.cloud.google.com/monitoring/dashboards/custom/${split("/", google_monitoring_dashboard.api_dashboard.id)[3]}?project=${var.project_id}"
+}
+
+output "uptime_check_id" {
+  description = "The uptime check ID"
+  value       = google_monitoring_uptime_check_config.health_check.uptime_check_id
+}
+
+output "uptime_check_name" {
+  description = "The uptime check display name"
+  value       = google_monitoring_uptime_check_config.health_check.display_name
+}
