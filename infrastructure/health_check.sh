@@ -134,6 +134,26 @@ if [[ -d ".terraform" ]]; then
     else
         print_error "Terraform configuration validation failed"
     fi
+
+    # Check for uptime check configuration
+    echo
+    echo "Checking monitoring configuration..."
+    check_count=$((check_count + 1))
+    if grep -q "google_monitoring_uptime_check_config" main.tf; then
+        print_status "Uptime check configuration found"
+        pass_count=$((pass_count + 1))
+    else
+        print_warning "Uptime check configuration not found in main.tf"
+    fi
+
+    # Check dashboard template for health widgets
+    check_count=$((check_count + 1))
+    if grep -q "Service Health Status" dashboard.json.tpl; then
+        print_status "Health monitoring widgets found in dashboard"
+        pass_count=$((pass_count + 1))
+    else
+        print_warning "Health monitoring widgets not found in dashboard template"
+    fi
 fi
 
 # Summary
@@ -145,7 +165,9 @@ echo "Passed: $pass_count/$check_count checks"
 if [[ $pass_count -eq $check_count ]]; then
     echo -e "${GREEN}All checks passed! Infrastructure is ready.${NC}"
     echo
-    echo "To deploy: ./deploy_dashboard.sh apply"
+    echo "Next steps:"
+    echo "  To deploy: ./deploy_dashboard.sh apply"
+    echo "  To test endpoints: ../utils/test_health_endpoint.sh -v"
     exit 0
 elif [[ $pass_count -gt $((check_count * 3 / 4)) ]]; then
     echo -e "${YELLOW}Most checks passed. Review warnings above.${NC}"

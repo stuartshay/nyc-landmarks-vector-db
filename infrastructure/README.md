@@ -2,13 +2,80 @@
 
 This directory contains Terraform configuration for deploying monitoring infrastructure for the NYC Landmarks Vector DB project.
 
+## 🚀 Quick Start
+
+### First-Time Setup
+
+```bash
+cd infrastructure
+./setup_terraform.sh
+```
+
+### Deploy Dashboard
+
+```bash
+./deploy_dashboard.sh apply
+```
+
+### View Dashboard
+
+```bash
+./deploy_dashboard.sh output
+# Visit the URL shown for your project
+```
+
+## 📋 Common Commands
+
+| Command                            | Description                                 |
+| ---------------------------------- | ------------------------------------------- |
+| `./health_check.sh`                | Check if everything is configured correctly |
+| `../utils/test_health_endpoint.sh` | Test service health endpoints               |
+| `./setup_terraform.sh`             | Initialize Terraform (run once)             |
+| `./deploy_dashboard.sh plan`       | See what will be created                    |
+| `./deploy_dashboard.sh apply`      | Create the dashboard                        |
+| `./deploy_dashboard.sh output`     | Show dashboard URL and details              |
+| `./deploy_dashboard.sh destroy`    | Remove all resources                        |
+
+## 📁 Key Files
+
+- `terraform/main.tf` - Main Terraform configuration
+- `terraform/terraform.tfvars` - Your project settings (auto-generated)
+- `../../.gcp/service-account-key.json` - GCP authentication
+
 ## Overview
 
 The Terraform configuration creates:
 
-- Log-based metrics for monitoring API performance
-- A comprehensive monitoring dashboard in Google Cloud Console
-- Proper IAM and authentication setup
+- **Log-based metrics** for monitoring API performance
+- **Comprehensive monitoring dashboard** in Google Cloud Console
+- **Uptime checks** with automated health monitoring
+- **Cloud Scheduler jobs** for periodic health validation
+- **Proper IAM and authentication** setup
+
+### 📊 Dashboard Features
+
+The monitoring dashboard includes:
+
+- **🔗 Service Health Status** - Real-time uptime percentage with color-coded thresholds
+- **📈 Service Uptime (24h)** - 24-hour trend of service availability
+- **Request Count** - Total API requests
+- **Request Rate** - Requests per second
+- **Error Rate** - 5xx errors per second
+- **Latency** - Average and 95th percentile response times
+- **Validation Warnings** - Application validation issues
+
+### 🎯 Health Monitoring
+
+The dashboard includes comprehensive health monitoring:
+
+- **Uptime Check**: Monitors `/health` endpoint every 60 seconds
+- **Thresholds**:
+  - 🟡 Yellow warning below 95% uptime
+  - 🔴 Red alert below 90% uptime
+- **Content Validation**: Ensures response contains `"status": "healthy"`
+- **Endpoints Monitored**:
+  - Primary: `https://vector-db.coredatastore.com/health`
+  - Direct: `https://nyc-landmarks-vector-db-1052843754581.us-east4.run.app/health`
 
 ## Prerequisites
 
@@ -34,73 +101,17 @@ The Terraform configuration creates:
    - `roles/logging.configWriter`
    - `roles/monitoring.editor`
    - `roles/monitoring.metricWriter`
+   - `roles/cloudscheduler.admin`
+   - `roles/cloudscheduler.jobRunner`
 
 1. **GCP Project**: A valid Google Cloud Project with the following APIs enabled:
 
    - Cloud Logging API
    - Cloud Monitoring API
    - Cloud Resource Manager API
+   - Cloud Scheduler API
 
-## Quick Start
-
-### First-Time Setup
-
-1. **Run the setup script** (recommended):
-
-   ```bash
-   cd infrastructure
-   ./setup_terraform.sh
-   ```
-
-   This script will:
-
-   - Validate prerequisites
-   - Initialize Terraform
-   - Create `terraform.tfvars` from the example
-   - Validate the configuration
-   - Create a deployment plan
-
-1. **Manual setup** (alternative):
-
-   ```bash
-   cd infrastructure/terraform
-
-   # Copy and edit variables
-   cp terraform.tfvars.example terraform.tfvars
-   # Edit terraform.tfvars with your project details
-
-   # Initialize Terraform
-   terraform init
-
-   # Plan deployment
-   terraform plan
-   ```
-
-### Deploy Dashboard
-
-1. **Using the deployment script** (recommended):
-
-   ```bash
-   cd infrastructure
-   ./deploy_dashboard.sh apply
-   ```
-
-1. **Manual deployment**:
-
-   ```bash
-   cd infrastructure/terraform
-   terraform apply
-   ```
-
-### View Dashboard
-
-After successful deployment, you can access your monitoring dashboard at:
-
-```
-https://console.cloud.google.com/monitoring/dashboards?project=YOUR_PROJECT_ID
-```
-
-## Configuration
+## 🔧 Configuration
 
 ### Variables
 
@@ -118,6 +129,24 @@ project_id = "my-gcp-project"
 credentials_file = "../../.gcp/service-account-key.json"
 region = "us-central1"
 log_name_prefix = "nyc-landmarks-vector-db"
+```
+
+## ✅ Health Check
+
+Run `./health_check.sh` to verify:
+
+- ✓ All required files exist
+- ✓ Scripts are executable
+- ✓ Terraform is installed
+- ✓ GCP credentials are valid
+- ✓ Configuration is correct
+
+## 🔗 Access Dashboard
+
+After deployment, access at:
+
+```
+https://console.cloud.google.com/monitoring/dashboards?project=YOUR_PROJECT_ID
 ```
 
 ## Resources Created
@@ -155,7 +184,32 @@ The dashboard includes widgets for:
 - **Request Latency**: Combined view of average and 95th percentile latency
 - **Validation Warning Rate**: Line chart of validation warnings per second
 
-## Scripts
+### Health Monitoring Components
+
+- **Uptime Checks**: Monitor service endpoints every 60 seconds
+- **Cloud Scheduler Jobs**: Periodic health validation tasks
+- **Alerting Policies**: Automated notifications for service issues
+
+## 📁 File Structure
+
+```
+infrastructure/
+├── terraform/
+│   ├── main.tf                   # Main Terraform configuration
+│   ├── variables.tf              # Variable definitions
+│   ├── outputs.tf                # Output definitions
+│   ├── dashboard.json.tpl        # Dashboard template
+│   ├── .terraform.lock.hcl       # Provider version locks (tracked)
+│   ├── terraform.tfvars.example  # Example variables
+│   └── .gitignore               # Git ignore patterns
+├── .terraform.lock.hcl           # Root provider locks (tracked)
+├── setup_terraform.sh            # First-time setup script
+├── deploy_dashboard.sh           # Deployment script
+├── health_check.sh               # Infrastructure validation
+└── README.md                    # This file
+```
+
+## 🔧 Scripts Reference
 
 ### setup_terraform.sh
 
@@ -193,7 +247,16 @@ Usage examples:
 ./deploy_dashboard.sh output
 ```
 
-## Troubleshooting
+### health_check.sh
+
+Infrastructure validation script that checks:
+
+- Required files and permissions
+- Terraform installation and configuration
+- GCP authentication and API access
+- Cross-references endpoint testing utility at `../utils/test_health_endpoint.sh`
+
+## 🛠 Troubleshooting
 
 ### Common Issues
 
@@ -205,7 +268,7 @@ Usage examples:
 
 1. **Permission Denied**:
 
-   - Service account needs `roles/logging.configWriter` and `roles/monitoring.editor`
+   - Service account needs all required roles (see Prerequisites)
    - Check IAM permissions in GCP Console
 
 1. **Project Not Found**:
@@ -219,7 +282,14 @@ Usage examples:
    gcloud services enable logging.googleapis.com
    gcloud services enable monitoring.googleapis.com
    gcloud services enable cloudresourcemanager.googleapis.com
+   gcloud services enable cloudscheduler.googleapis.com
    ```
+
+1. **Cloud Scheduler Issues**:
+
+   - Ensure App Engine application exists in your project
+   - Verify Cloud Scheduler API is enabled
+   - Check service account has scheduler permissions
 
 ### Debug Commands
 
@@ -235,35 +305,22 @@ terraform output
 
 # Force refresh state
 terraform refresh
+
+# View detailed logs
+terraform apply -var-file=terraform.tfvars -auto-approve -verbose
 ```
 
-## Security Considerations
+## 🔒 Security Considerations
 
 - Service account key file contains sensitive credentials
 - Never commit `terraform.tfvars` or `*.tfstate` files to version control
 - **DO commit `.terraform.lock.hcl` files** for consistent provider versions
 - Use least-privilege IAM roles
 - Consider using Workload Identity instead of service account keys in production
+- Regularly rotate service account keys
+- Monitor access logs for unauthorized usage
 
-## File Structure
-
-```
-infrastructure/
-├── terraform/
-│   ├── main.tf                   # Main Terraform configuration
-│   ├── variables.tf              # Variable definitions
-│   ├── outputs.tf                # Output definitions
-│   ├── dashboard.json.tpl        # Dashboard template
-│   ├── .terraform.lock.hcl       # Provider version locks (tracked)
-│   ├── terraform.tfvars.example  # Example variables
-│   └── .gitignore               # Git ignore patterns
-├── .terraform.lock.hcl           # Root provider locks (tracked)
-├── setup_terraform.sh            # First-time setup script
-├── deploy_dashboard.sh           # Deployment script
-└── README.md                    # This file
-```
-
-## Contributing
+## 🤝 Contributing
 
 When making changes to the infrastructure:
 
@@ -272,11 +329,13 @@ When making changes to the infrastructure:
 1. Validate Terraform configuration: `terraform validate`
 1. Format code: `terraform fmt`
 1. Update version constraints if needed
+1. Test deployment and rollback procedures
 
-## Support
+## 📞 Support
 
 For issues related to:
 
 - **Terraform configuration**: Check the troubleshooting section above
-- **GCP permissions**: Review IAM documentation
+- **GCP permissions**: Review IAM documentation and required roles
 - **Application logging**: Check the main project documentation
+- **Health monitoring**: Use `../utils/test_health_endpoint.sh` for endpoint testing
