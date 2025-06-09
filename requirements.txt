@@ -16,6 +16,9 @@ black==25.1.0
 bleach==6.2.0
 branca==0.8.1
 build==1.2.2.post1
+# cachetools pinned to <6.0 due to google-auth dependency constraint
+# google-auth 2.40.3 requires cachetools<6.0,>=2.0.0
+# TODO: Update when google-auth supports cachetools 6.x
 cachetools==5.5.2
 certifi==2025.4.26
 cffi==1.17.1
