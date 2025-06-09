@@ -255,26 +255,18 @@ def verify_second_processing(
         ), "Processing date should be updated"
 
 
-def test_retry_logic(
-    pinecone_test_db: Optional[PineconeDB],
+def test_retry_logic_internal(
+    pinecone_db: PineconeDB,
     test_landmark_id: str,
     test_chunks: List[Dict[str, Any]],
 ) -> None:
     """Test retry logic when batch operations fail.
 
     Args:
-        pinecone_test_db: Pinecone database instance
+        pinecone_db: Pinecone database instance
         test_landmark_id: ID of the test landmark
         test_chunks: List of test chunks
     """
-    # Skip if Pinecone test database is not available
-    pinecone_db = get_pinecone_db_or_skip(pinecone_test_db)
-
-    # Use a test landmark ID
-    test_landmark_id = "TEST-RETRY-001"
-
-    # Create test chunks
-    test_chunks = create_test_chunks(test_landmark_id)
 
     # Simulate a batch failure and verify retry logic
     with patch.object(
@@ -333,8 +325,32 @@ def test_fixed_id_upsert_behavior(pinecone_test_db: Optional[PineconeDB]) -> Non
         )
 
         # Step 5: Test retry logic
-        test_retry_logic(pinecone_db, test_landmark_id, test_chunks)
+        test_retry_logic_internal(pinecone_db, test_landmark_id, test_chunks)
 
     finally:
         # Clean up
+        cleanup_test_vectors(pinecone_db, test_landmark_id)
+
+
+@pytest.mark.integration
+def test_retry_logic_standalone(pinecone_test_db: Optional[PineconeDB]) -> None:
+    """Test retry logic when batch operations fail as a standalone test.
+
+    Args:
+        pinecone_test_db: Pinecone database instance
+    """
+    # Skip if Pinecone test database is not available
+    pinecone_db = get_pinecone_db_or_skip(pinecone_test_db)
+
+    # Use a test landmark ID
+    test_landmark_id = "TEST-RETRY-001"
+
+    # Create test chunks
+    test_chunks = create_test_chunks(test_landmark_id)
+
+    try:
+        # Call the internal retry logic test
+        test_retry_logic_internal(pinecone_db, test_landmark_id, test_chunks)
+    finally:
+        # Clean up test vectors
         cleanup_test_vectors(pinecone_db, test_landmark_id)
