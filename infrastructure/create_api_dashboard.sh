@@ -1,4 +1,6 @@
 #!/bin/bash
+# DEPRECATED: Use Terraform in infrastructure/terraform instead.
+echo "This script is deprecated. Please use Terraform in infrastructure/terraform instead." && exit 0
 
 # Create the infrastructure directory if it doesn't exist
 mkdir -p infrastructure

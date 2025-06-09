@@ -179,3 +179,14 @@ pinecone_backup/
 verification_results/
 temp_notebooks/
 output/
+
+# Terraform
+**/.terraform/
+**/terraform.tfstate
+**/terraform.tfstate.backup
+**/terraform.tfstate.lock.info
+**/terraform.tfvars
+**/tfplan
+**/terraform.tfplan
+**/.terraformrc
+**/terraform.rc

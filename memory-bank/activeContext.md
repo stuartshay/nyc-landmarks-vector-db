@@ -2,7 +2,20 @@
 
 ## Current Focus
 
-While continuing to work on the Wikipedia API Improvement Project, we have completed significant enhancements to the Google Cloud Logging implementation, greatly improving observability, security monitoring, and performance analysis capabilities.
+While continuing to work on the Wikipedia API Improvement Project, we have completed significant enhancements to the Google Cloud Logging implementation, greatly improving observability, security monitoring, and performance analysis capabilities. We are now evaluating the Terraform Monitoring Configuration PR (#158), which adds comprehensive Terraform support for infrastructure management and monitoring.
+
+### Terraform Monitoring Configuration (PR #158)
+
+PR #158 introduces Terraform support for the project, including updates to the development environment, pre-commit hooks, and detailed documentation for setup and usage. The implementation includes:
+
+- **DevContainer Integration**: Added Terraform support to the devcontainer by including the `ghcr.io/devcontainers/features/terraform:1` feature and enabling Terraform-specific VS Code settings
+- **Pre-commit Validation**: Integrated `terraform_fmt` and `terraform_validate` hooks into `.pre-commit-config.yaml` for automatic formatting and validation of Terraform files
+- **Terraform Configuration**: Added configuration files in `infrastructure/terraform/` for log-based metrics and dashboard resources
+- **Deployment Scripts**: Created `setup_terraform.sh`, `deploy_dashboard.sh`, and `health_check.sh` for streamlined setup and deployment
+- **Comprehensive Documentation**: Added detailed documentation in `docs/terraform_monitoring_setup.md` and `docs/terraform_precommit_validation.md`
+- **Legacy Script Deprecation**: Marked `create_api_dashboard.sh` as deprecated, advising users to switch to the Terraform-based setup
+
+This implementation provides a more robust, version-controlled approach to infrastructure management, particularly for monitoring resources. It creates log-based metrics for requests, errors, latency, and validation warnings, along with a comprehensive monitoring dashboard in Google Cloud Console.
 
 ### Google Cloud Logging Implementation
 
@@ -30,6 +43,8 @@ These enhancements make it much easier to:
 Having successfully completed the refactoring of `scripts/ci/process_wikipedia_articles.py` into modular components, we are focusing on improving the API calls within the Wikipedia processing components to enhance performance, reliability, and efficiency.
 
 ## Recent Changes
+
+- **Added Terraform Monitoring Configuration (PR #158)**: Introduced Terraform support for infrastructure management, particularly for setting up monitoring resources. Added DevContainer integration, pre-commit validation, Terraform configuration files, deployment scripts, and comprehensive documentation. This implementation replaces the older script-based approach with a more robust, version-controlled solution that creates log-based metrics and a comprehensive monitoring dashboard in Google Cloud Console.
 
 - **Enhanced Google Cloud Logging**: Significantly improved the logging system with structured logging capabilities, request context tracking, performance monitoring, and error classification. Created a provider-agnostic architecture with specialized middleware for API request tracking. Added the `nyc_landmarks/utils/request_context.py` module for request context propagation, enhanced the existing logger with JSON formatting and context-aware logging, and implemented a demonstration script in `scripts/demonstrate_logging.py`. Integrated these enhancements with the FastAPI application through middleware components. Created comprehensive documentation in `docs/google_cloud_logging_enhancements.md` detailing the new capabilities, query examples, and usage patterns.
 
@@ -81,6 +96,14 @@ Having successfully completed the refactoring of `scripts/ci/process_wikipedia_a
 
 ## Next Steps
 
+### Terraform Monitoring PR #158 Recommendations
+
+1. Test the Terraform configuration in a development environment to ensure it works as expected
+1. Consider adding output variables for dashboard URL for easier access after deployment
+1. Integrate the Terraform setup with CI/CD pipeline for automated infrastructure deployment
+1. Add monitoring for Wikipedia processing jobs and vector database operations
+1. Consider implementing Terraform modules for better reusability and organization as the infrastructure grows
+
 ### Wikipedia API Improvement Project
 
 #### Phase 2 - Performance Optimization (Current Focus)
@@ -129,6 +152,14 @@ Having successfully completed the refactoring of `scripts/ci/process_wikipedia_a
 1. Performance optimization
 
 ## Active Decisions and Considerations
+
+### Terraform Infrastructure Management
+
+- Embracing infrastructure-as-code principles with Terraform for better version control and repeatability
+- Centralizing monitoring configuration in Terraform to ensure consistency across environments
+- Deprecating older script-based approaches in favor of more robust Terraform solutions
+- Integrating Terraform workflows with development environment for seamless developer experience
+- Ensuring backward compatibility during the transition period
 
 ### Refactoring Architecture
 
