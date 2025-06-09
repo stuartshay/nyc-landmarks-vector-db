@@ -4,6 +4,110 @@
     "columns": "2",
     "widgets": [
       {
+        "title": "Service Health Status (Uptime Check)",
+        "scorecard": {
+          "timeSeriesQuery": {
+            "timeSeriesFilter": {
+              "filter": "metric.type=\"monitoring.googleapis.com/uptime_check/request_latency\" resource.type=\"uptime_url\"",
+              "aggregation": {
+                "perSeriesAligner": "ALIGN_MEAN",
+                "crossSeriesReducer": "REDUCE_MEAN",
+                "alignmentPeriod": "300s"
+              }
+            },
+            "unitOverride": "ms"
+          },
+          "sparkChartView": {
+            "sparkChartType": "SPARK_LINE"
+          },
+          "thresholds": [
+            {
+              "value": 5000,
+              "color": "RED",
+              "direction": "ABOVE"
+            }
+          ]
+        }
+      },
+      {
+        "title": "Service Health Status (via Logs)",
+        "scorecard": {
+          "timeSeriesQuery": {
+            "timeSeriesFilter": {
+              "filter": "metric.type=\"logging.googleapis.com/user/${log_name_prefix}.requests\" resource.type=\"cloud_run_revision\"",
+              "aggregation": {
+                "perSeriesAligner": "ALIGN_RATE",
+                "crossSeriesReducer": "REDUCE_SUM",
+                "alignmentPeriod": "300s"
+              }
+            },
+            "unitOverride": "1/s"
+          },
+          "sparkChartView": {
+            "sparkChartType": "SPARK_LINE"
+          },
+          "thresholds": [
+            {
+              "value": 0.1,
+              "color": "RED",
+              "direction": "BELOW"
+            }
+          ]
+        }
+      },
+      {
+        "title": "Service Activity (Request Rate)",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"logging.googleapis.com/user/${log_name_prefix}.requests\" resource.type=\"cloud_run_revision\"",
+                  "aggregation": {
+                    "perSeriesAligner": "ALIGN_RATE",
+                    "crossSeriesReducer": "REDUCE_SUM",
+                    "alignmentPeriod": "300s"
+                  }
+                },
+                "unitOverride": "1/s"
+              },
+              "plotType": "LINE"
+            }
+          ],
+          "timeshiftDuration": "0s",
+          "yAxis": {
+            "label": "Requests/s",
+            "scale": "LINEAR"
+          }
+        }
+      },
+      {
+        "title": "Service Uptime (24h)",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"monitoring.googleapis.com/uptime_check/request_latency\" resource.type=\"uptime_url\"",
+                  "aggregation": {
+                    "perSeriesAligner": "ALIGN_MEAN",
+                    "crossSeriesReducer": "REDUCE_MEAN",
+                    "alignmentPeriod": "3600s"
+                  }
+                },
+                "unitOverride": "ms"
+              },
+              "plotType": "LINE"
+            }
+          ],
+          "timeshiftDuration": "0s",
+          "yAxis": {
+            "label": "Latency (ms)",
+            "scale": "LINEAR"
+          }
+        }
+      },
+      {
         "title": "Total Request Count",
         "xyChart": {
           "dataSets": [

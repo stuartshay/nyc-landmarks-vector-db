@@ -327,11 +327,10 @@ def test_query_api_error_handling() -> None:
 
     response = client.post("/api/query/search", json=payload)
 
-    # This should still return 200 but ignore the invalid filter
-    assert response.status_code == 200
-    data = response.json()
-    # The invalid source_type should be ignored (not applied as filter)
-    assert data["source_type"] == "invalid_source"  # Echoed back but not used as filter
+    # This should now return 400 due to updated validation
+    assert response.status_code == 400
+    error_data = response.json()
+    assert "source_type must be one of" in error_data["detail"]
 
 
 @pytest.mark.integration

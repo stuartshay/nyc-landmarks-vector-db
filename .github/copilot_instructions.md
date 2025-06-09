@@ -160,5 +160,165 @@ When performing code cleanup, refactoring, or addressing linting issues:
    - Virtual environment should be created using `venv312/`
    - All dependencies should be compatible with Python 3.12+
 
+## Test Execution Optimization Rules
+
+When running tests, follow these rules to optimize execution time and provide focused feedback:
+
+### 1. **Component-Specific Testing Priority**
+
+- **Run specific tests first** when working on a particular component or fixing a specific issue
+- **Run broader test suites** only when necessary (final validation, core changes, or user request)
+- **Avoid running all tests** unless explicitly requested or when changes affect multiple components
+
+### 2. **Test Execution Guidelines by Scope**
+
+#### **Specific Function/Method Changes**
+
+```bash
+# Test the specific function
+pytest tests/unit/test_module.py::test_specific_function -v
+
+# Test the entire test class if multiple related methods changed
+pytest tests/unit/test_module.py::TestSpecificClass -v
+```
+
+#### **Single Module Changes**
+
+```bash
+# Test the specific module
+pytest tests/unit/test_module.py -v
+pytest tests/integration/test_module_integration.py -v
+```
+
+#### **API Endpoint Changes**
+
+```bash
+# Test specific API endpoints
+pytest tests/integration/test_query_api.py::test_specific_endpoint -v
+
+# For API validation changes
+pytest tests/integration/test_api_validation_logging.py -v
+```
+
+#### **Database/Vector Operations Changes**
+
+```bash
+# Test specific database operations
+pytest tests/integration/test_pinecone_*.py::test_specific_functionality -v
+
+# For Pinecone-specific changes
+pytest tests/integration/test_pinecone_upsert.py -v
+```
+
+#### **Configuration/Settings Changes**
+
+```bash
+# Test configuration-related functionality
+pytest tests/unit/test_config.py -v
+pytest tests/integration/test_environment_*.py -v
+```
+
+### 3. **When to Run Broader Test Suites**
+
+#### **Run Test Module** (when multiple functions in a file are affected):
+
+```bash
+pytest tests/unit/test_module.py -v
+pytest tests/integration/test_module_integration.py -v
+```
+
+#### **Run Test Category** (when changes affect a specific type of functionality):
+
+```bash
+# Unit tests only
+pytest tests/unit/ -v
+
+# Integration tests only
+pytest tests/integration/ -v
+
+# Functional tests only
+pytest tests/functional/ -v
+```
+
+#### **Run All Tests** (only when absolutely necessary):
+
+```bash
+# All tests - use sparingly, only for:
+# - Final validation before completion
+# - Changes to core infrastructure/shared components
+# - User explicitly requests it
+# - Pre-commit or CI/CD pipeline
+pytest tests/ -v
+```
+
+### 4. **Test Selection Examples**
+
+#### **Bug Fix Scenarios**
+
+```bash
+# Fixing metadata consistency bug
+pytest tests/integration/test_pinecone_validation.py::test_metadata_consistency -v
+
+# Fixing API validation error
+pytest tests/integration/test_query_api.py::test_query_api_validation_errors -v
+
+# Fixing retry logic
+pytest tests/integration/test_pinecone_upsert.py::test_retry_logic_standalone -v
+```
+
+#### **Feature Development Scenarios**
+
+```bash
+# Adding new API endpoint
+pytest tests/integration/test_query_api.py -v
+
+# Adding new vector functionality
+pytest tests/integration/test_pinecone_*.py -v
+
+# Adding new logging feature
+pytest tests/integration/test_*logging*.py -v
+```
+
+### 5. **Performance Considerations**
+
+- **Integration tests** can take several minutes - run specific ones when possible
+- **API tests** require running server - check API availability first
+- **Pinecone tests** interact with external service - run targeted tests to save time
+- **Unit tests** are fast - these can be run more broadly when in doubt
+
+### 6. **Test Failure Response Strategy**
+
+1. **Single test failure**: Fix and re-run that specific test
+1. **Multiple related test failures**: Run the test module to verify fix
+1. **Unrelated test failures**: Investigate if changes affected other components
+1. **Run full suite**: Only after fixing specific issues and before final completion
+
+### 7. **Communication Pattern**
+
+When suggesting test execution, always specify:
+
+- **Why** running specific tests (what component/functionality is being tested)
+- **What** specific test command to run
+- **When** to escalate to broader test execution
+
+Example:
+
+```
+"Since we modified the retry logic in PineconeDB, let's run the specific retry test:
+pytest tests/integration/test_pinecone_upsert.py::test_retry_logic_standalone -v
+
+This will verify our fix without running the entire integration suite unnecessarily."
+```
+
+### 8. **Exception Cases**
+
+Always run broader tests when:
+
+- Changes affect shared utilities or base classes
+- Modifying configuration or environment setup
+- Refactoring core infrastructure components
+- User explicitly requests comprehensive testing
+- Final validation before task completion
+
 When helping with this project, please regularly check the memory bank folder to provide
 the most accurate and contextually appropriate assistance.
