@@ -19,6 +19,9 @@
     "ghcr.io/dhoeric/features/google-cloud-cli:1": {},
     "ghcr.io/devcontainers/features/node:1": {
       "version": "22"
+    },
+    "ghcr.io/devcontainers/features/terraform:1": {
+      "version": "latest"
     }
   },
   "customizations": {
@@ -71,7 +74,15 @@
         "editor.insertSpaces": true,
         "editor.detectIndentation": false,
         "files.trimTrailingWhitespace": true,
-        "files.insertFinalNewline": true
+        "files.insertFinalNewline": true,
+        "terraform.experimentalFeatures.validateOnSave": true,
+        "terraform.experimentalFeatures.prefillRequiredFields": true,
+        "[terraform]": {
+          "editor.formatOnSave": true
+        },
+        "[terraform-vars]": {
+          "editor.formatOnSave": true
+        }
       },
       "extensions": [
         "ms-python.python",
@@ -95,7 +106,8 @@
         "mechatroner.rainbow-csv",
         "redhat.vscode-yaml",
         "donjayamanne.githistory",
-        "saoudrizwan.claude-dev"
+        "saoudrizwan.claude-dev",
+        "hashicorp.terraform"
       ]
     }
   }
