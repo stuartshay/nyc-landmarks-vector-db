@@ -76,7 +76,7 @@ resource "google_monitoring_uptime_check_config" "health_check" {
 }
 
 # Cloud Scheduler job to periodically check health endpoint
-resource "google_cloud_scheduler_job" "health_check" {
+resource "google_cloud_scheduler_job" "scheduler_health_check" {
   name        = "nyc-landmarks-health-check"
   description = "Periodic health check for NYC Landmarks Vector DB"
   schedule    = "*/5 * * * *" # Every 5 minutes
