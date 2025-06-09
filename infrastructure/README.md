@@ -241,6 +241,7 @@ terraform refresh
 
 - Service account key file contains sensitive credentials
 - Never commit `terraform.tfvars` or `*.tfstate` files to version control
+- **DO commit `.terraform.lock.hcl` files** for consistent provider versions
 - Use least-privilege IAM roles
 - Consider using Workload Identity instead of service account keys in production
 
@@ -249,15 +250,17 @@ terraform refresh
 ```
 infrastructure/
 ├── terraform/
-│   ├── main.tf              # Main Terraform configuration
-│   ├── variables.tf         # Variable definitions
-│   ├── outputs.tf           # Output definitions
-│   ├── dashboard.json.tpl   # Dashboard template
+│   ├── main.tf                   # Main Terraform configuration
+│   ├── variables.tf              # Variable definitions
+│   ├── outputs.tf                # Output definitions
+│   ├── dashboard.json.tpl        # Dashboard template
+│   ├── .terraform.lock.hcl       # Provider version locks (tracked)
 │   ├── terraform.tfvars.example  # Example variables
-│   └── .gitignore          # Git ignore patterns
-├── setup_terraform.sh       # First-time setup script
-├── deploy_dashboard.sh      # Deployment script
-└── README.md               # This file
+│   └── .gitignore               # Git ignore patterns
+├── .terraform.lock.hcl           # Root provider locks (tracked)
+├── setup_terraform.sh            # First-time setup script
+├── deploy_dashboard.sh           # Deployment script
+└── README.md                    # This file
 ```
 
 ## Contributing
