@@ -139,11 +139,11 @@ if [[ -d ".terraform" ]]; then
     echo
     echo "Checking monitoring configuration..."
     check_count=$((check_count + 1))
-    if grep -q "google_monitoring_uptime_check_config" main.tf; then
+    if grep -q "google_monitoring_uptime_check_config" "$TERRAFORM_FILE"; then
         print_status "Uptime check configuration found"
         pass_count=$((pass_count + 1))
     else
-        print_warning "Uptime check configuration not found in main.tf"
+        print_warning "Uptime check configuration not found in $TERRAFORM_FILE"
     fi
 
     # Check dashboard template for health widgets
