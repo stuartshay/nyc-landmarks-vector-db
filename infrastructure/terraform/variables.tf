@@ -1,6 +1,6 @@
 variable "project_id" {
   type        = string
-  description = "GCP project ID for NYC landmarks vector database"
+  description = "GCP project ID"
   default     = ""
 }
 
