@@ -11,6 +11,7 @@ import pytest
 import requests
 
 from nyc_landmarks.utils.logger import get_logger
+from tests.utils.api_helpers import require_api_or_skip
 
 
 class TestAPIValidationLogging:
@@ -22,9 +23,28 @@ class TestAPIValidationLogging:
         return "http://localhost:8000"
 
     @pytest.fixture
+    def test_unavailable_url(self) -> str:
+        """Base URL for testing unavailable API."""
+        return "http://localhost:9999"
+
+    @pytest.fixture
     def headers(self) -> dict[str, str]:
         """Common headers for API requests."""
         return {"User-Agent": "ValidationTestBot/1.0"}
+
+    @pytest.fixture(autouse=True)
+    def check_api_availability(self, base_url: str) -> None:
+        """Check if the API is available before running tests."""
+        require_api_or_skip(base_url)
+
+    @pytest.fixture
+    def warn_if_api_unavailable(self, base_url: str) -> None:
+        """Warn if API is unavailable but don't skip tests."""
+        from tests.utils.api_helpers import require_api_or_warn
+
+        warning = require_api_or_warn(base_url)
+        if warning:
+            pytest.warns(UserWarning, match="API is not available")
 
     def test_empty_query_validation(
         self, base_url: str, headers: dict[str, str]
@@ -155,6 +175,16 @@ class TestAPIValidationLogging:
 
         # Clean up
         logger.removeHandler(handler)
+
+    def test_api_unavailable_skip_demonstration(
+        self, test_unavailable_url: str
+    ) -> None:
+        """Demonstrate that tests are skipped when API is unavailable."""
+        # This test should be skipped when run with test_unavailable_url
+        require_api_or_skip(test_unavailable_url)
+
+        # This line should never be reached when API is unavailable
+        assert False, "This test should have been skipped due to unavailable API"
 
 
 if __name__ == "__main__":
