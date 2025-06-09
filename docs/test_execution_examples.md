@@ -10,10 +10,14 @@ This document demonstrates the new test execution optimization rules in action.
 **Test Command**:
 
 ```bash
-pytest tests/unit/test_api_helpers.py::test_api_availability_check_working_server -v
+# Unit tests (CI-safe, with mocking)
+pytest tests/unit/test_api_helpers.py::test_api_availability_check_success -v
+
+# Integration tests (requires running API server)
+pytest tests/integration/test_api_helpers_integration.py::test_api_availability_check_real_working_server -v
 ```
 
-**Why**: Testing the specific function that was changed, not the entire suite.
+**Why**: Unit tests verify logic with mocking (CI-safe), integration tests verify real connectivity (local dev).
 
 ### Scenario 2: Adding New API Endpoint
 
@@ -170,6 +174,15 @@ This will verify our fix without running the entire integration suite unnecessar
 pytest tests/integration/test_query_api.py::test_query_api_validation_errors -v
 
 If this passes, we can be confident the fix works without spending time on unrelated tests."
+```
+
+### CI-Safe Communication
+
+```
+"I've updated the API helper function. Let me run the unit tests (CI-safe with mocking):
+pytest tests/unit/test_api_helpers.py -v
+
+These use mocking so they'll work in CI/CD pipelines without requiring a running API server."
 ```
 
 ## 🔄 Iterative Testing Pattern

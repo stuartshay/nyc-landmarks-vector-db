@@ -97,13 +97,32 @@ def test_something(self):
 
 - `tests/utils/api_helpers.py` - Core helper functions
 - `tests/integration/test_api_validation_logging.py` - Added availability checking
-- `tests/unit/test_api_helpers.py` - Tests for helper functions
+- `tests/unit/test_api_helpers.py` - Unit tests with mocking (CI-safe)
+- `tests/integration/test_api_helpers_integration.py` - Integration tests with real API calls
 
 ### Functions Available
 
 - `check_api_availability(base_url: str, timeout: int = 5) -> bool`
 - `require_api_or_skip(base_url: str) -> None`
 - `require_api_or_warn(base_url: str) -> Optional[str]`
+
+## Test Strategy
+
+### Unit Tests (CI-Safe)
+
+- **Location**: `tests/unit/test_api_helpers.py`
+- **Purpose**: Test helper function logic with mocking
+- **CI/CD**: ✅ Safe to run in automated pipelines
+- **Mocking**: Uses `unittest.mock` to simulate API responses
+- **Coverage**: Tests all code paths without requiring real API servers
+
+### Integration Tests (Manual/Local)
+
+- **Location**: `tests/integration/test_api_helpers_integration.py`
+- **Purpose**: Test actual API connectivity behavior
+- **CI/CD**: ⚠️ May skip/fail in CI where no API server runs
+- **Real Calls**: Makes actual HTTP requests to test endpoints
+- **Usage**: For local development and manual testing scenarios
 
 ## Benefits
 
