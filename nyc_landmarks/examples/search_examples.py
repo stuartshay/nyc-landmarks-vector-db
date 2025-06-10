@@ -107,5 +107,35 @@ def get_landmark_filter_examples() -> Dict[str, Dict[str, Any]]:
                 "source_type": None,
                 "top_k": 5,
             },
-        }
+        },
+        "empire_state_building_specific": {
+            "summary": "Empire State Building History (Landmark-Specific)",
+            "description": "Search for historical information about the Empire State Building specifically",
+            "value": {
+                "query": "Tell me about the history of this landmark",
+                "landmark_id": "LP-02000",  # Empire State Building
+                "source_type": "pdf",
+                "top_k": 8,
+            },
+        },
+        "architectural_style_specific": {
+            "summary": "Architectural Style of Specific Landmark",
+            "description": "Search for architectural style information about a specific landmark",
+            "value": {
+                "query": "What architectural style is this building?",
+                "landmark_id": "LP-01234",  # Example landmark ID
+                "source_type": None,
+                "top_k": 3,
+            },
+        },
+        "designation_history_specific": {
+            "summary": "Designation History of Specific Landmark",
+            "description": "Search for designation and preservation history of a specific landmark",
+            "value": {
+                "query": "When was this landmark designated and why?",
+                "landmark_id": "LP-00500",  # Example landmark ID
+                "source_type": "pdf",
+                "top_k": 5,
+            },
+        },
     }
