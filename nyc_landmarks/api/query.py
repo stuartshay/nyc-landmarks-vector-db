@@ -7,9 +7,10 @@ landmark information.
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi import Query as QueryParam
 from fastapi import Request
+from fastapi.openapi.models import Example
 from pydantic import BaseModel, Field
 
 from nyc_landmarks.db.db_client import DbClient
@@ -110,6 +111,23 @@ class LandmarkListResponse(BaseModel):
     count: int = Field(0, description="Number of landmarks")
 
 
+# --- Helper functions for examples ---
+
+
+def _convert_to_fastapi_examples(
+    examples_dict: Dict[str, Dict[str, Any]],
+) -> Dict[str, Example]:
+    """Convert structured examples to FastAPI examples format for Swagger UI dropdown."""
+    fastapi_examples = {}
+    for key, example_data in examples_dict.items():
+        fastapi_examples[key] = Example(
+            summary=example_data["summary"],
+            description=example_data["description"],
+            value=example_data["value"],
+        )
+    return fastapi_examples
+
+
 # --- Dependency injection functions ---
 
 
@@ -136,16 +154,12 @@ def get_db_client() -> DbClient:
 @router.post(
     "/search",
     response_model=SearchResponse,
-    responses={
-        200: {
-            "description": "Successful Response",
-            "content": {"application/json": {"examples": get_text_query_examples()}},
-        }
-    },
 )  # type: ignore[misc]
 async def search_text(
-    query: TextQuery,
     request: Request,
+    query: TextQuery = Body(
+        ..., openapi_examples=_convert_to_fastapi_examples(get_text_query_examples())
+    ),
     embedding_generator: EmbeddingGenerator = Depends(get_embedding_generator),
     vector_db: PineconeDB = Depends(get_vector_db),
     db_client: DbClient = Depends(get_db_client),
@@ -289,18 +303,13 @@ async def search_text(
 @router.post(
     "/search/landmark",
     response_model=SearchResponse,
-    responses={
-        200: {
-            "description": "Successful Response with Landmark-Specific Filtering",
-            "content": {
-                "application/json": {"examples": get_landmark_filter_examples()}
-            },
-        }
-    },
 )  # type: ignore[misc]
 async def search_text_by_landmark(
-    query: TextQuery,
     request: Request,
+    query: TextQuery = Body(
+        ...,
+        openapi_examples=_convert_to_fastapi_examples(get_landmark_filter_examples()),
+    ),
     embedding_generator: EmbeddingGenerator = Depends(get_embedding_generator),
     vector_db: PineconeDB = Depends(get_vector_db),
     db_client: DbClient = Depends(get_db_client),
@@ -328,7 +337,7 @@ async def search_text_by_landmark(
 
     # Use the existing search_text functionality
     result: SearchResponse = await search_text(
-        query, request, embedding_generator, vector_db, db_client
+        request, query, embedding_generator, vector_db, db_client
     )
     return result
 
