@@ -222,6 +222,26 @@ The vector utility tool follows a command-pattern architecture:
 - **Error Boundary Management**: Each command handles its own errors without affecting others
 - **Cross-cutting Concerns**: Shared functionality like formatting and logging is implemented once
 
+## Infrastructure as Code Pattern
+
+The system uses Terraform to manage infrastructure using code-based configuration:
+
+- **Declarative Resource Definitions**: Infrastructure resources are defined in Terraform configuration files
+- **Version-Controlled Infrastructure**: All infrastructure code lives in version control alongside application code
+- **Modular Configuration**: Resources are organized into logical groups with clear dependencies
+- **Environment Variables**: Dynamic values and secrets are provided through environment variables or variables files
+- **Helper Scripts**: Standardized scripts handle common operations (setup, deploy, check)
+- **Pre-commit Validation**: Automated formatting and validation through pre-commit hooks
+- **Template-Based Resources**: Complex resources like dashboards use template files with variable substitution
+- **Local Development Integration**: Development environment includes Terraform tooling and extensions
+- **Consistent Resource Naming**: Resources follow consistent naming conventions with prefixes
+- **Explicit Dependencies**: Resource dependencies are explicitly declared
+- **Comprehensive Logging & Monitoring**: Infrastructure includes robust observability components:
+  - Log-based metrics for API performance
+  - Uptime checks for service health monitoring
+  - Scheduled health verification
+  - Comprehensive dashboards with multiple visualization types
+
 ## Modular Processing Architecture
 
 The system employs a modular processing architecture that separates concerns into focused, single-responsibility components:
