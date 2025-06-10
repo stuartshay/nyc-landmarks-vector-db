@@ -10,12 +10,17 @@ PR #158 introduces Terraform support for the project, including updates to the d
 
 - **DevContainer Integration**: Added Terraform support to the devcontainer by including the `ghcr.io/devcontainers/features/terraform:1` feature and enabling Terraform-specific VS Code settings
 - **Pre-commit Validation**: Integrated `terraform_fmt` and `terraform_validate` hooks into `.pre-commit-config.yaml` for automatic formatting and validation of Terraform files
-- **Terraform Configuration**: Added configuration files in `infrastructure/terraform/` for log-based metrics and dashboard resources
+- **Terraform Configuration**: Added configuration files in `infrastructure/terraform/` for log-based metrics, monitoring dashboard resources, uptime checks, and Cloud Scheduler jobs
+- **Infrastructure as Code Resources**:
+  - Log-based metrics for requests, errors, latency, and validation warnings
+  - Comprehensive monitoring dashboard in Google Cloud Console
+  - Uptime check for the /health endpoint with content validation
+  - Cloud Scheduler job that runs every 5 minutes to monitor the health endpoint
 - **Deployment Scripts**: Created `setup_terraform.sh`, `deploy_dashboard.sh`, and `health_check.sh` for streamlined setup and deployment
 - **Comprehensive Documentation**: Added detailed documentation in `docs/terraform_monitoring_setup.md` and `docs/terraform_precommit_validation.md`
 - **Legacy Script Deprecation**: Marked `create_api_dashboard.sh` as deprecated, advising users to switch to the Terraform-based setup
 
-This implementation provides a more robust, version-controlled approach to infrastructure management, particularly for monitoring resources. It creates log-based metrics for requests, errors, latency, and validation warnings, along with a comprehensive monitoring dashboard in Google Cloud Console.
+This implementation provides a more robust, version-controlled approach to infrastructure management, particularly for monitoring resources. The use of Terraform ensures consistency across environments, better visibility into infrastructure changes through version control, and a more maintainable approach to infrastructure management.
 
 ### Google Cloud Logging Implementation
 
@@ -99,10 +104,23 @@ Having successfully completed the refactoring of `scripts/ci/process_wikipedia_a
 ### Terraform Monitoring PR #158 Recommendations
 
 1. Test the Terraform configuration in a development environment to ensure it works as expected
-1. Consider adding output variables for dashboard URL for easier access after deployment
-1. Integrate the Terraform setup with CI/CD pipeline for automated infrastructure deployment
-1. Add monitoring for Wikipedia processing jobs and vector database operations
-1. Consider implementing Terraform modules for better reusability and organization as the infrastructure grows
+1. Add output variables for dashboard URL and uptime check URLs for easier access after deployment
+1. Integrate the Terraform setup with CI/CD pipeline for automated infrastructure deployment:
+   - Add Terraform validation to CI pipeline
+   - Implement Terraform plan review in PR checks
+   - Set up automated Terraform apply for approved changes to staging environment
+1. Extend monitoring coverage:
+   - Add monitoring for Wikipedia processing jobs
+   - Implement vector database operation metrics
+   - Create Cloud Scheduler jobs for periodic data integrity checks
+1. Enhance infrastructure architecture:
+   - Implement Terraform modules for better reusability and organization
+   - Separate state files for different environments (dev, staging, production)
+   - Add tagging strategy for resource management and cost allocation
+1. Implement alerting policies:
+   - Set up email notifications for health check failures
+   - Create PagerDuty integration for critical service disruptions
+   - Implement gradual alert thresholds for performance degradation
 
 ### Wikipedia API Improvement Project
 
