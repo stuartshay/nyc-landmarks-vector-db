@@ -16,6 +16,7 @@ python scripts/ci/process_landmarks.py --all --parallel --verbose
 """
 
 import argparse
+import atexit
 import concurrent.futures
 import json
 import logging
@@ -42,6 +43,38 @@ from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
 # Configure logger for this script
 logger = get_logger(name="process_landmarks")
+
+# Global flag to track if cleanup has been registered
+_cleanup_registered = False
+
+
+def cleanup_logging() -> None:
+    """Clean up logging handlers to prevent shutdown warnings."""
+    try:
+        # Import cleanup function if available
+        from nyc_landmarks.utils.logger import shutdown_logging_gracefully
+
+        shutdown_logging_gracefully()
+    except ImportError:
+        # Fallback: manually close cloud logging handlers
+        for handler in logging.getLogger().handlers:
+            if hasattr(handler, 'transport') and hasattr(handler, 'close'):
+                try:
+                    handler.close()
+                except Exception as e:
+                    # Log cleanup failure but don't let it crash the script
+                    print(
+                        f"Warning: Failed to close logging handler during cleanup: {e}",
+                        file=sys.stderr,
+                    )  # nosec B602
+
+
+def register_cleanup() -> None:
+    """Register cleanup function to run at exit."""
+    global _cleanup_registered
+    if not _cleanup_registered:
+        atexit.register(cleanup_logging)
+        _cleanup_registered = True
 
 
 class LandmarkPipeline:
@@ -1400,6 +1433,9 @@ def run_unified_mode(args: argparse.Namespace, api_key: Optional[str]) -> None:
 
 def main() -> None:
     """Main entry point for the script."""
+    # Register cleanup function for proper logging shutdown
+    register_cleanup()
+
     # Parse arguments and set up logging
     args = parse_arguments()
     setup_logging(args.verbose)

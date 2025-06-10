@@ -17,7 +17,7 @@ import sys
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from nyc_landmarks.config.settings import LogProvider, settings
 
@@ -379,3 +379,139 @@ def log_error(
         log_extra.update(extra)
 
     log_with_context(logger, logging.ERROR, message, exc_info=error, extra=log_extra)
+
+
+def _get_all_loggers() -> List[logging.Logger]:
+    """Get all logger instances, filtering out PlaceHolder objects."""
+    loggers = [logging.getLogger()]
+    # Filter out PlaceHolder objects and only include actual Logger instances
+    for logger_obj in logging.Logger.manager.loggerDict.values():
+        if isinstance(logger_obj, logging.Logger):
+            loggers.append(logger_obj)
+    return loggers
+
+
+def _get_cloud_handlers(logger_obj: logging.Logger) -> List[logging.Handler]:
+    """Get CloudLoggingHandler instances from a logger."""
+    handlers = []
+    # Copy list to avoid modification during iteration
+    for handler in logger_obj.handlers[:]:
+        # Check if it's a CloudLoggingHandler
+        if hasattr(handler, "transport") and hasattr(handler, "close"):
+            handlers.append(handler)
+    return handlers
+
+
+def _close_handler_safely(handler: logging.Handler, logger_obj: logging.Logger) -> None:
+    """Safely close a handler and remove it from the logger."""
+    try:
+        handler.close()
+        logger_obj.removeHandler(handler)
+    except Exception as e:
+        # Use basic print since logging might be compromised
+        print(f"Warning: Failed to close logging handler: {e}")
+
+
+def cleanup_loggers(logger_names: Optional[List[str]] = None) -> None:
+    """
+    Clean up logging handlers to prevent shutdown warnings.
+
+    This function should be called before script exit to properly close
+    CloudLoggingHandler instances and avoid the threading shutdown warning.
+
+    Args:
+        logger_names: List of logger names to clean up. If None, cleans up all loggers.
+    """
+    if logger_names is None:
+        loggers_to_clean = _get_all_loggers()
+    else:
+        loggers_to_clean = [logging.getLogger(name) for name in logger_names]
+
+    for logger_obj in loggers_to_clean:
+        if not isinstance(logger_obj, logging.Logger):
+            continue
+
+        handlers_to_close = _get_cloud_handlers(logger_obj)
+        for handler in handlers_to_close:
+            _close_handler_safely(handler, logger_obj)
+
+
+def flush_loggers(logger_names: Optional[List[str]] = None) -> None:
+    """
+    Flush all logging handlers to ensure logs are sent.
+
+    Args:
+        logger_names: List of logger names to flush. If None, flushes all loggers.
+    """
+    if logger_names is None:
+        # Get all loggers
+        loggers_to_flush = [logging.getLogger()]
+        # Filter out PlaceHolder objects and only include actual Logger instances
+        for logger_obj in logging.Logger.manager.loggerDict.values():
+            if isinstance(logger_obj, logging.Logger):
+                loggers_to_flush.append(logger_obj)
+    else:
+        loggers_to_flush = [logging.getLogger(name) for name in logger_names]
+
+    for logger_obj in loggers_to_flush:
+        if not isinstance(logger_obj, logging.Logger):
+            continue
+
+        for handler in logger_obj.handlers:
+            try:
+                if hasattr(handler, "flush"):
+                    handler.flush()
+            except Exception as e:
+                # Use basic print since logging might be compromised
+                print(f"Warning: Failed to flush logging handler: {e}")
+
+
+def shutdown_logging_gracefully() -> None:
+    """
+    Gracefully shutdown logging to prevent threading warnings.
+
+    This function should be called at the end of scripts that use CloudLoggingHandler
+    to ensure all logs are flushed and handlers are properly closed.
+    """
+    try:
+        # First flush all logs
+        flush_loggers()
+
+        # Wait a moment for logs to be sent
+        import time
+
+        time.sleep(0.5)
+
+        # Then cleanup handlers
+        cleanup_loggers()
+
+    except Exception as e:
+        print(f"Warning: Error during logging shutdown: {e}")
+
+
+# Context manager for proper logging cleanup
+class LoggingContext:
+    """Context manager that ensures proper logging cleanup."""
+
+    def __init__(self, logger_name: str, **logger_kwargs: Any):
+        """
+        Initialize the logging context.
+
+        Args:
+            logger_name: Name for the logger
+            **logger_kwargs: Additional arguments passed to get_logger()
+        """
+        self.logger_name = logger_name
+        self.logger_kwargs = logger_kwargs
+        self.logger: Optional[logging.Logger] = None
+
+    def __enter__(self) -> logging.Logger:
+        """Enter the context and set up logging."""
+        self.logger = get_logger(name=self.logger_name, **self.logger_kwargs)
+        return self.logger
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        """Exit the context and clean up logging."""
+        if self.logger:
+            flush_loggers([self.logger_name])
+            cleanup_loggers([self.logger_name])
