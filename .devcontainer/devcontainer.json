@@ -107,7 +107,10 @@
         "redhat.vscode-yaml",
         "donjayamanne.githistory",
         "saoudrizwan.claude-dev",
-        "hashicorp.terraform"
+        "hashicorp.terraform",
+        "be5invis.toml",
+        "chrisdias.promptboost",
+        "github.vscode-github-actions"
       ]
     }
   }

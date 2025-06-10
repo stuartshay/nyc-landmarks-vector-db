@@ -16,7 +16,7 @@ This document explains how to spin up a local SonarQube instance using Docker Co
 
    The first start may take a few minutes while Docker pulls the images.
 
-2. Once the services are running, open your browser to [http://localhost:9000](http://localhost:9000).
+1. Once the services are running, open your browser to [http://localhost:9000](http://localhost:9000).
    Log in with the default credentials `admin` / `admin` and change the password when prompted.
 
 ## Testing the Setup
@@ -44,4 +44,3 @@ This document explains how to spin up a local SonarQube instance using Docker Co
 ## Reference
 
 For more details about the Community Edition features, see the [SonarQube Community Edition page](https://www.sonarsource.com/open-source-editions/sonarqube-community-edition/).
-
