@@ -50,7 +50,11 @@ Stops and removes the SonarQube and PostgreSQL containers.
 
 #### `run-analysis.sh`
 
-Runs a SonarQube analysis on the project using the authentication token.
+Runs unit tests with coverage and then executes a SonarQube analysis on the project using the authentication token. The script:
+
+1. Runs unit tests with pytest coverage targeting `tests/unit`
+1. Generates both XML coverage report (`coverage.xml`) and JUnit test results (`test-results.xml`)
+1. Submits the code analysis along with the test reports to SonarQube
 
 ```bash
 .sonarqube/run-analysis.sh
@@ -110,6 +114,8 @@ make sonar-stop
 - **Docker-based Setup**: Containerized SonarQube and PostgreSQL for easy deployment
 - **Simplified Local Development**: Web UI accessible without authentication
 - **Project Configuration**: Pre-configured project settings for analysis
+- **Python Version Specification**: Configured for Python 3.12 for more accurate analysis
+- **Comprehensive Test Reporting**: JUnit XML test reports and coverage data
 - **Exclusion Patterns**: Configuration to exclude test files, build artifacts, etc.
 
 ## Analysis Results
@@ -119,5 +125,6 @@ The SonarQube analysis provides:
 - Code quality metrics (bugs, vulnerabilities, code smells)
 - Code duplication detection
 - Lines of code metrics
+- Code coverage metrics from unit tests
 - Detailed issue reports with resolution suggestions
 - Quality gate status

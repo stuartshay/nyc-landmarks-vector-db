@@ -30,6 +30,13 @@ if [ -z "$TOKEN" ]; then
   exit 1
 fi
 
+echo "🧪 Running unit tests with coverage and generating reports..."
+python -m pytest tests/unit --cov=nyc_landmarks --cov-report=xml --junitxml=test-results.xml
+
+if [ $? -ne 0 ]; then
+  echo "⚠️ Tests failed, but continuing with analysis..."
+fi
+
 echo "🔍 Running SonarQube analysis..."
 
 # Run sonar-scanner with project properties file and token
