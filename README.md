@@ -657,6 +657,18 @@ experience:
 To take full advantage of these features, install the recommended extensions when
 prompted by VS Code.
 
+## SonarQube Code Quality
+
+This repository includes a Docker Compose file for running a local
+SonarQube Community Edition instance. Start the stack with:
+
+```bash
+docker compose -f docker-compose.sonarqube.yml up -d
+```
+
+See [SonarQube Setup](./docs/sonarqube_setup.md) for details on
+testing and shutting down the container.
+
 ## Project Structure
 
 ```

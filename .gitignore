@@ -190,3 +190,7 @@ output/
 **/terraform.tfplan
 **/.terraformrc
 **/terraform.rc
+
+# SonarQube
+.sonarqube/token
+.scannerwork/

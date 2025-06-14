@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-While continuing to work on the Wikipedia API Improvement Project, we have completed significant enhancements to the Google Cloud Logging implementation, greatly improving observability, security monitoring, and performance analysis capabilities. We are now evaluating the Terraform Monitoring Configuration PR (#158), which adds comprehensive Terraform support for infrastructure management and monitoring.
+While continuing to work on the Wikipedia API Improvement Project, we have completed significant enhancements to the Google Cloud Logging implementation, greatly improving observability, security monitoring, and performance analysis capabilities. We are now evaluating the Terraform Monitoring Configuration PR (#158), which adds comprehensive Terraform support for infrastructure management and monitoring. Additionally, we have successfully set up a local SonarQube instance for code quality analysis to improve the project's overall code quality and identify potential issues.
 
 ### Terraform Monitoring Configuration (PR #158)
 
@@ -48,6 +48,8 @@ These enhancements make it much easier to:
 Having successfully completed the refactoring of `scripts/ci/process_wikipedia_articles.py` into modular components, we are focusing on improving the API calls within the Wikipedia processing components to enhance performance, reliability, and efficiency.
 
 ## Recent Changes
+
+- **Enhanced SonarQube Setup with Token Authentication and Comprehensive Test Reporting**: Improved the SonarQube setup with robust token-based authentication for API access and added comprehensive test reporting. Created `.sonarqube/setup-token.sh` to automatically generate and manage authentication tokens during startup. Enhanced `run-analysis.sh` to run unit tests with coverage, generating both XML coverage and JUnit test reports before submitting code analysis. Specified Python 3.12 in the SonarQube configuration for more accurate analysis. Added token file to `.gitignore` for security. Created comprehensive documentation in `docs/sonarqube_setup_complete.md` detailing the SonarQube configuration, scripts, and usage patterns. Successfully tested the complete workflow by running an analysis with coverage metrics and verifying results in the SonarQube dashboard. Verified full API functionality through direct token-based API calls that confirmed proper project registration and metric collection. Initial analysis reported 34.3% code coverage from unit tests, 6,321 lines of code, 5 bugs, 47 code smells, and 0 vulnerabilities.
 
 - **Added Terraform Monitoring Configuration (PR #158)**: Introduced Terraform support for infrastructure management, particularly for setting up monitoring resources. Added DevContainer integration, pre-commit validation, Terraform configuration files, deployment scripts, and comprehensive documentation. This implementation replaces the older script-based approach with a more robust, version-controlled solution that creates log-based metrics and a comprehensive monitoring dashboard in Google Cloud Console.
 
