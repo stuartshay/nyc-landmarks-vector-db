@@ -1,0 +1,29 @@
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: sonarqube
+      POSTGRES_PASSWORD: sonarqube
+      POSTGRES_DB: sonarqube
+    volumes:
+      - sonarqube_db:/var/lib/postgresql/data
+
+  sonarqube:
+    image: sonarqube:community
+    depends_on: [db]
+    ports: ["9000:9000"]
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://db:5432/sonarqube
+      SONAR_JDBC_USERNAME: sonarqube
+      SONAR_JDBC_PASSWORD: sonarqube
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true" # <— only for dev/demo
+      SONAR_FORCEAUTHENTICATION: "false" # <— disable forced authentication
+      SONAR_WEB_SYSTEMPASSCODE: "admin" # <— allow admin access without auth change
+      SONAR_AUTH_LOCAL_USERS_PASSWORD_SECURE: "false" # <— disable password security requirements
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+
+volumes:
+  sonarqube_db:

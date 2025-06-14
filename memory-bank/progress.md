@@ -13,6 +13,20 @@ Project Progress
 
 ### Recently Completed Features
 
+- **Enhanced SonarQube Setup with Token Authentication**: Improved the SonarQube setup with robust token-based authentication for API access. The enhanced system is organized in a dedicated `.sonarqube` directory with:
+
+  - Docker Compose configuration for SonarQube and PostgreSQL database
+  - Project configuration in `sonar-project.properties`
+  - Enhanced helper scripts for managing the SonarQube instance:
+    - `start-sonarqube.sh`: Starts the containers, waits for initialization, and automatically sets up the token
+    - `stop-sonarqube.sh`: Stops and removes the containers
+    - `run-analysis.sh`: Runs SonarQube analysis on the project using token authentication
+    - `setup-token.sh`: Creates an authentication token for API access
+  - Token-based authentication for API access with tokens stored in `.sonarqube/token` (excluded from git)
+  - Automatic token generation during startup with the SonarQube API
+  - Comprehensive documentation in `docs/sonarqube_setup_complete.md`
+  - Verified the complete workflow by running an analysis and checking results in the SonarQube dashboard
+
 - **Terraform Monitoring Configuration (PR #158)**: Introduced Terraform support for infrastructure management, particularly for setting up monitoring resources. Added DevContainer integration, pre-commit validation hooks (`terraform_fmt` and `terraform_validate`), and Terraform configuration files for:
 
   - **Log-Based Metrics**: Created metrics for requests, errors, latency, and validation warnings
