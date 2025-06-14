@@ -19,7 +19,7 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
 
     # Set up token for API access - with a small delay to ensure SonarQube is fully initialized
     sleep 5
-    $(dirname "$0")/setup-token.sh
+    "$(dirname "$0")/setup-token.sh"
 
     echo "🚀 SonarQube setup complete!"
     exit 0
