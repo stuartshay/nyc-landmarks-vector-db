@@ -46,6 +46,11 @@
      system dependencies like `poppler-utils` and `tesseract-ocr` in its execution
      environment.
    - (Future workflows for automated testing on PRs, deployment, etc.)
+1. **SonarQube**: Code quality analysis and security scanning:
+   - **Local Setup**: Using Docker Compose with PostgreSQL database
+   - **Configuration**: Customized via sonar-project.properties
+   - **Features**: Code coverage tracking, code smells detection, vulnerability scanning
+   - **Integration**: Local analysis via sonar-scanner CLI tool
 1. **Poetry/Pipenv**: Dependency management
 1. **Black/Flake8/isort**: Code formatting and linting
 1. **Pytest**: Testing framework
