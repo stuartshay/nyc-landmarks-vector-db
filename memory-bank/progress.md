@@ -13,17 +13,19 @@ Project Progress
 
 ### Recently Completed Features
 
-- **SonarQube Local Instance Setup**: Configured a local SonarQube instance using Docker Compose with a PostgreSQL database for code quality analysis. The setup is now organized in a dedicated `.sonarqube` directory with:
+- **Enhanced SonarQube Setup with Token Authentication**: Improved the SonarQube setup with robust token-based authentication for API access. The enhanced system is organized in a dedicated `.sonarqube` directory with:
 
   - Docker Compose configuration for SonarQube and PostgreSQL database
   - Project configuration in `sonar-project.properties`
-  - Helper scripts for managing the SonarQube instance:
-    - `start-sonarqube.sh`: Starts the containers and waits for initialization
+  - Enhanced helper scripts for managing the SonarQube instance:
+    - `start-sonarqube.sh`: Starts the containers, waits for initialization, and automatically sets up the token
     - `stop-sonarqube.sh`: Stops and removes the containers
-    - `run-analysis.sh`: Runs SonarQube analysis on the project
-  - Authentication configured to allow using default admin/admin credentials without password change
-  - Comprehensive documentation in README.md
-  - No token required for analysis with authentication disabled for local development
+    - `run-analysis.sh`: Runs SonarQube analysis on the project using token authentication
+    - `setup-token.sh`: Creates an authentication token for API access
+  - Token-based authentication for API access with tokens stored in `.sonarqube/token` (excluded from git)
+  - Automatic token generation during startup with the SonarQube API
+  - Comprehensive documentation in `docs/sonarqube_setup_complete.md`
+  - Verified the complete workflow by running an analysis and checking results in the SonarQube dashboard
 
 - **Terraform Monitoring Configuration (PR #158)**: Introduced Terraform support for infrastructure management, particularly for setting up monitoring resources. Added DevContainer integration, pre-commit validation hooks (`terraform_fmt` and `terraform_validate`), and Terraform configuration files for:
 

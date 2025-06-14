@@ -13,9 +13,15 @@ ATTEMPT=0
 while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
   STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:9000/api/system/status)
   if [ "$STATUS" == "200" ]; then
-    echo "SonarQube is up and running at http://localhost:9000"
-    echo "Default credentials: admin/admin"
-    echo "Note: Authentication is disabled for local development"
+    echo "✅ SonarQube is up and running at http://localhost:9000"
+    echo "🔐 Default credentials: admin/admin"
+    echo "🔑 Setting up authentication token..."
+
+    # Set up token for API access - with a small delay to ensure SonarQube is fully initialized
+    sleep 5
+    $(dirname "$0")/setup-token.sh
+
+    echo "🚀 SonarQube setup complete!"
     exit 0
   fi
   ATTEMPT=$((ATTEMPT+1))
