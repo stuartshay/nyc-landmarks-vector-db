@@ -15,7 +15,12 @@
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/azure-cli:1": {},
+    "ghcr.io/devcontainers/features/aws-cli:1": {},
+    "ghcr.io/devcontainers/features/java": {},
+    "ghcr.io/gvatsal60/dev-container-features/sonarlint:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers-extra/features/zsh-plugins": {},
+    "ghcr.io/devcontainers-extra/features/actions-runner:1": {},
     "ghcr.io/dhoeric/features/google-cloud-cli:1": {},
     "ghcr.io/devcontainers/features/node:1": {
       "version": "22"

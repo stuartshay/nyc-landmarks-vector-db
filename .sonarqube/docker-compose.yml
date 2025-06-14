@@ -17,8 +17,9 @@ services:
       SONAR_JDBC_USERNAME: sonarqube
       SONAR_JDBC_PASSWORD: sonarqube
       SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true" # <— only for dev/demo
-      SONAR_FORCEAUTHENTICATION: "false" # <— disable forced authentication for dev
+      SONAR_FORCEAUTHENTICATION: "false" # <— disable forced authentication
       SONAR_WEB_SYSTEMPASSCODE: "admin" # <— allow admin access without auth change
+      SONAR_AUTH_LOCAL_USERS_PASSWORD_SECURE: "false" # <— disable password security requirements
     ulimits:
       nofile:
         soft: 65536

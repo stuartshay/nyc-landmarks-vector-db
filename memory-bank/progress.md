@@ -13,6 +13,18 @@ Project Progress
 
 ### Recently Completed Features
 
+- **SonarQube Local Instance Setup**: Configured a local SonarQube instance using Docker Compose with a PostgreSQL database for code quality analysis. The setup is now organized in a dedicated `.sonarqube` directory with:
+
+  - Docker Compose configuration for SonarQube and PostgreSQL database
+  - Project configuration in `sonar-project.properties`
+  - Helper scripts for managing the SonarQube instance:
+    - `start-sonarqube.sh`: Starts the containers and waits for initialization
+    - `stop-sonarqube.sh`: Stops and removes the containers
+    - `run-analysis.sh`: Runs SonarQube analysis on the project
+  - Authentication configured to allow using default admin/admin credentials without password change
+  - Comprehensive documentation in README.md
+  - No token required for analysis with authentication disabled for local development
+
 - **Terraform Monitoring Configuration (PR #158)**: Introduced Terraform support for infrastructure management, particularly for setting up monitoring resources. Added DevContainer integration, pre-commit validation hooks (`terraform_fmt` and `terraform_validate`), and Terraform configuration files for:
 
   - **Log-Based Metrics**: Created metrics for requests, errors, latency, and validation warnings

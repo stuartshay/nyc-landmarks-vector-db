@@ -1,4 +1,4 @@
-.PHONY: help setup lint format test clean run diff pre-commit pre-commit-update check-env
+.PHONY: help setup lint format test clean run diff pre-commit pre-commit-update check-env sonar sonar-start sonar-stop sonar-reset-password
 
 help:
 	@echo "NYC Landmarks Vector DB Makefile"
@@ -12,6 +12,10 @@ help:
 	@echo "check-env          - Check development environment and display configuration"
 	@echo "pre-commit         - Pre-commit All Files"
 	@echo "pre-commit-update  - Update pre-commit hooks to latest versions and install them"
+	@echo "sonar              - Run SonarQube analysis"
+	@echo "sonar-start        - Start SonarQube containers"
+	@echo "sonar-stop         - Stop SonarQube containers"
+	@echo "sonar-reset-password - Reset SonarQube admin password to 'admin'"
 
 setup:
 	pip install -r requirements.txt
@@ -53,3 +57,21 @@ run:
 
 check-env:
 	python utils/check_dev_env.py
+
+sonar:
+	@echo "Running SonarQube analysis..."
+	@./.sonarqube/run-analysis.sh || (echo "❌ Analysis failed. Make sure SonarQube is running with: make sonar-start" && exit 1)
+
+sonar-reset-password:
+	@echo "Resetting SonarQube admin password to 'admin'..."
+	docker exec -it sonarqube-db-1 psql -U sonarqube -d sonarqube -c "UPDATE users SET crypted_password = '\$$2a\$$12\$$/ucdQMGweIY5jC8U7+IK7e6P91zNtUJvd4Fsx9iN4rOYQqiVxzCJG', salt=null WHERE login = 'admin';"
+	docker restart sonarqube-sonarqube-1
+	@echo "✅ Password reset. Wait 30 seconds for SonarQube to restart, then try logging in with admin/admin"
+
+sonar-start:
+	@echo "Starting SonarQube containers..."
+	@./.sonarqube/start-sonarqube.sh
+
+sonar-stop:
+	@echo "Stopping SonarQube containers..."
+	@./.sonarqube/stop-sonarqube.sh

@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-While continuing to work on the Wikipedia API Improvement Project, we have completed significant enhancements to the Google Cloud Logging implementation, greatly improving observability, security monitoring, and performance analysis capabilities. We are now evaluating the Terraform Monitoring Configuration PR (#158), which adds comprehensive Terraform support for infrastructure management and monitoring.
+While continuing to work on the Wikipedia API Improvement Project, we have completed significant enhancements to the Google Cloud Logging implementation, greatly improving observability, security monitoring, and performance analysis capabilities. We are now evaluating the Terraform Monitoring Configuration PR (#158), which adds comprehensive Terraform support for infrastructure management and monitoring. Additionally, we have successfully set up a local SonarQube instance for code quality analysis to improve the project's overall code quality and identify potential issues.
 
 ### Terraform Monitoring Configuration (PR #158)
 
@@ -48,6 +48,8 @@ These enhancements make it much easier to:
 Having successfully completed the refactoring of `scripts/ci/process_wikipedia_articles.py` into modular components, we are focusing on improving the API calls within the Wikipedia processing components to enhance performance, reliability, and efficiency.
 
 ## Recent Changes
+
+- **Refactored SonarQube Setup**: Significantly improved the SonarQube setup by reorganizing all configuration into a dedicated `.sonarqube` directory. Created helper scripts for managing the SonarQube instance: `start-sonarqube.sh`, `stop-sonarqube.sh`, and `run-analysis.sh`. Updated the Makefile with improved targets for SonarQube management. Removed legacy files in the project root (`docker-compose.sonarqube.yml`, `sonar-project.properties`, and `scripts/setup_sonar_token.sh`) and fixed container references in the Makefile. Configured SonarQube for local development without requiring authentication tokens, simplifying the setup process.
 
 - **Added Terraform Monitoring Configuration (PR #158)**: Introduced Terraform support for infrastructure management, particularly for setting up monitoring resources. Added DevContainer integration, pre-commit validation, Terraform configuration files, deployment scripts, and comprehensive documentation. This implementation replaces the older script-based approach with a more robust, version-controlled solution that creates log-based metrics and a comprehensive monitoring dashboard in Google Cloud Console.
 
