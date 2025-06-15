@@ -1,16 +1,16 @@
 {
   "name": "NYC Landmarks Vector DB",
   "dockerFile": "Dockerfile",
-  "runArgs": [
-    "--env-file",
-    "${localWorkspaceFolder}/.env"
-  ],
-  "postCreateCommand": "pip install -e .[dev] && pre-commit install && mkdir -p test_output/notebooks",
-  "postStartCommand": "echo 'Verifying environment...' && python -m pytest --version && echo 'Setting up GCP authentication...' && /workspaces/nyc-landmarks-vector-db/scripts/setup_gcp_auth.sh",
+  "postCreateCommand": "/workspaces/nyc-landmarks-vector-db/start_devcontainer.sh && pip install -r requirements.txt && pip install -e . && pre-commit install",
+  "postStartCommand": "echo 'NYC Landmarks Vector DB development environment ready! 🚀'",
   "remoteUser": "vscode",
   "containerEnv": {
     "PYTHONPATH": "${containerWorkspaceFolder}",
-    "GOOGLE_APPLICATION_CREDENTIALS": "${containerWorkspaceFolder}/.gcp/service-account-key.json"
+    "GOOGLE_APPLICATION_CREDENTIALS": "${containerWorkspaceFolder}/.gcp/service-account-key.json",
+    "ENVIRONMENT": "development",
+    "LOG_LEVEL": "INFO",
+    "LOG_FORMAT": "json",
+    "DEBUG": "false"
   },
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
@@ -103,7 +103,6 @@
         "bierner.markdown-mermaid",
         "streetsidesoftware.code-spell-checker",
         "gruntfuggly.todo-tree",
-        "visualstudioexptteam.vscodeintellicode",
         "usernamehw.errorlens",
         "esbenp.prettier-vscode",
         "editorconfig.editorconfig",
