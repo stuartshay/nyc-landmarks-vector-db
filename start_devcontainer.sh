@@ -151,6 +151,20 @@ if [ "$CONTAINER_MODE" = true ]; then
         fi
     done
 
+    # Install pyright for VS Code test discovery and type checking
+    echo -e "${BLUE}📦 Installing pyright for VS Code integration...${NC}"
+    if command -v npm &> /dev/null; then
+        if ! command -v pyright &> /dev/null; then
+            echo -e "${BLUE}Installing pyright globally...${NC}"
+            npm install -g pyright
+            echo -e "${GREEN}✅ pyright installed${NC}"
+        else
+            echo -e "${GREEN}✅ pyright already installed${NC}"
+        fi
+    else
+        echo -e "${YELLOW}⚠️  npm not found, skipping pyright installation${NC}"
+    fi
+
     # Check if Docker is available (for Docker-in-Docker)
     if command -v docker &> /dev/null; then
         echo -e "${GREEN}✅ Docker CLI found${NC}"

@@ -41,6 +41,11 @@
         "python.defaultInterpreterPath": "/usr/local/bin/python",
         "python.analysis.typeCheckingMode": "strict",
         "python.languageServer": "Pylance",
+        "python.analysis.autoImportCompletions": true,
+        "python.analysis.autoSearchPaths": true,
+        "python.analysis.extraPaths": [
+          "${workspaceFolder}"
+        ],
         "python.linting.enabled": true,
         "python.linting.flake8Enabled": true,
         "python.linting.pylintEnabled": true,
@@ -68,10 +73,12 @@
         "python.testing.nosetestsEnabled": false,
         "python.testing.pytestArgs": [
           "tests",
-          "-v"
+          "-v",
+          "--tb=short"
         ],
         "python.testing.pytestPath": "/usr/local/bin/pytest",
         "python.testing.autoTestDiscoverOnSaveEnabled": true,
+        "python.testing.cwd": "${workspaceFolder}",
         "editor.rulers": [
           88
         ],
