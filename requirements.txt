@@ -147,7 +147,7 @@ pyproject_hooks==1.2.0
 pyright==1.1.401
 pytest==8.4.0
 pytest-asyncio==0.26.0
-pytest-cov==6.1.1
+pytest-cov==6.2.1
 pytest-dotenv==0.5.2
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.0
