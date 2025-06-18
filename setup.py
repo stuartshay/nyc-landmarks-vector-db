@@ -83,7 +83,7 @@ setup(
         "install": PostInstallCommand,
     },
     install_requires=[
-        "fastapi>=0.115.12",
+        "fastapi>=0.115.13",
         "uvicorn>=0.34.3",
         "openai>=1.88.0",
         "pinecone>=7.0.2",  # Updated to Pinecone 7.0.2 with 2025-04 API
@@ -91,7 +91,7 @@ setup(
         "pdfplumber>=0.11.6",
         "azure-storage-blob>=12.25.1",
         "google-cloud-secret-manager>=2.24.0",
-        "pydantic>=2.11.5",
+        "pydantic>=2.11.7",
         "pydantic-settings>=2.9.1",  # Added for settings module
         "python-dotenv>=1.1.0",
         "tiktoken>=0.9.0",
@@ -99,7 +99,7 @@ setup(
         "pandas>=2.3.0",  # Updated to latest version - Added for dataframe tests
         "tenacity>=9.1.2",  # Added for retry logic in API calls
         "beautifulsoup4>=4.13.4",  # Added for Wikipedia scraping
-        "requests>=2.32.3",  # Added for HTTP requests
+        "requests>=2.32.4",  # Added for HTTP requests
         "matplotlib>=3.10.3",  # Added for notebooks
         "folium>=0.19.7",  # Added for map visualizations in notebooks
         "scikit-learn>=1.7.0",  # Updated to latest version - Added for clustering in notebooks
@@ -114,7 +114,7 @@ setup(
             "flake8>=7.2.0",
             "mypy>=1.16.1",  # Updated version
             "mypy_extensions>=1.1.0",  # Added for mypy support
-            "types-requests>=2.32.0.20250602",  # Added for requests type stubs
+            "types-requests>=2.32.4.20250611",  # Added for requests type stubs
             "types-tabulate>=0.9.0.20241207",  # Corrected version constraint
             "types-setuptools>=80.9.0.20250529",  # Added for setuptools types
             "pandas-stubs>=2.2.3.250527",  # Add pandas-stubs - consolidated to higher version
@@ -126,7 +126,7 @@ setup(
             "pytest-asyncio>=0.26.0",  # Added for asyncio support in tests
             "pre-commit>=3.8.0",  # Added for pre-commit hooks
             "pip-tools>=7.4.1",  # Added for managing requirements
-            "pyright>=1.1.401",  # Added for static type checking
+            "pyright>=1.1.402",  # Added for static type checking
             "jupyterlab>=4.4.3",  # Added for running notebooks
             "ipywidgets>=8.1.7",  # Added for notebook interactivity
             "plotly>=6.1.2",  # Added for interactive plots in notebooks
