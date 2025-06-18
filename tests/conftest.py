@@ -22,3 +22,5 @@ def pytest_collection_modifyitems(items: List[pytest.Item]) -> None:
             item.add_marker(pytest.mark.integration)
         elif "/tests/functional/" in test_path:
             item.add_marker(pytest.mark.functional)
+        elif "/tests/scripts/" in test_path:
+            item.add_marker(pytest.mark.scripts)

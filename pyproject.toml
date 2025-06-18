@@ -34,3 +34,11 @@ exclude_dirs = ["venv", "nyc_landmarks_vector_db.egg-info", "__pycache__", ".git
 # B404: Subprocess import is legitimate for script execution
 # B603: Subprocess call is secure with validated inputs
 skips = ["B101", "B404", "B603"]
+
+[tool.pytest.ini_options]
+addopts = "--verbose"
+asyncio_mode = "strict"
+python_classes = ["Test*"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+testpaths = ["tests"]
