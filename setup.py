@@ -112,14 +112,14 @@ setup(
             "black>=25.1.0",
             "isort>=6.0.1",
             "flake8>=7.2.0",
-            "mypy>=1.16.0",  # Updated version
+            "mypy>=1.16.1",  # Updated version
             "mypy_extensions>=1.1.0",  # Added for mypy support
             "types-requests>=2.32.0.20250602",  # Added for requests type stubs
             "types-tabulate>=0.9.0.20241207",  # Corrected version constraint
             "types-setuptools>=80.9.0.20250529",  # Added for setuptools types
             "pandas-stubs>=2.2.3.250527",  # Add pandas-stubs - consolidated to higher version
             "nbstripout>=0.6.1",  # Added for notebook cleaning
-            "pytest-cov>=6.1.1",  # Added for coverage
+            "pytest-cov>=6.2.1",  # Added for coverage
             "pytest-dotenv>=0.5.2",  # Added for loading .env files in tests
             "pandas>=2.3.0",  # Updated to match main requirements - Added explicitly for tests
             "numpy>=2.2.6",  # Added explicitly for tests - latest version as of May 2025
