@@ -41,6 +41,26 @@ resource "google_logging_metric" "validation_warnings" {
   filter = "resource.type=\"cloud_run_revision\" AND logName=\"projects/${local.project_id}/logs/${var.log_name_prefix}.nyc_landmarks.utils.validation\" AND severity=\"WARNING\""
 }
 
+resource "google_logging_metric" "vectordb_logs" {
+  name   = "${var.log_name_prefix}.vectordb_logs"
+  filter = "logName=~\"${var.log_name_prefix}.nyc_landmarks.vectordb\""
+}
+
+resource "google_logging_project_bucket_config" "vectordb_logs_bucket" {
+  project        = local.project_id
+  location       = "global"
+  bucket_id      = "vectordb-logs"
+  retention_days = 30
+}
+
+resource "google_logging_view" "vectordb_logs_view" {
+  project  = google_logging_project_bucket_config.vectordb_logs_bucket.project
+  location = google_logging_project_bucket_config.vectordb_logs_bucket.location
+  bucket   = google_logging_project_bucket_config.vectordb_logs_bucket.bucket_id
+  view_id  = "vectordb-view"
+  filter   = google_logging_metric.vectordb_logs.filter
+}
+
 # Uptime check for the health endpoint
 resource "google_monitoring_uptime_check_config" "health_check" {
   display_name = "NYC Landmarks Vector DB Health Check"

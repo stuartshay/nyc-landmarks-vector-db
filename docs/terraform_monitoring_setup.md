@@ -70,6 +70,11 @@ The module creates log-based metrics:
 - `{log_name_prefix}.errors` - HTTP 5xx errors
 - `{log_name_prefix}.latency` - Request duration
 - `{log_name_prefix}.validation_warnings` - Validation warnings
+- `{log_name_prefix}.vectordb_logs` - Vector database log count
+
+The configuration also creates a dedicated log bucket and view named
+`vectordb-view` to surface vector database logs in the Cloud Console.
+You can access it from **Logs Explorer** under the bucket `vectordb-logs`.
 
 A comprehensive monitoring dashboard with widgets for:
 
@@ -77,6 +82,21 @@ A comprehensive monitoring dashboard with widgets for:
 - Error rate
 - Latency (average and 95th percentile)
 - Validation warning rate
+
+### Log Explorer Queries for Vector DB Logs
+
+To view logs captured by the `vectordb_logs` metric, open **Logs Explorer** and
+run queries such as:
+
+```text
+logName=~"${LOG_NAME_PREFIX}.nyc_landmarks.vectordb"
+```
+
+Or filter using the dedicated view:
+
+```text
+resource.type="logging_bucket" AND resource.labels.bucket_name="vectordb-logs"
+```
 
 ## Scripts
 

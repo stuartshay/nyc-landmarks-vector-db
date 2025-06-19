@@ -15,6 +15,7 @@ output "log_metrics" {
     errors              = google_logging_metric.errors.name
     latency             = google_logging_metric.latency.name
     validation_warnings = google_logging_metric.validation_warnings.name
+    vectordb_logs       = google_logging_metric.vectordb_logs.name
   }
 }
 
@@ -41,4 +42,9 @@ output "uptime_check_id" {
 output "uptime_check_name" {
   description = "The uptime check display name"
   value       = google_monitoring_uptime_check_config.health_check.display_name
+}
+
+output "vectordb_view_name" {
+  description = "Logging view for vectordb logs"
+  value       = google_logging_view.vectordb_logs_view.name
 }
