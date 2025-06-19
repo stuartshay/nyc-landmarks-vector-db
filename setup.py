@@ -88,7 +88,7 @@ setup(
         "openai>=1.88.0",
         "pinecone>=7.0.2",  # Updated to Pinecone 7.0.2 with 2025-04 API
         "pypdf>=5.6.0",  # Updated from pypdf2 to pypdf
-        "pdfplumber>=0.11.6",
+        "pdfplumber>=0.11.7",
         "azure-storage-blob>=12.25.1",
         "google-cloud-secret-manager>=2.24.0",
         "pydantic>=2.11.7",
