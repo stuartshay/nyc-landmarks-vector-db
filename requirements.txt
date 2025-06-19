@@ -19,7 +19,7 @@ build==1.2.2.post1
 # cachetools pinned to <6.0 due to google-auth dependency constraint
 # google-auth 2.40.3 requires cachetools<6.0,>=2.0.0
 # TODO: Update when google-auth supports cachetools 6.x
-cachetools==5.5.2
+cachetools==6.1.0
 certifi==2025.6.15
 cffi==1.17.1
 cfgv==3.4.0
