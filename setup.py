@@ -108,7 +108,7 @@ setup(
     ],
     extras_require={
         "dev": [
-            "pytest>=8.4.0",
+            "pytest>=8.4.1",
             "black>=25.1.0",
             "isort>=6.0.1",
             "flake8>=7.2.0",
@@ -123,7 +123,7 @@ setup(
             "pytest-dotenv>=0.5.2",  # Added for loading .env files in tests
             "pandas>=2.3.0",  # Updated to match main requirements - Added explicitly for tests
             "numpy>=2.2.6",  # Added explicitly for tests - latest version as of May 2025
-            "pytest-asyncio>=0.26.0",  # Added for asyncio support in tests
+            "pytest-asyncio>=1.0.0",  # Added for asyncio support in tests
             "pre-commit>=3.8.0",  # Added for pre-commit hooks
             "pip-tools>=7.4.1",  # Added for managing requirements
             "pyright>=1.1.402",  # Added for static type checking
