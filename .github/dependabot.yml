@@ -27,22 +27,9 @@ updates:
         update-types:
           - "minor"
           - "patch"
-    # Custom versioning strategy
-    versioning-strategy:
-      # Use the version specified in the package to determine the new version
-      increase-if-necessary: false
-      # Using lockfile to ensure both requirements.txt and setup.py stay in sync
-      lockfile-only: false
-      # Update package versions in setup.py to match
-      widen: false
-      # Update all dependencies, not just direct ones
-      update-dependency-type: "all"
-    # Ignore specific updates that have known conflicts
-    ignore:
-      # Ignore cachetools 6.x until google-auth supports it
-      # google-auth 2.40.3 requires cachetools<6.0,>=2.0.0
-      - dependency-name: "cachetools"
-        versions: ["6.x"]
+    versioning-strategy: "auto"
+    update-dependency-type: "all"
+
 
   # Maintain dependencies for GitHub Actions
   - package-ecosystem: "github-actions"

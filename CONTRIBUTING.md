@@ -86,7 +86,7 @@ We use several tools to enforce code quality:
 - After adding a dependency to `setup.py`, update the requirements files:
   ```bash
   # Update requirements.txt for production dependencies
-  ./sync_versions.sh
+  ./scripts/ci/sync_versions.sh
   ```
 - Document any new dependencies in your PR description
 
