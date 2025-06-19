@@ -411,7 +411,7 @@ We use automated tools to keep `setup.py` and `requirements.txt` in sync:
 
 1. **Automated Sync**: Our GitHub workflow automatically syncs versions between files
    when Dependabot creates updates
-1. **Manual Sync**: Run `./sync_versions.sh` to manually sync versions between files
+1. **Manual Sync**: Run `./scripts/ci/sync_versions.sh` to manually sync versions between files
 1. **Generating requirements.txt**: Generate requirements.txt from setup.py using
    pip-compile:
    ```bash
@@ -465,10 +465,10 @@ We provide a script to keep `setup.py` and `requirements.txt` in sync:
 
 ```bash
 # Make the script executable if needed
-chmod +x sync_versions.sh
+chmod +x scripts/ci/sync_versions.sh
 
 # Run the synchronization
-./sync_versions.sh
+./scripts/ci/sync_versions.sh
 ```
 
 ### Updating Pinecone SDK
