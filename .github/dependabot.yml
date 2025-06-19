@@ -28,8 +28,6 @@ updates:
           - "minor"
           - "patch"
     versioning-strategy: "auto"
-    update-dependency-type: "all"
-
 
   # Maintain dependencies for GitHub Actions
   - package-ecosystem: "github-actions"
