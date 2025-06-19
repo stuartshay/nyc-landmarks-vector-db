@@ -1,2 +1,2 @@
 grpcio<1.74.0
-grpcio-status<1.72.0
+grpcio-status<1.74.0
