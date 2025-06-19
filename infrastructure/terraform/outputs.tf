@@ -11,11 +11,13 @@ output "region" {
 output "log_metrics" {
   description = "Created log-based metrics"
   value = {
-    requests            = google_logging_metric.requests.name
-    errors              = google_logging_metric.errors.name
-    latency             = google_logging_metric.latency.name
-    validation_warnings = google_logging_metric.validation_warnings.name
-    vectordb_logs       = google_logging_metric.vectordb_logs.name
+    requests                 = google_logging_metric.requests.name
+    errors                   = google_logging_metric.errors.name
+    latency                  = google_logging_metric.latency.name
+    validation_warnings      = google_logging_metric.validation_warnings.name
+    vectordb_logs            = google_logging_metric.vectordb_logs.name
+    vectordb_errors          = google_logging_metric.vectordb_errors.name
+    vectordb_slow_operations = google_logging_metric.vectordb_slow_operations.name
   }
 }
 
@@ -44,7 +46,25 @@ output "uptime_check_name" {
   value       = google_monitoring_uptime_check_config.health_check.display_name
 }
 
-output "vectordb_view_name" {
-  description = "Logging view for vectordb logs"
-  value       = google_logging_view.vectordb_logs_view.name
+output "vectordb_logs_bucket" {
+  description = "Log bucket for vector database logs"
+  value       = google_logging_project_bucket_config.vectordb_logs_bucket.name
+}
+
+output "alert_policies" {
+  description = "Created alert policies"
+  value = {
+    vectordb_error_alert           = google_monitoring_alert_policy.vectordb_error_alert.name
+    vectordb_activity_alert        = google_monitoring_alert_policy.vectordb_activity_alert.name
+    vectordb_slow_operations_alert = google_monitoring_alert_policy.vectordb_slow_operations_alert.name
+  }
+}
+
+output "alert_policies_urls" {
+  description = "Direct URLs to the alert policies"
+  value = {
+    vectordb_error_alert           = "https://console.cloud.google.com/monitoring/alerting/policies/${split("/", google_monitoring_alert_policy.vectordb_error_alert.id)[3]}?project=${var.project_id}"
+    vectordb_activity_alert        = "https://console.cloud.google.com/monitoring/alerting/policies/${split("/", google_monitoring_alert_policy.vectordb_activity_alert.id)[3]}?project=${var.project_id}"
+    vectordb_slow_operations_alert = "https://console.cloud.google.com/monitoring/alerting/policies/${split("/", google_monitoring_alert_policy.vectordb_slow_operations_alert.id)[3]}?project=${var.project_id}"
+  }
 }

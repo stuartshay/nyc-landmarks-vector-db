@@ -46,19 +46,117 @@ resource "google_logging_metric" "vectordb_logs" {
   filter = "logName=~\"${var.log_name_prefix}.nyc_landmarks.vectordb\""
 }
 
+resource "google_logging_metric" "vectordb_errors" {
+  name        = "${var.log_name_prefix}.vectordb_errors"
+  description = "Count of error logs from vector database operations"
+  filter      = "logName=~\"${var.log_name_prefix}.nyc_landmarks.vectordb\" AND severity>=ERROR"
+}
+
+resource "google_logging_metric" "vectordb_slow_operations" {
+  name        = "${var.log_name_prefix}.vectordb_slow_operations"
+  description = "Count of slow vector database operations (>500ms)"
+  filter      = "logName=~\"${var.log_name_prefix}.nyc_landmarks.vectordb\" AND jsonPayload.duration_ms>500"
+}
+
 resource "google_logging_project_bucket_config" "vectordb_logs_bucket" {
   project        = local.project_id
   location       = "global"
   bucket_id      = "vectordb-logs"
   retention_days = 30
+  description    = "Bucket for storing vector database logs"
 }
 
-resource "google_logging_view" "vectordb_logs_view" {
-  project  = google_logging_project_bucket_config.vectordb_logs_bucket.project
-  location = google_logging_project_bucket_config.vectordb_logs_bucket.location
-  bucket   = google_logging_project_bucket_config.vectordb_logs_bucket.bucket_id
-  view_id  = "vectordb-view"
-  filter   = google_logging_metric.vectordb_logs.filter
+# Alert policy for vector database errors
+resource "google_monitoring_alert_policy" "vectordb_error_alert" {
+  display_name = "Vector Database Error Rate Alert"
+  combiner     = "OR"
+  conditions {
+    display_name = "High error rate in vector database operations"
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/${google_logging_metric.vectordb_errors.name}\" AND resource.type=\"global\""
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 5
+      aggregations {
+        alignment_period   = "300s"
+        per_series_aligner = "ALIGN_RATE"
+      }
+      trigger {
+        count = 1
+      }
+    }
+  }
+
+  notification_channels = var.notification_channels
+  documentation {
+    content   = "Vector database operations are experiencing errors at a rate higher than normal. Please investigate logs in the vectordb-logs bucket for more details."
+    mime_type = "text/markdown"
+  }
+  alert_strategy {
+    auto_close = "1800s"
+  }
+}
+
+# Alert policy for vector database inactivity
+resource "google_monitoring_alert_policy" "vectordb_activity_alert" {
+  display_name = "Vector Database Inactivity Alert"
+  combiner     = "OR"
+  conditions {
+    display_name = "Low or no activity in vector database"
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/${google_logging_metric.vectordb_logs.name}\" AND resource.type=\"global\""
+      duration        = "1800s"
+      comparison      = "COMPARISON_LT"
+      threshold_value = 0.01
+      aggregations {
+        alignment_period   = "900s"
+        per_series_aligner = "ALIGN_RATE"
+      }
+      trigger {
+        count = 1
+      }
+    }
+  }
+
+  notification_channels = var.notification_channels
+  documentation {
+    content   = "Vector database shows little to no activity for an extended period. This might indicate the service is not being utilized or is experiencing issues."
+    mime_type = "text/markdown"
+  }
+  alert_strategy {
+    auto_close = "86400s"
+  }
+}
+
+# Alert policy for slow vector database operations
+resource "google_monitoring_alert_policy" "vectordb_slow_operations_alert" {
+  display_name = "Vector Database Slow Operations Alert"
+  combiner     = "OR"
+  conditions {
+    display_name = "High number of slow vector database operations"
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/${google_logging_metric.vectordb_slow_operations.name}\" AND resource.type=\"global\""
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 10
+      aggregations {
+        alignment_period   = "300s"
+        per_series_aligner = "ALIGN_RATE"
+      }
+      trigger {
+        count = 1
+      }
+    }
+  }
+
+  notification_channels = var.notification_channels
+  documentation {
+    content   = "Vector database is experiencing a high number of slow operations (>500ms). This may indicate performance issues or resource constraints."
+    mime_type = "text/markdown"
+  }
+  alert_strategy {
+    auto_close = "1800s"
+  }
 }
 
 # Uptime check for the health endpoint

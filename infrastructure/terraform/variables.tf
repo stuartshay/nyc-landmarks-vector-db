@@ -21,3 +21,9 @@ variable "log_name_prefix" {
   description = "Prefix for application logs"
   default     = "nyc-landmarks-vector-db"
 }
+
+variable "notification_channels" {
+  type        = list(string)
+  description = "List of notification channel IDs for alerts"
+  default     = []
+}

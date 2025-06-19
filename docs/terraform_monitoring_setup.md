@@ -82,6 +82,39 @@ A comprehensive monitoring dashboard with widgets for:
 - Error rate
 - Latency (average and 95th percentile)
 - Validation warning rate
+- Vector database activity and log volume
+- Vector database operations (24-hour distribution)
+- Vector database log distribution by severity
+
+### Vector Database Monitoring
+
+The dashboard includes several dedicated widgets for monitoring vector database operations:
+
+1. **Vector Database Activity (Scorecard)**:
+
+   - Real-time activity measurement for vector database operations
+   - Includes a spark line to show recent trends
+   - Yellow threshold alert when activity drops below expected levels
+
+1. **Vector Database Log Volume (Line Chart)**:
+
+   - Rate of vector database logs over time
+   - Useful for identifying usage patterns and potential issues
+   - Helps correlate vector database activity with API requests
+
+1. **Vector Database Operations (24h)**:
+
+   - Hourly count of vector database operations over a 24-hour period
+   - Stacked bar chart format for easy visualization of busy periods
+   - Useful for capacity planning and identifying usage patterns
+
+1. **Vector Database Log Distribution (Pie Chart)**:
+
+   - Distribution of logs by severity level (INFO, WARNING, ERROR)
+   - Helps quickly identify if errors are occurring in vector database operations
+   - Provides insight into the overall health of the vector database system
+
+These widgets help monitor the health, performance, and usage patterns of the vector database system, making it easier to identify issues, plan capacity, and ensure optimal performance.
 
 ### Log Explorer Queries for Vector DB Logs
 
@@ -97,6 +130,56 @@ Or filter using the dedicated view:
 ```text
 resource.type="logging_bucket" AND resource.labels.bucket_name="vectordb-logs"
 ```
+
+#### Advanced Vector Database Query Examples
+
+For more targeted analysis, you can use these example queries:
+
+**Query for vector database errors:**
+
+```
+logName=~"${LOG_NAME_PREFIX}.nyc_landmarks.vectordb" severity>=ERROR
+```
+
+**Query for specific vector operations (like query or upsert):**
+
+```
+logName=~"${LOG_NAME_PREFIX}.nyc_landmarks.vectordb" jsonPayload.operation="query"
+```
+
+**Query for slow vector operations (taking more than 500ms):**
+
+```
+logName=~"${LOG_NAME_PREFIX}.nyc_landmarks.vectordb" jsonPayload.duration_ms>500
+```
+
+**Query for operations on a specific namespace:**
+
+```
+logName=~"${LOG_NAME_PREFIX}.nyc_landmarks.vectordb" jsonPayload.namespace="wikipedia"
+```
+
+These queries can help troubleshoot issues with vector database operations, identify performance bottlenecks, and analyze usage patterns.
+
+## Interpreting Vector Database Metrics
+
+### Activity Patterns
+
+- **Normal Pattern**: Regular spikes during business hours with lower activity overnight
+- **Warning Signs**: Sudden drops in activity or prolonged periods of zero activity
+- **Action Items**: Investigate system health if activity drops unexpectedly
+
+### Log Volume
+
+- **Normal Pattern**: Consistent with application usage patterns
+- **Warning Signs**: Sudden spikes in log volume may indicate errors or performance issues
+- **Action Items**: Check for error severity distribution and correlate with API performance
+
+### Error Distribution
+
+- **Normal Ratio**: Primarily INFO logs with minimal WARNING and ERROR logs
+- **Warning Signs**: Increasing proportion of WARNING or ERROR logs
+- **Action Items**: Review error logs and address underlying issues
 
 ## Scripts
 

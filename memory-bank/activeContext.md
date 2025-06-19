@@ -2,7 +2,24 @@
 
 ## Current Focus
 
-While continuing to work on the Wikipedia API Improvement Project, we have completed significant enhancements to the Google Cloud Logging implementation, greatly improving observability, security monitoring, and performance analysis capabilities. We are now evaluating the Terraform Monitoring Configuration PR (#158), which adds comprehensive Terraform support for infrastructure management and monitoring. Additionally, we have successfully set up a local SonarQube instance for code quality analysis to improve the project's overall code quality and identify potential issues.
+While continuing to work on the Wikipedia API Improvement Project, we have completed significant enhancements to the Google Cloud Logging implementation, greatly improving observability, security monitoring, and performance analysis capabilities. We are now evaluating the Terraform Monitoring Configuration PR (#158), which adds comprehensive Terraform support for infrastructure management and monitoring. Additionally, we have successfully set up a local SonarQube instance for code quality analysis to improve the project's overall code quality and identify potential issues. We are also currently working on PR #194, which extends the Terraform monitoring configuration with vector database logging metrics and views.
+
+### PR #194 - VectorDB Logging Metric and View
+
+PR #194 extends the Terraform monitoring configuration to include logging metrics specifically for the vector database operations. The implementation includes:
+
+- **Vector Database Logging Metric**: Added a new log-based metric that captures vector database-specific logs
+- **Dedicated Log Bucket and View**: Created a dedicated log bucket with a 30-day retention policy and a specialized view for vector database logs
+- **Updated Outputs**: Added outputs for the new vector database metrics and view
+- **Documentation Updates**: Updated the documentation to mention the new vector database logging capabilities
+
+However, there are several issues that need to be addressed:
+
+1. **Dashboard Integration Missing**: While the metric is created, it's not visualized in the monitoring dashboard
+1. **Incomplete Monitoring Implementation**: No alerting policies or detailed operational metrics for vector database operations
+1. **Documentation Gaps**: Limited explanation of vector database metrics and their usage
+
+These issues need to be fixed to ensure comprehensive monitoring of vector database operations and proper integration with the existing monitoring system.
 
 ### Terraform Monitoring Configuration (PR #158)
 
@@ -48,6 +65,8 @@ These enhancements make it much easier to:
 Having successfully completed the refactoring of `scripts/ci/process_wikipedia_articles.py` into modular components, we are focusing on improving the API calls within the Wikipedia processing components to enhance performance, reliability, and efficiency.
 
 ## Recent Changes
+
+- **Added VectorDB Logging Metric and View (PR #194)**: Extended the Terraform monitoring configuration to include vector database logging capabilities. Added a dedicated log-based metric for vector database logs, created a specialized log bucket and view for better log management, and updated outputs and documentation to reflect these changes. However, there are issues to be fixed including missing dashboard integration, incomplete monitoring implementation, and documentation gaps.
 
 - **Enhanced SonarQube Setup with Token Authentication and Comprehensive Test Reporting**: Improved the SonarQube setup with robust token-based authentication for API access and added comprehensive test reporting. Created `.sonarqube/setup-token.sh` to automatically generate and manage authentication tokens during startup. Enhanced `run-analysis.sh` to run unit tests with coverage, generating both XML coverage and JUnit test reports before submitting code analysis. Specified Python 3.12 in the SonarQube configuration for more accurate analysis. Added token file to `.gitignore` for security. Created comprehensive documentation in `docs/sonarqube_setup_complete.md` detailing the SonarQube configuration, scripts, and usage patterns. Successfully tested the complete workflow by running an analysis with coverage metrics and verifying results in the SonarQube dashboard. Verified full API functionality through direct token-based API calls that confirmed proper project registration and metric collection. Initial analysis reported 34.3% code coverage from unit tests, 6,321 lines of code, 5 bugs, 47 code smells, and 0 vulnerabilities.
 
@@ -102,6 +121,26 @@ Having successfully completed the refactoring of `scripts/ci/process_wikipedia_a
 - **Enhanced Building Data Display in Vector Utility**: Improved the `process_building_data` function in `scripts/vector_utility.py` to better handle building data in vector metadata, including handling for empty arrays, non-dictionary data types, and more robust detection of missing data. This allows for consistent display of building information across various data formats.
 
 ## Next Steps
+
+### VectorDB Logging Metric and View PR #194 Fixes
+
+1. Update the dashboard template to include widgets for vector database metrics:
+
+   - Add a widget for vectordb logs volume/count
+   - Add widgets for specific vector database operations if available
+   - Consider adding a heatmap widget for activity patterns
+
+1. Enhance the monitoring implementation:
+
+   - Create more specific metrics for different vector database operations
+   - Add alerting policies for abnormal vector database behavior
+   - Add a threshold-based scorecard for vector database health
+
+1. Improve documentation:
+
+   - Expand documentation with detailed explanations of vector database metrics
+   - Add example queries for common troubleshooting scenarios
+   - Include a section on interpreting the dashboard widgets
 
 ### Terraform Monitoring PR #158 Recommendations
 
@@ -172,6 +211,13 @@ Having successfully completed the refactoring of `scripts/ci/process_wikipedia_a
 1. Performance optimization
 
 ## Active Decisions and Considerations
+
+### VectorDB Logging Metric Implementation
+
+- Creating dedicated logging metrics specifically for vector database operations to enable better monitoring and troubleshooting
+- Setting up a specialized log bucket and view to isolate vector database logs for easier analysis
+- Need to integrate these new metrics with the existing dashboard for comprehensive monitoring
+- Plan to add detailed metrics for specific vector database operations to better track performance and issues
 
 ### Terraform Infrastructure Management
 
