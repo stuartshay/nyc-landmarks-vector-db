@@ -269,6 +269,106 @@
             "scale": "LINEAR"
           }
         }
+      },
+      {
+        "title": "Vector Database Activity",
+        "scorecard": {
+          "timeSeriesQuery": {
+            "timeSeriesFilter": {
+              "filter": "metric.type=\"logging.googleapis.com/user/${log_name_prefix}.vectordb_logs\"",
+              "aggregation": {
+                "perSeriesAligner": "ALIGN_RATE",
+                "crossSeriesReducer": "REDUCE_SUM",
+                "alignmentPeriod": "300s"
+              }
+            },
+            "unitOverride": "1/s"
+          },
+          "sparkChartView": {
+            "sparkChartType": "SPARK_LINE"
+          },
+          "thresholds": [
+            {
+              "value": 0.01,
+              "color": "YELLOW",
+              "direction": "BELOW"
+            }
+          ]
+        }
+      },
+      {
+        "title": "Vector Database Log Volume",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"logging.googleapis.com/user/${log_name_prefix}.vectordb_logs\"",
+                  "aggregation": {
+                    "perSeriesAligner": "ALIGN_RATE",
+                    "crossSeriesReducer": "REDUCE_SUM",
+                    "alignmentPeriod": "60s"
+                  }
+                },
+                "unitOverride": "1/s"
+              },
+              "plotType": "LINE"
+            }
+          ],
+          "timeshiftDuration": "0s",
+          "yAxis": {
+            "label": "logs/s",
+            "scale": "LINEAR"
+          }
+        }
+      },
+      {
+        "title": "Vector Database Operations (24h)",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"logging.googleapis.com/user/${log_name_prefix}.vectordb_logs\"",
+                  "aggregation": {
+                    "perSeriesAligner": "ALIGN_COUNT",
+                    "crossSeriesReducer": "REDUCE_SUM",
+                    "alignmentPeriod": "3600s"
+                  }
+                },
+                "unitOverride": "1"
+              },
+              "plotType": "STACKED_BAR"
+            }
+          ],
+          "timeshiftDuration": "0s",
+          "yAxis": {
+            "label": "count",
+            "scale": "LINEAR"
+          }
+        }
+      },
+      {
+        "title": "Vector Database Log Distribution",
+        "pieChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"logging.googleapis.com/user/${log_name_prefix}.vectordb_logs\"",
+                  "aggregation": {
+                    "alignmentPeriod": "86400s",
+                    "perSeriesAligner": "ALIGN_SUM",
+                    "crossSeriesReducer": "REDUCE_SUM",
+                    "groupByFields": [
+                      "metric.labels.\"severity\""
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
       }
     ]
   }
