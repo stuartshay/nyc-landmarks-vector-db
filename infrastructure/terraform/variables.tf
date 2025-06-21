@@ -27,3 +27,15 @@ variable "notification_channels" {
   description = "List of notification channel IDs for alerts"
   default     = []
 }
+
+variable "api_health_check_url" {
+  type        = string
+  description = "URL to check for API health"
+  default     = "https://nyc-landmarks-api.example.com/health"
+}
+
+variable "uptime_check_host" {
+  type        = string
+  description = "Host for uptime check monitoring"
+  default     = "nyc-landmarks-api.example.com"
+}

@@ -51,6 +51,27 @@ output "vectordb_logs_bucket" {
   value       = google_logging_project_bucket_config.vectordb_logs_bucket.name
 }
 
+output "api_logs_bucket" {
+  description = "Log bucket for API logs"
+  value       = google_logging_project_bucket_config.api_logs_bucket.name
+}
+
+output "log_views" {
+  description = "Created log views"
+  value = {
+    vectordb_logs_view = "${google_logging_project_bucket_config.vectordb_logs_bucket.name}/views/${google_logging_log_view.vectordb_logs_view.name}"
+    api_logs_view      = "${google_logging_project_bucket_config.api_logs_bucket.name}/views/${google_logging_log_view.api_logs_view.name}"
+  }
+}
+
+output "log_views_urls" {
+  description = "Direct URLs to the log views"
+  value = {
+    vectordb_logs_view = "https://console.cloud.google.com/logs/storage/${google_logging_project_bucket_config.vectordb_logs_bucket.name}/views/${google_logging_log_view.vectordb_logs_view.name}?project=${var.project_id}"
+    api_logs_view      = "https://console.cloud.google.com/logs/storage/${google_logging_project_bucket_config.api_logs_bucket.name}/views/${google_logging_log_view.api_logs_view.name}?project=${var.project_id}"
+  }
+}
+
 output "alert_policies" {
   description = "Created alert policies"
   value = {

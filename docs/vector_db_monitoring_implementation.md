@@ -1,100 +1,21 @@
-# Vector Database Monitoring Implementation
+# Vector Database and API Monitoring Implementation
 
-This document describes the vector database monitoring implementation that was added to address the requirements in PR #194.
+This document outlines the implementation of monitoring infrastructure for the NYC Landmarks Vector Database and API, as part of PR #194.
 
 ## Overview
 
-The vector database monitoring implementation extends the existing Terraform monitoring configuration with:
+The monitoring infrastructure includes:
 
-1. Specialized log-based metrics for vector database operations
-1. Dashboard widgets for visualizing vector database activity and performance
-1. Alert policies for detecting issues with vector database operations
-1. A dedicated log bucket for better log management
-1. Comprehensive documentation on using and interpreting the metrics
+1. Log buckets for storing logs
+1. Log views for easy access to specific log types
+1. Log-based metrics for monitoring activity and errors
+1. Alert policies for proactive notifications
+1. Uptime checks and health monitoring
+1. Dashboard for visualizing metrics
 
-## Components Implemented
+## Log Buckets and Views
 
-### Log-Based Metrics
-
-Three log-based metrics were created to capture different aspects of vector database operations:
-
-1. **vectordb_logs**: Captures all vector database logs
-
-   ```hcl
-   resource "google_logging_metric" "vectordb_logs" {
-     name   = "${var.log_name_prefix}.vectordb_logs"
-     filter = "logName=~\"${var.log_name_prefix}.nyc_landmarks.vectordb\""
-   }
-   ```
-
-1. **vectordb_errors**: Tracks error logs from vector database operations
-
-   ```hcl
-   resource "google_logging_metric" "vectordb_errors" {
-     name        = "${var.log_name_prefix}.vectordb_errors"
-     description = "Count of error logs from vector database operations"
-     filter      = "logName=~\"${var.log_name_prefix}.nyc_landmarks.vectordb\" AND severity>=ERROR"
-   }
-   ```
-
-1. **vectordb_slow_operations**: Monitors operations taking longer than expected
-
-   ```hcl
-   resource "google_logging_metric" "vectordb_slow_operations" {
-     name        = "${var.log_name_prefix}.vectordb_slow_operations"
-     description = "Count of slow vector database operations (>500ms)"
-     filter      = "logName=~\"${var.log_name_prefix}.nyc_landmarks.vectordb\" AND jsonPayload.duration_ms>500"
-   }
-   ```
-
-### Dashboard Widgets
-
-Four specialized widgets were added to the monitoring dashboard to visualize vector database activity:
-
-1. **Vector Database Activity** (Scorecard):
-
-   - Real-time activity measurement
-   - Includes a spark line for trend visualization
-   - Threshold alert for low activity
-
-1. **Vector Database Log Volume** (Line Chart):
-
-   - Rate of vector database logs over time
-   - Helps identify usage patterns and potential issues
-
-1. **Vector Database Operations** (Stacked Bar Chart):
-
-   - Hourly count of operations over a 24-hour period
-   - Helps with capacity planning and identifying usage patterns
-
-1. **Vector Database Log Distribution** (Pie Chart):
-
-   - Distribution of logs by severity level
-   - Helps quickly identify if errors are occurring
-
-### Alert Policies
-
-Three alert policies were implemented to proactively monitor vector database health:
-
-1. **Vector Database Error Rate Alert**:
-
-   - Triggers when error rate exceeds threshold (5 errors in 5 minutes)
-   - Helps identify systemic issues with vector database operations
-
-1. **Vector Database Inactivity Alert**:
-
-   - Triggers when activity drops below expected levels
-   - 30-minute window of inactivity before alerting
-   - Helps detect service disruptions or integration issues
-
-1. **Vector Database Slow Operations Alert**:
-
-   - Triggers when a high number of slow operations are detected
-   - Helps identify performance issues or resource constraints
-
-### Log Management
-
-A dedicated log bucket was created for better management of vector database logs:
+### Vector Database Logs
 
 ```hcl
 resource "google_logging_project_bucket_config" "vectordb_logs_bucket" {
@@ -104,125 +25,162 @@ resource "google_logging_project_bucket_config" "vectordb_logs_bucket" {
   retention_days = 30
   description    = "Bucket for storing vector database logs"
 }
+
+resource "google_logging_log_view" "vectordb_logs_view" {
+  name        = "vectordb-logs-view"
+  bucket      = google_logging_project_bucket_config.vectordb_logs_bucket.id
+  description = "View for all Vector Database logs"
+  filter      = ""
+}
 ```
 
-This provides:
+**Access URL**: [Vector Database Logs View](https://console.cloud.google.com/logs/storage/projects/velvety-byway-327718/locations/global/buckets/vectordb-logs/views/vectordb-logs-view?project=velvety-byway-327718)
 
-- A 30-day retention policy for vector database logs
-- Better organization of logs separate from general application logs
-- Centralized storage for all vector database related logs
-
-## Outputs
-
-The monitoring configuration outputs provide direct links to the created resources:
+### API Logs
 
 ```hcl
-output "log_metrics" {
-  description = "Created log-based metrics"
-  value = {
-    # ... existing metrics ...
-    vectordb_logs          = google_logging_metric.vectordb_logs.name
-    vectordb_errors        = google_logging_metric.vectordb_errors.name
-    vectordb_slow_operations = google_logging_metric.vectordb_slow_operations.name
+resource "google_logging_project_bucket_config" "api_logs_bucket" {
+  project        = local.project_id
+  location       = "global"
+  bucket_id      = "api-logs"
+  retention_days = 30
+  description    = "Bucket for storing API logs"
+}
+
+resource "google_logging_log_view" "api_logs_view" {
+  name        = "api-logs-view"
+  bucket      = google_logging_project_bucket_config.api_logs_bucket.id
+  description = "View for all API logs"
+  filter      = ""
+}
+```
+
+The API logs view captures logs from various API components, including:
+
+- API query logs (e.g., `nyc_landmarks.api.query`)
+- API middleware logs
+- Request/response information
+- Endpoint access patterns
+
+**Sample Log Entry**:
+
+```json
+{
+  "logName": "projects/velvety-byway-327718/logs/nyc-landmarks-vector-db.nyc_landmarks.api.query",
+  "severity": "INFO",
+  "jsonPayload": {
+    "message": "search_text request: query=What are the architectural features? landmark_id=LP-00001 source_type=None top_k=5",
+    "module": "query",
+    "function": "search_text",
+    "request_path": "/api/query/search/landmark",
+    "request_id": "5c8888d0-7e6c-47bd-8c6c-88ca871fbd39",
+    "duration_ms": 7.0476531982421875
   }
 }
+```
 
-output "vectordb_logs_bucket" {
-  description = "Log bucket for vector database logs"
-  value       = google_logging_project_bucket_config.vectordb_logs_bucket.name
+**Access URL**: [API Logs View](https://console.cloud.google.com/logs/storage/projects/velvety-byway-327718/locations/global/buckets/api-logs/views/api-logs-view?project=velvety-byway-327718)
+
+## Log-Based Metrics
+
+The following log-based metrics were implemented:
+
+```hcl
+resource "google_logging_metric" "requests" {
+  name   = "${var.log_name_prefix}.requests"
+  filter = "resource.type=\"cloud_run_revision\" AND logName=\"projects/${local.project_id}/logs/${var.log_name_prefix}.nyc_landmarks.api.middleware\" AND jsonPayload.metric_type=\"performance\""
 }
 
-output "alert_policies" {
-  description = "Created alert policies"
-  value = {
-    vectordb_error_alert         = google_monitoring_alert_policy.vectordb_error_alert.name
-    vectordb_activity_alert      = google_monitoring_alert_policy.vectordb_activity_alert.name
-    vectordb_slow_operations_alert = google_monitoring_alert_policy.vectordb_slow_operations_alert.name
-  }
+resource "google_logging_metric" "errors" {
+  name   = "${var.log_name_prefix}.errors"
+  filter = "resource.type=\"cloud_run_revision\" AND logName=\"projects/${local.project_id}/logs/${var.log_name_prefix}.nyc_landmarks.api.middleware\" AND jsonPayload.metric_type=\"performance\" AND jsonPayload.status_code>=500"
 }
 
-output "alert_policies_urls" {
-  description = "Direct URLs to the alert policies"
-  value = {
-    vectordb_error_alert         = "https://console.cloud.google.com/monitoring/alerting/policies/${split("/", google_monitoring_alert_policy.vectordb_error_alert.id)[3]}?project=${var.project_id}"
-    vectordb_activity_alert      = "https://console.cloud.google.com/monitoring/alerting/policies/${split("/", google_monitoring_alert_policy.vectordb_activity_alert.id)[3]}?project=${var.project_id}"
-    vectordb_slow_operations_alert = "https://console.cloud.google.com/monitoring/alerting/policies/${split("/", google_monitoring_alert_policy.vectordb_slow_operations_alert.id)[3]}?project=${var.project_id}"
-  }
+resource "google_logging_metric" "latency" {
+  name   = "${var.log_name_prefix}.latency"
+  filter = "resource.type=\"cloud_run_revision\" AND logName=\"projects/${local.project_id}/logs/${var.log_name_prefix}.nyc_landmarks.api.middleware\" AND jsonPayload.metric_type=\"performance\" AND jsonPayload.duration_ms>=0"
+}
+
+resource "google_logging_metric" "validation_warnings" {
+  name   = "${var.log_name_prefix}.validation_warnings"
+  filter = "resource.type=\"cloud_run_revision\" AND logName=\"projects/${local.project_id}/logs/${var.log_name_prefix}.nyc_landmarks.utils.validation\" AND severity=\"WARNING\""
+}
+
+resource "google_logging_metric" "vectordb_logs" {
+  name   = "${var.log_name_prefix}.vectordb_logs"
+  filter = "logName=~\"${var.log_name_prefix}.nyc_landmarks.vectordb\""
+}
+
+resource "google_logging_metric" "vectordb_errors" {
+  name        = "${var.log_name_prefix}.vectordb_errors"
+  description = "Counts errors in vector database operations"
+  filter      = "logName=~\"${var.log_name_prefix}.nyc_landmarks.vectordb\" AND severity=\"ERROR\""
+}
+
+resource "google_logging_metric" "vectordb_slow_operations" {
+  name        = "${var.log_name_prefix}.vectordb_slow_operations"
+  description = "Tracks slow operations in vector database"
+  filter      = "logName=~\"${var.log_name_prefix}.nyc_landmarks.vectordb\" AND jsonPayload.duration_ms>500"
 }
 ```
 
-## Using the Vector Database Monitoring
+## Alert Policies
 
-### Viewing Vector Database Logs
+Three alert policies were implemented to monitor vector database operations:
 
-To view logs captured by the `vectordb_logs` metric, open **Logs Explorer** in the Google Cloud Console and run queries such as:
+1. **Error Rate Alert**: Triggers when the rate of vector database errors exceeds a threshold.
+1. **Activity Alert**: Triggers when vector database activity falls below a certain threshold.
+1. **Slow Operations Alert**: Triggers when the rate of slow vector database operations exceeds a threshold.
 
-```text
-logName=~"${LOG_NAME_PREFIX}.nyc_landmarks.vectordb"
+**Access URLs**:
+
+- [Error Alert](https://console.cloud.google.com/monitoring/alerting/policies/680246190038586123?project=velvety-byway-327718)
+- [Activity Alert](https://console.cloud.google.com/monitoring/alerting/policies/15343916069992722197?project=velvety-byway-327718)
+- [Slow Operations Alert](https://console.cloud.google.com/monitoring/alerting/policies/16573989850872248382?project=velvety-byway-327718)
+
+## Dashboard
+
+A comprehensive dashboard was created to visualize metrics:
+
+**Access URL**: [NYC Landmarks Vector DB - API Monitoring Dashboard](https://console.cloud.google.com/monitoring/dashboards/custom/cbcd77e4-0a7a-4bdb-8570-d1adfc28658a?project=velvety-byway-327718)
+
+## Implementation Challenges and Solutions
+
+### Log View Filter Syntax
+
+When implementing the log views, we encountered issues with the filter syntax:
+
+- Complex regex patterns in the filter field caused validation errors
+- The solution was to use an empty filter string to include all logs in the bucket
+
+### State Locking
+
+During the Terraform apply process, we encountered state locking issues:
+
+- When terraform apply gets interrupted, locks need to be manually cleared
+- Used `kill` to terminate hanging processes and remove state lock files
+
+## Usage
+
+### Viewing Logs
+
+1. Vector DB logs: Access the [Vector Database Logs View](https://console.cloud.google.com/logs/storage/projects/velvety-byway-327718/locations/global/buckets/vectordb-logs/views/vectordb-logs-view?project=velvety-byway-327718)
+1. API logs: Access the [API Logs View](https://console.cloud.google.com/logs/storage/projects/velvety-byway-327718/locations/global/buckets/api-logs/views/api-logs-view?project=velvety-byway-327718)
+
+### Monitoring Alerts
+
+Set up notification channels in the Google Cloud Console and add them to the `notification_channels` variable in your `terraform.tfvars` file:
+
+```hcl
+notification_channels = [
+  "projects/velvety-byway-327718/notificationChannels/123456789",
+  "projects/velvety-byway-327718/notificationChannels/987654321"
+]
 ```
 
-Or filter using the dedicated log bucket:
+## Next Steps
 
-```text
-resource.type="logging_bucket" AND resource.labels.bucket_name="vectordb-logs"
-```
-
-### Advanced Query Examples
-
-For targeted analysis, you can use these example queries:
-
-**Query for vector database errors:**
-
-```
-logName=~"${LOG_NAME_PREFIX}.nyc_landmarks.vectordb" severity>=ERROR
-```
-
-**Query for specific vector operations (like query or upsert):**
-
-```
-logName=~"${LOG_NAME_PREFIX}.nyc_landmarks.vectordb" jsonPayload.operation="query"
-```
-
-**Query for slow vector operations (taking more than 500ms):**
-
-```
-logName=~"${LOG_NAME_PREFIX}.nyc_landmarks.vectordb" jsonPayload.duration_ms>500
-```
-
-**Query for operations on a specific namespace:**
-
-```
-logName=~"${LOG_NAME_PREFIX}.nyc_landmarks.vectordb" jsonPayload.namespace="wikipedia"
-```
-
-### Interpreting Vector Database Metrics
-
-#### Activity Patterns
-
-- **Normal Pattern**: Regular spikes during business hours with lower activity overnight
-- **Warning Signs**: Sudden drops in activity or prolonged periods of zero activity
-- **Action Items**: Investigate system health if activity drops unexpectedly
-
-#### Log Volume
-
-- **Normal Pattern**: Consistent with application usage patterns
-- **Warning Signs**: Sudden spikes in log volume may indicate errors or performance issues
-- **Action Items**: Check for error severity distribution and correlate with API performance
-
-#### Error Distribution
-
-- **Normal Ratio**: Primarily INFO logs with minimal WARNING and ERROR logs
-- **Warning Signs**: Increasing proportion of WARNING or ERROR logs
-- **Action Items**: Review error logs and address underlying issues
-
-## Future Enhancements
-
-Future monitoring enhancements could include:
-
-1. More granular metrics for specific vector operations (query, upsert, delete)
-1. Latency tracking for each operation type
-1. Vector index size and growth monitoring
-1. Integration with third-party monitoring tools
-1. Custom notification channels (Slack, PagerDuty)
-1. Automated remediation actions for common issues
-1. Dedicated logging views when supported by the provider
+1. Implement additional API-specific alert policies
+1. Enhance dashboard with more API metrics
+1. Set up anomaly detection for API request patterns
+1. Create runbooks for responding to specific alerts

@@ -351,15 +351,12 @@
       {
         "title": "Vector Database Log Distribution",
         "pieChart": {
-          "chartOptions": {
-            "mode": "STATS"
-          },
           "dataSets": [
             {
               "timeSeriesQuery": {
                 "timeSeriesFilter": {
                   "filter": "metric.type=\"logging.googleapis.com/user/${log_name_prefix}.vectordb_logs\"",
-                  "secondaryAggregation": {
+                  "aggregation": {
                     "alignmentPeriod": "86400s",
                     "perSeriesAligner": "ALIGN_SUM",
                     "crossSeriesReducer": "REDUCE_SUM",
