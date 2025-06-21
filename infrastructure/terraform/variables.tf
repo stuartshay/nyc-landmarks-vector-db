@@ -4,10 +4,12 @@ variable "project_id" {
   default     = ""
 }
 
-variable "credentials_file" {
+
+variable "GOOGLE_CREDENTIALS" {
   type        = string
-  description = "Path to the GCP service account key file"
-  default     = "../../.gcp/service-account-key.json"
+  description = "Contents of the GCP service account key JSON"
+  default     = ""
+  sensitive   = true
 }
 
 variable "region" {
