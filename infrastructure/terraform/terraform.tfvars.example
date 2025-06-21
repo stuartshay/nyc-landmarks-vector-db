@@ -4,8 +4,10 @@
 # GCP Project Configuration
 project_id = "your-gcp-project-id"
 
-# Path to your GCP service account key file (relative to this directory)
-credentials_file = "../../.gcp/service-account-key.json"
+# Contents of your GCP service account key file
+# Example: GOOGLE_CREDENTIALS = file("../../.gcp/service-account-key.json")
+# When using Terraform Cloud, store this value as a sensitive variable
+GOOGLE_CREDENTIALS = ""
 
 # GCP region for resources
 region = "us-central1"

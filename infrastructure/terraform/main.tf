@@ -1,16 +1,6 @@
-terraform {
-  required_version = ">= 1.0"
-  required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "~> 5.0"
-    }
-  }
-}
-
 locals {
   project_id = var.project_id != "" ? var.project_id : (
-    var.credentials_file != "" ? jsondecode(file(var.credentials_file))["project_id"] : null
+    var.GOOGLE_CREDENTIALS != "" ? jsondecode(var.GOOGLE_CREDENTIALS)["project_id"] : null
   )
   region = var.region
 }
@@ -18,7 +8,7 @@ locals {
 provider "google" {
   project     = local.project_id
   region      = local.region
-  credentials = var.credentials_file != "" ? file(var.credentials_file) : null
+  credentials = var.GOOGLE_CREDENTIALS
 }
 
 resource "google_logging_metric" "requests" {
