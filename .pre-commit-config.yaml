@@ -14,6 +14,17 @@ repos:
       - id: detect-private-key
       - id: check-merge-conflict
 
+  # Enhanced secret detection for API keys, tokens, and credentials
+  - repo: local
+    hooks:
+      - id: gitleaks-scan
+        name: Detect secrets, API keys, and tokens
+        description: Detect secrets, API keys, and credentials in all files including documentation
+        entry: bash -c 'gitleaks detect --source=. --config=.gitleaks.toml --no-git --exit-code=2 || (echo "❌ Secrets detected! Please review and remove any exposed API keys, tokens, or credentials." && exit 1)'
+        language: system
+        pass_filenames: false
+        always_run: true
+
   - repo: https://github.com/psf/black
     rev: 25.1.0
     hooks:
@@ -140,6 +151,18 @@ repos:
           - flake8-quotes
           - flake8-comprehensions
 
+  # Custom hook to initialize Terraform modules before validation
+  - repo: local
+    hooks:
+      - id: terraform-init-modules
+        name: Initialize Terraform modules
+        description: Initialize all Terraform modules before validation
+        entry: bash -c 'find . -name "*.tf" -exec dirname {} \; | sort -u | xargs -I {} sh -c "cd \"{}\" && if [ -f versions.tf ] || [ -f main.tf ]; then terraform init -backend=false >/dev/null 2>&1 || true; fi" && exit 0'
+        language: system
+        files: (\.tf|\.tfvars)$
+        pass_filenames: false
+        always_run: false
+
   # Terraform validation and formatting
   - repo: https://github.com/antonbabenko/pre-commit-terraform
     rev: v1.96.1
@@ -155,3 +178,4 @@ repos:
         files: (\.tf|\.tfvars)$
         args:
           - --args=-no-color
+          - --hook-config=--retry-once-with-cleanup=true

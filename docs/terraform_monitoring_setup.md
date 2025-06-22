@@ -42,7 +42,7 @@ This configuration provisions monitoring resources for the NYC Landmarks Vector 
 ## Prerequisites
 
 - Terraform >= 1.0 installed
-- GCP service account key at `.gcp/service-account-key.json` with permissions:
+- Service account key JSON stored at `.gcp/service-account-key.json` with permissions. Load the file contents into the `GOOGLE_CREDENTIALS` variable for Terraform Cloud or CLI:
   - `roles/logging.configWriter`
   - `roles/monitoring.editor`
   - `roles/monitoring.metricWriter`
@@ -57,7 +57,7 @@ The setup automatically detects your GCP project from the service account key fi
 
 ```hcl
 project_id = "your-gcp-project-id"
-credentials_file = "../../.gcp/service-account-key.json"
+GOOGLE_CREDENTIALS = file("../../.gcp/service-account-key.json")
 region = "us-central1"
 log_name_prefix = "nyc-landmarks-vector-db"
 ```

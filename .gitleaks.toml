@@ -1,0 +1,72 @@
+# Gitleaks configuration file
+# https://github.com/gitleaks/gitleaks/wiki/Configuration
+
+title = "NYC Landmarks Vector DB - Gitleaks Config"
+
+[extend]
+# Extend the default gitleaks rules
+useDefault = true
+
+[[rules]]
+description = "Terraform Cloud API Token"
+id = "terraform-cloud-token"
+regex = '''(?i)(?:terraform|tf).*(?:token|api).{0,20}(?:=|:)\s*['"]*([a-zA-Z0-9]{14}\.atlasv1\.[a-zA-Z0-9]{60,})['"]*'''
+tags = ["api", "terraform", "token"]
+
+[[rules]]
+description = "Environment variables that might contain secrets"
+id = "environment-variable-secrets"
+regex = '''(?i)(?:api_key|secret|password|token|key)\s*=\s*['"]*([a-zA-Z0-9_\-\.]{20,})['"]*'''
+tags = ["api", "secret", "env"]
+
+[allowlist]
+description = "Global allowlist"
+paths = [
+  '''\.secrets\.baseline$''',
+  '''\.git/''',
+  '''node_modules/''',
+  '''\.venv/''',
+  '''venv/''', # Exclude Python virtual environment
+  '''__pycache__/''',
+  '''\.pytest_cache/''',
+  '''test_output/''',
+  '''logs/''',
+  '''\.log$''',
+  '''\.lock$''',
+  '''\.pyc$''',
+  '''coverage\.xml$''',
+  '''test-results\.xml$''',
+  '''\.env$''', # Exclude .env files as they contain development secrets and are gitignored
+  '''\.gcp/''', # Exclude GCP service account files (development credentials)
+  '''\.scannerwork/''', # Exclude SonarQube scanner temporary files
+  '''\.sonarqube/''', # Exclude SonarQube configuration files
+  '''build/''', # Exclude build artifacts
+  '''dist/''', # Exclude distribution files
+  '''\.min\.js$''', # Exclude minified JavaScript
+  '''\.bundle\.js$''', # Exclude bundled JavaScript
+]
+
+# Allow specific regexes for legitimate example tokens
+regexes = [
+  '''YOUR_PRIVATE_KEY_HERE''',
+  '''cafebabe:deadbeef''',
+  '''your_openai_api_key_here''',
+  '''your_pinecone_api_key_here''',
+  '''your_.*_api_key_here''',
+  '''your_terraform_cloud_token_here''',
+  '''example.*token''',
+  '''replace.*with.*real''',
+  '''nyc-landmarks-vector-db''', # Project name, not a secret
+  '''velvety-byway-327718''', # GCP project ID, not sensitive
+  '''REAL_.*_HERE''', # Documentation placeholders
+  '''example_token_replace_with_real_value''',
+  '''REDACTED_FOR_SECURITY''', # Redacted token patterns
+  '''EXAMPLE_.*_TOKEN''', # Documentation examples
+  '''sk-1234567890abcdef''', # Documentation example from CONTRIBUTING.md
+  '''settings\..*_API_KEY''', # Code patterns like settings.OPENAI_API_KEY
+  '''\..*Connection''', # Code patterns like createMessageConnection
+  '''Token.*Source''', # Code patterns like CancellationTokenSource
+  '''this\..*Token.*''', # JavaScript patterns like this.addTokenUsingPush
+  '''this\.gullet\..*''', # JavaScript patterns like this.gullet.expandNextToken
+  '''this\.view\.win\..*''', # JavaScript patterns like this.view.win.requestAnimationFrame
+]

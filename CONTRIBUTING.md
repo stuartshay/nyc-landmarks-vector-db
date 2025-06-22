@@ -26,6 +26,8 @@ This document outlines the process and guidelines for contributing.
 
    # Run pre-commit checks
    pre-commit run --all-files
+
+   # If secret detection fails, see "Handling Secret Detection" below
    ```
 1. **Commit your changes** with clear, descriptive commit messages
    ```bash
@@ -134,6 +136,98 @@ The project includes automated security scanning with Bandit:
 - **Manual scan**: Run `bandit -r . -x ./venv,./nyc_landmarks_vector_db.egg-info` for direct scanning
 
 See `docs/security_ci_integration.md` for complete security documentation.
+
+### Handling Secret Detection
+
+The project uses **gitleaks** to automatically scan for API keys, tokens, and credentials in all files, including documentation. If the pre-commit hook fails with secret detection, follow these steps:
+
+#### Understanding the Error
+
+When secrets are detected, you'll see output like:
+
+```
+Detect secrets, API keys, and tokens.....................................Failed
+- hook id: gitleaks-scan
+- exit code: 1
+
+❌ Secrets detected! Please review and remove any exposed API keys, tokens, or credentials.
+
+Finding: TF_TOKEN_NYC_LANDMARKS=EXAMPLE_DETECTED_TOKEN_HERE
+File: memory-bank/terraform_cloud_integration.md
+Line: 17
+```
+
+#### Resolution Steps
+
+1. **For Real API Keys/Tokens (IMMEDIATE ACTION REQUIRED)**:
+
+   ```bash
+   # ❌ NEVER commit real secrets
+   OPENAI_API_KEY=sk-REAL_SECRET_KEY_HERE
+
+   # ✅ Use environment variables instead
+   OPENAI_API_KEY=your_openai_api_key_here
+   ```
+
+   - Remove the real secret immediately
+   - Replace with placeholder text
+   - Move real values to `.env` file (which is gitignored)
+
+1. **For Documentation Examples**:
+
+   ```bash
+   # ❌ Avoid real-looking tokens in docs
+   TF_TOKEN=REAL_LOOKING_TOKEN_HERE
+
+   # ✅ Use obviously fake examples
+   TF_TOKEN=your_terraform_cloud_token_here
+   # or
+   TF_TOKEN=example_token_replace_with_real_value
+   ```
+
+1. **For Template/Example Files**:
+
+   - Use `.sample` or `.template` file extensions
+   - Use obvious placeholders like `your_api_key_here`
+   - These patterns are automatically allowlisted
+
+#### Emergency Bypass (Use with Extreme Caution)
+
+If you must temporarily bypass secret detection:
+
+```bash
+# Skip only secret scanning
+SKIP=gitleaks-scan git commit -m "Your message"
+
+# Skip all pre-commit hooks (NOT RECOMMENDED)
+git commit --no-verify -m "Emergency commit"
+```
+
+**⚠️ WARNING**: Only use bypass in emergencies and ensure secrets are removed before pushing!
+
+#### Testing Secret Detection
+
+```bash
+# Check for secrets manually
+gitleaks detect --source=. --config=.gitleaks.toml --no-git
+
+# Test specific file
+gitleaks detect --source=path/to/file --config=.gitleaks.toml --no-git
+
+# Run only the secret detection hook
+pre-commit run gitleaks-scan --all-files
+```
+
+#### Common Issues and Solutions
+
+| Issue                      | Solution                                                               |
+| -------------------------- | ---------------------------------------------------------------------- |
+| `.env` file with real keys | Move real keys to `.env` (gitignored), use `.env.sample` for templates |
+| Documentation with tokens  | Replace with `your_token_here` or `example_token_...`                  |
+| Template files detected    | Use `.sample` extension or obvious placeholders                        |
+| Service account keys       | Use `YOUR_PRIVATE_KEY_HERE` placeholder                                |
+
+For detailed guidance, see `docs/secret_detection_guide.md`.
 
 ## License
 

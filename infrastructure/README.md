@@ -115,18 +115,18 @@ The dashboard includes comprehensive health monitoring:
 
 ### Variables
 
-| Variable           | Description                     | Default                               | Required |
-| ------------------ | ------------------------------- | ------------------------------------- | -------- |
-| `project_id`       | GCP project ID                  | Auto-detected from service account    | No       |
-| `credentials_file` | Path to GCP service account key | `../../.gcp/service-account-key.json` | No       |
-| `region`           | GCP region                      | `us-central1`                         | No       |
-| `log_name_prefix`  | Prefix for log metric names     | `nyc-landmarks-vector-db`             | No       |
+| Variable             | Description                                          | Default                            | Required |
+| -------------------- | ---------------------------------------------------- | ---------------------------------- | -------- |
+| `project_id`         | GCP project ID                                       | Auto-detected from service account | No       |
+| `GOOGLE_CREDENTIALS` | Contents of the service account key JSON (sensitive) | _empty_                            | Yes      |
+| `region`             | GCP region                                           | `us-central1`                      | No       |
+| `log_name_prefix`    | Prefix for log metric names                          | `nyc-landmarks-vector-db`          | No       |
 
 ### terraform.tfvars Example
 
 ```hcl
 project_id = "my-gcp-project"
-credentials_file = "../../.gcp/service-account-key.json"
+GOOGLE_CREDENTIALS = file("../../.gcp/service-account-key.json")
 region = "us-central1"
 log_name_prefix = "nyc-landmarks-vector-db"
 ```
@@ -255,6 +255,48 @@ Infrastructure validation script that checks:
 - Terraform installation and configuration
 - GCP authentication and API access
 - Cross-references endpoint testing utility at `../utils/test_health_endpoint.sh`
+
+## Running Terraform locally with HCP backend
+
+1. Run `terraform login` to generate a user API token for Terraform Cloud.
+
+1. Export the token for CLI use:
+
+   ```bash
+   export TF_TOKEN_app_terraform_io=YOUR_TOKEN
+   export GOOGLE_CREDENTIALS=$(cat ../../.gcp/service-account-key.json)
+   ```
+
+1. Initialize and run Terraform with the backend:
+
+   ```bash
+   terraform -chdir=terraform init
+   terraform -chdir=terraform plan
+   ```
+
+The state and runs will execute remotely in HCP Terraform.
+
+## Token rotation & secret management
+
+- Rotate the service account key and update the `GOOGLE_CREDENTIALS` variable in the workspace.
+- Regenerate your `TF_TOKEN_app_terraform_io` with `terraform login` when expired.
+- Store tokens in GitHub Secrets for CI workflows.
+
+### Switching to OIDC authentication
+
+Provision the workload identity pool using the `modules/gcp_oidc` module and set
+the following variables in the Terraform Cloud workspace:
+
+```
+TFC_GCP_PROVIDER_AUTH=OIDC
+TFC_GCP_WORKLOAD_IDENTITY_PROVIDER=<provider full name>
+TFC_GCP_PROJECT_ID=<project_id>
+```
+
+## Enabling Cost Estimation & Drift Detection
+
+Enable these features in the Terraform Cloud workspace settings. When enabled,
+run plans or applies through HCP to automatically check for cost and drift.
 
 ## 🛠 Troubleshooting
 

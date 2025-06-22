@@ -1,160 +1,302 @@
-# NYC Landmarks Vector Database - Technical Context
+# Technology Context
+
+This document outlines the technologies used in the NYC Landmarks Vector DB project, the development setup, technical constraints, and dependencies.
 
 ## Technologies Used
 
 ### Core Technologies
 
-1. **Python**: Primary programming language for the project
-1. **OpenAI API**: For generating text embeddings using their embedding models
-1. **Pinecone**: Vector database for storing and searching text embeddings
-1. **CoreDataStore API**: REST API for accessing NYC landmarks data
-1. **coredatastore-swagger-mcp**: MCP server providing tools for CoreDataStore API,
-   including:
-   - GetLpcReport: Get details for a specific landmark report
-   - GetLpcReports: List multiple landmark reports with filtering options
-   - GetLandmarks: Retrieve buildings linked to landmarks
-   - GetLandmarkStreets: Get street information for landmarks
-   - GetLpcPhotoArchive/GetLpcPhotoArchiveCount: Access photo archive
-   - GetPlutoRecord: Access PLUTO data
-   - GetBoroughs, GetNeighborhoods, GetObjectTypes, GetArchitectureStyles: Reference
-     data
-   - GetLpcContent: Access additional content
-1. **Azure Blob Storage**: Current storage location for landmark PDF reports
-1. **Google Cloud Secret Store**: For secure credential management
-
-### Python Libraries & Frameworks
-
-1. **FastAPI**: For creating API endpoints
-1. **PyPDF2/PDFPlumber**: For extracting text from PDFs
-1. **OpenAI Python Client**: For interacting with OpenAI API
-1. **Pinecone-client**: For interacting with Pinecone vector database
-1. **Requests**: For making HTTP requests to CoreDataStore API
-1. **Azure Blob Storage SDK**: For retrieving PDFs from Azure
-1. **Google Cloud Secret Manager**: For accessing Google Cloud Secret Store
-1. **Pydantic**: For data validation and settings management
-1. **Pytest**: For testing
-1. **Langchain (Optional)**: May be used for some components as it provides helpful
-   abstractions
-1. **MCP SDK**: For interacting with the Model Context Protocol server
+| Category         | Technology            | Purpose                                    |
+| ---------------- | --------------------- | ------------------------------------------ |
+| Language         | Python 3.9+           | Primary programming language               |
+| Vector Database  | Pinecone              | Storage and retrieval of vector embeddings |
+| Embedding Models | OpenAI/Azure OpenAI   | Generate text embeddings                   |
+| Cloud Platform   | Google Cloud Platform | Cloud infrastructure                       |
+| Containerization | Docker                | Application packaging and deployment       |
 
 ### Development Tools
 
-1. **GitHub**: Version control and repository hosting
-1. **GitHub Actions**: CI/CD platform. Includes:
-   - `.github/workflows/process_landmarks.yml`: A manually triggered workflow for
-     scalable, batch-based processing of landmark data using a matrix strategy. Requires
-     system dependencies like `poppler-utils` and `tesseract-ocr` in its execution
-     environment.
-   - (Future workflows for automated testing on PRs, deployment, etc.)
-1. **SonarQube**: Code quality analysis and security scanning:
-   - **Local Setup**: Using Docker Compose with PostgreSQL database
-   - **Configuration**: Customized via sonar-project.properties
-   - **Features**: Code coverage tracking, code smells detection, vulnerability scanning
-   - **Integration**: Local analysis via sonar-scanner CLI tool
-1. **Poetry/Pipenv**: Dependency management
-1. **Black/Flake8/isort**: Code formatting and linting
-1. **Pytest**: Testing framework
-1. **Docker**: Containerization (if needed)
-1. **System Dependencies (for CI/Processing):** `build-essential`, `libpq-dev`,
-   `python3-dev`, `poppler-utils`, `libssl-dev`, `tesseract-ocr`, `libtesseract-dev` are
-   required in the GitHub Actions environment for the processing workflow.
+| Tool            | Purpose                                             |
+| --------------- | --------------------------------------------------- |
+| Poetry          | Python dependency management                        |
+| Pytest          | Testing framework                                   |
+| Pre-commit      | Git hooks for code quality                          |
+| Jupyter         | Interactive notebook environment                    |
+| mypy            | Static type checking                                |
+| Black           | Code formatting                                     |
+| Flake8          | Code linting                                        |
+| GitHub Actions  | CI/CD pipeline                                      |
+| Terraform       | Infrastructure as Code                              |
+| Terraform Cloud | Remote state management and collaborative workflows |
+
+### Libraries and Frameworks
+
+| Library        | Purpose                                 |
+| -------------- | --------------------------------------- |
+| FastAPI        | API framework                           |
+| Pydantic       | Data validation and settings management |
+| Pandas         | Data manipulation and analysis          |
+| numpy          | Numerical operations                    |
+| PyPDF2         | PDF parsing                             |
+| tiktoken       | Token counting for text chunking        |
+| loguru         | Structured logging                      |
+| httpx          | HTTP client for API requests            |
+| pytest-asyncio | Testing async code                      |
 
 ## Development Setup
 
-### Local Environment Setup
+### Local Environment
 
-1. Python 3.9+ installed
-1. Poetry or Pipenv for dependency management
-1. Local environment variables configuration for development
-1. Access to OpenAI API (via key)
-1. Access to Pinecone (via key)
-1. Access to Google Cloud Secret Store (for production credentials)
-1. Access to CoreDataStore API (via API key)
-1. Access to Azure Blob Storage (via connection string)
-1. Configured coredatastore-swagger-mcp server
+1. **Python Environment**:
 
-### Development Workflow
+   - Python 3.9+
+   - Poetry for dependency management
+   - Virtual environment for isolation
 
-1. Clone repository from GitHub
-1. Install dependencies using Poetry/Pipenv
-1. Configure local environment variables
-1. Run tests to ensure everything is set up correctly
-1. Make changes and commit to feature branches
-1. Submit pull requests for review
-1. CI/CD pipeline runs tests and deploys changes
-1. **Notebook Debugging (Terminal):** Use
-   `jupyter nbconvert --to notebook --execute <notebook_path> --output <output_path>` to
-   run notebooks from the terminal. This captures output and errors, facilitating
-   debugging without a full Jupyter environment. Review the generated output file for
-   analysis.
+1. **Configuration**:
+
+   - Environment variables for sensitive settings
+   - Local config files for development settings
+   - Secrets managed outside of version control
+
+1. **Docker**:
+
+   - Dockerfile for containerization
+   - docker-compose for local service orchestration
+   - Development container for VSCode
+
+### CI/CD Pipeline
+
+1. **GitHub Actions Workflow**:
+
+   - Code validation (linting, formatting)
+   - Unit and integration testing
+   - Security scanning
+   - Container building
+   - Deployment to cloud environments
+
+1. **Terraform Workflow**:
+
+   - Infrastructure validation
+   - Plan and apply stages
+   - Remote state management through Terraform Cloud
+   - Workspace-based environment separation
+
+### Cloud Environment
+
+1. **Google Cloud Platform Resources**:
+
+   - Cloud Run for serverless API hosting
+   - Cloud Storage for data storage
+   - Cloud Logging for centralized logging
+   - Cloud Monitoring for observability
+   - Cloud Scheduler for periodic tasks
+
+1. **Pinecone**:
+
+   - Managed vector database service
+   - Dedicated indexes for production and development
+   - Namespace-based organization within indexes
 
 ## Technical Constraints
 
-### API Limitations
-
-1. **OpenAI Rate Limits**: OpenAI has rate limits on API calls that need to be managed
-1. **OpenAI Token Limits**: Text-embedding models have maximum token limits per request
-1. **Pinecone Free Tier Limits**: Limited index size and operation rate on free tier
-1. **CoreDataStore API Limits**: May have rate limiting or usage restrictions
-1. **Azure Blob Storage Access**: Need to manage efficient access to avoid excessive
-   costs
-
 ### Performance Considerations
 
-1. **Embedding Generation Time**: OpenAI API calls add latency to processing pipeline
-1. **Vector Search Performance**: Need to optimize Pinecone queries for response time
-1. **PDF Processing Overhead**: PDF extraction can be resource-intensive for large
-   documents
-1. **API Response Time**: Need to maintain reasonable response times for user queries
-1. **CoreDataStore API Latency**: External API calls can add latency compared to direct
-   database access
+1. **Vector Database Performance**:
+
+   - Query latency target: \<500ms
+   - Maximum dimensions: 1536 (OpenAI Ada-002 model)
+   - Optimal top-k value: 5-20 for most queries
+
+1. **API Performance**:
+
+   - Request timeout: 30 seconds
+   - Rate limiting: 100 requests per minute
+   - Maximum payload size: 5MB
 
 ### Security Constraints
 
-1. **API Key Management**: Must securely handle all API keys and credentials
-1. **Data Privacy**: Need to consider any privacy implications of the data being
-   processed
-1. **Access Control**: Implement appropriate authentication and authorization for the
-   API
+1. **Authentication**:
 
-### Scalability Considerations
+   - API key required for production endpoints
+   - OAuth 2.0 for administrative actions
+   - Service account authentication for GCP resources
 
-1. **Processing Pipeline Scalability**: Need to handle large numbers of PDFs efficiently
-1. **Vector Database Scaling**: Plan for growth in the vector database size
-1. **Concurrent Users**: Design for multiple simultaneous users of the chat and query
-   APIs
+1. **Data Protection**:
+
+   - No PII in vector metadata
+   - Encryption in transit (TLS)
+   - Encryption at rest (GCP default)
+
+### Scalability Limits
+
+1. **Vector Database**:
+
+   - Maximum vectors: 100,000 in current plan
+   - Maximum dimensions: 1536
+   - Maximum metadata size: 40KB per vector
+
+1. **API**:
+
+   - Serverless scaling based on demand
+   - Cold start considerations for infrequent requests
+   - Resource allocation adjusted based on load patterns
 
 ## Dependencies and Integration Points
 
-### External Dependencies
+### External APIs
 
-1. **OpenAI API**: Essential for generating embeddings
-1. **Pinecone Service**: Essential for vector storage and search
-1. **Google Cloud Secret Store**: Essential for credential management
-1. **Azure Blob Storage**: Essential for PDF access
-1. **CoreDataStore API**: Essential source for NYC landmarks data
-1. **MCP Server**: For providing CoreDataStore API tools
+1. **OpenAI API**:
 
-### Internal Integration Points
+   - Used for generating embeddings
+   - Rate limited based on plan
+   - Fallback to Azure OpenAI if primary API is unavailable
 
-1. **Database Client**: Provides interface to CoreDataStore API
-1. **CoreDataStore MCP Server**: Provides direct tools for API access
-1. **Vector Search API**: Connects vector results with landmark data
-1. **Chat API**: Provides conversational interface to vector database
-1. **Frontend Applications**: Will consume the vector search and chat APIs
+1. **Wikipedia API**:
 
-## Monitoring and Maintenance
+   - Used for fetching landmark information
+   - Subject to rate limiting and fair use policies
+   - Response caching to reduce duplicate requests
 
-### Monitoring
+1. **NYC Open Data APIs**:
 
-1. **API Health Checks**: Regular monitoring of API endpoints
-1. **Error Logging**: Comprehensive error logging for troubleshooting
-1. **Performance Metrics**: Tracking of response times and system load
-1. **Usage Statistics**: Monitoring of API usage patterns
+   - Additional landmark data sources
+   - Varying availability and rate limits
+   - Batch processing approach for large datasets
 
-### Maintenance Tasks
+### Infrastructure Dependencies
 
-1. **Model Updates**: Periodically check for updated embedding models
-1. **Database Backups**: Regular backups of the vector database
-1. **Dependency Updates**: Keeping all dependencies up to date
-1. **Security Audits**: Regular security reviews of the system
+1. **Google Cloud Platform**:
+
+   - Project-level quota limits
+   - Service account permissions
+   - Regional resource availability
+
+1. **Pinecone**:
+
+   - Service availability SLA
+   - Regional deployment options
+   - Plan-based limitations on index size and query rate
+
+## Infrastructure Management
+
+### Terraform Configuration
+
+Terraform is used to manage all infrastructure as code, with resources defined in the `infrastructure/` directory:
+
+```
+infrastructure/
+├── main.tf                  # Main Terraform configuration
+├── variables.tf             # Input variables
+├── outputs.tf               # Output values
+├── terraform.tfvars         # Variable values
+└── terraform/               # Additional Terraform configurations
+    ├── dashboard.json.tpl   # Monitoring dashboard template
+    └── ...
+```
+
+Key resources managed through Terraform:
+
+- Logging metrics and buckets
+- Monitoring dashboards
+- Alert policies
+- Scheduled jobs
+- Uptime checks
+
+### Terraform Cloud Integration
+
+Terraform Cloud provides remote state management and collaborative workflows:
+
+1. **Organization and Workspace Structure**:
+
+   - Organization: `nyc-landmarks`
+   - Workspace: `nyc-landmarks-vector-db`
+   - Working directory: `infrastructure/terraform`
+
+1. **State Management**:
+
+   - Remote state stored in Terraform Cloud
+   - State locking to prevent concurrent operations
+   - State versioning for tracking changes
+
+1. **Authentication and Authorization**:
+
+   - API tokens for CLI authentication
+   - Environment variables for sensitive credentials
+   - VCS integration for automatic planning on code changes
+
+1. **Operational Workflow**:
+
+   - Planning in Terraform Cloud environment
+   - Apply operations with approval gates
+   - Run history and logging for auditability
+
+## Development Workflow
+
+### Code Organization
+
+Code is organized by feature and responsibility:
+
+```
+nyc_landmarks/
+├── api/           # API endpoints and routing
+├── config/        # Configuration management
+├── db/            # Database access
+├── embeddings/    # Embedding generation
+├── landmarks/     # Landmark data processing
+├── models/        # Data models and schemas
+├── pdf/           # PDF processing
+├── utils/         # Utility functions
+├── vectordb/      # Vector database operations
+└── wikipedia/     # Wikipedia integration
+```
+
+### Testing Strategy
+
+1. **Unit Tests**:
+
+   - Test individual components in isolation
+   - Mock external dependencies
+   - Fast execution for quick feedback
+
+1. **Integration Tests**:
+
+   - Test interactions between components
+   - Use test fixtures for consistent setup
+   - Run less frequently than unit tests
+
+1. **Functional Tests**:
+
+   - Test complete features end-to-end
+   - Run against test environment
+   - Cover critical user flows
+
+1. **Load Tests**:
+
+   - Test performance under load
+   - Identify bottlenecks
+   - Verify scaling behavior
+
+### Documentation
+
+Documentation is maintained in several locations:
+
+1. **Code Documentation**:
+
+   - Docstrings for all functions, classes, and modules
+   - Type hints for function signatures
+   - README files in major directories
+
+1. **Project Documentation**:
+
+   - Architecture diagrams
+   - API specifications
+   - Setup and deployment guides
+   - Contributing guidelines
+
+1. **Operational Documentation**:
+
+   - Runbooks for common operations
+   - Troubleshooting guides
+   - Monitoring dashboards
+   - Alert response procedures
