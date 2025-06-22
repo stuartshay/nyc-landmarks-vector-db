@@ -98,6 +98,9 @@ These improvements provide immediate benefits with minimal risk:
                  timeout=(3.05, 27),  # (connect_timeout, read_timeout)
              )
              # Process response...
+             return response.text, None
+         except Exception as e:
+             return None, str(e)
      ```
 
 1. **Implement Metadata Caching**

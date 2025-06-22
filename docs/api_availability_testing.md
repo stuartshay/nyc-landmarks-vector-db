@@ -39,7 +39,9 @@ def check_api_availability(self, base_url: str) -> None:
 def test_something(self):
     warning = require_api_or_warn("http://localhost:8000")
     if warning:
-        pytest.warn(UserWarning(warning))
+        import warnings
+
+        warnings.warn(warning, UserWarning)
     # ... rest of test
 ```
 
@@ -49,8 +51,10 @@ def test_something(self):
 def test_something(self):
     if check_api_availability("http://localhost:8000"):
         # Run API-dependent test
+        pass
     else:
         # Run alternative test or skip specific parts
+        pass
 ```
 
 ## Usage

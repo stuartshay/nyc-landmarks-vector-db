@@ -119,15 +119,20 @@ Used for different text processing strategies:
 ```python
 class TextProcessingStrategy:
     def process(self, text):
-        pass
+        """Process text according to strategy."""
+        raise NotImplementedError
+
 
 class LandmarkReportStrategy(TextProcessingStrategy):
     def process(self, text):
         # Specific implementation for landmark reports
+        pass
+
 
 class WikipediaArticleStrategy(TextProcessingStrategy):
     def process(self, text):
         # Specific implementation for Wikipedia articles
+        pass
 ```
 
 ### Singleton Pattern

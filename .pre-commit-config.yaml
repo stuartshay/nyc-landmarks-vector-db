@@ -124,6 +124,7 @@ repos:
           - mdformat-frontmatter # For YAML frontmatter
           - mdformat-footnote # For footnote support
         files: \.(md|markdown)$
+        exclude: ^(venv|\.venv|env|ENV|\.pytest_cache|\.gcp|\.terraform|\.scannerwork|\.sonarlint|output|logs|temp|test_output|temp_notebooks|verification_results|pinecone_backup|build|dist|\.eggs)/.*$
 
   # Jupyter notebook output clearing
   - repo: https://github.com/kynan/nbstripout
