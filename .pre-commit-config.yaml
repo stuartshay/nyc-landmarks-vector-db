@@ -140,6 +140,17 @@ repos:
           - flake8-quotes
           - flake8-comprehensions
 
+  # Custom hook to initialize Terraform modules before validation
+  - repo: local
+    hooks:
+      - id: terraform-init-modules
+        name: Initialize Terraform modules
+        description: Initialize all Terraform modules before validation
+        entry: bash -c 'find . -name "*.tf" -exec dirname {} \; | sort -u | xargs -I {} sh -c "cd \"{}\" && if [ -f versions.tf ] || [ -f main.tf ]; then terraform init -backend=false >/dev/null 2>&1 || true; fi"'
+        language: system
+        files: (\.tf|\.tfvars)$
+        pass_filenames: false
+
   # Terraform validation and formatting
   - repo: https://github.com/antonbabenko/pre-commit-terraform
     rev: v1.96.1
