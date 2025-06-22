@@ -1,0 +1,54 @@
+# Terraform Cloud Ignore File
+# Exclude files and directories that shouldn't be uploaded to Terraform Cloud
+
+# Python virtual environments and cache files
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Local development files
+.env
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Local Terraform files (already handled by .gitignore, but added for safety)
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Node modules
+node_modules/
+
+# Logs
+logs/
+*.log

@@ -1,107 +1,131 @@
 # Active Context
 
+This document captures the current focus of development, recent changes, and immediate next steps.
+
 ## Current Focus
 
-We're currently working on fixing issues related to PR #194 in the nyc-landmarks-vector-db project, which involves deploying monitoring infrastructure for the vector database using Terraform.
+### Terraform Cloud Implementation (PR #196)
 
-### Key Issues Identified
+We are currently implementing Terraform Cloud integration for the NYC Landmarks Vector DB project. This integration aims to improve state management, team collaboration, and operational consistency for infrastructure deployments.
 
-1. **Resource Conflict Errors**:
+The key components of this implementation include:
 
-   - When running `./infrastructure/deploy_dashboard.sh apply`, we encounter "Error 409: Resource already exists" errors for the following resources:
-     - Logging metrics (requests, errors, latency, validation_warnings)
-     - Cloud Scheduler job (nyc-landmarks-health-check)
+1. Setting up proper Terraform Cloud configuration
+1. Configuring workspace settings correctly
+1. Managing environment variables and authentication
+1. Ensuring proper state handling
+1. Documenting the setup process
 
-1. **Dashboard Configuration Issues**:
+Recent progress:
 
-   - The dashboard template had issues with the pie chart configuration, causing deployment errors.
+- Successfully configured Terraform Cloud in the project
+- Created workspace in Terraform Cloud with the correct settings
+- Updated the `versions.tf` file to include Terraform Cloud configuration
+- Created `.terraformignore` file to prevent Python environment issues
+- Fixed workspace path configuration using the Terraform Cloud API
+- Marked sensitive outputs appropriately in Terraform configurations
+- Successfully ran Terraform plan through Terraform Cloud
 
-### Solutions Implemented
+Current challenges:
 
-1. **Dashboard Template Fix**:
+- Ensuring proper variable configuration in Terraform Cloud
+- Streamlining the authentication process for team members
+- Managing the transition from local state to remote state
 
-   - Fixed the JSON structure in `dashboard.json.tpl` to ensure proper aggregation configuration for all charts, particularly the pie chart.
-   - Ensured the template uses variable interpolation for log name prefixes.
+## Recent Changes
 
-1. **Terraform Resource Management**:
+### Terraform Cloud Configuration
 
-   - Created `terraform.tfvars` file with proper project configuration.
-   - Created two new deployment scripts to manage the existing resources properly:
-     - `import_existing_resources.sh`: A script to import existing GCP resources into Terraform state
-     - `deploy_dashboard_only.sh`: A script to deploy only the dashboard without affecting other resources
+- Added Terraform Cloud block in `versions.tf`:
 
-### Deployment Strategy
+  ```hcl
+  cloud {
+    organization = "nyc-landmarks"
+    workspaces {
+      name = "nyc-landmarks-vector-db"
+    }
+  }
+  ```
 
-The project now has three deployment options:
+- Created `.terraformignore` file to exclude Python virtual environments and other unnecessary files from being uploaded to Terraform Cloud
 
-1. **Full Deployment with Resource Import** (for initial setup):
+- Updated the workspace configuration in Terraform Cloud using the API:
 
-   ```bash
-   ./infrastructure/import_existing_resources.sh
-   ./infrastructure/deploy_dashboard.sh apply
-   ```
+  ```bash
+  curl --header "Authorization: Bearer $TF_TOKEN_NYC_LANDMARKS" \
+       --header "Content-Type: application/vnd.api+json" \
+       --request PATCH \
+       --data '{"data":{"attributes":{"working-directory":"infrastructure/terraform"},"type":"workspaces"}}' \
+       https://app.terraform.io/api/v2/organizations/nyc-landmarks/workspaces/nyc-landmarks-vector-db
+  ```
 
-1. **Dashboard-Only Deployment** (for updates to just the dashboard):
+- Fixed output sensitivity issues in Terraform configuration:
 
-   ```bash
-   ./infrastructure/deploy_dashboard_only.sh apply
-   ```
+  - Marked project_id, dashboard_name, dashboard_url, log_views_urls, and alert_policies_urls as sensitive outputs
 
-1. **Standard Deployment** (after resources have been imported):
+### API and Vector DB Monitoring
 
-   ```bash
-   ./infrastructure/deploy_dashboard.sh apply
-   ```
+Continuing to enhance the monitoring and observability of our API and Vector Database:
 
-## Recent Progress
-
-- Successfully fixed the dashboard template JSON structure
-- Created and verified a working `terraform.tfvars` file
-- Implemented targeted deployment approach to update only the dashboard
-- Created utility scripts to manage resource conflicts
-- Successfully deployed the monitoring dashboard to GCP
+- Updated logging metrics configuration
+- Enhanced dashboard visualization
+- Improved alert policies for better incident detection
+- Set up structured logging for improved troubleshooting
 
 ## Next Steps
 
+### Terraform Cloud Implementation
+
+1. **Variable Setup in Terraform Cloud**:
+
+   - Configure GCP credentials in Terraform Cloud workspace as environment variables
+   - Migrate terraform.tfvars variables to Terraform Cloud workspace variables
+
+1. **VCS Integration**:
+
+   - Set up GitHub VCS integration with Terraform Cloud
+   - Configure branch specifications for automatic runs
+
+1. **Deployment Script Updates**:
+
+   - Update existing deployment scripts to work with Terraform Cloud
+   - Add documentation for using these scripts
+
+1. **Testing and Validation**:
+
+   - Perform full run cycle (plan and apply) through Terraform Cloud
+   - Verify state is properly stored in Terraform Cloud
+   - Test concurrent operations and state locking
+
 1. **Documentation Updates**:
 
-   - Create documentation about the monitoring setup and usage
-   - Document the deployment scripts and their specific use cases
+   - Update README.md with Terraform Cloud setup instructions
+   - Create detailed guide for new team members
 
-1. **Terraform State Management**:
+### Vector DB Enhancements
 
-   - Consider implementing a more robust state management strategy, possibly using a remote backend
+1. Complete the Query API Enhancement:
 
-1. **Enhancement Opportunities**:
+   - Finalize vector search improvements
+   - Implement advanced filtering capabilities
+   - Document new query parameters
 
-   - Add support for custom notification channels
-   - Implement additional dashboard widgets for more granular monitoring
-   - Explore automated alerting policies based on vector database performance
+1. Performance Testing:
 
-1. **Testing**:
+   - Benchmark current vector search performance
+   - Identify optimization opportunities
+   - Implement improvements
 
-   - Validate all metrics are being properly collected
-   - Test alert conditions to ensure proper triggering
+## Decisions and Considerations
 
-## Technical Notes
+### Terraform Cloud Workspace Configuration
 
-### Dashboard Structure
+We decided to modify the Terraform Cloud workspace configuration to point to the correct directory (`infrastructure/terraform`) rather than restructuring our local repository. This approach minimizes changes to the existing codebase while enabling Terraform Cloud integration.
 
-The monitoring dashboard is organized into sections:
+### Authentication Strategy
 
-- Service health and uptime metrics
-- Request rate and volume tracking
-- Error rate monitoring
-- Performance metrics (latency)
-- Vector database specific metrics
+For GCP authentication with Terraform Cloud, we've chosen to use environment variables in the Terraform Cloud workspace rather than uploading service account key files. This approach improves security by keeping sensitive credentials out of version control.
 
-### Import Commands Reference
+### State Migration
 
-For future reference, the commands to import existing resources into Terraform state are:
-
-```bash
-terraform import google_logging_metric.requests "nyc-landmarks-vector-db.requests"
-terraform import google_logging_metric.errors "nyc-landmarks-vector-db.errors"
-terraform import google_logging_metric.latency "nyc-landmarks-vector-db.latency"
-terraform import google_logging_metric.validation_warnings "nyc-landmarks-vector-db.validation_warnings"
-```
+We're taking a careful approach to migrating state from local to Terraform Cloud, ensuring that all team members are aware of the transition and that no state loss occurs during the process.

@@ -3,11 +3,11 @@ name: Terraform
 on:
   pull_request:
     paths:
-      - 'infrastructure/**'
+      - "infrastructure/**"
   push:
     branches: [master]
     paths:
-      - 'infrastructure/**'
+      - "infrastructure/**"
 
 jobs:
   terraform:

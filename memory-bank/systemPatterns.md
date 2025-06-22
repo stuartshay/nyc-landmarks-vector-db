@@ -1,259 +1,299 @@
 # System Patterns
 
-## Architecture
+This document outlines the system architecture, key technical decisions, design patterns in use, and component relationships.
 
-The system follows a layered architecture with a clear separation of concerns:
+## System Architecture
 
-1. Data access layer (API clients)
-1. Domain model layer (domain/models with business logic)
-1. Service layer (services providing business operations)
-1. Presentation layer (API endpoints serving data to clients)
+### Overview
 
-Key points:
+The NYC Landmarks Vector DB consists of several interconnected components:
 
-- Clear dependency flow from outer to inner layers
-- Dedicated model classes for resource representations
-- Type annotations for static type checking
-- Exception handling at service boundaries
-- Metadata enrichment at the time of vector storage
+1. **Data Ingestion**: Processes landmark data from multiple sources (PDFs, APIs)
+1. **Vector Processing**: Generates and manages vector embeddings
+1. **Vector Database**: Stores and indexes vectorized landmark data
+1. **Query API**: Provides endpoints for searching and retrieving landmark information
+1. **Monitoring & Observability**: Tracks system health and performance
 
-## Data Flow
+### Component Relationships
 
 ```mermaid
-flowchart TD
-    LPC[LPC API] --> Core[CoreDataStore API]
-    Core --> Client[DB Client]
-    Client --> PDF[PDF Extractor]
-    PDF --> Chunks[Text Chunker]
-    Chunks --> Embed[Embedding Generator]
-    Embed --> Vector[Vector DB Storage]
-    Client --> Meta[Enhanced Metadata]
-    Meta --> Vector
-    Query[Query API] --> Vector
-    Query --> Client
-    Vector --> Chat[Chat API]
-    Client --> Chat
+graph TD
+    A[Data Sources] -->|Raw Data| B[Data Ingestion]
+    B -->|Processed Data| C[Vector Processing]
+    C -->|Embeddings| D[Vector Database]
+    D <-->|Queries/Results| E[Query API]
+    E <-->|Requests/Responses| F[Clients]
+    G[Monitoring & Observability] -.->|Metrics/Logs| B
+    G -.->|Metrics/Logs| C
+    G -.->|Metrics/Logs| D
+    G -.->|Metrics/Logs| E
+    H[Infrastructure as Code] -.->|Provisions| G
+    H -.->|Provisions| D
+    H -.->|Provisions| E
 ```
 
-The system processes NYC landmarks data through these main steps:
+## Key Technical Decisions
 
-1. **Data Acquisition**: Data is fetched from external sources:
+### Vector Embedding Approach
 
-   - CoreDataStore API as the main source for landmark metadata and reports
-   - PDF reports are retrieved using unique landmark identifiers
-   - Wikipedia articles may provide additional context
+1. **Chunking Strategy**:
 
-1. **Processing Pipeline**:
+   - Text is divided into semantically meaningful chunks
+   - Optimal chunk size determined through experimentation
+   - Overlap between chunks to maintain context
 
-   - PDF reports are processed and chunked into segments
-   - Each segment is embedded using OpenAI's embedding models
-   - Embedding vectors are stored in Pinecone with metadata
+1. **Embedding Models**:
 
-1. **Query Interface**:
+   - Using production-ready embedding models
+   - Models selected for balance of accuracy and performance
+   - Consistent embedding dimension across all document types
 
-   - API endpoints allow searching across landmark content
-   - Filters can be applied for specific metadata attributes
-   - Vector similarity drives the search relevance
+### Database Selection
+
+1. **Pinecone as Vector Database**:
+
+   - Selected for scalability and query performance
+   - Supports high-dimensional vector storage
+   - Provides similarity search capabilities
+   - Offers metadata filtering
+
+1. **Database Schema Design**:
+
+   - Vectors stored with rich metadata
+   - Standardized ID format for consistent reference
+   - Efficient indexing for query performance
+
+### API Design
+
+1. **RESTful Principles**:
+
+   - Clear resource-oriented endpoints
+   - Consistent response formats
+   - Proper status code usage
+
+1. **Query Parameterization**:
+
+   - Flexible filtering via metadata
+   - Pagination support
+   - Result limiting and sorting options
 
 ## Design Patterns
 
-### Repository Pattern
-
-The system uses repository pattern to abstract data access:
-
-- `DbClient` provides standardized repository interface
-- Specific fetching functions encapsulate data retrieval logic
-- Strongly typed domain models represent external data
-- Function-based access for specialized use cases
-
 ### Factory Pattern
 
-Factory patterns create instances and provide flexibility:
+Used in the creation of embeddings to abstract the embedding generation process:
 
-- Factory functions for clients and collectors
-- Environment-specific instantiation logic
-- Configuration-driven creation processes
+```python
+class EmbeddingFactory:
+    @staticmethod
+    def create_embedding(text, model_name):
+        if model_name == "model_a":
+            return ModelAEmbedding(text)
+        elif model_name == "model_b":
+            return ModelBEmbedding(text)
+        # ...
+```
+
+### Repository Pattern
+
+Used for data access abstraction, particularly for vector database operations:
+
+```python
+class VectorRepository:
+    def __init__(self, client):
+        self.client = client
+
+    def query(self, vector, filters=None, top_k=10):
+        # Implementation details hidden
+        return results
+
+    def upsert(self, vectors, metadata):
+        # Implementation details hidden
+        return status
+```
 
 ### Strategy Pattern
 
-Storage and retrieval strategies provide interchangeable behaviors:
+Used for different text processing strategies:
 
-- Vector storage strategies (like Pinecone implementation)
-- Embedding generation strategies (OpenAI, etc.)
-- Configurable chunk sizing strategies
+```python
+class TextProcessingStrategy:
+    def process(self, text):
+        pass
 
-### Façade Pattern
+class LandmarkReportStrategy(TextProcessingStrategy):
+    def process(self, text):
+        # Specific implementation for landmark reports
 
-Complex subsystems are hidden behind simple interfaces:
+class WikipediaArticleStrategy(TextProcessingStrategy):
+    def process(self, text):
+        # Specific implementation for Wikipedia articles
+```
 
-- `DbClient` provides unified interface for CoreDataStore API
-- `PineconeDB` provides unified interface for vector operations
-- Query API provides simplified access to vector search capabilities
+### Singleton Pattern
 
-## Testability
+Used for database client connections to ensure single instances:
 
-The codebase is designed for testability:
+```python
+class DatabaseClient:
+    _instance = None
 
-- Dependency injection for external services
-- Interface-based design for mocking
-- Clean separation between API clients and business logic
-- Configuration-driven functionality for test environments
-- Mock data structure follows production patterns
+    @classmethod
+    def get_instance(cls, config):
+        if cls._instance is None:
+            cls._instance = cls(config)
+        return cls._instance
+```
+
+## Logging and Monitoring Patterns
+
+### Structured Logging
+
+All components use structured logging with consistent fields:
+
+```python
+logger.info(
+    {
+        "event": "vector_search",
+        "query_id": query_id,
+        "filters": filters,
+        "results_count": len(results),
+        "duration_ms": duration,
+    }
+)
+```
+
+### Metrics Collection
+
+Standard metrics are collected across all components:
+
+1. **Operational Metrics**:
+
+   - Request counts
+   - Error rates
+   - Latency distributions
+
+1. **Business Metrics**:
+
+   - Query patterns
+   - Data volume
+   - Usage by endpoint
+
+### Health Checks
+
+All services implement standardized health check endpoints:
+
+```
+GET /health
+Response: {"status": "healthy", "checks": {...}}
+```
 
 ## Error Handling
 
-Error handling follows these patterns:
+### Consistent Error Responses
 
-- Detailed logging at appropriate severity levels
-- Graceful degradation when services are unavailable
-- Explicit exception handling with meaningful error messages
-- Transaction-like approach for multi-step operations
-- Retry logic for transient failures
+API errors follow a standardized format:
 
-## Centralized Mock Data
+```json
+{
+  "error": {
+    "code": "INVALID_PARAMETER",
+    "message": "The parameter 'limit' must be a positive integer",
+    "details": {...}
+  }
+}
+```
 
-The test suite follows a pattern of centralizing mock data:
+### Graceful Degradation
 
-- `tests/mocks` directory serves as a central repository for mock data
-- Mock data is provided via function calls with proper typing
-- The shared mock data functions follow the naming convention `get_mock_*`
-- Mock objects match the structure and type of real objects
-- For Pydantic models, mocks return actual model instances rather than dictionaries
-- Mocks contain all required fields plus commonly accessed optional fields
+System components are designed to degrade gracefully when dependencies fail:
 
-## API Integration
+1. **Caching**: Results are cached where appropriate to serve during outages
+1. **Fallbacks**: Alternative data sources are used when primary sources fail
+1. **Circuit Breaking**: Prevents cascading failures by stopping requests to failing services
 
-External API integration follows consistent patterns:
+## Infrastructure Management Patterns
 
-- Strongly typed representations of API responses
-- Adapters for converting between API and domain models
-- Flexible handling of both dictionary and object access patterns
-- Consistent error handling and validation
-- Case-insensitive handling for identifiers
+### Infrastructure as Code
 
-## Configuration Management
+All infrastructure is defined using Terraform:
 
-Configuration is managed using:
+1. **Resource Definition**: Complete infrastructure defined in code
+1. **Configuration**: Environment-specific configurations separated from resource definitions
+1. **Modularity**: Common patterns extracted into reusable modules
 
-- Environment variables for deployment-specific settings
-- Settings module for application-wide configuration
-- Feature flags for conditional functionality
-- Strong typing for configuration values
+### Terraform Cloud Integration
 
-## Metadata Collection
+Remote state management and collaborative workflows through Terraform Cloud:
 
-Enhanced metadata collection follows these patterns:
+1. **Remote State**: State files stored securely in Terraform Cloud
+1. **Workspace Organization**: Separate workspaces for different environments
+1. **API-driven Configuration**: Workspace settings managed through the Terraform Cloud API
+1. **Execution Consistency**: Operations executed in consistent Terraform Cloud environment
+1. **Team Collaboration**: Shared access to infrastructure state and history
 
-- Tiered approach starting with basic metadata
-- Progressive enhancement with additional sources
-- Direct property access instead of helper methods
-- Graceful fallback when sources are unavailable
-- Strong typing for metadata representation
+## Testing Patterns
 
-## Flattened Complex Metadata
+### Unit Testing
 
-To handle complex, nested data structures within vector database metadata constraints:
+Component tests focus on isolating functionality:
 
-- Structured arrays are flattened to key-value pairs using consistent naming conventions
-- For example, building data is transformed from:
-  ```
-  "buildings": [
-    {"name": "Building A", "address": "123 Main St"},
-    {"name": "Building B", "address": "456 Elm St"}
-  ]
-  ```
-  to:
-  ```
-  "building_0_name": "Building A",
-  "building_0_address": "123 Main St",
-  "building_1_name": "Building B",
-  "building_1_address": "456 Elm St",
-  "building_names": ["Building A", "Building B"]
-  ```
-- Array indices are incorporated into key names (`building_0_name`, `building_1_name`)
-- Common search fields are preserved as arrays for filtering (e.g., `building_names` array)
-- Transformation happens at collection time through specialized helper methods (e.g., `_flatten_buildings_metadata`)
-- Original structured data is preserved internally for processing but flattened before storage
-- String conversion ensures consistency with Pinecone metadata constraints (except for boolean values)
+```python
+def test_vector_similarity():
+    vec1 = [0.1, 0.2, 0.3]
+    vec2 = [0.15, 0.25, 0.35]
+    similarity = calculate_similarity(vec1, vec2)
+    assert 0.95 < similarity < 1.0
+```
 
-## Vector ID Standardization
+### Integration Testing
 
-Vector IDs follow source-specific patterns with consistent validation:
+Tests verify component interactions:
 
-- **Source-specific Prefixes**: Different content sources use distinct prefixes:
-  - `wiki-` for Wikipedia articles
-  - No prefix for PDF documents
-- **Standard Wikipedia Format**: `wiki-{article_title}-{landmark_id}-chunk-{index}` (e.g., `wiki-Empire_State_Building-LP-00123-chunk-0`)
-- **Standard PDF Format**: `{landmark_id}-chunk-{index}` (e.g., `LP-00123-chunk-0`)
-- **Validation System**: Comprehensive validation through the `VectorIDValidator` class
-- **Consistent Enforcement**: ID formats are enforced at creation time
-- **Pattern Recognition**: System can detect source type from ID format
-- **Deterministic Generation**: IDs are generated deterministically to support updates without duplication
+```python
+def test_embedding_storage_retrieval():
+    # Test complete flow from embedding creation to storage and retrieval
+    text = "Sample landmark description"
+    embedding = create_embedding(text)
+    store_result = store_embedding(embedding, {"text": text})
+    retrieved = retrieve_similar(embedding)[0]
+    assert retrieved["metadata"]["text"] == text
+```
 
-## Text Processing
+### Mock Testing
 
-Text processing follows consistent approaches:
+Tests use mocks for external dependencies:
 
-- Chunk size optimization based on token limits
-- Semantic chunking to preserve context
-- Overlap between chunks to maintain continuity
-- Clean text representation with normalized spacing
-- Source attribution for traceability
+```python
+@mock.patch("pinecone.Index")
+def test_vector_query(mock_index):
+    # Configure mock
+    mock_index.return_value.query.return_value = {"matches": [...]}
 
-## Vector Database Operations
+    # Test with mock
+    repo = VectorRepository(mock_index)
+    results = repo.query([0.1, 0.2, 0.3])
+    assert len(results) > 0
+```
 
-Vector database operations follow a consistent pattern:
+## CI/CD Patterns
 
-- **Unified Query Interface**: Core query functionality is exposed through a unified method (`query_vectors`) with comprehensive options
-- **Namespace Management**: Consistent handling of namespaces across operations
-- **Error Recovery**: Robust error handling with appropriate fallbacks
-- **Result Formatting**: Standardized result formats regardless of underlying vector store
-- **Metadata Enrichment**: Metadata is consistently enriched at storage time with source attribution
-- **Filtering Options**: Query filtering is handled uniformly across different data types
+### Pipeline Stages
 
-## Vector Utility Pattern
+1. **Code Validation**: Linting, formatting, and static analysis
+1. **Testing**: Unit, integration, and functional tests
+1. **Build**: Package creation and containerization
+1. **Deployment**: Infrastructure provisioning and application deployment
+1. **Verification**: Post-deployment tests and health checks
 
-The vector utility tool follows a command-pattern architecture:
+### Quality Gates
 
-- **Command-based Interface**: Each operation is implemented as a distinct command
-- **Consistent Parameter Handling**: Commands use standardized parameter patterns
-- **Progressive Disclosure**: Basic functionality is simple while advanced options are available
-- **Unified Output Formatting**: Results are formatted consistently across commands
-- **Error Boundary Management**: Each command handles its own errors without affecting others
-- **Cross-cutting Concerns**: Shared functionality like formatting and logging is implemented once
+Each stage must pass before proceeding to the next:
 
-## Infrastructure as Code Pattern
-
-The system uses Terraform to manage infrastructure using code-based configuration:
-
-- **Declarative Resource Definitions**: Infrastructure resources are defined in Terraform configuration files
-- **Version-Controlled Infrastructure**: All infrastructure code lives in version control alongside application code
-- **Modular Configuration**: Resources are organized into logical groups with clear dependencies
-- **Environment Variables**: Dynamic values and secrets are provided through environment variables or variables files
-- **Helper Scripts**: Standardized scripts handle common operations (setup, deploy, check)
-- **Pre-commit Validation**: Automated formatting and validation through pre-commit hooks
-- **Template-Based Resources**: Complex resources like dashboards use template files with variable substitution
-- **Local Development Integration**: Development environment includes Terraform tooling and extensions
-- **Consistent Resource Naming**: Resources follow consistent naming conventions with prefixes
-- **Explicit Dependencies**: Resource dependencies are explicitly declared
-- **Comprehensive Logging & Monitoring**: Infrastructure includes robust observability components:
-  - Log-based metrics for API performance
-  - Uptime checks for service health monitoring
-  - Scheduled health verification
-  - Comprehensive dashboards with multiple visualization types
-
-## Modular Processing Architecture
-
-The system employs a modular processing architecture that separates concerns into focused, single-responsibility components:
-
-- **Processor Classes**: Core processing logic is encapsulated in dedicated processor classes (e.g., `WikipediaProcessor`)
-- **Orchestration Scripts**: High-level scripts handle orchestration, command-line arguments, and execution flow
-- **Utility Modules**: Common functionality is extracted into utility modules for reuse
-- **Results Reporting**: Processing results are collected and reported through standardized interfaces
-
-This pattern improves maintainability, testability, and allows for independent evolution of components while maintaining a consistent API.
-
-## Wikipedia Integration
+1. **Code Quality**: Enforced through pre-commit hooks and CI checks
+1. **Test Coverage**: Minimum coverage thresholds enforced
+1. **Security Scanning**: Vulnerability detection in code and dependencies
+1. **Performance Verification**: Load testing for critical paths
 
 Wikipedia content processing follows these patterns:
 
@@ -265,4 +305,3 @@ Wikipedia content processing follows these patterns:
 - Article fetching by landmark name
 - Content cleaning and normalization
 - Integration with existing landmark vectors
-- Source labeling for query filtering

@@ -115,12 +115,12 @@ The dashboard includes comprehensive health monitoring:
 
 ### Variables
 
-| Variable           | Description                     | Default                               | Required |
-| ------------------ | ------------------------------- | ------------------------------------- | -------- |
-| `project_id`       | GCP project ID                  | Auto-detected from service account    | No       |
-| `GOOGLE_CREDENTIALS` | Contents of the service account key JSON (sensitive) | _empty_ | Yes |
-| `region`           | GCP region                      | `us-central1`                         | No       |
-| `log_name_prefix`  | Prefix for log metric names     | `nyc-landmarks-vector-db`             | No       |
+| Variable             | Description                                          | Default                            | Required |
+| -------------------- | ---------------------------------------------------- | ---------------------------------- | -------- |
+| `project_id`         | GCP project ID                                       | Auto-detected from service account | No       |
+| `GOOGLE_CREDENTIALS` | Contents of the service account key JSON (sensitive) | _empty_                            | Yes      |
+| `region`             | GCP region                                           | `us-central1`                      | No       |
+| `log_name_prefix`    | Prefix for log metric names                          | `nyc-landmarks-vector-db`          | No       |
 
 ### terraform.tfvars Example
 
@@ -259,14 +259,15 @@ Infrastructure validation script that checks:
 ## Running Terraform locally with HCP backend
 
 1. Run `terraform login` to generate a user API token for Terraform Cloud.
-2. Export the token for CLI use:
+
+1. Export the token for CLI use:
 
    ```bash
    export TF_TOKEN_app_terraform_io=YOUR_TOKEN
    export GOOGLE_CREDENTIALS=$(cat ../../.gcp/service-account-key.json)
    ```
 
-3. Initialize and run Terraform with the backend:
+1. Initialize and run Terraform with the backend:
 
    ```bash
    terraform -chdir=terraform init
