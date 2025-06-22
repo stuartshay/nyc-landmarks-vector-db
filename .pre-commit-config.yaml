@@ -146,10 +146,11 @@ repos:
       - id: terraform-init-modules
         name: Initialize Terraform modules
         description: Initialize all Terraform modules before validation
-        entry: bash -c 'find . -name "*.tf" -exec dirname {} \; | sort -u | xargs -I {} sh -c "cd \"{}\" && if [ -f versions.tf ] || [ -f main.tf ]; then terraform init -backend=false >/dev/null 2>&1 || true; fi"'
+        entry: bash -c 'find . -name "*.tf" -exec dirname {} \; | sort -u | xargs -I {} sh -c "cd \"{}\" && if [ -f versions.tf ] || [ -f main.tf ]; then terraform init -backend=false >/dev/null 2>&1 || true; fi" && exit 0'
         language: system
         files: (\.tf|\.tfvars)$
         pass_filenames: false
+        always_run: false
 
   # Terraform validation and formatting
   - repo: https://github.com/antonbabenko/pre-commit-terraform
@@ -166,3 +167,4 @@ repos:
         files: (\.tf|\.tfvars)$
         args:
           - --args=-no-color
+          - --hook-config=--retry-once-with-cleanup=true

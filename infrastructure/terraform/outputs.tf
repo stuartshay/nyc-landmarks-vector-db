@@ -1,6 +1,7 @@
 output "project_id" {
   description = "The GCP project ID"
   value       = local.project_id
+  sensitive   = true
 }
 
 output "region" {
@@ -29,11 +30,13 @@ output "dashboard_id" {
 output "dashboard_name" {
   description = "The monitoring dashboard display name"
   value       = jsondecode(google_monitoring_dashboard.api_dashboard.dashboard_json)["displayName"]
+  sensitive   = true
 }
 
 output "dashboard_url" {
   description = "Direct URL to the monitoring dashboard"
   value       = "https://console.cloud.google.com/monitoring/dashboards/custom/${split("/", google_monitoring_dashboard.api_dashboard.id)[3]}?project=${var.project_id}"
+  sensitive   = true
 }
 
 output "uptime_check_id" {
@@ -70,6 +73,7 @@ output "log_views_urls" {
     vectordb_logs_view = "https://console.cloud.google.com/logs/storage/${google_logging_project_bucket_config.vectordb_logs_bucket.name}/views/${google_logging_log_view.vectordb_logs_view.name}?project=${var.project_id}"
     api_logs_view      = "https://console.cloud.google.com/logs/storage/${google_logging_project_bucket_config.api_logs_bucket.name}/views/${google_logging_log_view.api_logs_view.name}?project=${var.project_id}"
   }
+  sensitive = true
 }
 
 output "alert_policies" {
@@ -88,4 +92,5 @@ output "alert_policies_urls" {
     vectordb_activity_alert        = "https://console.cloud.google.com/monitoring/alerting/policies/${split("/", google_monitoring_alert_policy.vectordb_activity_alert.id)[3]}?project=${var.project_id}"
     vectordb_slow_operations_alert = "https://console.cloud.google.com/monitoring/alerting/policies/${split("/", google_monitoring_alert_policy.vectordb_slow_operations_alert.id)[3]}?project=${var.project_id}"
   }
+  sensitive = true
 }
