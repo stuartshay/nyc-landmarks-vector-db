@@ -112,10 +112,16 @@ assert settings.APP_HOST == "0.0.0.0"  # nosec
 
 ```python
 # Before
+try:
+    # Some operation that might fail
+    risky_operation()
 except Exception:
     pass
 
 # After
+try:
+    # Some operation that might fail
+    risky_operation()
 except Exception as e:
     # Expected to fail due to simulated exception - log for debugging
     logger.debug(f"Expected exception in retry test: {e}")

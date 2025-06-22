@@ -45,6 +45,8 @@ jobs:
           pip install -r requirements.txt
           # Explicitly install all pre-commit hook dependencies
           pip install black isort flake8 flake8-docstrings flake8-quotes flake8-comprehensions mypy types-requests types-PyYAML bandit detect-secrets
+          # Install mdformat and its dependencies for consistent behavior
+          pip install mdformat mdformat-gfm mdformat-black mdformat-frontmatter mdformat-footnote
 
       - name: Run pre-commit checks
         run: |
