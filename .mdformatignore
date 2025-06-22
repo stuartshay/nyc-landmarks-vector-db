@@ -1,0 +1,50 @@
+# mdformat ignore file
+# Exclude directories and files that should not be formatted
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Python package installations
+*.egg-info/
+__pycache__/
+
+# Test and cache directories
+.pytest_cache/
+.tox/
+.nox/
+.coverage/
+htmlcov/
+
+# Build and distribution
+build/
+dist/
+.eggs/
+
+# IDE and editor files
+.vscode/
+.idea/
+
+# Google Cloud credentials
+.gcp/
+
+# Terraform
+.terraform/
+
+# SonarQube
+.scannerwork/
+.sonarlint/
+
+# Project output directories
+output/
+logs/
+temp/
+test_output/
+temp_notebooks/
+verification_results/
+pinecone_backup/
+
+# OS specific
+.DS_Store
