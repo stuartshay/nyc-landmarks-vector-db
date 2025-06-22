@@ -107,3 +107,31 @@ This implementation significantly improves the project's security posture by:
 - Maintaining development velocity while improving security
 
 The pre-commit hook now successfully addresses your original concern about the exposed API token in the documentation while providing a scalable solution for ongoing secret management.
+
+## CI/CD Integration
+
+Updated `.github/workflows/pre-commit.yml` to include:
+
+- **Automatic gitleaks installation** in GitHub Actions runners
+- **Dependency installation** for all secret scanning tools
+- **Docker verification** for hadolint linting
+- **Comprehensive pre-commit execution** with proper error handling
+
+### GitHub Actions Workflow Changes
+
+```yaml
+- name: Install gitleaks
+  run: |
+    # Install gitleaks for secret scanning
+    wget -O gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.21.4/gitleaks_8.21.4_linux_x64.tar.gz
+    tar -xzf gitleaks.tar.gz
+    sudo mv gitleaks /usr/local/bin/
+    rm gitleaks.tar.gz
+    gitleaks version  # Verify installation
+```
+
+This ensures that secret scanning works consistently across:
+
+- ✅ **Local Development** - Pre-commit hooks with gitleaks
+- ✅ **Pull Requests** - Automated secret scanning in CI
+- ✅ **Branch Protection** - Prevents merging if secrets detected

@@ -11,6 +11,16 @@ This document explains how to handle secrets detected by the pre-commit hooks an
 
 The pre-commit hooks now pass cleanly while still detecting real secrets if accidentally added.
 
+### CI/CD Integration
+
+The secret detection is fully integrated into the GitHub Actions CI/CD pipeline:
+
+- **Automatic Installation**: The CI workflow automatically installs `gitleaks` and all dependencies
+- **Pull Request Checks**: Secret scanning runs on every pull request
+- **Branch Protection**: Prevents merging if secrets are detected
+
+See `.github/workflows/pre-commit.yml` for the complete CI configuration.
+
 The project uses gitleaks to automatically scan for API keys, tokens, credentials, and other secrets in all files, including documentation. This helps prevent accidental exposure of sensitive information.
 
 ## How Secret Detection Works
