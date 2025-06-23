@@ -28,9 +28,12 @@ permissions:
 
 jobs:
   dependency-review:
+    name: Dependency Review
     runs-on: ubuntu-latest
-    # This job will run on pull request events, including Dependabot PRs
-    if: github.event_name == 'pull_request' || (github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]')
+    # Run on regular PRs OR Dependabot PRs (but not both for the same PR)
+    if: |
+      (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]') ||
+      (github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

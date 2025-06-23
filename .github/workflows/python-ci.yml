@@ -15,9 +15,13 @@ permissions:
 
 jobs:
   test:
+    name: Python CI Tests
     runs-on: ubuntu-latest
-    # Run on all PRs including Dependabot PRs
-    if: github.event_name != 'pull_request_target' || github.actor == 'dependabot[bot]'
+    # Run on regular PRs OR Dependabot PRs (but not both for the same PR)
+    if: |
+      (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]') ||
+      (github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]') ||
+      (github.event_name == 'push')
     strategy:
       matrix:
         python-version: [3.12]
