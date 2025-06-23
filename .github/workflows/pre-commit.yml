@@ -22,7 +22,21 @@ jobs:
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "~1.0"
+          terraform_version: "~1.12"
+
+      - name: Install gitleaks
+        run: |
+          # Install gitleaks for secret scanning
+          wget -O gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.21.4/gitleaks_8.21.4_linux_x64.tar.gz
+          tar -xzf gitleaks.tar.gz
+          sudo mv gitleaks /usr/local/bin/
+          rm gitleaks.tar.gz
+          gitleaks version  # Verify installation
+
+      - name: Set up Docker
+        run: |
+          # Ensure Docker is available for hadolint (should be pre-installed)
+          docker --version
 
       - name: Install dependencies
         run: |
@@ -30,10 +44,19 @@ jobs:
           pip install pre-commit
           pip install -r requirements.txt
           # Explicitly install all pre-commit hook dependencies
-          pip install black isort flake8 flake8-docstrings flake8-quotes flake8-comprehensions mypy types-requests types-PyYAML bandit
+          pip install black isort flake8 flake8-docstrings flake8-quotes flake8-comprehensions mypy types-requests types-PyYAML bandit detect-secrets
+          # Install mdformat and its dependencies for consistent behavior
+          pip install mdformat mdformat-gfm mdformat-black mdformat-frontmatter mdformat-footnote
 
       - name: Run pre-commit checks
-        run: pre-commit run --all-files
+        run: |
+          # Install pre-commit hooks first
+          pre-commit install-hooks
+          # Verify gitleaks is available
+          echo "Checking gitleaks installation:"
+          which gitleaks && gitleaks version || echo "⚠️ gitleaks not found"
+          # Run all pre-commit checks
+          pre-commit run --all-files
 
       # This step will automatically fix code formatting and linting issues
       - name: Fix code formatting and linting issues
