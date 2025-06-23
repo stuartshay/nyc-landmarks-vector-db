@@ -8,6 +8,12 @@ on:
       - "requirements.txt"
       - "setup.py"
       - ".github/workflows/**"
+  pull_request_target:
+    branches: [master]
+    paths:
+      - "requirements.txt"
+      - "setup.py"
+      - ".github/workflows/**"
   push:
     branches: [master]
     paths:
@@ -15,16 +21,23 @@ on:
       - "setup.py"
       - ".github/workflows/**"
 
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
 jobs:
   dependency-review:
     runs-on: ubuntu-latest
-    # This job will only run on pull request events
-    if: github.event_name == 'pull_request'
+    # This job will run on pull request events, including Dependabot PRs
+    if: github.event_name == 'pull_request' || (github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # For pull_request_target events (Dependabot), checkout the PR head
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.ref }}
 
       - name: Dependency Review
         uses: actions/dependency-review-action@v4
