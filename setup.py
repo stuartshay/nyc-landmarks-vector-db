@@ -85,9 +85,9 @@ setup(
     install_requires=[
         "fastapi>=0.115.13",
         "uvicorn>=0.34.3",
-        "openai>=1.88.0",
+        "openai>=1.90.0",
         "pinecone>=7.0.2",  # Updated to Pinecone 7.0.2 with 2025-04 API
-        "pypdf>=5.6.0",  # Updated from pypdf2 to pypdf
+        "pypdf>=5.6.1",  # Updated from pypdf2 to pypdf
         "pdfplumber>=0.11.7",
         "azure-storage-blob>=12.25.1",
         "google-cloud-secret-manager>=2.24.0",
@@ -111,7 +111,7 @@ setup(
             "pytest>=8.4.1",
             "black>=25.1.0",
             "isort>=6.0.1",
-            "flake8>=7.2.0",
+            "flake8>=7.3.0",
             "mypy>=1.16.1",  # Updated version
             "mypy_extensions>=1.1.0",  # Added for mypy support
             "types-requests>=2.32.4.20250611",  # Added for requests type stubs

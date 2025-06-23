@@ -4,16 +4,33 @@ on:
   push:
     branches: [master]
   pull_request:
+    types: [opened, synchronize, reopened]
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    branches: [master]
+
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
   test:
+    name: Python CI Tests
     runs-on: ubuntu-latest
+    # Run on regular PRs OR Dependabot PRs (but not both for the same PR)
+    if: |
+      (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]') ||
+      (github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]') ||
+      (github.event_name == 'push')
     strategy:
       matrix:
         python-version: [3.12]
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # For pull_request_target events (Dependabot), checkout the PR head
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.ref }}
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
