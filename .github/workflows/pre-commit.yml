@@ -3,15 +3,30 @@ name: Pre-commit Checks
 on:
   workflow_dispatch:
   pull_request:
+    types: [opened, synchronize, reopened]
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    branches: [master]
   push:
     branches: [master]
+
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
   pre-commit:
     runs-on: ubuntu-latest
+    # Run on all PRs including Dependabot PRs
+    if: github.event_name != 'pull_request_target' || github.actor == 'dependabot[bot]'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # For pull_request_target events (Dependabot), checkout the PR head
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.ref }}
+          # Use a token that can push back to the PR
+          token: ${{ github.event_name == 'pull_request_target' && secrets.GITHUB_TOKEN || github.token }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
