@@ -30,14 +30,7 @@ jobs:
 
       - name: Terraform Plan
         if: github.event_name == 'pull_request'
-        run: terraform -chdir=infrastructure/terraform plan -no-color -out=tfplan | tee plan.txt
-
-      - name: Upload Plan Artifact
-        if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
-        with:
-          name: tfplan
-          path: infrastructure/terraform/tfplan
+        run: terraform -chdir=infrastructure/terraform plan -no-color | tee plan.txt
 
       - name: Comment PR with Plan Summary
         if: github.event_name == 'pull_request'
