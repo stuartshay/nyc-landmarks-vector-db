@@ -41,8 +41,11 @@ output "log_sinks" {
 output "log_views" {
   description = "Created log views"
   value = {
-    api_logs_view      = google_logging_log_view.api_logs_view.name
-    vectordb_logs_view = google_logging_log_view.vectordb_logs_view.name
+    api_logs_view        = google_logging_log_view.api_logs_view.name
+    vectordb_logs_view   = google_logging_log_view.vectordb_logs_view.name
+    api_query_logs_view  = google_logging_log_view.api_query_logs_view.name
+    api_chat_logs_view   = google_logging_log_view.api_chat_logs_view.name
+    api_health_logs_view = google_logging_log_view.api_health_logs_view.name
   }
 }
 
