@@ -87,7 +87,7 @@ resource "google_logging_log_view" "api_query_logs_view" {
   name        = "api-query-logs-view"
   bucket      = google_logging_project_bucket_config.api_logs_bucket.id
   description = "View for /api/query endpoint logs"
-  filter      = "jsonPayload.request_path=~\"/api/query\" OR httpRequest.requestUrl=~\"/api/query\""
+  filter      = "jsonPayload.request_path=~\"/api/query\""
 }
 
 # Log View for Chat API Endpoint
@@ -95,7 +95,7 @@ resource "google_logging_log_view" "api_chat_logs_view" {
   name        = "api-chat-logs-view"
   bucket      = google_logging_project_bucket_config.api_logs_bucket.id
   description = "View for /api/chat endpoint logs"
-  filter      = "jsonPayload.request_path=~\"/api/chat\" OR httpRequest.requestUrl=~\"/api/chat\""
+  filter      = "jsonPayload.request_path=~\"/api/chat\""
 }
 
 # Log View for Health API Endpoint
@@ -103,7 +103,7 @@ resource "google_logging_log_view" "api_health_logs_view" {
   name        = "api-health-logs-view"
   bucket      = google_logging_project_bucket_config.api_logs_bucket.id
   description = "View for /api/health endpoint logs"
-  filter      = "jsonPayload.request_path=~\"/api/health\" OR httpRequest.requestUrl=~\"/api/health\" OR jsonPayload.request_path=\"/health\""
+  filter      = "jsonPayload.request_path=~\"/health\""
 }
 
 # Log Sink for API Logs
@@ -120,7 +120,7 @@ resource "google_logging_project_sink" "api_logs_sink" {
       logName=~"projects/${local.project_id}/logs/${var.log_name_prefix}.nyc_landmarks.api" OR
       jsonPayload.module="query" OR
       jsonPayload.module="middleware" OR
-      request_path=~"/api/"
+      jsonPayload.request_path=~"/api/"
     )
   EOT
 
