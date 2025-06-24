@@ -4,11 +4,18 @@
 # GCP Project Configuration
 project_id = "your-gcp-project-id"
 
-# Path to your GCP service account key file (relative to this directory)
-credentials_file = "../../.gcp/service-account-key.json"
+# Contents of your GCP service account key file
+# Example: GOOGLE_CREDENTIALS = file("../../.gcp/service-account-key.json")
+# When using Terraform Cloud, store this value as a sensitive variable
+GOOGLE_CREDENTIALS = ""
 
 # GCP region for resources
 region = "us-central1"
 
 # Log name prefix for the application
 log_name_prefix = "nyc-landmarks-vector-db"
+
+# List of notification channel IDs for alerts
+# Example: ["projects/your-project-id/notificationChannels/1234567890123456789"]
+# Find your notification channels: https://console.cloud.google.com/monitoring/alerting/notifications
+notification_channels = []
