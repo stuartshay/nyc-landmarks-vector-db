@@ -107,6 +107,7 @@ resource "google_logging_log_view" "api_health_logs_view" {
 }
 
 # Log Sink for API Logs
+# Note: Manual sinks were deleted to allow Terraform to manage them properly
 resource "google_logging_project_sink" "api_logs_sink" {
   name        = "api-logs-sink"
   destination = "logging.googleapis.com/${google_logging_project_bucket_config.api_logs_bucket.id}"
