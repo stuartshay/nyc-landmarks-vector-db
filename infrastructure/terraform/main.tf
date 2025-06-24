@@ -80,6 +80,60 @@ resource "google_logging_log_view" "api_logs_view" {
   filter      = ""
 }
 
+# Log Sink for API Logs
+resource "google_logging_project_sink" "api_logs_sink" {
+  name        = "api-logs-sink"
+  destination = "logging.googleapis.com/${google_logging_project_bucket_config.api_logs_bucket.id}"
+
+  # Filter for API-related logs from the NYC Landmarks application
+  filter = <<-EOT
+    resource.type="cloud_run_revision" AND
+    resource.labels.service_name="nyc-landmarks-vector-db" AND
+    (
+      logName=~"projects/${local.project_id}/logs/${var.log_name_prefix}.nyc_landmarks.api" OR
+      jsonPayload.module="query" OR
+      jsonPayload.module="middleware" OR
+      request_path=~"/api/"
+    )
+  EOT
+
+  # Use a unique writer identity
+  unique_writer_identity = true
+}
+
+# Log Sink for Vector Database Logs
+resource "google_logging_project_sink" "vectordb_logs_sink" {
+  name        = "vectordb-logs-sink"
+  destination = "logging.googleapis.com/${google_logging_project_bucket_config.vectordb_logs_bucket.id}"
+
+  # Filter for vector database related logs
+  filter = <<-EOT
+    resource.type="cloud_run_revision" AND
+    resource.labels.service_name="nyc-landmarks-vector-db" AND
+    (
+      logName=~"projects/${local.project_id}/logs/${var.log_name_prefix}.nyc_landmarks.vectordb" OR
+      jsonPayload.module="vectordb" OR
+      jsonPayload.module="pinecone_client"
+    )
+  EOT
+
+  # Use a unique writer identity
+  unique_writer_identity = true
+}
+
+# Grant the sink service accounts permission to write to the buckets
+resource "google_project_iam_member" "api_logs_sink_writer" {
+  project = local.project_id
+  role    = "roles/logging.bucketWriter"
+  member  = google_logging_project_sink.api_logs_sink.writer_identity
+}
+
+resource "google_project_iam_member" "vectordb_logs_sink_writer" {
+  project = local.project_id
+  role    = "roles/logging.bucketWriter"
+  member  = google_logging_project_sink.vectordb_logs_sink.writer_identity
+}
+
 # Alert policy for vector database errors
 resource "google_monitoring_alert_policy" "vectordb_error_alert" {
   display_name = "Vector Database Error Rate Alert"

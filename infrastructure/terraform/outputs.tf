@@ -22,6 +22,30 @@ output "log_metrics" {
   }
 }
 
+output "log_buckets" {
+  description = "Created log buckets"
+  value = {
+    api_logs_bucket      = google_logging_project_bucket_config.api_logs_bucket.id
+    vectordb_logs_bucket = google_logging_project_bucket_config.vectordb_logs_bucket.id
+  }
+}
+
+output "log_sinks" {
+  description = "Created log sinks"
+  value = {
+    api_logs_sink      = google_logging_project_sink.api_logs_sink.id
+    vectordb_logs_sink = google_logging_project_sink.vectordb_logs_sink.id
+  }
+}
+
+output "log_views" {
+  description = "Created log views"
+  value = {
+    api_logs_view      = google_logging_log_view.api_logs_view.name
+    vectordb_logs_view = google_logging_log_view.vectordb_logs_view.name
+  }
+}
+
 output "dashboard_id" {
   description = "The monitoring dashboard ID"
   value       = google_monitoring_dashboard.api_dashboard.id
@@ -57,14 +81,6 @@ output "vectordb_logs_bucket" {
 output "api_logs_bucket" {
   description = "Log bucket for API logs"
   value       = google_logging_project_bucket_config.api_logs_bucket.name
-}
-
-output "log_views" {
-  description = "Created log views"
-  value = {
-    vectordb_logs_view = "${google_logging_project_bucket_config.vectordb_logs_bucket.name}/views/${google_logging_log_view.vectordb_logs_view.name}"
-    api_logs_view      = "${google_logging_project_bucket_config.api_logs_bucket.name}/views/${google_logging_log_view.api_logs_view.name}"
-  }
 }
 
 output "log_views_urls" {
