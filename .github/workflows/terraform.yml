@@ -38,6 +38,26 @@ jobs:
         with:
           path: plan.txt
 
-      - name: Terraform Apply
+      - name: Terraform Cloud Auto-Apply Check
         if: github.event_name != 'pull_request'
-        run: terraform -chdir=infrastructure/terraform apply -auto-approve
+        env:
+          TF_TOKEN: ${{ secrets.TF_TOKEN_app_terraform_io }}
+        run: |
+          echo "Checking Terraform Cloud workspace configuration..."
+
+          # Get workspace details to check if auto-apply is enabled
+          WORKSPACE_RESPONSE=$(curl -s \
+            --header "Authorization: Bearer $TF_TOKEN" \
+            --header "Content-Type: application/vnd.api+json" \
+            "https://app.terraform.io/api/v2/organizations/nyc-landmarks/workspaces/nyc-landmarks-vector-db")
+
+          AUTO_APPLY=$(echo "$WORKSPACE_RESPONSE" | jq -r '.data.attributes."auto-apply"')
+
+          if [ "$AUTO_APPLY" = "true" ]; then
+            echo "✅ Auto-apply is enabled. Terraform Cloud will automatically apply the changes."
+            echo "Monitor the apply at: https://app.terraform.io/app/nyc-landmarks/nyc-landmarks-vector-db"
+          else
+            echo "⚠️  Auto-apply is disabled. Manual confirmation required in Terraform Cloud."
+            echo "Please visit: https://app.terraform.io/app/nyc-landmarks/nyc-landmarks-vector-db"
+            echo "Find the latest run and click 'Confirm & Apply' to apply the changes."
+          fi

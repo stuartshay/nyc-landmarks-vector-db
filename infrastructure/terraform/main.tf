@@ -61,7 +61,32 @@ resource "google_logging_project_bucket_config" "api_logs_bucket" {
   location       = "global"
   bucket_id      = "api-logs"
   retention_days = 30
-  description    = "Bucket for storing API logs"
+  description    = "Bucket for storing general API logs"
+}
+
+# Endpoint-specific log buckets
+resource "google_logging_project_bucket_config" "api_query_logs_bucket" {
+  project        = local.project_id
+  location       = "global"
+  bucket_id      = "api-query-logs"
+  retention_days = 30
+  description    = "Bucket for storing /api/query endpoint logs"
+}
+
+resource "google_logging_project_bucket_config" "api_chat_logs_bucket" {
+  project        = local.project_id
+  location       = "global"
+  bucket_id      = "api-chat-logs"
+  retention_days = 30
+  description    = "Bucket for storing /api/chat endpoint logs"
+}
+
+resource "google_logging_project_bucket_config" "api_health_logs_bucket" {
+  project        = local.project_id
+  location       = "global"
+  bucket_id      = "api-health-logs"
+  retention_days = 30
+  description    = "Bucket for storing /health endpoint logs"
 }
 
 # Log View for Vector Database Logs
@@ -72,59 +97,104 @@ resource "google_logging_log_view" "vectordb_logs_view" {
   filter      = ""
 }
 
-# Log View for API Logs
+# Log View for General API Logs
 resource "google_logging_log_view" "api_logs_view" {
   name        = "api-logs-view"
   bucket      = google_logging_project_bucket_config.api_logs_bucket.id
-  description = "View for all API logs"
+  description = "View for general API logs"
   filter      = ""
 }
 
-# Endpoint-Specific Log Views
+# Endpoint-Specific Log Views (Note: These show all logs in their respective buckets
+# since GCP log views cannot filter on JSON payload fields effectively)
 
-# Log View for Query API Endpoint
 resource "google_logging_log_view" "api_query_logs_view" {
   name        = "api-query-logs-view"
-  bucket      = google_logging_project_bucket_config.api_logs_bucket.id
+  bucket      = google_logging_project_bucket_config.api_query_logs_bucket.id
   description = "View for /api/query endpoint logs"
-  filter      = "jsonPayload.request_path=~\"/api/query\" OR httpRequest.requestUrl=~\"/api/query\""
+  filter      = ""
 }
 
-# Log View for Chat API Endpoint
 resource "google_logging_log_view" "api_chat_logs_view" {
   name        = "api-chat-logs-view"
-  bucket      = google_logging_project_bucket_config.api_logs_bucket.id
+  bucket      = google_logging_project_bucket_config.api_chat_logs_bucket.id
   description = "View for /api/chat endpoint logs"
-  filter      = "jsonPayload.request_path=~\"/api/chat\" OR httpRequest.requestUrl=~\"/api/chat\""
+  filter      = ""
 }
 
-# Log View for Health API Endpoint
 resource "google_logging_log_view" "api_health_logs_view" {
   name        = "api-health-logs-view"
-  bucket      = google_logging_project_bucket_config.api_logs_bucket.id
-  description = "View for /api/health endpoint logs"
-  filter      = "jsonPayload.request_path=~\"/api/health\" OR httpRequest.requestUrl=~\"/api/health\" OR jsonPayload.request_path=\"/health\""
+  bucket      = google_logging_project_bucket_config.api_health_logs_bucket.id
+  description = "View for /health endpoint logs"
+  filter      = ""
 }
 
-# Log Sink for API Logs
-# Note: Manual sinks were deleted to allow Terraform to manage them properly
+# Log Sinks for Endpoint-Specific Routing
+
+# Log Sink for Query API Logs
+resource "google_logging_project_sink" "api_query_logs_sink" {
+  name        = "api-query-logs-sink"
+  destination = "logging.googleapis.com/${google_logging_project_bucket_config.api_query_logs_bucket.id}"
+
+  # Filter for query API logs using our custom endpoint_category field
+  filter = <<-EOT
+    resource.type="cloud_run_revision" AND
+    resource.labels.service_name="nyc-landmarks-vector-db" AND
+    jsonPayload.endpoint_category="query" AND
+    jsonPayload.metric_type="performance"
+  EOT
+
+  unique_writer_identity = true
+}
+
+# Log Sink for Chat API Logs
+resource "google_logging_project_sink" "api_chat_logs_sink" {
+  name        = "api-chat-logs-sink"
+  destination = "logging.googleapis.com/${google_logging_project_bucket_config.api_chat_logs_bucket.id}"
+
+  # Filter for chat API logs using our custom endpoint_category field
+  filter = <<-EOT
+    resource.type="cloud_run_revision" AND
+    resource.labels.service_name="nyc-landmarks-vector-db" AND
+    jsonPayload.endpoint_category="chat" AND
+    jsonPayload.metric_type="performance"
+  EOT
+
+  unique_writer_identity = true
+}
+
+# Log Sink for Health API Logs
+resource "google_logging_project_sink" "api_health_logs_sink" {
+  name        = "api-health-logs-sink"
+  destination = "logging.googleapis.com/${google_logging_project_bucket_config.api_health_logs_bucket.id}"
+
+  # Filter for health API logs using our custom endpoint_category field
+  filter = <<-EOT
+    resource.type="cloud_run_revision" AND
+    resource.labels.service_name="nyc-landmarks-vector-db" AND
+    jsonPayload.endpoint_category="health" AND
+    jsonPayload.metric_type="performance"
+  EOT
+
+  unique_writer_identity = true
+}
+
+# Log Sink for General API Logs (fallback for other endpoints)
 resource "google_logging_project_sink" "api_logs_sink" {
   name        = "api-logs-sink"
   destination = "logging.googleapis.com/${google_logging_project_bucket_config.api_logs_bucket.id}"
 
-  # Filter for API-related logs from the NYC Landmarks application
+  # Filter for other API-related logs that don't match specific endpoint categories
   filter = <<-EOT
     resource.type="cloud_run_revision" AND
     resource.labels.service_name="nyc-landmarks-vector-db" AND
     (
       logName=~"projects/${local.project_id}/logs/${var.log_name_prefix}.nyc_landmarks.api" OR
-      jsonPayload.module="query" OR
-      jsonPayload.module="middleware" OR
-      request_path=~"/api/"
+      (jsonPayload.metric_type="performance" AND jsonPayload.endpoint_category="other") OR
+      jsonPayload.module="middleware"
     )
   EOT
 
-  # Use a unique writer identity
   unique_writer_identity = true
 }
 
@@ -153,6 +223,24 @@ resource "google_project_iam_member" "api_logs_sink_writer" {
   project = local.project_id
   role    = "roles/logging.bucketWriter"
   member  = google_logging_project_sink.api_logs_sink.writer_identity
+}
+
+resource "google_project_iam_member" "api_query_logs_sink_writer" {
+  project = local.project_id
+  role    = "roles/logging.bucketWriter"
+  member  = google_logging_project_sink.api_query_logs_sink.writer_identity
+}
+
+resource "google_project_iam_member" "api_chat_logs_sink_writer" {
+  project = local.project_id
+  role    = "roles/logging.bucketWriter"
+  member  = google_logging_project_sink.api_chat_logs_sink.writer_identity
+}
+
+resource "google_project_iam_member" "api_health_logs_sink_writer" {
+  project = local.project_id
+  role    = "roles/logging.bucketWriter"
+  member  = google_logging_project_sink.api_health_logs_sink.writer_identity
 }
 
 resource "google_project_iam_member" "vectordb_logs_sink_writer" {

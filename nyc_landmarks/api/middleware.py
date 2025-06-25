@@ -17,6 +17,26 @@ from nyc_landmarks.utils.request_context import setup_request_tracking
 logger = get_logger(__name__)
 
 
+def _categorize_endpoint(path: str) -> str:
+    """
+    Categorize an endpoint path for log routing.
+
+    Args:
+        path: The request path
+
+    Returns:
+        Endpoint category: 'query', 'chat', 'health', or 'other'
+    """
+    if path.startswith("/api/query"):
+        return "query"
+    elif path.startswith("/api/chat"):
+        return "chat"
+    elif path == "/health":
+        return "health"
+    else:
+        return "other"
+
+
 class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
     """Middleware to monitor and log API endpoint performance."""
 
@@ -44,8 +64,12 @@ class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
             endpoint = f"{request.method} {request.url.path}"
             status_code = response.status_code if success else 500
 
+            # Determine endpoint category for log routing
+            endpoint_category = _categorize_endpoint(request.url.path)
+
             extra_data = {
                 "endpoint": endpoint,
+                "endpoint_category": endpoint_category,
                 "method": request.method,
                 "path": request.url.path,
                 "status_code": status_code,
