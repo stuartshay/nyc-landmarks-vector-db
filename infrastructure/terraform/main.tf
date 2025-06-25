@@ -130,6 +130,7 @@ resource "google_logging_log_view" "api_health_logs_view" {
 }
 
 # Log Sinks for Endpoint-Specific Routing
+# Note: Conflicting resources cleaned up - ready for fresh deployment
 
 # Log Sink for Query API Logs
 resource "google_logging_project_sink" "api_query_logs_sink" {
