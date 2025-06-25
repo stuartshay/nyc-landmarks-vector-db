@@ -220,35 +220,38 @@ resource "google_logging_project_sink" "vectordb_logs_sink" {
 }
 
 # Grant the sink service accounts permission to write to the buckets
-resource "google_project_iam_member" "api_logs_sink_writer" {
-  project = local.project_id
-  role    = "roles/logging.bucketWriter"
-  member  = google_logging_project_sink.api_logs_sink.writer_identity
-}
+# Note: Temporarily commented out to allow sinks to be created first
+# These will be re-enabled after sinks have proper writer identities
 
-resource "google_project_iam_member" "api_query_logs_sink_writer" {
-  project = local.project_id
-  role    = "roles/logging.bucketWriter"
-  member  = google_logging_project_sink.api_query_logs_sink.writer_identity
-}
+# resource "google_project_iam_member" "api_logs_sink_writer" {
+#   project = local.project_id
+#   role    = "roles/logging.bucketWriter"
+#   member  = google_logging_project_sink.api_logs_sink.writer_identity
+# }
 
-resource "google_project_iam_member" "api_chat_logs_sink_writer" {
-  project = local.project_id
-  role    = "roles/logging.bucketWriter"
-  member  = google_logging_project_sink.api_chat_logs_sink.writer_identity
-}
+# resource "google_project_iam_member" "api_query_logs_sink_writer" {
+#   project = local.project_id
+#   role    = "roles/logging.bucketWriter"
+#   member  = google_logging_project_sink.api_query_logs_sink.writer_identity
+# }
 
-resource "google_project_iam_member" "api_health_logs_sink_writer" {
-  project = local.project_id
-  role    = "roles/logging.bucketWriter"
-  member  = google_logging_project_sink.api_health_logs_sink.writer_identity
-}
+# resource "google_project_iam_member" "api_chat_logs_sink_writer" {
+#   project = local.project_id
+#   role    = "roles/logging.bucketWriter"
+#   member  = google_logging_project_sink.api_chat_logs_sink.writer_identity
+# }
 
-resource "google_project_iam_member" "vectordb_logs_sink_writer" {
-  project = local.project_id
-  role    = "roles/logging.bucketWriter"
-  member  = google_logging_project_sink.vectordb_logs_sink.writer_identity
-}
+# resource "google_project_iam_member" "api_health_logs_sink_writer" {
+#   project = local.project_id
+#   role    = "roles/logging.bucketWriter"
+#   member  = google_logging_project_sink.api_health_logs_sink.writer_identity
+# }
+
+# resource "google_project_iam_member" "vectordb_logs_sink_writer" {
+#   project = local.project_id
+#   role    = "roles/logging.bucketWriter"
+#   member  = google_logging_project_sink.vectordb_logs_sink.writer_identity
+# }
 
 # Alert policy for vector database errors
 resource "google_monitoring_alert_policy" "vectordb_error_alert" {
