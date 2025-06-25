@@ -18,6 +18,7 @@
   "reportMissingTypeStubs": false,
   "reportUnknownMemberType": false,
   "reportUntypedFunctionDecorator": false,
+  "reportRedeclaration": "none",
   "reportUnknownParameterType": false,
   "reportUnknownVariableType": false,
   "pythonVersion": "3.12",

@@ -18,6 +18,7 @@
   "reportUnknownMemberType": "none",
   "reportUntypedFunctionDecorator": "none",
   "reportUnknownParameterType": "none",
+  "reportRedeclaration": "none",
   "reportUnknownVariableType": "none",
   "reportUnknownArgumentType": "none",
   "reportPrivateImportUsage": "none",

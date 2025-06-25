@@ -137,12 +137,11 @@ resource "google_logging_project_sink" "api_query_logs_sink" {
   name        = "api-query-logs-sink"
   destination = "logging.googleapis.com/${google_logging_project_bucket_config.api_query_logs_bucket.id}"
 
-  # Filter for query API logs using our custom endpoint_category field
+  # Filter for query API logs using efficient label-based filtering
   filter = <<-EOT
     resource.type="cloud_run_revision" AND
     resource.labels.service_name="nyc-landmarks-vector-db" AND
-    jsonPayload.endpoint_category="query" AND
-    jsonPayload.metric_type="performance"
+    labels.endpoint_category="query"
   EOT
 
   unique_writer_identity = true
@@ -153,12 +152,11 @@ resource "google_logging_project_sink" "api_chat_logs_sink" {
   name        = "api-chat-logs-sink"
   destination = "logging.googleapis.com/${google_logging_project_bucket_config.api_chat_logs_bucket.id}"
 
-  # Filter for chat API logs using our custom endpoint_category field
+  # Filter for chat API logs using efficient label-based filtering
   filter = <<-EOT
     resource.type="cloud_run_revision" AND
     resource.labels.service_name="nyc-landmarks-vector-db" AND
-    jsonPayload.endpoint_category="chat" AND
-    jsonPayload.metric_type="performance"
+    labels.endpoint_category="chat"
   EOT
 
   unique_writer_identity = true
@@ -169,12 +167,11 @@ resource "google_logging_project_sink" "api_health_logs_sink" {
   name        = "api-health-logs-sink"
   destination = "logging.googleapis.com/${google_logging_project_bucket_config.api_health_logs_bucket.id}"
 
-  # Filter for health API logs using our custom endpoint_category field
+  # Filter for health API logs using efficient label-based filtering
   filter = <<-EOT
     resource.type="cloud_run_revision" AND
     resource.labels.service_name="nyc-landmarks-vector-db" AND
-    jsonPayload.endpoint_category="health" AND
-    jsonPayload.metric_type="performance"
+    labels.endpoint_category="health"
   EOT
 
   unique_writer_identity = true

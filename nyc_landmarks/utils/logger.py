@@ -34,8 +34,52 @@ try:
     from google.cloud.logging_v2.handlers import CloudLoggingHandler  # type: ignore
 
     GCP_LOGGING_AVAILABLE = True
+
+    class EnhancedCloudLoggingHandler(
+        CloudLoggingHandler
+    ):  # pyright: ignore [reportRedeclaration]
+        """
+        Custom CloudLoggingHandler that can set labels dynamically based on log record content.
+        """
+
+        def emit(self, record: logging.LogRecord) -> None:
+            """
+            Emit a log record with dynamic labels.
+
+            This method checks for an 'endpoint_category' field in the log record's extra data
+            and adds it as a label to improve log sink filtering efficiency.
+            """
+            # Check if the record has endpoint_category information
+            if hasattr(record, "endpoint_category"):
+                # Create a copy of the base labels and add the endpoint category
+                dynamic_labels = dict(self.labels) if self.labels else {}  # type: ignore
+                dynamic_labels["endpoint_category"] = getattr(
+                    record, "endpoint_category"
+                )
+
+                # Temporarily update labels for this record
+                original_labels = self.labels  # type: ignore
+                self.labels = dynamic_labels  # type: ignore
+
+                try:
+                    super().emit(record)
+                finally:
+                    # Restore original labels
+                    self.labels = original_labels  # type: ignore
+            else:
+                # No dynamic labels needed, use standard behavior
+                super().emit(record)
+
 except Exception:  # pragma: no cover - optional dependency
     GCP_LOGGING_AVAILABLE = False
+
+    # Create a dummy class to avoid import errors when GCP logging is not available
+    class EnhancedCloudLoggingHandler(logging.Handler):  # type: ignore
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            super().__init__()
+
+        def emit(self, record: logging.LogRecord) -> None:
+            pass
 
 
 class StructuredFormatter(logging.Formatter):
@@ -196,8 +240,8 @@ class LoggerSetup:
                 # Create CloudLoggingHandler with a specific logger name for filtering
                 logger_name = f"{settings.LOG_NAME_PREFIX}.{self.name}"
 
-                # Create the Cloud Logging handler with environment labels
-                cloud_handler = CloudLoggingHandler(
+                # Create the enhanced Cloud Logging handler with environment labels
+                cloud_handler = EnhancedCloudLoggingHandler(
                     client, name=logger_name, labels={"environment": settings.ENV.value}
                 )
 
@@ -317,6 +361,68 @@ def log_with_context(
     logger.log(level, message, *args, exc_info=exc_info, extra=log_extra, **kwargs)
 
 
+def log_with_attributes(
+    logger: logging.Logger,
+    level: int,
+    message: str,
+    extra: Optional[Dict[str, Any]] = None,
+    record_attrs: Optional[Dict[str, Any]] = None,
+    *args: Any,
+    **kwargs: Any,
+) -> None:
+    """
+    Log a message with additional attributes set on the log record.
+
+    Args:
+        logger: Logger instance to use
+        level: Logging level (e.g., logging.INFO)
+        message: Message to log
+        extra: Additional fields to include in the log entry
+        record_attrs: Attributes to set directly on the log record (for custom handlers)
+        *args: Arguments for message formatting
+        **kwargs: Additional keyword arguments passed to logger
+    """
+    log_extra = {}
+
+    # Add request context if available
+    if REQUEST_CONTEXT_AVAILABLE:
+        try:
+            context = get_request_context()
+            if context:
+                log_extra.update(context)
+        except Exception:
+            pass  # nosec B110
+
+    # Add any extra fields provided
+    if extra:
+        log_extra.update(extra)
+
+    # Create a custom log record and set additional attributes
+    if record_attrs:
+        # Make the log call to get the record
+        record = logger.makeRecord(
+            logger.name,
+            level,
+            "",
+            0,
+            message,
+            args,
+            None,
+            func=kwargs.get("func"),
+            extra=log_extra,
+        )
+
+        # Set additional attributes on the record
+        for attr_name, attr_value in record_attrs.items():
+            setattr(record, attr_name, attr_value)
+
+        # Handle the record
+        logger.handle(record)
+    else:
+        # Standard logging
+        logger.log(level, message, *args, extra=log_extra, **kwargs)
+
+
 def log_performance(
     logger: logging.Logger,
     operation_name: str,
@@ -349,7 +455,14 @@ def log_performance(
     if not success:
         message += " (failed)"
 
-    log_with_context(logger, level, message, extra=log_extra)
+    # Extract endpoint_category from extra data to set as record attribute for efficient label filtering
+    record_attrs = {}
+    if extra and "endpoint_category" in extra:
+        record_attrs["endpoint_category"] = extra["endpoint_category"]
+
+    log_with_attributes(
+        logger, level, message, extra=log_extra, record_attrs=record_attrs
+    )
 
 
 def log_error(
