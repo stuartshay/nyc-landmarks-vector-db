@@ -62,11 +62,25 @@ jobs:
       - name: Terraform Init
         run: terraform -chdir=infrastructure/terraform init
 
+      - name: Debug Downloaded Files
+        run: |
+          echo "📂 Checking downloaded files..."
+          ls -la infrastructure/terraform/
+          echo "📄 Contents of current directory:"
+          ls -la .
+
       - name: Show Plan Before Apply
         run: |
           echo "📋 Reviewing plan before apply..."
           if [ -f infrastructure/terraform/plan.txt ]; then
             cat infrastructure/terraform/plan.txt
+          else
+            echo "⚠️ plan.txt not found"
+          fi
+          if [ -f infrastructure/terraform/tfplan ]; then
+            echo "✅ tfplan binary found"
+          else
+            echo "❌ tfplan binary not found"
           fi
 
       - name: Terraform Apply
