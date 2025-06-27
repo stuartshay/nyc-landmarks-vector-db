@@ -46,57 +46,9 @@ jobs:
         with:
           path: plan.txt
 
-  apply:
-    runs-on: ubuntu-latest
-    needs: plan
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    environment:
-      name: terraform-production
-      url: https://app.terraform.io/app/nyc-landmarks/nyc-landmarks-vector-db
-    permissions:
-      contents: read
-    env:
-      TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_app_terraform_io }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "~1.12"
-
-      - name: Download Plan Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: terraform-plan
-          path: infrastructure/terraform/
-
-      - name: Terraform Init
-        run: terraform -chdir=infrastructure/terraform init
-
-      - name: Terraform Apply
-        run: terraform -chdir=infrastructure/terraform apply -auto-approve tfplan
-
-      - name: Terraform Cloud Auto-Apply Check
-        if: github.event_name != 'pull_request'
-        env:
-          TF_TOKEN: ${{ secrets.TF_TOKEN_app_terraform_io }}
+      - name: Plan Summary
         run: |
-          echo "Checking Terraform Cloud workspace configuration..."
-
-          # Get workspace details to check if auto-apply is enabled
-          WORKSPACE_RESPONSE=$(curl -s \
-            --header "Authorization: Bearer $TF_TOKEN" \
-            --header "Content-Type: application/vnd.api+json" \
-            "https://app.terraform.io/api/v2/organizations/nyc-landmarks/workspaces/nyc-landmarks-vector-db")
-
-          AUTO_APPLY=$(echo "$WORKSPACE_RESPONSE" | jq -r '.data.attributes."auto-apply"')
-
-          if [ "$AUTO_APPLY" = "true" ]; then
-            echo "✅ Auto-apply is enabled. Terraform Cloud will automatically apply the changes."
-            echo "Monitor the apply at: https://app.terraform.io/app/nyc-landmarks/nyc-landmarks-vector-db"
-          else
-            echo "⚠️  Auto-apply is disabled. Manual confirmation required in Terraform Cloud."
-            echo "Please visit: https://app.terraform.io/app/nyc-landmarks/nyc-landmarks-vector-db"
-            echo "Find the latest run and click 'Confirm & Apply' to apply the changes."
-          fi
+          echo "📋 Terraform plan completed successfully!"
+          echo "📦 Plan artifact uploaded as 'terraform-plan'"
+          echo "🚀 To apply this plan, use the 'Terraform Manual Apply' workflow"
+          echo "   or run: ./scripts/ci/apply-terraform.sh"
