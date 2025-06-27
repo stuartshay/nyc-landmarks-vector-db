@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       run_id:
-        description: 'Run ID of the plan to apply (optional - will use latest)'
+        description: "Run ID of the plan to apply (optional - will use latest)"
         required: false
         type: string
 
@@ -43,20 +43,21 @@ jobs:
 
       - name: Download Latest Plan Artifact
         if: ${{ github.event.inputs.run_id == '' }}
-        uses: actions/download-artifact@v4
+        uses: dawidd6/action-download-artifact@v6
         with:
           name: terraform-plan
           path: infrastructure/terraform/
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          workflow: terraform.yml
+          branch: master
 
       - name: Download Specific Plan Artifact
         if: ${{ github.event.inputs.run_id != '' }}
-        uses: actions/download-artifact@v4
+        uses: dawidd6/action-download-artifact@v6
         with:
           name: terraform-plan
           path: infrastructure/terraform/
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ github.event.inputs.run_id }}
+          workflow: terraform.yml
+          run_id: ${{ github.event.inputs.run_id }}
 
       - name: Terraform Init
         run: terraform -chdir=infrastructure/terraform init
