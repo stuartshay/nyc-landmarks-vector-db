@@ -10,7 +10,7 @@ on:
       - "infrastructure/**"
 
 jobs:
-  terraform:
+  plan:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -29,14 +29,53 @@ jobs:
         run: terraform -chdir=infrastructure/terraform init
 
       - name: Terraform Plan
-        if: github.event_name == 'pull_request'
-        run: terraform -chdir=infrastructure/terraform plan -no-color | tee plan.txt
+        run: |
+          terraform -chdir=infrastructure/terraform plan -no-color -out=tfplan | tee plan.txt
+
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: |
+            infrastructure/terraform/tfplan
+            plan.txt
 
       - name: Comment PR with Plan Summary
         if: github.event_name == 'pull_request'
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           path: plan.txt
+
+  apply:
+    runs-on: ubuntu-latest
+    needs: plan
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    environment:
+      name: terraform-production
+      url: https://app.terraform.io/app/nyc-landmarks/nyc-landmarks-vector-db
+    permissions:
+      contents: read
+    env:
+      TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_app_terraform_io }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.12"
+
+      - name: Download Plan Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan
+          path: infrastructure/terraform/
+
+      - name: Terraform Init
+        run: terraform -chdir=infrastructure/terraform init
+
+      - name: Terraform Apply
+        run: terraform -chdir=infrastructure/terraform apply -auto-approve tfplan
 
       - name: Terraform Cloud Auto-Apply Check
         if: github.event_name != 'pull_request'

@@ -1,0 +1,80 @@
+name: Terraform Manual Apply
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_apply:
+        description: 'Type "apply" to confirm you want to apply the Terraform plan'
+        required: true
+        type: string
+      run_id:
+        description: 'Run ID of the plan to apply (optional - will use latest)'
+        required: false
+        type: string
+
+jobs:
+  validate-input:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate confirmation
+        if: ${{ github.event.inputs.confirm_apply != 'apply' }}
+        run: |
+          echo "❌ Invalid confirmation. Please type 'apply' to confirm."
+          exit 1
+
+  apply:
+    runs-on: ubuntu-latest
+    needs: validate-input
+    environment:
+      name: terraform-production
+      url: https://app.terraform.io/app/nyc-landmarks/nyc-landmarks-vector-db
+    permissions:
+      contents: read
+      actions: read
+    env:
+      TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_app_terraform_io }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.12"
+
+      - name: Download Latest Plan Artifact
+        if: ${{ github.event.inputs.run_id == '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan
+          path: infrastructure/terraform/
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download Specific Plan Artifact
+        if: ${{ github.event.inputs.run_id != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan
+          path: infrastructure/terraform/
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.inputs.run_id }}
+
+      - name: Terraform Init
+        run: terraform -chdir=infrastructure/terraform init
+
+      - name: Show Plan Before Apply
+        run: |
+          echo "📋 Reviewing plan before apply..."
+          if [ -f infrastructure/terraform/plan.txt ]; then
+            cat infrastructure/terraform/plan.txt
+          fi
+
+      - name: Terraform Apply
+        run: |
+          echo "🚀 Applying Terraform plan..."
+          terraform -chdir=infrastructure/terraform apply -auto-approve tfplan
+          echo "✅ Terraform apply completed successfully!"
+
+      - name: Output Apply Results
+        run: |
+          echo "🎉 Infrastructure changes have been applied!"
+          echo "Monitor the resources at: https://app.terraform.io/app/nyc-landmarks/nyc-landmarks-vector-db"
