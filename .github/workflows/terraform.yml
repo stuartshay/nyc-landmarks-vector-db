@@ -30,7 +30,8 @@ jobs:
 
       - name: Terraform Plan
         run: |
-          terraform -chdir=infrastructure/terraform plan -no-color -out=tfplan | tee plan.txt
+          cd infrastructure/terraform
+          terraform plan -no-color -out=tfplan | tee plan.txt
 
       - name: Upload Plan Artifact
         uses: actions/upload-artifact@v4
@@ -38,13 +39,13 @@ jobs:
           name: terraform-plan
           path: |
             infrastructure/terraform/tfplan
-            plan.txt
+            infrastructure/terraform/plan.txt
 
       - name: Comment PR with Plan Summary
         if: github.event_name == 'pull_request'
         uses: marocchino/sticky-pull-request-comment@v2
         with:
-          path: plan.txt
+          path: infrastructure/terraform/plan.txt
 
       - name: Plan Summary
         run: |
