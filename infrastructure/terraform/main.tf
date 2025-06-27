@@ -1,5 +1,5 @@
 locals {
-  # Test comment for new Terraform workflow system v2
+  # Test comment for new Terraform workflow system v3 - testing fixed file paths
   project_id = var.project_id != "" ? var.project_id : (
     var.GOOGLE_CREDENTIALS != "" ? jsondecode(var.GOOGLE_CREDENTIALS)["project_id"] : null
   )
