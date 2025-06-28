@@ -119,12 +119,13 @@ repos:
         name: Format Markdown files with mdformat
         description: Auto-formats Markdown files for consistency
         additional_dependencies:
-          - mdformat-gfm # GitHub-Flavored Markdown support
-          - mdformat-black # For code blocks
-          - mdformat-frontmatter # For YAML frontmatter
-          - mdformat-footnote # For footnote support
+          - mdformat-gfm==0.4.1 # GitHub-Flavored Markdown support
+          - mdformat-black==0.1.1 # For code blocks
+          - mdformat-frontmatter==2.0.8 # For YAML frontmatter
+          - mdformat-footnote==0.1.1 # For footnote support
         files: \.(md|markdown)$
         exclude: ^(venv|\.venv|env|ENV|\.pytest_cache|\.gcp|\.terraform|\.scannerwork|\.sonarlint|output|logs|temp|test_output|temp_notebooks|verification_results|pinecone_backup|build|dist|\.eggs)/.*$
+        args: ["--wrap", "keep"]
 
   # Jupyter notebook output clearing
   - repo: https://github.com/kynan/nbstripout
