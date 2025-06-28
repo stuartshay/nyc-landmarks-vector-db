@@ -103,7 +103,8 @@ setup(
         "matplotlib>=3.10.3",  # Added for notebooks
         "folium>=0.19.7",  # Added for map visualizations in notebooks
         "scikit-learn>=1.7.0",  # Updated to latest version - Added for clustering in notebooks
-        "transformers>=4.52.3",
+        "tokenizers>=0.21.2",
+        "transformers>=4.53.0",
         "openpyxl>=3.1.5",  # Added for Excel file manipulation
     ],
     extras_require={
