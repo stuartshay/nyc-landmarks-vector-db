@@ -65,8 +65,8 @@ jobs:
           pip install -r requirements.txt
           # Explicitly install all pre-commit hook dependencies
           pip install black isort flake8 flake8-docstrings flake8-quotes flake8-comprehensions mypy types-requests types-PyYAML bandit detect-secrets
-          # Install mdformat and its dependencies for consistent behavior
-          pip install mdformat mdformat-gfm mdformat-black mdformat-frontmatter mdformat-footnote
+          # Install mdformat and its dependencies for consistent behavior with exact versions
+          pip install mdformat==0.7.22 mdformat-gfm==0.4.1 mdformat-black==0.1.1 mdformat-frontmatter==2.0.8 mdformat-footnote==0.1.1
 
       - name: Run pre-commit checks
         run: |
@@ -75,6 +75,14 @@ jobs:
           # Verify gitleaks is available
           echo "Checking gitleaks installation:"
           which gitleaks && gitleaks version || echo "⚠️ gitleaks not found"
+          # Debug mdformat setup
+          echo "Checking mdformat installation:"
+          mdformat --version
+          echo "Available markdown files:"
+          find . -name "*.md" -type f | head -5
+          # Run mdformat separately first for debugging
+          echo "Testing mdformat separately:"
+          python -m pre_commit run mdformat --all-files --verbose || echo "mdformat had issues"
           # Run all pre-commit checks
           pre-commit run --all-files
 

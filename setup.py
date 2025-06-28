@@ -85,7 +85,7 @@ setup(
     install_requires=[
         "fastapi>=0.115.13",
         "uvicorn>=0.34.3",
-        "openai>=1.90.0",
+        "openai>=1.93.0",
         "pinecone>=7.0.2",  # Updated to Pinecone 7.0.2 with 2025-04 API
         "pypdf>=5.6.1",  # Updated from pypdf2 to pypdf
         "pdfplumber>=0.11.7",
@@ -103,7 +103,8 @@ setup(
         "matplotlib>=3.10.3",  # Added for notebooks
         "folium>=0.19.7",  # Added for map visualizations in notebooks
         "scikit-learn>=1.7.0",  # Updated to latest version - Added for clustering in notebooks
-        "transformers>=4.52.3",
+        "tokenizers>=0.21.2",
+        "transformers>=4.53.0",
         "openpyxl>=3.1.5",  # Added for Excel file manipulation
     ],
     extras_require={
@@ -129,7 +130,7 @@ setup(
             "pyright>=1.1.402",  # Added for static type checking
             "jupyterlab>=4.4.3",  # Added for running notebooks
             "ipywidgets>=8.1.7",  # Added for notebook interactivity
-            "plotly>=6.1.2",  # Added for interactive plots in notebooks
+            "plotly>=6.2.0",  # Added for interactive plots in notebooks
             "seaborn>=0.13.2",  # Added for statistical plots in notebooks
             "tqdm>=4.67.1",  # Added for progress bars in notebooks/scripts
         ],
