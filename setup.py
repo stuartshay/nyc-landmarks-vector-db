@@ -128,6 +128,8 @@ setup(
             "pre-commit>=3.8.0",  # Added for pre-commit hooks
             "pip-tools>=7.4.1",  # Added for managing requirements
             "pyright>=1.1.402",  # Added for static type checking
+            "actionlint-py>=1.7.7",  # Python wrapper for actionlint (GitHub Actions linter)
+            "shellcheck-py>=0.10.0.1",  # Python wrapper for shellcheck (shell script linter)
             "jupyterlab>=4.4.3",  # Added for running notebooks
             "ipywidgets>=8.1.7",  # Added for notebook interactivity
             "plotly>=6.2.0",  # Added for interactive plots in notebooks

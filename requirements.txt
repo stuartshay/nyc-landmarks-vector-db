@@ -213,4 +213,7 @@ xyzservices==2025.4.0
 tokenizers==0.21.2
 transformers==4.53.0
 hf-xet==1.1.5
+actionlint-py==1.7.7.23
+shellcheck-py==0.10.0.1
 huggingface-hub==0.33.1
+shellcheck-py==0.10.0.1
