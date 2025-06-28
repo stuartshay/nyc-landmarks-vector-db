@@ -101,7 +101,7 @@ setup(
         "beautifulsoup4>=4.13.4",  # Added for Wikipedia scraping
         "requests>=2.32.4",  # Added for HTTP requests
         "matplotlib>=3.10.3",  # Added for notebooks
-        "folium>=0.19.7",  # Added for map visualizations in notebooks
+        "folium>=0.20.0",  # Added for map visualizations in notebooks
         "scikit-learn>=1.7.0",  # Updated to latest version - Added for clustering in notebooks
         "tokenizers>=0.21.2",
         "transformers>=4.53.0",
@@ -128,7 +128,7 @@ setup(
             "pre-commit>=3.8.0",  # Added for pre-commit hooks
             "pip-tools>=7.4.1",  # Added for managing requirements
             "pyright>=1.1.402",  # Added for static type checking
-            "actionlint-py>=1.7.7",  # Python wrapper for actionlint (GitHub Actions linter)
+            "actionlint-py>=1.7.7.23",  # Python wrapper for actionlint (GitHub Actions linter)
             "shellcheck-py>=0.10.0.1",  # Python wrapper for shellcheck (shell script linter)
             "jupyterlab>=4.4.3",  # Added for running notebooks
             "ipywidgets>=8.1.7",  # Added for notebook interactivity
