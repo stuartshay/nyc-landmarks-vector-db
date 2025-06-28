@@ -83,19 +83,19 @@ setup(
         "install": PostInstallCommand,
     },
     install_requires=[
-        "fastapi>=0.115.13",
+        "fastapi>=0.115.14",
         "uvicorn>=0.34.3",
         "openai>=1.93.0",
-        "pinecone>=7.0.2",  # Updated to Pinecone 7.0.2 with 2025-04 API
+        "pinecone>=7.3.0",  # Updated to Pinecone 7.3.0 with 2025-04 API
         "pypdf>=5.6.1",  # Updated from pypdf2 to pypdf
         "pdfplumber>=0.11.7",
         "azure-storage-blob>=12.25.1",
         "google-cloud-secret-manager>=2.24.0",
         "pydantic>=2.11.7",
         "pydantic-settings>=2.9.1",  # Added for settings module
-        "python-dotenv>=1.1.0",
+        "python-dotenv>=1.1.1",
         "tiktoken>=0.9.0",
-        "numpy>=2.2.6",  # Added for vector tests - latest version as of May 2025
+        "numpy>=2.3.1",  # Added for vector tests - latest version as of May 2025
         "pandas>=2.3.0",  # Updated to latest version - Added for dataframe tests
         "tenacity>=9.1.2",  # Added for retry logic in API calls
         "beautifulsoup4>=4.13.4",  # Added for Wikipedia scraping
@@ -123,7 +123,7 @@ setup(
             "pytest-cov>=6.2.1",  # Added for coverage
             "pytest-dotenv>=0.5.2",  # Added for loading .env files in tests
             "pandas>=2.3.0",  # Updated to match main requirements - Added explicitly for tests
-            "numpy>=2.2.6",  # Added explicitly for tests - latest version as of May 2025
+            "numpy>=2.3.1",  # Added explicitly for tests - latest version as of May 2025
             "pytest-asyncio>=1.0.0",  # Added for asyncio support in tests
             "pre-commit>=3.8.0",  # Added for pre-commit hooks
             "pip-tools>=7.4.1",  # Added for managing requirements
