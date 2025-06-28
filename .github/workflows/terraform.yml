@@ -36,7 +36,7 @@ jobs:
           fi
 
           # Check if there are any changes in infrastructure directory
-          changed_files=$(git diff --name-only $base_ref HEAD | grep "^infrastructure/" || true)
+          changed_files=$(git diff --name-only "$base_ref" HEAD | grep "^infrastructure/" || true)
 
           if [ -n "$changed_files" ]; then
             echo "✅ Infrastructure files have changed:"
