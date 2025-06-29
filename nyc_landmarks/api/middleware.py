@@ -13,6 +13,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from nyc_landmarks.api.request_body_logging_middleware import (
     RequestBodyLoggingMiddleware,
 )
+from nyc_landmarks.utils.correlation import get_correlation_id
 from nyc_landmarks.utils.logger import get_logger, log_performance
 from nyc_landmarks.utils.request_context import setup_request_tracking
 
@@ -47,6 +48,9 @@ class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
         """Process the request and measure performance."""
+        # Get correlation ID for request tracking
+        correlation_id = get_correlation_id(request)
+
         # Record start time
         start_time = time.time()
 
@@ -77,6 +81,7 @@ class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
                 "path": request.url.path,
                 "status_code": status_code,
                 "query_params": dict(request.query_params),
+                "correlation_id": correlation_id,  # Add correlation ID for log correlation
             }
 
             log_performance(

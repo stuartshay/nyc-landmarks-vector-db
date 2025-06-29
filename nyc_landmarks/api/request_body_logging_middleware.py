@@ -26,6 +26,7 @@ from typing import Any, Dict, Optional, Set
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
+from nyc_landmarks.utils.correlation import get_correlation_id
 from nyc_landmarks.utils.logger import get_logger
 
 # Configure logger
@@ -110,12 +111,13 @@ def _sanitize_request_body(body_data: Dict[str, Any]) -> Dict[str, Any]:
     return sanitized
 
 
-def _get_client_info(request: Request) -> Dict[str, str]:
+def _get_client_info(request: Request, correlation_id: str) -> Dict[str, str]:
     """
     Extract client information from request.
 
     Args:
         request: FastAPI request object
+        correlation_id: Correlation ID for this request
 
     Returns:
         Dictionary with client info
@@ -124,6 +126,7 @@ def _get_client_info(request: Request) -> Dict[str, str]:
         "client_ip": request.client.host if request.client else "unknown",
         "user_agent": request.headers.get("user-agent", "unknown"),
         "content_type": request.headers.get("content-type", "unknown"),
+        "correlation_id": correlation_id,
     }
 
     # In development mode, include additional headers for debugging
@@ -149,6 +152,9 @@ class RequestBodyLoggingMiddleware(BaseHTTPMiddleware):
         """Process the request and log body if applicable."""
         start_time = time.time() if DEVELOPMENT_MODE else None
 
+        # Generate or extract correlation ID for request tracking
+        correlation_id = get_correlation_id(request)
+
         # Check if we should log the request body
         if not _should_log_request_body(request.url.path, request.method):
             # In development mode, log when we skip requests for debugging
@@ -160,6 +166,7 @@ class RequestBodyLoggingMiddleware(BaseHTTPMiddleware):
                         "method": request.method,
                         "reason": "endpoint_not_configured",
                         "metric_type": "request_skipped",
+                        "correlation_id": correlation_id,
                     },
                 )
             return await call_next(request)
@@ -187,7 +194,7 @@ class RequestBodyLoggingMiddleware(BaseHTTPMiddleware):
                             sanitized_body = request_body
 
                         # Get client information
-                        client_info = _get_client_info(request)
+                        client_info = _get_client_info(request, correlation_id)
 
                         # Log the request body with structured data
                         logger.info(
@@ -218,7 +225,7 @@ class RequestBodyLoggingMiddleware(BaseHTTPMiddleware):
                                 "content_type": request.headers.get(
                                     "content-type", "unknown"
                                 ),
-                                **_get_client_info(request),
+                                **_get_client_info(request, correlation_id),
                             },
                         )
             elif body_size > MAX_BODY_SIZE:
@@ -230,7 +237,7 @@ class RequestBodyLoggingMiddleware(BaseHTTPMiddleware):
                         "method": request.method,
                         "body_size_bytes": body_size,
                         "max_size_bytes": MAX_BODY_SIZE,
-                        **_get_client_info(request),
+                        **_get_client_info(request, correlation_id),
                     },
                 )
         except Exception as e:
@@ -240,7 +247,7 @@ class RequestBodyLoggingMiddleware(BaseHTTPMiddleware):
                 extra={
                     "endpoint": request.url.path,
                     "method": request.method,
-                    **_get_client_info(request),
+                    **_get_client_info(request, correlation_id),
                 },
             )
 
@@ -293,6 +300,7 @@ class RequestBodyLoggingMiddleware(BaseHTTPMiddleware):
                     "processing_time_ms": round(processing_time, 2),
                     "status_code": response.status_code,
                     "metric_type": "request_timing",
+                    "correlation_id": correlation_id,
                 },
             )
 
