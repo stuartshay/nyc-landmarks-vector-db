@@ -19,6 +19,7 @@ from nyc_landmarks.examples.search_examples import (
     get_landmark_filter_examples,
     get_text_query_examples,
 )
+from nyc_landmarks.utils.correlation import get_correlation_id
 from nyc_landmarks.utils.logger import get_logger
 from nyc_landmarks.utils.validation import ValidationLogger, get_client_info
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
@@ -213,8 +214,35 @@ async def search_text(
             query.source_type,
             query.top_k,
         )
-        # Generate embedding for the query
+
+        # Get correlation ID for embedding generation tracking
+        correlation_id = get_correlation_id(request)
+
+        # Generate embedding for the query with correlation tracking
+        logger.info(
+            "Generating embedding for query",
+            extra={
+                "correlation_id": correlation_id,
+                "query_text": (
+                    query.query[:100] + "..." if len(query.query) > 100 else query.query
+                ),
+                "query_length": len(query.query),
+                "landmark_id": query.landmark_id,
+                "source_type": query.source_type,
+                "operation": "embedding_generation",
+                "endpoint": "/api/query/search",
+            },
+        )
         query_embedding = embedding_generator.generate_embedding(query.query)
+        logger.info(
+            "Embedding generation completed",
+            extra={
+                "correlation_id": correlation_id,
+                "embedding_dimensions": len(query_embedding) if query_embedding else 0,
+                "operation": "embedding_generation_complete",
+                "endpoint": "/api/query/search",
+            },
+        )
 
         # Prepare filter
         filter_dict = {}
@@ -335,7 +363,7 @@ async def search_text_by_landmark(
             status_code=400, detail="landmark_id is required for this endpoint"
         )
 
-    # Use the existing search_text functionality
+    # Use the existing search_text functionality with enhanced correlation tracking
     result: SearchResponse = await search_text(
         request, query, embedding_generator, vector_db, db_client
     )
@@ -596,7 +624,9 @@ def _enhance_search_result(
 
 
 def _generate_query_embedding(
-    query_text: str, embedding_generator: EmbeddingGenerator
+    query_text: str,
+    embedding_generator: EmbeddingGenerator,
+    correlation_id: Optional[str] = None,
 ) -> (
     Any
 ):  # Using Any since the actual return type from embedding_generator is not strictly typed
@@ -606,11 +636,39 @@ def _generate_query_embedding(
     Args:
         query_text: The search query text
         embedding_generator: EmbeddingGenerator instance
+        correlation_id: Optional correlation ID for logging correlation
 
     Returns:
         Embedding vector values
     """
-    return embedding_generator.generate_embedding(query_text)
+    if correlation_id:
+        logger.info(
+            "Generating embedding for non-API query",
+            extra={
+                "correlation_id": correlation_id,
+                "query_text": (
+                    query_text[:100] + "..." if len(query_text) > 100 else query_text
+                ),
+                "query_length": len(query_text),
+                "operation": "embedding_generation",
+                "context": "non_api_search",
+            },
+        )
+
+    embedding = embedding_generator.generate_embedding(query_text)
+
+    if correlation_id:
+        logger.info(
+            "Embedding generation completed for non-API query",
+            extra={
+                "correlation_id": correlation_id,
+                "embedding_dimensions": len(embedding) if embedding else 0,
+                "operation": "embedding_generation_complete",
+                "context": "non_api_search",
+            },
+        )
+
+    return embedding
 
 
 def _perform_vector_search(
@@ -657,6 +715,7 @@ def search_combined_sources(
     landmark_id: Optional[str] = None,
     source_type: Optional[str] = None,
     top_k: int = 5,
+    correlation_id: Optional[str] = None,
     embedding_generator: Optional[EmbeddingGenerator] = None,
     vector_db: Optional[PineconeDB] = None,
     db_client: Optional[DbClient] = None,
@@ -671,6 +730,7 @@ def search_combined_sources(
         landmark_id: Optional landmark ID to filter results
         source_type: Optional source type filter ('wikipedia' or 'pdf')
         top_k: Maximum number of results to return
+        correlation_id: Optional correlation ID for logging correlation
         embedding_generator: Optional EmbeddingGenerator instance
         vector_db: Optional PineconeDB instance
         db_client: Optional DbClient instance
@@ -683,8 +743,10 @@ def search_combined_sources(
         embedding_generator, vector_db, db_client
     )
 
-    # Generate embedding for query
-    embedding = _generate_query_embedding(query_text, embedding_generator)
+    # Generate embedding for query with correlation tracking
+    embedding = _generate_query_embedding(
+        query_text, embedding_generator, correlation_id
+    )
 
     # Build filter dictionary and query the vector database
     filter_dict = _build_search_filter(landmark_id, source_type)
@@ -697,7 +759,10 @@ def search_combined_sources(
 
 
 def compare_source_results(
-    query_text: str, landmark_id: Optional[str] = None, top_k: int = 3
+    query_text: str,
+    landmark_id: Optional[str] = None,
+    top_k: int = 3,
+    correlation_id: Optional[str] = None,
 ) -> Dict[str, List[Dict[str, Any]]]:
     """
     Compare search results from different sources for the same query.
@@ -706,6 +771,7 @@ def compare_source_results(
         query_text: The search query text
         landmark_id: Optional landmark ID to filter results
         top_k: Maximum number of results to return per source
+        correlation_id: Optional correlation ID for logging correlation
 
     Returns:
         Dictionary with results from each source type and combined results
@@ -716,6 +782,7 @@ def compare_source_results(
         landmark_id=landmark_id,
         source_type="wikipedia",
         top_k=top_k,
+        correlation_id=correlation_id,
     )
 
     # Get results from PDF sources
@@ -724,6 +791,7 @@ def compare_source_results(
         landmark_id=landmark_id,
         source_type="pdf",
         top_k=top_k,
+        correlation_id=correlation_id,
     )
 
     # Get combined results (no source filter)
@@ -732,6 +800,7 @@ def compare_source_results(
         landmark_id=landmark_id,
         source_type=None,
         top_k=top_k * 2,
+        correlation_id=correlation_id,
     )
 
     return {
