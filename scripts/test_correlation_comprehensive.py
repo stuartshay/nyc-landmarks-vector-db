@@ -26,6 +26,13 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
+# Import NYC landmark examples for realistic testing
+from nyc_landmarks.examples.search_examples import (
+    get_advanced_query_examples,
+    get_landmark_filter_examples,
+    get_text_query_examples,
+)
+
 # Configuration
 API_BASE_URL = "https://vector-db.coredatastore.com"
 REQUEST_TIMEOUT = 30
@@ -69,6 +76,104 @@ def make_api_request(
     except Exception as e:
         print(f"   ❌ Error: {e}")
         return None
+
+
+def get_realistic_payload(test_type: str = "general") -> Dict[str, Any]:
+    """
+    Get a realistic payload from NYC landmark examples for testing.
+
+    Args:
+        test_type: Type of test to get payload for
+
+    Returns:
+        Dictionary containing realistic NYC landmark query payload
+    """
+    try:
+        # Get examples from the search examples module
+        text_examples = get_text_query_examples()
+        landmark_examples = get_landmark_filter_examples()
+        advanced_examples = get_advanced_query_examples()
+
+        # Select appropriate example based on test type
+        if test_type == "header_test":
+            # Use Wyckoff House example for header testing
+            example = text_examples.get("wyckoff_house_history")
+        elif test_type == "priority_test":
+            # Use Federal Hall for priority testing
+            example = landmark_examples.get("federal_hall_specific")
+        elif test_type == "session_test":
+            # Use Brooklyn Bridge for session testing
+            example = text_examples.get("brooklyn_bridge_engineering")
+        elif test_type == "tracking_test":
+            # Use advanced example for tracking
+            example = advanced_examples.get("architectural_style_search")
+        elif test_type == "auto_generation":
+            # Use Empire State Building for auto-generation
+            example = text_examples.get("empire_state_building_architecture")
+        else:
+            # Default to a general example
+            example = text_examples.get("grand_central_beaux_arts")
+
+        if example and "value" in example:
+            return dict(example["value"])  # Ensure we return Dict[str, Any]
+        else:
+            # Fallback to a simple payload if examples aren't available
+            return {
+                "query": "What is the architectural significance of NYC landmarks?",
+                "source_type": "wikipedia",
+                "top_k": 3,
+            }
+    except Exception:
+        # Fallback payload in case of any import issues
+        return {
+            "query": "Search for NYC landmark information",
+            "source_type": "wikipedia",
+            "top_k": 5,
+        }
+
+
+def get_session_queries() -> List[str]:
+    """
+    Get a list of realistic NYC landmark queries for session testing.
+
+    Returns:
+        List of realistic NYC landmark query strings
+    """
+    try:
+        text_examples = get_text_query_examples()
+        landmark_examples = get_landmark_filter_examples()
+
+        # Extract real queries from examples
+        queries = []
+
+        # Add some text-based queries
+        for example in list(text_examples.values())[:3]:
+            if "value" in example and "query" in example["value"]:
+                queries.append(example["value"]["query"])
+
+        # Add some landmark-specific queries
+        for example in list(landmark_examples.values())[:2]:
+            if "value" in example and "query" in example["value"]:
+                queries.append(example["value"]["query"])
+
+        return (
+            queries
+            if queries
+            else [
+                "What is the history of the Pieter Claesen Wyckoff House?",
+                "What happened at Federal Hall during the founding of America?",
+                "How was the Brooklyn Bridge engineered and constructed?",
+                "What are the Beaux-Arts architectural features of Grand Central Terminal?",
+            ]
+        )
+    except Exception:
+        # Fallback queries
+        return [
+            "What is the history of NYC's oldest landmarks?",
+            "Tell me about Federal Hall National Memorial",
+            "How was the Brooklyn Bridge constructed?",
+            "What are the architectural features of Grand Central Terminal?",
+        ]
 
 
 def test_header_formats(api_url: str = API_BASE_URL) -> None:
@@ -115,11 +220,7 @@ def test_header_formats(api_url: str = API_BASE_URL) -> None:
             "User-Agent": DEFAULT_USER_AGENT,
         }
 
-        payload = {
-            "query": f"Test query for {test['name']}",
-            "source_type": "wikipedia",
-            "top_k": 2,
-        }
+        payload = get_realistic_payload("header_test")
 
         response = make_api_request(headers, payload, test['name'], api_url)
         if response:
@@ -154,11 +255,8 @@ def test_header_priority(api_url: str = API_BASE_URL) -> None:
         "Correlation-ID": "should-be-ignored-3",
     }
 
-    payload = {
-        "query": "Testing header priority mechanism",
-        "source_type": "wikipedia",
-        "top_k": 1,
-    }
+    # Use realistic NYC landmark payload for priority testing
+    payload = get_realistic_payload("priority_test")
 
     response = make_api_request(headers, payload, "Header Priority Test", api_url)
     if response:
@@ -185,11 +283,7 @@ def test_auto_generation(api_url: str = API_BASE_URL) -> None:
         # Intentionally no correlation headers
     }
 
-    payload = {
-        "query": "Test auto-generation of correlation ID",
-        "source_type": "wikipedia",
-        "top_k": 2,
-    }
+    payload = get_realistic_payload("auto_generation")
 
     response = make_api_request(headers, payload, "Auto-Generation Test", api_url)
     if response:
@@ -211,12 +305,7 @@ def test_session_correlation(api_url: str = API_BASE_URL) -> None:
     print("🎯 Goal: Track multiple related requests through the entire system")
 
     # Simulate a user session with multiple related queries
-    session_queries = [
-        "What is the Statue of Liberty?",
-        "History of Brooklyn Bridge",
-        "Central Park landmarks and monuments",
-        "Ellis Island historical significance",
-    ]
+    session_queries = get_session_queries()
 
     headers = {
         "Content-Type": "application/json",
@@ -264,11 +353,8 @@ def test_correlation_tracking(api_url: str = API_BASE_URL) -> None:
         "User-Agent": DEFAULT_USER_AGENT,
     }
 
-    payload = {
-        "query": "What is the history of correlation tracking in distributed systems?",
-        "source_type": "wikipedia",
-        "top_k": 3,
-    }
+    # Use realistic NYC landmark payload for tracking testing
+    payload = get_realistic_payload("tracking_test")
 
     response = make_api_request(headers, payload, "Custom Tracking Test", api_url)
     if response:
@@ -286,11 +372,8 @@ def test_correlation_tracking(api_url: str = API_BASE_URL) -> None:
         "User-Agent": DEFAULT_USER_AGENT,
     }
 
-    tracking_queries = [
-        "First query in correlation group",
-        "Second query in correlation group",
-        "Third query in correlation group",
-    ]
+    # Use realistic NYC landmark queries for group tracking
+    tracking_queries = get_session_queries()[:3]  # Take first 3 queries
 
     for i, query in enumerate(tracking_queries, 1):
         print(f"\n   📤 Group Request {i}: {query}")
