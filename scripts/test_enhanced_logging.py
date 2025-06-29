@@ -96,7 +96,9 @@ def test_enhanced_logging() -> None:
     )
 
     print("\n✅ Enhanced logging tests completed!")
-    print("Check Google Cloud Logging to verify logs are routed to correct buckets based on labels.")
+    print(
+        "Check Google Cloud Logging to verify logs are routed to correct buckets based on labels."
+    )
     print("\nExpected routing:")
     print("- Query logs → api-query-logs bucket")
     print("- Chat logs → api-chat-logs bucket")

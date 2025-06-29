@@ -68,4 +68,6 @@ def test_performance_logging() -> None:
 if __name__ == "__main__":
     test_endpoint_categorization()
     test_performance_logging()
-    print("All tests completed! Check the log output above to verify the endpoint_category field is included.")
+    print(
+        "All tests completed! Check the log output above to verify the endpoint_category field is included."
+    )
