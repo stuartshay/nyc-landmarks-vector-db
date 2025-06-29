@@ -21,12 +21,12 @@ Production Configuration:
 import json
 import os
 import time
-import uuid
 from typing import Any, Dict, Optional, Set
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
+from nyc_landmarks.utils.correlation import get_correlation_id
 from nyc_landmarks.utils.logger import get_logger
 
 # Configure logger
@@ -57,31 +57,6 @@ SENSITIVE_FIELDS: Set[str] = {
     "key",
     "authorization",
 }
-
-
-def _get_correlation_id(request: Request) -> str:
-    """
-    Get or generate a correlation ID for request tracking.
-
-    Tries to extract from headers first, generates UUID if not found.
-
-    Args:
-        request: FastAPI request object
-
-    Returns:
-        Correlation ID string
-    """
-    # Try to get from common request ID headers
-    correlation_id = (
-        request.headers.get("x-request-id")
-        or request.headers.get("x-correlation-id")
-        or request.headers.get("request-id")
-        or request.headers.get("correlation-id")
-    )  # If no header found, generate a new UUID
-    if not correlation_id:
-        correlation_id = str(uuid.uuid4())
-
-    return str(correlation_id)  # Ensure we always return a string
 
 
 def _should_log_request_body(path: str, method: str) -> bool:
@@ -178,7 +153,7 @@ class RequestBodyLoggingMiddleware(BaseHTTPMiddleware):
         start_time = time.time() if DEVELOPMENT_MODE else None
 
         # Generate or extract correlation ID for request tracking
-        correlation_id = _get_correlation_id(request)
+        correlation_id = get_correlation_id(request)
 
         # Check if we should log the request body
         if not _should_log_request_body(request.url.path, request.method):

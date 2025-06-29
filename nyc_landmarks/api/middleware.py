@@ -6,7 +6,6 @@ performance monitoring, and other cross-cutting concerns.
 """
 
 import time
-import uuid
 
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -14,38 +13,12 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from nyc_landmarks.api.request_body_logging_middleware import (
     RequestBodyLoggingMiddleware,
 )
+from nyc_landmarks.utils.correlation import get_correlation_id
 from nyc_landmarks.utils.logger import get_logger, log_performance
 from nyc_landmarks.utils.request_context import setup_request_tracking
 
 # Configure logger
 logger = get_logger(__name__)
-
-
-def _get_correlation_id(request: Request) -> str:
-    """
-    Get or generate a correlation ID for request tracking.
-
-    Uses the same logic as RequestBodyLoggingMiddleware for consistency.
-
-    Args:
-        request: FastAPI request object
-
-    Returns:
-        Correlation ID string
-    """
-    # Try to get from common request ID headers
-    correlation_id = (
-        request.headers.get("x-request-id")
-        or request.headers.get("x-correlation-id")
-        or request.headers.get("request-id")
-        or request.headers.get("correlation-id")
-    )
-
-    # If no header found, generate a new UUID
-    if not correlation_id:
-        correlation_id = str(uuid.uuid4())
-
-    return str(correlation_id)
 
 
 def _categorize_endpoint(path: str) -> str:
@@ -76,7 +49,7 @@ class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         """Process the request and measure performance."""
         # Get correlation ID for request tracking
-        correlation_id = _get_correlation_id(request)
+        correlation_id = get_correlation_id(request)
 
         # Record start time
         start_time = time.time()
