@@ -250,7 +250,6 @@ class RequestBodyLoggingMiddleware(BaseHTTPMiddleware):
                                 "content_type": request.headers.get(
                                     "content-type", "unknown"
                                 ),
-                                "correlation_id": correlation_id,
                                 **_get_client_info(request, correlation_id),
                             },
                         )
@@ -263,7 +262,6 @@ class RequestBodyLoggingMiddleware(BaseHTTPMiddleware):
                         "method": request.method,
                         "body_size_bytes": body_size,
                         "max_size_bytes": MAX_BODY_SIZE,
-                        "correlation_id": correlation_id,
                         **_get_client_info(request, correlation_id),
                     },
                 )
@@ -274,7 +272,6 @@ class RequestBodyLoggingMiddleware(BaseHTTPMiddleware):
                 extra={
                     "endpoint": request.url.path,
                     "method": request.method,
-                    "correlation_id": correlation_id,
                     **_get_client_info(request, correlation_id),
                 },
             )
