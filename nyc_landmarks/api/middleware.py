@@ -10,6 +10,9 @@ import time
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
+from nyc_landmarks.api.request_body_logging_middleware import (
+    RequestBodyLoggingMiddleware,
+)
 from nyc_landmarks.utils.logger import get_logger, log_performance
 from nyc_landmarks.utils.request_context import setup_request_tracking
 
@@ -95,6 +98,9 @@ def setup_api_middleware(app: FastAPI) -> None:
     """
     # Set up request context tracking (must be first to initialize context)
     setup_request_tracking(app)
+
+    # Add request body logging middleware
+    app.add_middleware(RequestBodyLoggingMiddleware)
 
     # Add performance monitoring
     app.add_middleware(PerformanceMonitoringMiddleware)
