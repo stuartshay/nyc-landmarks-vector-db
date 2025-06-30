@@ -92,7 +92,7 @@ setup(
         "azure-storage-blob>=12.25.1",
         "google-cloud-secret-manager>=2.24.0",
         "pydantic>=2.11.7",
-        "pydantic-settings>=2.9.1",  # Added for settings module
+        "pydantic-settings>=2.10.1",  # Added for settings module
         "python-dotenv>=1.1.1",
         "tiktoken>=0.9.0",
         "numpy>=2.3.1",  # Added for vector tests - latest version as of May 2025
