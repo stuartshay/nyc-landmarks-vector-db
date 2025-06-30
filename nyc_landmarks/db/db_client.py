@@ -21,10 +21,11 @@ from nyc_landmarks.models.landmark_models import (
 )
 from nyc_landmarks.models.metadata_models import LandmarkMetadata
 from nyc_landmarks.models.wikipedia_models import WikipediaArticleModel
+from nyc_landmarks.utils.logger import configure_basic_logging_safely
 
 # Configure logging
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=settings.LOG_LEVEL.value)
+configure_basic_logging_safely(level=getattr(logging, settings.LOG_LEVEL.value))
 
 
 # Define the protocol for clients that support Wikipedia functions

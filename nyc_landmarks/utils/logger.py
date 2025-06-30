@@ -195,8 +195,15 @@ class LoggerSetup:
         Returns:
             Configured logger instance
         """
-        # Only configure once
+        # Only configure once - prevent duplicate handlers
         if self._configured:
+            return self.logger
+
+        # CRITICAL: Prevent duplicate handlers by checking if handlers already exist
+        # This fixes the duplicate logging issue in GCP Logs Explorer
+        if self.logger.handlers:
+            # Logger already has handlers, just return it
+            self._configured = True
             return self.logger
 
         # Set log level
@@ -315,6 +322,27 @@ def get_logger(
         provider=provider,
         structured=structured,
     )
+
+
+# Helper function to prevent duplicate logging handlers
+def configure_basic_logging_safely(level: int = logging.INFO) -> None:
+    """
+    Safely configure basic logging without creating duplicate handlers.
+
+    This function replaces logging.basicConfig() calls throughout the codebase
+    to prevent duplicate log entries in GCP Logs Explorer.
+
+    Args:
+        level: Logging level to set
+    """
+    root_logger = logging.getLogger()
+
+    # Only configure if no handlers exist
+    if not root_logger.handlers:
+        logging.basicConfig(level=level)
+    else:
+        # Just set the level if handlers already exist
+        root_logger.setLevel(level)
 
 
 # Helper functions for enhanced logging capabilities
