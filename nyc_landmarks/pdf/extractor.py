@@ -14,10 +14,11 @@ import requests
 
 from nyc_landmarks.config.settings import settings
 from nyc_landmarks.db.db_client import get_db_client
+from nyc_landmarks.utils.logger import configure_basic_logging_safely
 
 # Configure logging
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=settings.LOG_LEVEL.value)
+configure_basic_logging_safely(level=getattr(logging, settings.LOG_LEVEL.value))
 
 
 class PDFExtractor:

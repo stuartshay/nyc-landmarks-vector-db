@@ -8,7 +8,7 @@ and fallback to environment variables for local development.
 
 import json
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 from dotenv import load_dotenv
 
@@ -62,6 +62,17 @@ class Settings(BaseSettings):
     LOG_LEVEL: LogLevel = Field(default=LogLevel.INFO)
     LOG_PROVIDER: LogProvider = Field(default=LogProvider.STDOUT)
     LOG_NAME_PREFIX: str = Field(default="nyc-landmarks-vector-db")
+
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize settings with environment-specific defaults."""
+        super().__init__(**kwargs)
+
+        # Automatically use Google Cloud Logging in production to prevent stdout duplication
+        if (
+            self.ENV == Environment.PRODUCTION
+            and self.LOG_PROVIDER == LogProvider.STDOUT
+        ):
+            self.LOG_PROVIDER = LogProvider.GOOGLE
 
     # Google Cloud Secret Manager settings
     GCP_PROJECT_ID: Optional[str] = Field(default=None)

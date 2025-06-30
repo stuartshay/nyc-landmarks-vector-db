@@ -6,18 +6,11 @@ This script shows how the correlation ID is now tracked through
 the embedding generation process for both API and non-API usage.
 """
 
-import logging
-import sys
-
 from nyc_landmarks.api.query import compare_source_results, search_combined_sources
 from nyc_landmarks.utils.correlation import generate_correlation_id
 
-# Configure logging to show our enhanced correlation logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s - %(correlation_id)s',
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
+# No custom logging configuration - use the project's existing setup
+# This prevents duplicate handlers and logging conflicts
 
 
 def demonstrate_correlation_logging() -> None:
