@@ -84,10 +84,10 @@ setup(
     },
     install_requires=[
         "fastapi>=0.115.14",
-        "uvicorn>=0.34.3",
+        "uvicorn>=0.35.0",
         "openai>=1.93.0",
         "pinecone>=7.3.0",  # Updated to Pinecone 7.3.0 with 2025-04 API
-        "pypdf>=5.6.1",  # Updated from pypdf2 to pypdf
+        "pypdf>=5.7.0",  # Updated from pypdf2 to pypdf
         "pdfplumber>=0.11.7",
         "azure-storage-blob>=12.25.1",
         "google-cloud-secret-manager>=2.24.0",
@@ -130,7 +130,7 @@ setup(
             "pyright>=1.1.402",  # Added for static type checking
             "actionlint-py>=1.7.7.23",  # Python wrapper for actionlint (GitHub Actions linter)
             "shellcheck-py>=0.10.0.1",  # Python wrapper for shellcheck (shell script linter)
-            "jupyterlab>=4.4.3",  # Added for running notebooks
+            "jupyterlab>=4.4.4",  # Added for running notebooks
             "ipywidgets>=8.1.7",  # Added for notebook interactivity
             "plotly>=6.2.0",  # Added for interactive plots in notebooks
             "seaborn>=0.13.2",  # Added for statistical plots in notebooks
