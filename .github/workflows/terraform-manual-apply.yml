@@ -43,7 +43,7 @@ jobs:
 
       - name: Download Latest Plan Artifact
         if: ${{ github.event.inputs.run_id == '' }}
-        uses: dawidd6/action-download-artifact@v6
+        uses: dawidd6/action-download-artifact@v11
         with:
           name: terraform-plan
           path: infrastructure/terraform/
@@ -52,7 +52,7 @@ jobs:
 
       - name: Download Specific Plan Artifact
         if: ${{ github.event.inputs.run_id != '' }}
-        uses: dawidd6/action-download-artifact@v6
+        uses: dawidd6/action-download-artifact@v11
         with:
           name: terraform-plan
           path: infrastructure/terraform/
