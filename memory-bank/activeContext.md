@@ -34,6 +34,14 @@ Current challenges:
 
 ## Recent Changes
 
+### Type Checking Fix for Logger Tests
+
+- Fixed mypy type checking errors in `tests/unit/utils/test_logger.py`:
+  - **Issue**: Lines 701 and 717 had errors where mypy couldn't recognize that `handler.close` and `handler.flush` were mock objects with assertion methods
+  - **Root Cause**: Mock objects created with `MagicMock()` were being treated as regular callables, so `.assert_called_once()` was not recognized as a valid attribute
+  - **Solution**: Added `# type: ignore[attr-defined]` comments to suppress the specific mypy errors for mock assertion calls
+  - **Result**: Mypy now passes successfully with no type checking errors
+
 ### Terraform Cloud Configuration
 
 - Added Terraform Cloud block in `versions.tf`:
