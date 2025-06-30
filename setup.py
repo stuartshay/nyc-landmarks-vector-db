@@ -92,7 +92,7 @@ setup(
         "azure-storage-blob>=12.25.1",
         "google-cloud-secret-manager>=2.24.0",
         "pydantic>=2.11.7",
-        "pydantic-settings>=2.9.1",  # Added for settings module
+        "pydantic-settings>=2.10.1",  # Added for settings module
         "python-dotenv>=1.1.1",
         "tiktoken>=0.9.0",
         "numpy>=2.3.1",  # Added for vector tests - latest version as of May 2025
@@ -131,6 +131,7 @@ setup(
             "actionlint-py>=1.7.7.23",  # Python wrapper for actionlint (GitHub Actions linter)
             "shellcheck-py>=0.10.0.1",  # Python wrapper for shellcheck (shell script linter)
             "jupyterlab>=4.4.4",  # Added for running notebooks
+            "notebook>=7.4.4",  # Added for Jupyter notebook server
             "ipywidgets>=8.1.7",  # Added for notebook interactivity
             "plotly>=6.2.0",  # Added for interactive plots in notebooks
             "seaborn>=0.13.2",  # Added for statistical plots in notebooks
