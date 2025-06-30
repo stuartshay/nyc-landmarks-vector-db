@@ -217,31 +217,9 @@ class LoggerSetup:
         use_structured = structured or provider == LogProvider.GOOGLE
         formatter = json_formatter if use_structured else standard_formatter
 
-        # Add console handler if requested
-        if log_to_console:
-            console_handler = logging.StreamHandler(sys.stdout)
-            console_handler.setFormatter(formatter)
-            self.logger.addHandler(console_handler)
-
-        # Add file handler if requested
-        if log_to_file:
-            # Ensure log directory exists
-            log_dir_path = Path(log_dir)
-            log_dir_path.mkdir(exist_ok=True)
-
-            # Generate timestamped filename if not provided
-            if not log_filename:
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                log_filename = f"{self.name}_{timestamp}.log"
-
-            # Create file handler
-            log_filepath = log_dir_path / log_filename
-            file_handler = logging.FileHandler(log_filepath)
-            file_handler.setFormatter(formatter)
-            self.logger.addHandler(file_handler)
-
-        # Add provider-specific handlers
+        # Configure handlers based on provider - MUTUALLY EXCLUSIVE to prevent duplicates
         if provider == LogProvider.GOOGLE and GCP_LOGGING_AVAILABLE:
+            # PRODUCTION: Use ONLY Cloud Logging (no console output to prevent stdout duplication)
             try:
                 client = gcp_logging.Client()
                 # Create CloudLoggingHandler with a specific logger name for filtering
@@ -257,10 +235,38 @@ class LoggerSetup:
 
                 self.logger.addHandler(cloud_handler)
             except Exception as e:
-                # Fallback to standard logging if Cloud Logging fails
+                # Fallback to console logging if Cloud Logging fails
+                console_handler = logging.StreamHandler(sys.stdout)
+                console_handler.setFormatter(formatter)
+                self.logger.addHandler(console_handler)
                 self.logger.exception(
-                    "Failed to initialize Google Cloud Logging: %s", str(e)
+                    "Failed to initialize Google Cloud Logging, falling back to console: %s",
+                    str(e),
                 )
+        else:
+            # DEVELOPMENT: Use console and/or file logging
+            # Add console handler if requested
+            if log_to_console:
+                console_handler = logging.StreamHandler(sys.stdout)
+                console_handler.setFormatter(formatter)
+                self.logger.addHandler(console_handler)
+
+            # Add file handler if requested
+            if log_to_file:
+                # Ensure log directory exists
+                log_dir_path = Path(log_dir)
+                log_dir_path.mkdir(exist_ok=True)
+
+                # Generate timestamped filename if not provided
+                if not log_filename:
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    log_filename = f"{self.name}_{timestamp}.log"
+
+                # Create file handler
+                log_filepath = log_dir_path / log_filename
+                file_handler = logging.FileHandler(log_filepath)
+                file_handler.setFormatter(formatter)
+                self.logger.addHandler(file_handler)
 
         self._configured = True
         return self.logger
