@@ -85,7 +85,7 @@ def test_api_endpoint_and_check_logs(base_url: str = "http://127.0.0.1:8000") ->
     print("   3. Before the fix, you would see messages like:")
     print("      INFO:nyc_landmarks.api.query:search_text request...")
     print("      INFO:nyc_landmarks.api.query:search_text request...")  # <- duplicate
-    print("      INFO:nyc_landmarks.api.query:search_text request...")  # <- duplicate")
+    print("      INFO:nyc_landmarks.api.query:search_text request...")  # <- duplicate
     print("   4. After the fix, you should see:")
     print(
         "      INFO:nyc_landmarks.api.query:search_text request..."
