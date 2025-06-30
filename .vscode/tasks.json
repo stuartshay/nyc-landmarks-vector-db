@@ -1,175 +1,175 @@
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "Compare Files with Diff Tool",
-            "type": "shell",
-            "command": "${command:python.interpreterPath}",
-            "args": [
-                "${workspaceFolder}/scripts/diff_tool.py",
-                "file",
-                "${input:firstFile}",
-                "${input:secondFile}",
-                "--color"
-            ],
-            "group": "none",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated"
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "Compare Files with HTML Diff",
-            "type": "shell",
-            "command": "${command:python.interpreterPath}",
-            "args": [
-                "${workspaceFolder}/scripts/diff_tool.py",
-                "file",
-                "${input:firstFile}",
-                "${input:secondFile}",
-                "--html",
-                "--browser"
-            ],
-            "group": "none",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated"
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "Compare Vectors with Diff Tool",
-            "type": "shell",
-            "command": "${command:python.interpreterPath}",
-            "args": [
-                "${workspaceFolder}/scripts/diff_tool.py",
-                "vector",
-                "${input:firstVectorFile}",
-                "${input:secondVectorFile}",
-                "--plot",
-                "--output",
-                "${workspaceFolder}/test_output/vector_diff_plot.png"
-            ],
-            "group": "none",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated"
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "Run All Tests",
-            "type": "shell",
-            "command": "${command:python.interpreterPath}",
-            "args": [
-                "-m",
-                "pytest",
-                "tests",
-                "-v"
-            ],
-            "group": {
-                "kind": "test",
-                "isDefault": true
-            },
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated"
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "Run Unit Tests",
-            "type": "shell",
-            "command": "${command:python.interpreterPath}",
-            "args": [
-                "-m",
-                "pytest",
-                "tests/unit",
-                "-v"
-            ],
-            "group": "test",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated"
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "Run Functional Tests",
-            "type": "shell",
-            "command": "${command:python.interpreterPath}",
-            "args": [
-                "-m",
-                "pytest",
-                "tests/functional",
-                "-v"
-            ],
-            "group": "test",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated"
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "Run Integration Tests",
-            "type": "shell",
-            "command": "${command:python.interpreterPath}",
-            "args": [
-                "-m",
-                "pytest",
-                "tests/integration",
-                "-v"
-            ],
-            "group": "test",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated"
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "Check Development Environment",
-            "type": "shell",
-            "command": "${command:python.interpreterPath}",
-            "args": [
-                "${workspaceFolder}/scripts/check_dev_env.py"
-            ],
-            "group": "none",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "Setup GCP Authentication",
-            "type": "shell",
-            "command": "${workspaceFolder}/scripts/setup_gcp_auth.sh",
-            "group": "build",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "Verify GCP Authentication",
-            "type": "shell",
-            "command": "${command:python.interpreterPath}",
-            "args": [
-                "${workspaceFolder}/utils/check_dev_env.py"
-            ],
-            "group": "build",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "problemMatcher": []
-        }
-    ]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Compare Files with Diff Tool",
+      "type": "shell",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "${workspaceFolder}/scripts/diff_tool.py",
+        "file",
+        "${input:firstFile}",
+        "${input:secondFile}",
+        "--color"
+      ],
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Compare Files with HTML Diff",
+      "type": "shell",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "${workspaceFolder}/scripts/diff_tool.py",
+        "file",
+        "${input:firstFile}",
+        "${input:secondFile}",
+        "--html",
+        "--browser"
+      ],
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Compare Vectors with Diff Tool",
+      "type": "shell",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "${workspaceFolder}/scripts/diff_tool.py",
+        "vector",
+        "${input:firstVectorFile}",
+        "${input:secondVectorFile}",
+        "--plot",
+        "--output",
+        "${workspaceFolder}/test_output/vector_diff_plot.png"
+      ],
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run All Tests",
+      "type": "shell",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "-m",
+        "pytest",
+        "tests",
+        "-v"
+      ],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Unit Tests",
+      "type": "shell",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "-m",
+        "pytest",
+        "tests/unit",
+        "-v"
+      ],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Functional Tests",
+      "type": "shell",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "-m",
+        "pytest",
+        "tests/functional",
+        "-v"
+      ],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Integration Tests",
+      "type": "shell",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "-m",
+        "pytest",
+        "tests/integration",
+        "-v"
+      ],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Check Development Environment",
+      "type": "shell",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "${workspaceFolder}/utils/check_dev_env.py"
+      ],
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Setup GCP Authentication",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/setup_gcp_auth.sh",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Verify GCP Authentication",
+      "type": "shell",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "${workspaceFolder}/utils/check_dev_env.py"
+      ],
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": []
+    }
+  ]
 }
