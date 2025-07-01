@@ -92,6 +92,7 @@ This document tracks the project's progress, detailing what works, what's left t
   - [x] Integration tests
   - [x] Test fixtures
   - [x] Mocking utilities
+  - [x] Test deduplication and organization (PR #219)
 
 ## In Progress
 
