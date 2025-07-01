@@ -91,7 +91,7 @@ def demonstrate_correlation_features() -> None:
         print(
             f"   ✅ Performance test completed in {duration:.2f}s ({len(results)} results)"
         )
-        print(f"   � All timing data correlated by ID: {perf_correlation_id}")
+        print(f"   📊 All timing data correlated by ID: {perf_correlation_id}")
 
     except Exception as e:
         print(f"   ❌ Performance test failed: {e}")
