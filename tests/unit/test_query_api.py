@@ -338,7 +338,10 @@ class TestVectorSearch(unittest.TestCase):
         assert len(results) == 2
         assert results[0]["score"] == 0.95
         mock_vector_db.query_vectors.assert_called_once_with(
-            query_vector=embedding, top_k=5, filter_dict=filter_dict
+            query_vector=embedding,
+            top_k=5,
+            filter_dict=filter_dict,
+            correlation_id=None,
         )
 
     def test_process_search_results(self) -> None:
@@ -413,7 +416,11 @@ class TestSearchCombinedSources(unittest.TestCase):
         )
         mock_build_filter.assert_called_once_with("LP-12345", "wikipedia")
         mock_perform.assert_called_once_with(
-            [0.1, 0.2, 0.3], 5, {"landmark_id": "LP-12345"}, mock_vector_db
+            [0.1, 0.2, 0.3],
+            5,
+            {"landmark_id": "LP-12345"},
+            mock_vector_db,
+            "test-correlation",
         )
         mock_process.assert_called_once_with(
             [{"id": "1", "score": 0.95}], mock_db_client
