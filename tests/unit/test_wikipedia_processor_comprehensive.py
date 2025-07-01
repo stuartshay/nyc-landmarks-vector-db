@@ -16,35 +16,65 @@ from nyc_landmarks.models.wikipedia_models import (
 from nyc_landmarks.wikipedia.processor import WikipediaProcessor
 
 
-class TestWikipediaProcessorInitialization(unittest.TestCase):
+class BaseWikipediaProcessorTest(unittest.TestCase):
+    """Base test class for WikipediaProcessor tests."""
+
+    def setUp(self) -> None:
+        """Set up common test fixtures."""
+        self.mock_wiki_fetcher = Mock()
+        self.mock_embedding_generator = Mock()
+        self.mock_pinecone_db = Mock()
+        self.mock_quality_fetcher = Mock()
+
+        patcher_wiki_fetcher = patch(
+            'nyc_landmarks.wikipedia.processor.WikipediaFetcher',
+            return_value=self.mock_wiki_fetcher,
+        )
+        patcher_embedding_gen = patch(
+            'nyc_landmarks.wikipedia.processor.EmbeddingGenerator',
+            return_value=self.mock_embedding_generator,
+        )
+        patcher_pinecone_db = patch(
+            'nyc_landmarks.wikipedia.processor.PineconeDB',
+            return_value=self.mock_pinecone_db,
+        )
+        patcher_quality_fetcher = patch(
+            'nyc_landmarks.wikipedia.processor.WikipediaQualityFetcher',
+            return_value=self.mock_quality_fetcher,
+        )
+
+        self.addCleanup(patcher_wiki_fetcher.stop)
+        self.addCleanup(patcher_embedding_gen.stop)
+        self.addCleanup(patcher_pinecone_db.stop)
+        self.addCleanup(patcher_quality_fetcher.stop)
+
+        patcher_wiki_fetcher.start()
+        patcher_embedding_gen.start()
+        patcher_pinecone_db.start()
+        patcher_quality_fetcher.start()
+
+        self.processor = WikipediaProcessor()
+
+
+class TestWikipediaProcessorInitialization(BaseWikipediaProcessorTest):
     """Test WikipediaProcessor initialization and basic setup."""
 
-    @patch('nyc_landmarks.wikipedia.processor.WikipediaQualityFetcher')
-    @patch('nyc_landmarks.wikipedia.processor.PineconeDB')
-    @patch('nyc_landmarks.wikipedia.processor.EmbeddingGenerator')
-    @patch('nyc_landmarks.wikipedia.processor.WikipediaFetcher')
-    def test_initialization_success(
-        self,
-        mock_wiki_fetcher: Mock,
-        mock_embedding_gen: Mock,
-        mock_pinecone_db: Mock,
-        mock_quality_fetcher: Mock,
-    ) -> None:
+    def test_initialization_success(self) -> None:
         """Test successful initialization of WikipediaProcessor."""
-        processor = WikipediaProcessor()
+        # Verify processor attributes are set correctly
+        self.assertIsNotNone(self.processor.wiki_fetcher)
+        self.assertIsNotNone(self.processor.embedding_generator)
+        self.assertIsNotNone(self.processor.pinecone_db)
+        self.assertIsNotNone(self.processor.quality_fetcher)
+        self.assertIsNone(self.processor.db_client)  # Should be None initially
 
-        # Verify dependencies are created
-        mock_wiki_fetcher.assert_called_once()
-        mock_embedding_gen.assert_called_once()
-        mock_pinecone_db.assert_called_once()
-        mock_quality_fetcher.assert_called_once()
-
-        # Verify processor attributes are set
-        self.assertIsNotNone(processor.wiki_fetcher)
-        self.assertIsNotNone(processor.embedding_generator)
-        self.assertIsNotNone(processor.pinecone_db)
-        self.assertIsNotNone(processor.quality_fetcher)
-        self.assertIsNone(processor.db_client)  # Should be None initially
+        # Verify the dependencies are the mock objects we expected
+        self.assertEqual(self.processor.wiki_fetcher, self.mock_wiki_fetcher)
+        self.assertEqual(
+            self.processor.embedding_generator, self.mock_embedding_generator
+        )
+        self.assertEqual(self.processor.pinecone_db, self.mock_pinecone_db)
+        self.assertEqual(self.processor.quality_fetcher, self.mock_quality_fetcher)
 
     @patch('nyc_landmarks.wikipedia.processor.WikipediaQualityFetcher')
     @patch('nyc_landmarks.wikipedia.processor.PineconeDB')
@@ -58,42 +88,15 @@ class TestWikipediaProcessorInitialization(unittest.TestCase):
         mock_quality_fetcher: Mock,
     ) -> None:
         """Test initialization handling of dependency failures."""
-        # Mock one dependency to fail
+        # Make one dependency fail
         mock_pinecone_db.side_effect = Exception("Connection failed")
 
         with self.assertRaises(Exception):
             WikipediaProcessor()
 
 
-class TestWikipediaProcessorDatabaseClient(unittest.TestCase):
+class TestWikipediaProcessorDatabaseClient(BaseWikipediaProcessorTest):
     """Test database client initialization and management."""
-
-    def setUp(self) -> None:
-        """Set up test fixtures."""
-        self.mock_wiki_fetcher = Mock()
-        self.mock_embedding_generator = Mock()
-        self.mock_pinecone_db = Mock()
-        self.mock_quality_fetcher = Mock()
-
-        with (
-            patch(
-                'nyc_landmarks.wikipedia.processor.WikipediaFetcher',
-                return_value=self.mock_wiki_fetcher,
-            ),
-            patch(
-                'nyc_landmarks.wikipedia.processor.EmbeddingGenerator',
-                return_value=self.mock_embedding_generator,
-            ),
-            patch(
-                'nyc_landmarks.wikipedia.processor.PineconeDB',
-                return_value=self.mock_pinecone_db,
-            ),
-            patch(
-                'nyc_landmarks.wikipedia.processor.WikipediaQualityFetcher',
-                return_value=self.mock_quality_fetcher,
-            ),
-        ):
-            self.processor = WikipediaProcessor()
 
     @patch('nyc_landmarks.db.db_client.get_db_client')
     def test_initialize_db_client_first_time(self, mock_get_db_client: Mock) -> None:
@@ -121,35 +124,8 @@ class TestWikipediaProcessorDatabaseClient(unittest.TestCase):
         self.assertEqual(result, existing_client)
 
 
-class TestWikipediaProcessorArticleFetching(unittest.TestCase):
+class TestWikipediaProcessorArticleFetching(BaseWikipediaProcessorTest):
     """Test article fetching and content retrieval functionality."""
-
-    def setUp(self) -> None:
-        """Set up test fixtures."""
-        self.mock_wiki_fetcher = Mock()
-        self.mock_embedding_generator = Mock()
-        self.mock_pinecone_db = Mock()
-        self.mock_quality_fetcher = Mock()
-
-        with (
-            patch(
-                'nyc_landmarks.wikipedia.processor.WikipediaFetcher',
-                return_value=self.mock_wiki_fetcher,
-            ),
-            patch(
-                'nyc_landmarks.wikipedia.processor.EmbeddingGenerator',
-                return_value=self.mock_embedding_generator,
-            ),
-            patch(
-                'nyc_landmarks.wikipedia.processor.PineconeDB',
-                return_value=self.mock_pinecone_db,
-            ),
-            patch(
-                'nyc_landmarks.wikipedia.processor.WikipediaQualityFetcher',
-                return_value=self.mock_quality_fetcher,
-            ),
-        ):
-            self.processor = WikipediaProcessor()
 
     def test_fetch_wikipedia_articles_success(self) -> None:
         """Test successful Wikipedia article fetching."""
@@ -235,35 +211,8 @@ class TestWikipediaProcessorArticleFetching(unittest.TestCase):
         mock_db_client.get_wikipedia_articles.assert_called_once_with(landmark_id)
 
 
-class TestWikipediaProcessorArticleProcessing(unittest.TestCase):
+class TestWikipediaProcessorArticleProcessing(BaseWikipediaProcessorTest):
     """Test article processing and chunking functionality."""
-
-    def setUp(self) -> None:
-        """Set up test fixtures."""
-        self.mock_wiki_fetcher = Mock()
-        self.mock_embedding_generator = Mock()
-        self.mock_pinecone_db = Mock()
-        self.mock_quality_fetcher = Mock()
-
-        with (
-            patch(
-                'nyc_landmarks.wikipedia.processor.WikipediaFetcher',
-                return_value=self.mock_wiki_fetcher,
-            ),
-            patch(
-                'nyc_landmarks.wikipedia.processor.EmbeddingGenerator',
-                return_value=self.mock_embedding_generator,
-            ),
-            patch(
-                'nyc_landmarks.wikipedia.processor.PineconeDB',
-                return_value=self.mock_pinecone_db,
-            ),
-            patch(
-                'nyc_landmarks.wikipedia.processor.WikipediaQualityFetcher',
-                return_value=self.mock_quality_fetcher,
-            ),
-        ):
-            self.processor = WikipediaProcessor()
 
     def test_process_articles_into_chunks_success(self) -> None:
         """Test successful article processing into chunks."""
@@ -339,35 +288,8 @@ class TestWikipediaProcessorArticleProcessing(unittest.TestCase):
         self.assertEqual(total_chunks, 0)
 
 
-class TestWikipediaProcessorQualityAssessment(unittest.TestCase):
+class TestWikipediaProcessorQualityAssessment(BaseWikipediaProcessorTest):
     """Test Wikipedia article quality assessment functionality."""
-
-    def setUp(self) -> None:
-        """Set up test fixtures."""
-        self.mock_wiki_fetcher = Mock()
-        self.mock_embedding_generator = Mock()
-        self.mock_pinecone_db = Mock()
-        self.mock_quality_fetcher = Mock()
-
-        with (
-            patch(
-                'nyc_landmarks.wikipedia.processor.WikipediaFetcher',
-                return_value=self.mock_wiki_fetcher,
-            ),
-            patch(
-                'nyc_landmarks.wikipedia.processor.EmbeddingGenerator',
-                return_value=self.mock_embedding_generator,
-            ),
-            patch(
-                'nyc_landmarks.wikipedia.processor.PineconeDB',
-                return_value=self.mock_pinecone_db,
-            ),
-            patch(
-                'nyc_landmarks.wikipedia.processor.WikipediaQualityFetcher',
-                return_value=self.mock_quality_fetcher,
-            ),
-        ):
-            self.processor = WikipediaProcessor()
 
     def test_fetch_article_quality_success(self) -> None:
         """Test successful article quality fetching."""
@@ -414,35 +336,8 @@ class TestWikipediaProcessorQualityAssessment(unittest.TestCase):
         self.assertIsNone(result)
 
 
-class TestWikipediaProcessorEmbeddingsAndStorage(unittest.TestCase):
+class TestWikipediaProcessorEmbeddingsAndStorage(BaseWikipediaProcessorTest):
     """Test embedding generation and vector storage functionality."""
-
-    def setUp(self) -> None:
-        """Set up test fixtures."""
-        self.mock_wiki_fetcher = Mock()
-        self.mock_embedding_generator = Mock()
-        self.mock_pinecone_db = Mock()
-        self.mock_quality_fetcher = Mock()
-
-        with (
-            patch(
-                'nyc_landmarks.wikipedia.processor.WikipediaFetcher',
-                return_value=self.mock_wiki_fetcher,
-            ),
-            patch(
-                'nyc_landmarks.wikipedia.processor.EmbeddingGenerator',
-                return_value=self.mock_embedding_generator,
-            ),
-            patch(
-                'nyc_landmarks.wikipedia.processor.PineconeDB',
-                return_value=self.mock_pinecone_db,
-            ),
-            patch(
-                'nyc_landmarks.wikipedia.processor.WikipediaQualityFetcher',
-                return_value=self.mock_quality_fetcher,
-            ),
-        ):
-            self.processor = WikipediaProcessor()
 
     def test_generate_embeddings_and_store_success(self) -> None:
         """Test successful embedding generation and storage."""

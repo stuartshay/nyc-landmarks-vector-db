@@ -16,6 +16,9 @@ from unittest.mock import Mock, patch
 
 from nyc_landmarks.vectordb.pinecone_db import PineconeDB
 
+# Constants
+INDEX_CREATION_POLL_INTERVAL = 30
+
 
 class TestPineconeDBInitialization(unittest.TestCase):
     """Test PineconeDB initialization and configuration."""
@@ -31,7 +34,13 @@ class TestPineconeDBInitialization(unittest.TestCase):
 
     @patch.dict(
         os.environ,
-        {"PINECONE_API_KEY": "test-api-key", "PINECONE_INDEX_NAME": "test-index"},
+        {
+            "PINECONE_API_KEY": "test-api-key",
+            "PINECONE_ENVIRONMENT": "test-env",
+            "PINECONE_INDEX_NAME": "test-index",
+            "PINECONE_NAMESPACE": "test-namespace",
+        },
+        clear=True,
     )
     @patch("nyc_landmarks.vectordb.pinecone_db.Pinecone")
     def test_initialization_with_env_vars(self, mock_pinecone: Mock) -> None:
@@ -753,7 +762,7 @@ class TestPineconeDBIndexOperations(unittest.TestCase):
 
         self.assertTrue(result)
         self.mock_pc.create_index.assert_called_once()
-        mock_sleep.assert_called_once_with(30)
+        mock_sleep.assert_called_once_with(INDEX_CREATION_POLL_INTERVAL)
 
     def test_create_index_if_not_exists_existing_index(self) -> None:
         """Test when index already exists."""
