@@ -68,7 +68,7 @@ def demonstrate_correlation_features() -> None:
     print(f"   📊 All 3 queries linked by session ID: {session_id}")
 
     # Feature 3: Performance analysis demonstration
-    print("\n� Feature 3: Performance Analysis Capability")
+    print("\n⏱ Feature 3: Performance Analysis Capability")
     perf_correlation_id = f"perf-{generate_correlation_id()[:12]}"
     print(f"   Performance Test ID: {perf_correlation_id}")
 
