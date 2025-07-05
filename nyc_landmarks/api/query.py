@@ -255,7 +255,9 @@ async def search_text(
 
         # Query the vector database (only pass filter_dict if it has values)
         filter_to_use = filter_dict if filter_dict else None
-        matches = vector_db.query_vectors(query_embedding, query.top_k, filter_to_use)
+        matches = vector_db.query_vectors(
+            query_embedding, query.top_k, filter_to_use, correlation_id=correlation_id
+        )
 
         # Get index information from vector_db
         index_name = getattr(vector_db, "index_name", None)
@@ -676,6 +678,7 @@ def _perform_vector_search(
     top_k: int,
     filter_dict: Optional[Dict[str, Any]],
     vector_db: PineconeDB,
+    correlation_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
     Perform vector search in the database.
@@ -685,12 +688,16 @@ def _perform_vector_search(
         top_k: Maximum number of results to return
         filter_dict: Optional filter dictionary
         vector_db: PineconeDB instance
+        correlation_id: Optional correlation ID for request tracing
 
     Returns:
         List of raw vector search results
     """
     return vector_db.query_vectors(
-        query_vector=embedding, top_k=top_k, filter_dict=filter_dict
+        query_vector=embedding,
+        top_k=top_k,
+        filter_dict=filter_dict,
+        correlation_id=correlation_id,
     )
 
 
@@ -750,7 +757,9 @@ def search_combined_sources(
 
     # Build filter dictionary and query the vector database
     filter_dict = _build_search_filter(landmark_id, source_type)
-    matches = _perform_vector_search(embedding, top_k, filter_dict, vector_db)
+    matches = _perform_vector_search(
+        embedding, top_k, filter_dict, vector_db, correlation_id
+    )
 
     # Enhance results with source attribution and additional information
     enhanced_results = _process_search_results(matches, db_client)

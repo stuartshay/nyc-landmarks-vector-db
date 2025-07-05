@@ -581,6 +581,7 @@ class PineconeDB:
         id_prefix: Optional[str] = None,
         include_values: bool = False,
         namespace_override: Optional[str] = None,
+        correlation_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Enhanced query method that consolidates all vector querying functionality.
@@ -600,11 +601,28 @@ class PineconeDB:
             id_prefix: Filter vector IDs by prefix (case-insensitive)
             include_values: Whether to include embedding values in results
             namespace_override: Override the instance namespace for this query
+            correlation_id: Optional correlation ID for request tracing and logging
 
         Returns:
             List of matching vectors with metadata and optionally embedding values
         """
         try:
+            # Log the start of vector query operation
+            logger.info(
+                "Starting vector query operation",
+                extra={
+                    "correlation_id": correlation_id,
+                    "top_k": top_k,
+                    "has_query_vector": query_vector is not None,
+                    "landmark_id": landmark_id,
+                    "source_type": source_type,
+                    "id_prefix": id_prefix,
+                    "filter_dict_size": len(filter_dict) if filter_dict else 0,
+                    "namespace_override": namespace_override,
+                    "operation": "vector_query_start",
+                },
+            )
+
             # Determine the namespace to use
             query_namespace = (
                 namespace_override if namespace_override is not None else self.namespace
@@ -652,11 +670,30 @@ class PineconeDB:
                 self._standardize_match(match, include_values) for match in matches
             ]
 
+            # Log successful completion of vector query
+            logger.info(
+                "Vector query operation completed",
+                extra={
+                    "correlation_id": correlation_id,
+                    "results_count": len(result_list),
+                    "effective_top_k": effective_top_k,
+                    "actual_top_k": top_k,
+                    "operation": "vector_query_complete",
+                },
+            )
+
             logger.debug(f"Returned {len(result_list)} vectors after processing")
             return result_list
 
         except Exception as e:
-            logger.error(f"Failed to query vectors: {e}")
+            logger.error(
+                "Failed to query vectors",
+                extra={
+                    "correlation_id": correlation_id,
+                    "error": str(e),
+                    "operation": "vector_query_error",
+                },
+            )
             return []
 
     # Convenience methods for common query patterns
@@ -668,6 +705,7 @@ class PineconeDB:
         filter_dict: Optional[Dict[str, Any]] = None,
         landmark_id: Optional[str] = None,
         source_type: Optional[str] = None,
+        correlation_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Perform semantic similarity search with optional metadata filtering.
@@ -678,6 +716,7 @@ class PineconeDB:
             filter_dict: Custom metadata filters
             landmark_id: Filter by specific landmark ID
             source_type: Filter by source type
+            correlation_id: Optional correlation ID for request tracing
 
         Returns:
             List of semantically similar vectors
@@ -688,6 +727,7 @@ class PineconeDB:
             filter_dict=filter_dict,
             landmark_id=landmark_id,
             source_type=source_type,
+            correlation_id=correlation_id,
         )
 
     def list_vectors(
@@ -699,6 +739,7 @@ class PineconeDB:
         id_prefix: Optional[str] = None,
         include_values: bool = False,
         namespace_override: Optional[str] = None,
+        correlation_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         List vectors without semantic search (listing operation).
@@ -711,6 +752,7 @@ class PineconeDB:
             id_prefix: Filter vector IDs by prefix
             include_values: Whether to include embedding values
             namespace_override: Override namespace for this query
+            correlation_id: Optional correlation ID for request tracing
 
         Returns:
             List of vectors matching the filters
@@ -724,6 +766,7 @@ class PineconeDB:
             id_prefix=id_prefix,
             include_values=include_values,
             namespace_override=namespace_override,
+            correlation_id=correlation_id,
         )
 
     def delete_vectors(self, vector_ids: List[str]) -> int:
