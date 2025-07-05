@@ -1,6 +1,6 @@
 {
     "name": "NYC Landmarks Vector DB (Pre-built)",
-    "image": "ghcr.io/stuartshay/nyc-landmarks-devcontainer:latest",
+    "image": "ghcr.io/stuartshay/nyc-landmarks-devcontainer:develop",
     "postCreateCommand": "/workspaces/nyc-landmarks-vector-db/.devcontainer/post-create-prebuilt.sh",
     "postStartCommand": "echo 'NYC Landmarks Vector DB development environment ready! 🚀 (Pre-built container)'",
     "remoteUser": "vscode",
