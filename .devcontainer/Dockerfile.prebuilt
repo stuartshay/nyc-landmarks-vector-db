@@ -85,36 +85,36 @@ RUN su $USERNAME -c "curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzs
 # Set up Python environment with common tools
 RUN pip install --upgrade pip \
     && pip install \
-    pytest \
-    pytest-cov \
-    pytest-asyncio \
-    black \
-    isort \
-    flake8 \
-    mypy \
-    pylint \
-    pre-commit \
-    pip-tools \
-    nbqa \
-    nbstripout \
-    jupyter \
-    jupyterlab \
-    ipywidgets \
-    plotly \
-    seaborn \
-    tqdm \
+        pytest \
+        pytest-cov \
+        pytest-asyncio \
+        black \
+        isort \
+        flake8 \
+        mypy \
+        pylint \
+        pre-commit \
+        pip-tools \
+        nbqa \
+        nbstripout \
+        jupyter \
+        jupyterlab \
+        ipywidgets \
+        plotly \
+        seaborn \
+        tqdm \
     && pip cache purge
 
 # Pre-install common development tools for vector databases
 RUN pip install \
-    pinecone \
-    tenacity \
-    pandas-stubs \
-    numpy \
-    pandas \
-    scikit-learn \
-    matplotlib \
-    folium \
+        pinecone \
+        tenacity \
+        pandas-stubs \
+        numpy \
+        pandas \
+        scikit-learn \
+        matplotlib \
+        folium \
     && pip cache purge
 
 # Copy requirements and setup files
