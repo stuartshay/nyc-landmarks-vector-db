@@ -55,8 +55,10 @@ ENV SONAR_SCANNER_HOME=/opt/sonar-scanner
 ENV PATH=$SONAR_SCANNER_HOME/bin:$PATH
 
 # Install Google Cloud CLI
-RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list \
-    && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add - \
+RUN apt-get update \
+    && apt-get install -y apt-transport-https ca-certificates gnupg curl \
+    && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list \
     && apt-get update \
     && apt-get install -y google-cloud-cli \
     && apt-get clean \
@@ -82,48 +84,14 @@ RUN chsh -s /bin/zsh $USERNAME
 # Install Oh My Zsh for better Zsh experience
 RUN su $USERNAME -c "curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh"
 
-# Set up Python environment with common tools
-RUN pip install --upgrade pip \
-    && pip install \
-        pytest \
-        pytest-cov \
-        pytest-asyncio \
-        black \
-        isort \
-        flake8 \
-        mypy \
-        pylint \
-        pre-commit \
-        pip-tools \
-        nbqa \
-        nbstripout \
-        jupyter \
-        jupyterlab \
-        ipywidgets \
-        plotly \
-        seaborn \
-        tqdm \
-    && pip cache purge
-
-# Pre-install common development tools for vector databases
-RUN pip install \
-        pinecone \
-        tenacity \
-        pandas-stubs \
-        numpy \
-        pandas \
-        scikit-learn \
-        matplotlib \
-        folium \
-    && pip cache purge
-
-# Copy requirements and setup files
+# Copy requirements and setup files first
 COPY requirements.txt /tmp/requirements.txt
 COPY setup.py /tmp/setup.py
 COPY pyproject.toml /tmp/pyproject.toml
 
-# Pre-install project dependencies
-RUN pip install -r /tmp/requirements.txt \
+# Pre-install project dependencies - this includes all the development tools
+RUN pip install --upgrade pip \
+    && pip install -r /tmp/requirements.txt \
     && pip cache purge \
     && rm -rf /tmp/requirements.txt /tmp/setup.py /tmp/pyproject.toml
 
