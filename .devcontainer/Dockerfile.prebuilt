@@ -11,7 +11,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONFAULTHANDLER=1 \
     PYTHONHASHSEED=random \
-    PIP_NO_CACHE_DIR=off \
+    PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
     PIP_DEFAULT_TIMEOUT=100 \
     POETRY_VERSION=1.5.1
@@ -92,7 +92,6 @@ COPY pyproject.toml /tmp/pyproject.toml
 # Pre-install project dependencies - this includes all the development tools
 RUN pip install --upgrade pip \
     && pip install -r /tmp/requirements.txt \
-    && pip cache purge \
     && rm -rf /tmp/requirements.txt /tmp/setup.py /tmp/pyproject.toml
 
 # Set working directory
@@ -108,15 +107,15 @@ RUN mkdir -p /workspace/test_output/notebooks \
 USER $USERNAME
 
 # Set up Python user directories with proper permissions
-RUN mkdir -p "${HOME}/.local/lib/python3.12/site-packages" \
-    && mkdir -p "${HOME}/.local/bin" \
-    && mkdir -p "${HOME}/.cache/pip" \
-    && chmod -R 755 "${HOME}/.local" \
-    && chmod -R 755 "${HOME}/.cache"
+RUN mkdir -p "/home/$USERNAME/.local/lib/python3.12/site-packages" \
+    && mkdir -p "/home/$USERNAME/.local/bin" \
+    && mkdir -p "/home/$USERNAME/.cache/pip" \
+    && chmod -R 755 "/home/$USERNAME/.local" \
+    && chmod -R 755 "/home/$USERNAME/.cache"
 
 # Set Python path
 ENV PYTHONPATH=/workspace
-ENV PATH="${HOME}/.local/bin:${PATH}"
+ENV PATH="/home/vscode/.local/bin:$PATH"
 
 # Make Zsh the default shell when the container starts
 SHELL ["/bin/zsh", "-c"]
