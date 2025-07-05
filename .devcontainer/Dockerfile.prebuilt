@@ -1,0 +1,175 @@
+# Pre-built DevContainer Dockerfile
+# This Dockerfile is optimized for pre-building to reduce startup time
+FROM python:3.12-slim
+
+# Build arguments
+ARG BUILDKIT_INLINE_CACHE=1
+ARG FORCE_REBUILD=false
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONFAULTHANDLER=1 \
+    PYTHONHASHSEED=random \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100 \
+    POETRY_VERSION=1.5.1
+
+# Install system dependencies in a single layer
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    build-essential \
+    libffi-dev \
+    libssl-dev \
+    libpq-dev \
+    zsh \
+    apt-transport-https \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    vim \
+    less \
+    htop \
+    wget \
+    unzip \
+    openjdk-17-jdk \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set JAVA_HOME
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+ENV PATH=$JAVA_HOME/bin:$PATH
+
+# Install SonarQube Scanner
+RUN curl -o /tmp/sonar-scanner.zip -L https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip \
+    && unzip /tmp/sonar-scanner.zip -d /opt/ \
+    && mv /opt/sonar-scanner-5.0.1.3006-linux /opt/sonar-scanner \
+    && ln -s /opt/sonar-scanner/bin/sonar-scanner /usr/local/bin/sonar-scanner \
+    && rm /tmp/sonar-scanner.zip
+
+# Set SonarQube Scanner environment
+ENV SONAR_SCANNER_HOME=/opt/sonar-scanner
+ENV PATH=$SONAR_SCANNER_HOME/bin:$PATH
+
+# Install Google Cloud CLI
+RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list \
+    && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add - \
+    && apt-get update \
+    && apt-get install -y google-cloud-cli \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create a non-root user
+ARG USERNAME=vscode
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+
+RUN groupadd --gid $USER_GID $USERNAME \
+    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
+    && apt-get update \
+    && apt-get install -y sudo \
+    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
+    && chmod 0440 /etc/sudoers.d/$USERNAME \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Zsh as default shell for the user
+RUN chsh -s /bin/zsh $USERNAME
+
+# Install Oh My Zsh for better Zsh experience
+RUN su $USERNAME -c "curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh"
+
+# Set up Python environment with common tools
+RUN pip install --upgrade pip \
+    && pip install \
+    pytest \
+    pytest-cov \
+    pytest-asyncio \
+    black \
+    isort \
+    flake8 \
+    mypy \
+    pylint \
+    pre-commit \
+    pip-tools \
+    nbqa \
+    nbstripout \
+    jupyter \
+    jupyterlab \
+    ipywidgets \
+    plotly \
+    seaborn \
+    tqdm \
+    && pip cache purge
+
+# Pre-install common development tools for vector databases
+RUN pip install \
+    pinecone \
+    tenacity \
+    pandas-stubs \
+    numpy \
+    pandas \
+    scikit-learn \
+    matplotlib \
+    folium \
+    && pip cache purge
+
+# Copy requirements and setup files
+COPY requirements.txt /tmp/requirements.txt
+COPY setup.py /tmp/setup.py
+COPY pyproject.toml /tmp/pyproject.toml
+
+# Pre-install project dependencies
+RUN pip install -r /tmp/requirements.txt \
+    && pip cache purge \
+    && rm -rf /tmp/requirements.txt /tmp/setup.py /tmp/pyproject.toml
+
+# Set working directory
+WORKDIR /workspace
+
+# Create needed directories with proper permissions
+RUN mkdir -p /workspace/test_output/notebooks \
+    && mkdir -p /workspace/.cache \
+    && mkdir -p /workspace/.gcp \
+    && chown -R $USERNAME:$USERNAME /workspace
+
+# Set the default user
+USER $USERNAME
+
+# Set up Python user directories with proper permissions
+RUN mkdir -p "${HOME}/.local/lib/python3.12/site-packages" \
+    && mkdir -p "${HOME}/.local/bin" \
+    && mkdir -p "${HOME}/.cache/pip" \
+    && chmod -R 755 "${HOME}/.local" \
+    && chmod -R 755 "${HOME}/.cache"
+
+# Set Python path
+ENV PYTHONPATH=/workspace
+ENV PATH="${HOME}/.local/bin:${PATH}"
+
+# Make Zsh the default shell when the container starts
+SHELL ["/bin/zsh", "-c"]
+
+# Add environment setup to .zshrc
+RUN echo 'export PYTHONPATH="/workspace:$PYTHONPATH"' >> ~/.zshrc \
+    && echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc \
+    && echo 'echo "🚀 NYC Landmarks Vector DB Development Environment (Pre-built)"' >> ~/.zshrc \
+    && echo 'echo "Ready to use! Run: source venv/bin/activate (if using venv)"' >> ~/.zshrc
+
+# Add labels for better maintainability
+LABEL maintainer="NYC Landmarks Team"
+LABEL description="Pre-built development container for NYC Landmarks Vector DB"
+LABEL version="1.0"
+LABEL org.opencontainers.image.source="https://github.com/stuartshay/nyc-landmarks-vector-db"
+LABEL org.opencontainers.image.title="NYC Landmarks DevContainer"
+LABEL org.opencontainers.image.description="Pre-built development container with Python 3.12, vector database tools, and development dependencies"
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python --version || exit 1
+
+# Default command
+CMD ["/bin/zsh"]
