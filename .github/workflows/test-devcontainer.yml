@@ -27,6 +27,7 @@ jobs:
           context: .
           file: .devcontainer/Dockerfile.prebuilt
           push: false
+          load: true
           tags: test:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
