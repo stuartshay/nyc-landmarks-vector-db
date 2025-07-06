@@ -41,6 +41,7 @@ env:
 permissions:
   contents: read
   packages: write
+  security-events: write
 
 jobs:
   check-dockerhub-secrets:
@@ -237,6 +238,9 @@ jobs:
     needs: build
     if: github.event_name != 'pull_request'
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
@@ -245,7 +249,7 @@ jobs:
           output: "trivy-results.sarif"
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: "trivy-results.sarif"
 
