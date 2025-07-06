@@ -11,6 +11,10 @@ on:
       - ".devcontainer/**"
   workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   test-dockerfile:
     runs-on: ubuntu-latest

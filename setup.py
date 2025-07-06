@@ -130,6 +130,7 @@ setup(
             "pyright>=1.1.402",  # Added for static type checking
             "actionlint-py>=1.7.7.23",  # Python wrapper for actionlint (GitHub Actions linter)
             "shellcheck-py>=0.10.0.1",  # Python wrapper for shellcheck (shell script linter)
+            "detect-secrets>=1.5.0",  # Added for secret detection as alternative to gitleaks
             "jupyterlab>=4.4.4",  # Added for running notebooks
             "notebook>=7.4.4",  # Added for Jupyter notebook server
             "ipywidgets>=8.1.7",  # Added for notebook interactivity

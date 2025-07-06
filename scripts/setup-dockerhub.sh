@@ -23,8 +23,18 @@ if ! git rev-parse --git-dir > /dev/null 2>&1; then
 fi
 
 # Get repository information
-REPO_OWNER=$(git config --get remote.origin.url | sed -n 's#.*/\([^/]*\)/.*#\1#p')
-REPO_NAME=$(git config --get remote.origin.url | sed -n 's#.*/\([^/]*\)\.git#\1#p')
+REMOTE_URL=$(git remote get-url origin)
+if [[ "$REMOTE_URL" =~ ^https?://([^/]+)/([^/]+)/([^/]+)\.git$ ]]; then
+    REPO_OWNER="${BASH_REMATCH[2]}"
+    REPO_NAME="${BASH_REMATCH[3]}"
+elif [[ "$REMOTE_URL" =~ ^git@([^:]+):([^/]+)/([^/]+)\.git$ ]]; then
+    REPO_OWNER="${BASH_REMATCH[2]}"
+    REPO_NAME="${BASH_REMATCH[3]}"
+else
+    echo -e "${RED}Error: Could not parse repository owner and name from remote URL: $REMOTE_URL${NC}"
+    echo -e "${YELLOW}Supported formats: https://github.com/owner/repo.git or git@github.com:owner/repo.git${NC}"
+    exit 1
+fi
 
 if [ -z "$REPO_OWNER" ] || [ -z "$REPO_NAME" ]; then
     echo -e "${RED}Error: Could not determine repository owner and name${NC}"

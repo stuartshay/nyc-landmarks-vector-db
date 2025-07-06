@@ -64,6 +64,13 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Install gitleaks for secret scanning
+RUN curl -L https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz -o /tmp/gitleaks.tar.gz \
+    && tar -xzf /tmp/gitleaks.tar.gz -C /tmp \
+    && mv /tmp/gitleaks /usr/local/bin/gitleaks \
+    && chmod +x /usr/local/bin/gitleaks \
+    && rm /tmp/gitleaks.tar.gz
+
 # Create a non-root user
 ARG USERNAME=vscode
 ARG USER_UID=1000
@@ -95,13 +102,13 @@ RUN pip install --upgrade pip \
     && rm -rf /tmp/requirements.txt /tmp/setup.py /tmp/pyproject.toml
 
 # Set working directory
-WORKDIR /workspace
+WORKDIR /workspaces/nyc-landmarks-vector-db
 
 # Create needed directories with proper permissions
-RUN mkdir -p /workspace/test_output/notebooks \
-    && mkdir -p /workspace/.cache \
-    && mkdir -p /workspace/.gcp \
-    && chown -R $USERNAME:$USERNAME /workspace
+RUN mkdir -p /workspaces/nyc-landmarks-vector-db/test_output/notebooks \
+    && mkdir -p /workspaces/nyc-landmarks-vector-db/.cache \
+    && mkdir -p /workspaces/nyc-landmarks-vector-db/.gcp \
+    && chown -R $USERNAME:$USERNAME /workspaces/nyc-landmarks-vector-db
 
 # Set the default user
 USER $USERNAME

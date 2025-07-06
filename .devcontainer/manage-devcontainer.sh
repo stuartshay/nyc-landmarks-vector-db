@@ -17,6 +17,24 @@ ORIGINAL_CONFIG="$DEVCONTAINER_DIR/devcontainer.json"
 PREBUILT_CONFIG="$DEVCONTAINER_DIR/devcontainer.prebuilt.json"
 BACKUP_CONFIG="$DEVCONTAINER_DIR/devcontainer.json.backup"
 
+# Get repository owner dynamically
+get_repo_owner() {
+    if git rev-parse --git-dir > /dev/null 2>&1; then
+        REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
+        if [[ "$REMOTE_URL" =~ ^https?://([^/]+)/([^/]+)/([^/]+)\.git$ ]]; then
+            echo "${BASH_REMATCH[2]}"
+        elif [[ "$REMOTE_URL" =~ ^git@([^:]+):([^/]+)/([^/]+)\.git$ ]]; then
+            echo "${BASH_REMATCH[2]}"
+        else
+            echo "stuartshay"  # fallback
+        fi
+    else
+        echo "stuartshay"  # fallback
+    fi
+}
+
+REPO_OWNER=$(get_repo_owner)
+
 show_help() {
     echo -e "${BLUE}DevContainer Management Script${NC}"
     echo -e "${BLUE}================================${NC}"
@@ -125,8 +143,8 @@ show_status() {
 
     # Show container registry status
     echo -e "${BLUE}Container Registry Status:${NC}"
-    echo "  - GitHub Container Registry: ghcr.io/stuartshay/nyc-landmarks-devcontainer"
-    echo "  - Docker Hub: stuartshay/nyc-landmarks-devcontainer"
+    echo "  - GitHub Container Registry: ghcr.io/${REPO_OWNER}/nyc-landmarks-devcontainer"
+    echo "  - Docker Hub: ${REPO_OWNER}/nyc-landmarks-devcontainer"
     echo ""
 }
 
