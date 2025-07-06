@@ -130,14 +130,14 @@ RUN mkdir -p "/home/$USERNAME/.local/lib/python3.12/site-packages" \
     && chmod -R 755 "/home/$USERNAME/.cache"
 
 # Set Python path
-ENV PYTHONPATH=/workspace
+ENV PYTHONPATH=/workspaces/nyc-landmarks-vector-db
 ENV PATH="/home/vscode/.local/bin:$PATH"
 
 # Make Zsh the default shell when the container starts
 SHELL ["/bin/zsh", "-c"]
 
 # Add environment setup to .zshrc
-RUN echo 'export PYTHONPATH="/workspace:$PYTHONPATH"' >> ~/.zshrc \
+RUN echo 'export PYTHONPATH="/workspaces/nyc-landmarks-vector-db:$PYTHONPATH"' >> ~/.zshrc \
     && echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc \
     && echo 'echo "🚀 NYC Landmarks Vector DB Development Environment (Pre-built)"' >> ~/.zshrc \
     && echo 'echo "Ready to use! Run: source venv/bin/activate (if using venv)"' >> ~/.zshrc
