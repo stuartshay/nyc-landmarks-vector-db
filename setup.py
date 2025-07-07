@@ -75,9 +75,9 @@ setup(
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
     ],
-    python_requires=">=3.12",
+    python_requires=">=3.13",
     cmdclass={
         "develop": PostDevelopCommand,
         "install": PostInstallCommand,

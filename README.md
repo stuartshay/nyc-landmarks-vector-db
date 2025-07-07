@@ -140,7 +140,7 @@ flowchart TD
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.13+
 - Access to OpenAI API (API key)
 - Access to Pinecone (API key)
 - Access to Google Cloud Secret Store
@@ -155,8 +155,8 @@ flowchart TD
 git clone https://github.com/yourusername/nyc-landmarks-vector-db.git
 cd nyc-landmarks-vector-db
 
-# Option 1: Using venv (if you have Python 3.11 installed)
-python3.12 -m venv venv
+# Option 1: Using venv (if you have Python 3.13 installed)
+python3.13 -m venv venv
 
 # Activate the virtual environment
 # On Unix or MacOS:
@@ -164,9 +164,9 @@ source venv/bin/activate
 # On Windows:
 venv\Scripts\activate
 
-# Option 2: Using Conda (recommended if Python 3.11 is not installed)
+# Option 2: Using Conda (recommended if Python 3.13 is not installed)
 # Create a conda environment
-conda create -n nyc-landmarks python=3.11
+conda create -n nyc-landmarks python=3.13
 
 # Activate the conda environment
 conda activate nyc-landmarks
@@ -300,7 +300,7 @@ If you prefer not to use containers, follow these steps to set up locally:
 
 #### Prerequisites
 
-- Python 3.11+
+- Python 3.13+
 - Git
 
 #### Steps
@@ -315,7 +315,7 @@ If you prefer not to use containers, follow these steps to set up locally:
 1. **Create and activate a virtual environment:**
 
    ```bash
-   python3.11 -m venv venv
+   python3.13 -m venv venv
 
    # Activate the virtual environment
    # On Unix or MacOS:
