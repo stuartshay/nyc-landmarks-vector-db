@@ -104,7 +104,7 @@ setup(
         "folium>=0.20.0",  # Added for map visualizations in notebooks
         "scikit-learn>=1.7.0",  # Updated to latest version - Added for clustering in notebooks
         "tokenizers>=0.21.2",
-        "transformers>=4.53.0",
+        "transformers>=4.53.1",
         "openpyxl>=3.1.5",  # Added for Excel file manipulation
     ],
     extras_require={
