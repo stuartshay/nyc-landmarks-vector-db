@@ -32,8 +32,8 @@ repos:
         args: ["--line-length", "88"]
         files: ^(scripts|nyc_landmarks|tests|utils)/.*\.py$
 
-  - repo: https://github.com/pre-commit/mirrors-autopep8
-    rev: v2.0.4 # or latest
+  - repo: https://github.com/hhatto/autopep8
+    rev: v2.3.2 # or latest
     hooks:
       - id: autopep8
         args: ["--select=E225,E226,E302,E305", "--in-place"]

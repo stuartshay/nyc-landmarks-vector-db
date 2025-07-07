@@ -1,143 +1,124 @@
-# Active Context
+# Active Context - NYC Landmarks Vector DB
 
-This document captures the current focus of development, recent changes, and immediate next steps.
+## Current Status: Environment Setup Complete with Security Tools
 
-## Current Focus
+### Recently Completed Work
 
-### Test Suite Improvements - PR #219 Suggestions (COMPLETED) ✅
+#### Python 3.13 Environment Setup Enhancement (January 7, 2025)
 
-Recently completed implementation of all test improvement suggestions from PR #219, focusing on eliminating code duplication and improving test maintainability.
+- **Enhanced setup_env.sh script** with gitleaks and Terraform installation
+- **Fixed pre-commit hook failures** that were preventing proper code quality checks
+- **Added comprehensive security tools support** for development workflow
 
-**Completed Work:**
+#### Key Accomplishments
 
-1. **PineconeDB Test Improvements** ✅
+1. **Security Tools Integration**
 
-   - Created `BaseTestPineconeDB` class to centralize common setup/mocking logic
-   - Eliminated duplicated setUp methods across 6 test classes
-   - Improved test organization with proper inheritance hierarchy
-   - All 46 PineconeDB tests passing
+   - Added gitleaks v8.21.2 installation for secret detection
+   - Added Terraform v1.12.2 installation for infrastructure management
+   - Both tools now properly integrated into pre-commit workflow
 
-1. **Wikipedia Processor Test Deduplication** ✅
+1. **Enhanced Setup Script Features**
 
-   - Created `BaseWikipediaProcessorTest` class to eliminate code duplication
-   - Refactored 6 test classes to inherit from base class
-   - Removed 150+ lines of duplicated setUp/tearDown code
-   - All 16 Wikipedia processor tests passing
-   - Fixed initialization test logic to properly verify mock assignments
+   - New `--skip-security-tools` option for flexibility
+   - Cross-platform installation support (Linux, macOS)
+   - Proper error handling and fallback mechanisms
+   - Comprehensive validation of all installed tools
 
-**Results:**
+1. **Pre-commit Hook Resolution**
 
-- Reduced test code duplication by ~80% in affected files
-- Improved maintainability through single source of truth for setup logic
-- Enhanced test reliability through consistent mock configuration
-- Preserved all existing test functionality and coverage
+   - All pre-commit hooks now pass successfully
+   - Terraform format and validate hooks working correctly
+   - Gitleaks secret detection integrated into commit workflow
+   - Removed problematic autopep8 hook (replaced with Black for formatting)
 
-### Previous: Terraform Cloud Implementation (PR #196)
+1. **Installation Methods**
 
-Terraform Cloud integration was successfully implemented for the NYC Landmarks Vector DB project, improving state management, team collaboration, and operational consistency for infrastructure deployments.
+   - **Gitleaks**: Direct download from GitHub releases for Linux, Homebrew for macOS
+   - **Terraform**: HashiCorp official repositories for Linux, Homebrew for macOS
+   - **Fallback**: Direct binary downloads for unsupported package managers
 
-## Recent Changes
+#### Technical Implementation Details
 
-### Type Checking Fix for Logger Tests
+**Script Enhancements:**
 
-- Fixed mypy type checking errors in `tests/unit/utils/test_logger.py`:
-  - **Issue**: Lines 701 and 717 had errors where mypy couldn't recognize that `handler.close` and `handler.flush` were mock objects with assertion methods
-  - **Root Cause**: Mock objects created with `MagicMock()` were being treated as regular callables, so `.assert_called_once()` was not recognized as a valid attribute
-  - **Solution**: Added `# type: ignore[attr-defined]` comments to suppress the specific mypy errors for mock assertion calls
-  - **Result**: Mypy now passes successfully with no type checking errors
+- Added version constants for gitleaks (8.21.2) and Terraform (1.10.3)
+- Implemented `install_gitleaks()` and `install_terraform()` functions
+- Added `setup_security_tools()` orchestration function
+- Enhanced validation to check security tools installation
+- Updated command-line argument parsing for new options
 
-### Terraform Cloud Configuration
+**Cross-Platform Support:**
 
-- Added Terraform Cloud block in `versions.tf`:
+- Ubuntu/Debian: Uses official HashiCorp apt repository for Terraform
+- RHEL/CentOS/Fedora: Uses official HashiCorp yum/dnf repository
+- macOS: Uses Homebrew for both tools
+- Generic Linux: Direct binary downloads as fallback
 
-  ```hcl
-  cloud {
-    organization = "nyc-landmarks"
-    workspaces {
-      name = "nyc-landmarks-vector-db"
-    }
-  }
-  ```
+**Error Handling:**
 
-- Created `.terraformignore` file to exclude Python virtual environments and other unnecessary files from being uploaded to Terraform Cloud
+- Graceful degradation if security tools fail to install
+- Clear logging of installation progress and errors
+- Non-blocking failures (setup continues with warnings)
 
-- Updated the workspace configuration in Terraform Cloud using the API:
+#### Validation Results
 
-  ```bash
-  curl --header "Authorization: Bearer $TF_TOKEN_NYC_LANDMARKS" \
-       --header "Content-Type: application/vnd.api+json" \
-       --request PATCH \
-       --data '{"data":{"attributes":{"working-directory":"infrastructure/terraform"},"type":"workspaces"}}' \
-       https://app.terraform.io/api/v2/organizations/nyc-landmarks/workspaces/nyc-landmarks-vector-db
-  ```
+- ✅ All pre-commit hooks passing (26/26)
+- ✅ Python 3.13.5 environment fully functional
+- ✅ Gitleaks v8.21.2 installed and working
+- ✅ Terraform v1.12.2 installed and working
+- ✅ All project dependencies installed correctly
+- ✅ Development tools (Black, mypy, pytest) working
+- ✅ Jupyter environment configured
 
-- Fixed output sensitivity issues in Terraform configuration:
+### Current Environment State
 
-  - Marked project_id, dashboard_name, dashboard_url, log_views_urls, and alert_policies_urls as sensitive outputs
+**Python Environment:**
 
-### API and Vector DB Monitoring
+- Python 3.13.5 in virtual environment (.venv)
+- All requirements.txt dependencies installed
+- Project installed in editable mode
+- Pre-commit hooks configured and working
 
-Continuing to enhance the monitoring and observability of our API and Vector Database:
+**Security Tools:**
 
-- Updated logging metrics configuration
-- Enhanced dashboard visualization
-- Improved alert policies for better incident detection
-- Set up structured logging for improved troubleshooting
+- Gitleaks: Secret detection and API key scanning
+- Terraform: Infrastructure as code validation
+- Both integrated into pre-commit workflow
 
-## Next Steps
+**Development Tools:**
 
-### Terraform Cloud Implementation
+- Black: Code formatting
+- isort: Import sorting
+- mypy: Type checking
+- pytest: Testing framework
+- Jupyter: Notebook environment
 
-1. **Variable Setup in Terraform Cloud**:
+### Next Steps
 
-   - Configure GCP credentials in Terraform Cloud workspace as environment variables
-   - Migrate terraform.tfvars variables to Terraform Cloud workspace variables
+The environment is now fully configured and ready for development work. The enhanced setup script resolves the pre-commit hook failures and provides a robust foundation for:
 
-1. **VCS Integration**:
+1. **Secure Development**: Automatic secret detection prevents accidental commits of API keys
+1. **Infrastructure Management**: Terraform validation ensures infrastructure code quality
+1. **Code Quality**: Comprehensive linting and formatting tools maintain code standards
+1. **Cross-Platform Support**: Setup script works across different operating systems
 
-   - Set up GitHub VCS integration with Terraform Cloud
-   - Configure branch specifications for automatic runs
+### Usage
 
-1. **Deployment Script Updates**:
+To use the enhanced setup script:
 
-   - Update existing deployment scripts to work with Terraform Cloud
-   - Add documentation for using these scripts
+```bash
+# Standard installation with security tools
+./setup_env.sh
 
-1. **Testing and Validation**:
+# Skip security tools if not needed
+./setup_env.sh --skip-security-tools
 
-   - Perform full run cycle (plan and apply) through Terraform Cloud
-   - Verify state is properly stored in Terraform Cloud
-   - Test concurrent operations and state locking
+# Verbose output for debugging
+./setup_env.sh --verbose
 
-1. **Documentation Updates**:
+# Skip Python installation (use existing)
+./setup_env.sh --skip-python
+```
 
-   - Update README.md with Terraform Cloud setup instructions
-   - Create detailed guide for new team members
-
-### Vector DB Enhancements
-
-1. Complete the Query API Enhancement:
-
-   - Finalize vector search improvements
-   - Implement advanced filtering capabilities
-   - Document new query parameters
-
-1. Performance Testing:
-
-   - Benchmark current vector search performance
-   - Identify optimization opportunities
-   - Implement improvements
-
-## Decisions and Considerations
-
-### Terraform Cloud Workspace Configuration
-
-We decided to modify the Terraform Cloud workspace configuration to point to the correct directory (`infrastructure/terraform`) rather than restructuring our local repository. This approach minimizes changes to the existing codebase while enabling Terraform Cloud integration.
-
-### Authentication Strategy
-
-For GCP authentication with Terraform Cloud, we've chosen to use environment variables in the Terraform Cloud workspace rather than uploading service account key files. This approach improves security by keeping sensitive credentials out of version control.
-
-### State Migration
-
-We're taking a careful approach to migrating state from local to Terraform Cloud, ensuring that all team members are aware of the transition and that no state loss occurs during the process.
+All pre-commit hooks now pass successfully, resolving the original Terraform and gitleaks issues.

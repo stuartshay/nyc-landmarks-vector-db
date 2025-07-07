@@ -1,0 +1,158 @@
+# Pre-built DevContainer Dockerfile
+# This Dockerfile is optimized for pre-building to reduce startup time
+FROM python:3.13-slim
+
+# Build arguments
+ARG BUILDKIT_INLINE_CACHE=1
+ARG FORCE_REBUILD=false
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONFAULTHANDLER=1 \
+    PYTHONHASHSEED=random \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100 \
+    POETRY_VERSION=1.5.1
+
+# Install system dependencies in a single layer
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    build-essential \
+    libffi-dev \
+    libssl-dev \
+    libpq-dev \
+    zsh \
+    apt-transport-https \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    vim \
+    less \
+    htop \
+    wget \
+    unzip \
+    openjdk-17-jdk \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set JAVA_HOME
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+ENV PATH=$JAVA_HOME/bin:$PATH
+
+# Install SonarQube Scanner
+RUN curl -o /tmp/sonar-scanner.zip -L https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip \
+    && unzip /tmp/sonar-scanner.zip -d /opt/ \
+    && mv /opt/sonar-scanner-5.0.1.3006-linux /opt/sonar-scanner \
+    && ln -s /opt/sonar-scanner/bin/sonar-scanner /usr/local/bin/sonar-scanner \
+    && rm /tmp/sonar-scanner.zip
+
+# Set SonarQube Scanner environment
+ENV SONAR_SCANNER_HOME=/opt/sonar-scanner
+ENV PATH=$SONAR_SCANNER_HOME/bin:$PATH
+
+# Install Google Cloud CLI
+RUN apt-get update \
+    && apt-get install -y apt-transport-https ca-certificates gnupg curl \
+    && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list \
+    && apt-get update \
+    && apt-get install -y google-cloud-cli \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install gitleaks for secret scanning
+RUN curl -L https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz -o /tmp/gitleaks.tar.gz \
+    && tar -xzf /tmp/gitleaks.tar.gz -C /tmp \
+    && mv /tmp/gitleaks /usr/local/bin/gitleaks \
+    && chmod +x /usr/local/bin/gitleaks \
+    && rm /tmp/gitleaks.tar.gz
+
+# Install Node.js LTS for DevContainer CLI
+RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
+    && apt-get install -y nodejs \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install DevContainer CLI globally
+RUN npm install -g @devcontainers/cli
+
+# Create a non-root user
+ARG USERNAME=vscode
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+
+RUN groupadd --gid $USER_GID $USERNAME \
+    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
+    && apt-get update \
+    && apt-get install -y sudo \
+    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
+    && chmod 0440 /etc/sudoers.d/$USERNAME \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Zsh as default shell for the user
+RUN chsh -s /bin/zsh $USERNAME
+
+# Install Oh My Zsh for better Zsh experience
+RUN su $USERNAME -c "curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh"
+
+# Copy requirements and setup files first
+COPY requirements.txt /tmp/requirements.txt
+COPY setup.py /tmp/setup.py
+COPY pyproject.toml /tmp/pyproject.toml
+
+# Pre-install project dependencies - this includes all the development tools
+RUN pip install --upgrade pip \
+    && pip install -r /tmp/requirements.txt \
+    && rm -rf /tmp/requirements.txt /tmp/setup.py /tmp/pyproject.toml
+
+# Set working directory
+WORKDIR /workspaces/nyc-landmarks-vector-db
+
+# Create needed directories with proper permissions
+RUN mkdir -p /workspaces/nyc-landmarks-vector-db/test_output/notebooks \
+    && mkdir -p /workspaces/nyc-landmarks-vector-db/.cache \
+    && mkdir -p /workspaces/nyc-landmarks-vector-db/.gcp \
+    && chown -R $USERNAME:$USERNAME /workspaces/nyc-landmarks-vector-db
+
+# Set the default user
+USER $USERNAME
+
+# Set up Python user directories with proper permissions
+RUN mkdir -p "/home/$USERNAME/.local/lib/python3.13/site-packages" \
+    && mkdir -p "/home/$USERNAME/.local/bin" \
+    && mkdir -p "/home/$USERNAME/.cache/pip" \
+    && chmod -R 755 "/home/$USERNAME/.local" \
+    && chmod -R 755 "/home/$USERNAME/.cache"
+
+# Set Python path
+ENV PYTHONPATH=/workspaces/nyc-landmarks-vector-db
+ENV PATH="/home/vscode/.local/bin:$PATH"
+
+# Make Zsh the default shell when the container starts
+SHELL ["/bin/zsh", "-c"]
+
+# Add environment setup to .zshrc
+RUN echo 'export PYTHONPATH="/workspaces/nyc-landmarks-vector-db:$PYTHONPATH"' >> ~/.zshrc \
+    && echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc \
+    && echo 'echo "🚀 NYC Landmarks Vector DB Development Environment (Pre-built)"' >> ~/.zshrc \
+    && echo 'echo "Ready to use! Run: source venv/bin/activate (if using venv)"' >> ~/.zshrc
+
+# Add labels for better maintainability
+LABEL maintainer="NYC Landmarks Team"
+LABEL description="Pre-built development container for NYC Landmarks Vector DB"
+LABEL version="1.0"
+LABEL org.opencontainers.image.source="https://github.com/stuartshay/nyc-landmarks-vector-db"
+LABEL org.opencontainers.image.title="NYC Landmarks DevContainer"
+LABEL org.opencontainers.image.description="Pre-built development container with Python 3.13, vector database tools, and development dependencies"
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python --version || exit 1
+
+# Default command
+CMD ["/bin/zsh"]

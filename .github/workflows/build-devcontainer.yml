@@ -1,0 +1,267 @@
+name: Build DevContainer
+
+on:
+  push:
+    branches: [master, develop]
+    paths:
+      - ".devcontainer/**"
+      - "requirements.txt"
+      - "setup.py"
+      - "pyproject.toml"
+      - ".github/workflows/build-devcontainer.yml"
+  pull_request:
+    branches: [master, develop]
+    paths:
+      - ".devcontainer/**"
+      - "requirements.txt"
+      - "setup.py"
+      - "pyproject.toml"
+      - ".github/workflows/build-devcontainer.yml"
+  schedule:
+    # Rebuild weekly to get latest security updates
+    - cron: "0 6 * * 0"
+  workflow_dispatch:
+    inputs:
+      force_rebuild:
+        description: "Force rebuild even if cache exists"
+        required: false
+        default: false
+        type: boolean
+      push_to_registry:
+        description: "Push to container registry"
+        required: false
+        default: true
+        type: boolean
+
+env:
+  REGISTRY_GHCR: ghcr.io
+  REGISTRY_DOCKERHUB: docker.io
+  IMAGE_NAME: nyc-landmarks-devcontainer
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+
+jobs:
+  check-dockerhub-secrets:
+    runs-on: ubuntu-latest
+    outputs:
+      dockerhub-available: ${{ steps.check.outputs.available }}
+    steps:
+      - name: Check Docker Hub secrets
+        id: check
+        run: |
+          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ] && [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "✅ Docker Hub credentials are available"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "⚠️  Docker Hub credentials not found"
+            echo "To enable Docker Hub publishing:"
+            echo "1. Go to repository Settings → Secrets and variables → Actions"
+            echo "2. Add DOCKERHUB_USERNAME (your Docker Hub username)"
+            echo "3. Add DOCKERHUB_TOKEN (Docker Hub access token)"
+          fi
+
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        registry: [ghcr]
+        include:
+          - registry: ghcr
+            registry_url: ghcr.io
+            image_name: ghcr.io/${{ github.repository_owner }}/nyc-landmarks-devcontainer
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY_GHCR }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ matrix.image_name }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix=${{ github.ref_name }}-
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/develop' }}
+            type=schedule,pattern={{date 'YYYYMMDD'}}
+
+      - name: Generate cache key
+        id: cache-key
+        run: |
+          # Create a cache key based on relevant file contents
+          CACHE_KEY=$(cat .devcontainer/Dockerfile.prebuilt requirements.txt setup.py | sha256sum | cut -d' ' -f1)
+          echo "cache-key=${CACHE_KEY}" >> "$GITHUB_OUTPUT"
+          echo "Cache key: ${CACHE_KEY}"
+
+      - name: Build and push DevContainer
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: .devcontainer/Dockerfile.prebuilt
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' && (inputs.push_to_registry || true) }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.registry }}-${{ steps.cache-key.outputs.cache-key }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.registry }}-${{ steps.cache-key.outputs.cache-key }}
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+            FORCE_REBUILD=${{ inputs.force_rebuild || false }}
+
+  # Separate job for Docker Hub (optional)
+  build-dockerhub:
+    runs-on: ubuntu-latest
+    needs: check-dockerhub-secrets
+    if: needs.check-dockerhub-secrets.outputs.dockerhub-available == 'true'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY_DOCKERHUB }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata for Docker Hub
+        id: meta-dockerhub
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ github.repository_owner }}/nyc-landmarks-devcontainer
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix=${{ github.ref_name }}-
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/develop' }}
+            type=schedule,pattern={{date 'YYYYMMDD'}}
+
+      - name: Generate cache key for Docker Hub
+        id: cache-key-dockerhub
+        run: |
+          # Create a cache key based on relevant file contents
+          CACHE_KEY=$(cat .devcontainer/Dockerfile.prebuilt requirements.txt setup.py | sha256sum | cut -d' ' -f1)
+          echo "cache-key=${CACHE_KEY}" >> "$GITHUB_OUTPUT"
+          echo "Cache key: ${CACHE_KEY}"
+
+      - name: Build and push to Docker Hub
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: .devcontainer/Dockerfile.prebuilt
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' && (inputs.push_to_registry || true) }}
+          tags: ${{ steps.meta-dockerhub.outputs.tags }}
+          labels: ${{ steps.meta-dockerhub.outputs.labels }}
+          cache-from: type=gha,scope=dockerhub-${{ steps.cache-key-dockerhub.outputs.cache-key }}
+          cache-to: type=gha,mode=max,scope=dockerhub-${{ steps.cache-key-dockerhub.outputs.cache-key }}
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+            FORCE_REBUILD=${{ inputs.force_rebuild || false }}
+
+  update-devcontainer-config:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update DevContainer configuration
+        run: |
+          # Update devcontainer.json to use pre-built image
+          BRANCH_NAME="${{ github.ref_name }}"
+          IMAGE_TAG="ghcr.io/${{ github.repository_owner }}/nyc-landmarks-devcontainer:${BRANCH_NAME}"
+
+          # Create a backup of current config
+          cp .devcontainer/devcontainer.json .devcontainer/devcontainer.json.bak
+
+          # Update the image reference
+          python3 -c "
+          import json
+
+          with open('.devcontainer/devcontainer.json', 'r') as f:
+              config = json.load(f)
+
+          # Comment out dockerFile and add image
+          config['image'] = '${IMAGE_TAG}'
+          if 'dockerFile' in config:
+              config['//dockerFile'] = config.pop('dockerFile')
+
+          with open('.devcontainer/devcontainer.json', 'w') as f:
+              json.dump(config, f, indent=2)
+          "
+
+      - name: Create Pull Request for DevContainer Update
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update devcontainer to use pre-built image"
+          title: "Update DevContainer to use pre-built image"
+          body: |
+            This PR updates the DevContainer configuration to use the pre-built image instead of building from Dockerfile.
+
+            Changes:
+            - Updated `.devcontainer/devcontainer.json` to use `ghcr.io/${{ github.repository_owner }}/nyc-landmarks-devcontainer:${{ github.ref_name }}`
+            - Commented out `dockerFile` reference
+
+            This should significantly reduce DevContainer startup time from 3-8 minutes to 30-60 seconds.
+
+            Auto-generated by GitHub Actions.
+          branch: update-devcontainer-prebuilt
+          delete-branch: true
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "ghcr.io/${{ github.repository_owner }}/nyc-landmarks-devcontainer:${{ github.ref_name }}"
+          format: "sarif"
+          output: "trivy-results.sarif"
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: "trivy-results.sarif"
+
+  cleanup:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [build, build-dockerhub, update-devcontainer-config, security-scan]
+    steps:
+      - name: Delete old container versions
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: "nyc-landmarks-devcontainer"
+          package-type: "container"
+          min-versions-to-keep: 5
+          delete-only-untagged-versions: true
