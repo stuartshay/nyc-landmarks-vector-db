@@ -1,128 +1,120 @@
 {
-    "name": "NYC Landmarks Vector DB",
-    "dockerFile": "Dockerfile",
-    "postCreateCommand": "/workspaces/nyc-landmarks-vector-db/start_devcontainer.sh && /workspaces/nyc-landmarks-vector-db/.devcontainer/post-create.sh",
-    "postStartCommand": "echo 'NYC Landmarks Vector DB development environment ready! 🚀'",
-    "remoteUser": "vscode",
-    "containerEnv": {
-        "PYTHONPATH": "${containerWorkspaceFolder}",
-        "GOOGLE_APPLICATION_CREDENTIALS": "${containerWorkspaceFolder}/.gcp/service-account-key.json",
-        "ENVIRONMENT": "development",
-        "LOG_LEVEL": "INFO",
-        "LOG_FORMAT": "json",
-        "DEBUG": "false"
+  "name": "NYC Landmarks Vector DB (Pre-built)",
+  "image": "ghcr.io/stuartshay/nyc-landmarks-devcontainer:develop",
+  "postCreateCommand": "/workspaces/nyc-landmarks-vector-db/.devcontainer/post-create-prebuilt.sh",
+  "postStartCommand": "echo 'NYC Landmarks Vector DB development environment ready! 🚀 (Pre-built container)'",
+  "remoteUser": "vscode",
+  "containerEnv": {
+    "PYTHONPATH": "${containerWorkspaceFolder}",
+    "GOOGLE_APPLICATION_CREDENTIALS": "${containerWorkspaceFolder}/.gcp/service-account-key.json",
+    "ENVIRONMENT": "development",
+    "LOG_LEVEL": "INFO",
+    "LOG_FORMAT": "json",
+    "DEBUG": "false"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers-extra/features/zsh-plugins": {},
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
     },
-    "features": {
-        "ghcr.io/devcontainers/features/docker-in-docker:2": {},
-        "ghcr.io/devcontainers/features/azure-cli:1": {},
-        "ghcr.io/devcontainers/features/aws-cli:1": {},
-        "ghcr.io/devcontainers/features/java": {},
-        "ghcr.io/gvatsal60/dev-container-features/sonarlint:1": {},
-        "ghcr.io/devcontainers/features/github-cli:1": {},
-        "ghcr.io/devcontainers-extra/features/zsh-plugins": {},
-        "ghcr.io/devcontainers-extra/features/actions-runner:1": {},
-        "ghcr.io/dhoeric/features/google-cloud-cli:1": {},
-        "ghcr.io/devcontainers/features/node:1": {
-            "version": "22"
-        },
-        "ghcr.io/devcontainers/features/terraform:1": {
-            "version": "latest"
-        }
-    },
-    "customizations": {
-        "vscode": {
-            "settings": {
-                "terminal.integrated.defaultProfile.linux": "zsh",
-                "terminal.integrated.profiles.linux": {
-                    "zsh": {
-                        "path": "/bin/zsh"
-                    }
-                },
-                "python.defaultInterpreterPath": "${workspaceFolder}/venv/bin/python",
-                "python.analysis.typeCheckingMode": "strict",
-                "python.languageServer": "Pylance",
-                "python.analysis.autoImportCompletions": true,
-                "python.analysis.autoSearchPaths": true,
-                "python.analysis.extraPaths": [
-                    "${workspaceFolder}"
-                ],
-                "python.linting.enabled": true,
-                "python.linting.flake8Enabled": true,
-                "python.linting.pylintEnabled": true,
-                "python.linting.mypyEnabled": true,
-                "python.linting.banditEnabled": true,
-                "python.linting.flake8Args": [
-                    "--config=${workspaceFolder}/.flake8"
-                ],
-                "python.linting.pylintArgs": [
-                    "--rcfile=${workspaceFolder}/.pylintrc"
-                ],
-                "python.linting.mypyArgs": [
-                    "--config-file=${workspaceFolder}/pyproject.toml"
-                ],
-                "python.formatting.provider": "black",
-                "python.formatting.blackArgs": [
-                    "--config=${workspaceFolder}/pyproject.toml"
-                ],
-                "editor.formatOnSave": true,
-                "editor.codeActionsOnSave": {
-                    "source.organizeImports": "always"
-                },
-                "python.testing.pytestEnabled": true,
-                "python.testing.unittestEnabled": false,
-                "python.testing.nosetestsEnabled": false,
-                "python.testing.pytestArgs": [
-                    "tests",
-                    "-v",
-                    "--tb=short"
-                ],
-                "python.testing.pytestPath": "${workspaceFolder}/venv/bin/pytest",
-                "python.testing.autoTestDiscoverOnSaveEnabled": true,
-                "python.testing.cwd": "${workspaceFolder}",
-                "editor.rulers": [
-                    88
-                ],
-                "editor.tabSize": 4,
-                "editor.insertSpaces": true,
-                "editor.detectIndentation": false,
-                "files.trimTrailingWhitespace": true,
-                "files.insertFinalNewline": true,
-                "terraform.experimentalFeatures.validateOnSave": true,
-                "terraform.experimentalFeatures.prefillRequiredFields": true,
-                "[terraform]": {
-                    "editor.formatOnSave": true
-                },
-                "[terraform-vars]": {
-                    "editor.formatOnSave": true
-                }
-            },
-            "extensions": [
-                "ms-python.python",
-                "ms-python.vscode-pylance",
-                "ms-python.debugpy",
-                "matangover.mypy",
-                "charliermarsh.ruff",
-                "littlefoxteam.vscode-python-test-adapter",
-                "ms-python.pytest-adapter",
-                "njpwerner.autodocstring",
-                "eamodio.gitlens",
-                "yzhang.markdown-all-in-one",
-                "bierner.markdown-mermaid",
-                "streetsidesoftware.code-spell-checker",
-                "gruntfuggly.todo-tree",
-                "usernamehw.errorlens",
-                "esbenp.prettier-vscode",
-                "editorconfig.editorconfig",
-                "mikestead.dotenv",
-                "mechatroner.rainbow-csv",
-                "redhat.vscode-yaml",
-                "donjayamanne.githistory",
-                "saoudrizwan.claude-dev",
-                "hashicorp.terraform",
-                "be5invis.toml",
-                "chrisdias.promptboost",
-                "github.vscode-github-actions"
-            ]
-        }
+    "ghcr.io/devcontainers/features/terraform:1": {
+      "version": "latest"
     }
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.profiles.linux": {
+          "zsh": {
+            "path": "/bin/zsh"
+          }
+        },
+        "python.defaultInterpreterPath": "${workspaceFolder}/venv/bin/python",
+        "python.analysis.typeCheckingMode": "strict",
+        "python.languageServer": "Pylance",
+        "python.analysis.autoImportCompletions": true,
+        "python.analysis.autoSearchPaths": true,
+        "python.analysis.extraPaths": [
+          "${workspaceFolder}"
+        ],
+        "python.linting.enabled": true,
+        "python.linting.flake8Enabled": true,
+        "python.linting.pylintEnabled": true,
+        "python.linting.mypyEnabled": true,
+        "python.linting.banditEnabled": true,
+        "python.linting.flake8Args": [
+          "--config=${workspaceFolder}/.flake8"
+        ],
+        "python.linting.pylintArgs": [
+          "--rcfile=${workspaceFolder}/.pylintrc"
+        ],
+        "python.linting.mypyArgs": [
+          "--config-file=${workspaceFolder}/pyproject.toml"
+        ],
+        "python.formatting.provider": "black",
+        "python.formatting.blackArgs": [
+          "--config=${workspaceFolder}/pyproject.toml"
+        ],
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": "always"
+        },
+        "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": false,
+        "python.testing.nosetestsEnabled": false,
+        "python.testing.pytestArgs": [
+          "tests",
+          "-v",
+          "--tb=short"
+        ],
+        "python.testing.pytestPath": "${workspaceFolder}/venv/bin/pytest",
+        "python.testing.autoTestDiscoverOnSaveEnabled": true,
+        "python.testing.cwd": "${workspaceFolder}",
+        "editor.rulers": [
+          88
+        ],
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true,
+        "editor.detectIndentation": false,
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+        "terraform.experimentalFeatures.validateOnSave": true,
+        "terraform.experimentalFeatures.prefillRequiredFields": true,
+        "[terraform]": {
+          "editor.formatOnSave": true
+        },
+        "[terraform-vars]": {
+          "editor.formatOnSave": true
+        }
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.debugpy",
+        "matangover.mypy",
+        "charliermarsh.ruff",
+        "ms-python.pytest-adapter",
+        "njpwerner.autodocstring",
+        "eamodio.gitlens",
+        "yzhang.markdown-all-in-one",
+        "bierner.markdown-mermaid",
+        "streetsidesoftware.code-spell-checker",
+        "gruntfuggly.todo-tree",
+        "usernamehw.errorlens",
+        "esbenp.prettier-vscode",
+        "editorconfig.editorconfig",
+        "mikestead.dotenv",
+        "mechatroner.rainbow-csv",
+        "redhat.vscode-yaml",
+        "donjayamanne.githistory",
+        "hashicorp.terraform",
+        "be5invis.toml",
+        "github.vscode-github-actions"
+      ]
+    }
+  },
+  "workspaceFolder": "/workspaces/nyc-landmarks-vector-db"
 }

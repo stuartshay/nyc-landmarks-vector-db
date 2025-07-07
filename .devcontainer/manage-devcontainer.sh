@@ -12,7 +12,17 @@ RED='\033[0;31m'
 YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
-DEVCONTAINER_DIR="/workspaces/nyc-landmarks-vector-db/.devcontainer"
+# Detect the correct workspace path
+if [ -d "/workspaces/nyc-landmarks-vector-db" ]; then
+    # Running inside DevContainer
+    WORKSPACE_ROOT="/workspaces/nyc-landmarks-vector-db"
+else
+    # Running on host machine - get the script directory's parent
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    WORKSPACE_ROOT="$(dirname "$SCRIPT_DIR")"
+fi
+
+DEVCONTAINER_DIR="$WORKSPACE_ROOT/.devcontainer"
 ORIGINAL_CONFIG="$DEVCONTAINER_DIR/devcontainer.json"
 PREBUILT_CONFIG="$DEVCONTAINER_DIR/devcontainer.prebuilt.json"
 BACKUP_CONFIG="$DEVCONTAINER_DIR/devcontainer.json.backup"
@@ -165,7 +175,7 @@ build_local() {
         -f "$DEVCONTAINER_DIR/Dockerfile.prebuilt" \
         -t nyc-landmarks-devcontainer:local \
         --build-arg BUILDKIT_INLINE_CACHE=1 \
-        /workspaces/nyc-landmarks-vector-db
+        "$WORKSPACE_ROOT"
 
     echo -e "${GREEN}✅ Container built successfully${NC}"
     echo -e "${BLUE}Image: nyc-landmarks-devcontainer:local${NC}"
