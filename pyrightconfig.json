@@ -1,38 +1,38 @@
 {
-    "include": [
-        "nyc_landmarks",
-        "scripts",
-        "tests"
-    ],
-    "exclude": [
-        "**/node_modules",
-        "**/__pycache__",
-        "**/*.pyc"
-    ],
-    "stubPath": "stubs",
-    "ignore": [],
-    "defineConstant": {},
-    "typeCheckingMode": "basic",
-    "useLibraryCodeForTypes": true,
-    "reportMissingImports": "warning",
-    "reportMissingTypeStubs": false,
-    "reportUnknownMemberType": false,
-    "reportUntypedFunctionDecorator": false,
-    "reportRedeclaration": "none",
-    "reportUnknownParameterType": false,
-    "reportUnknownVariableType": false,
-    "pythonVersion": "3.12",
-    "pythonPlatform": "Linux",
-    "reportGeneralTypeIssues": "none",
-    "executionEnvironments": [
-        {
-            "root": ".",
-            "pythonVersion": "3.12",
-            "pythonPlatform": "Linux",
-            "extraPaths": [
-                ".",
-                "stubs"
-            ]
-        }
-    ]
+  "include": [
+    "nyc_landmarks",
+    "scripts",
+    "tests"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/*.pyc"
+  ],
+  "stubPath": "stubs",
+  "ignore": [],
+  "defineConstant": {},
+  "typeCheckingMode": "basic",
+  "useLibraryCodeForTypes": true,
+  "reportMissingImports": "warning",
+  "reportMissingTypeStubs": false,
+  "reportUnknownMemberType": false,
+  "reportUntypedFunctionDecorator": false,
+  "reportRedeclaration": "none",
+  "reportUnknownParameterType": false,
+  "reportUnknownVariableType": false,
+  "pythonVersion": "3.13",
+  "pythonPlatform": "Linux",
+  "reportGeneralTypeIssues": "none",
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "pythonVersion": "3.13",
+      "pythonPlatform": "Linux",
+      "extraPaths": [
+        ".",
+        "stubs"
+      ]
+    }
+  ]
 }

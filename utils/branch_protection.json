@@ -3,7 +3,7 @@
     "strict": true,
     "contexts": [
       "Pre-commit Checks / pre-commit (pull_request)",
-      "Python CI / test (3.12) (pull_request)"
+      "Python CI / test (3.13) (pull_request)"
     ]
   },
   "enforce_admins": true,

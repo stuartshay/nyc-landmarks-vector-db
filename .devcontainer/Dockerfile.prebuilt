@@ -1,6 +1,6 @@
 # Pre-built DevContainer Dockerfile
 # This Dockerfile is optimized for pre-building to reduce startup time
-FROM python:3.12-slim
+FROM python:3.13-slim
 
 # Build arguments
 ARG BUILDKIT_INLINE_CACHE=1
@@ -123,7 +123,7 @@ RUN mkdir -p /workspaces/nyc-landmarks-vector-db/test_output/notebooks \
 USER $USERNAME
 
 # Set up Python user directories with proper permissions
-RUN mkdir -p "/home/$USERNAME/.local/lib/python3.12/site-packages" \
+RUN mkdir -p "/home/$USERNAME/.local/lib/python3.13/site-packages" \
     && mkdir -p "/home/$USERNAME/.local/bin" \
     && mkdir -p "/home/$USERNAME/.cache/pip" \
     && chmod -R 755 "/home/$USERNAME/.local" \
@@ -148,7 +148,7 @@ LABEL description="Pre-built development container for NYC Landmarks Vector DB"
 LABEL version="1.0"
 LABEL org.opencontainers.image.source="https://github.com/stuartshay/nyc-landmarks-vector-db"
 LABEL org.opencontainers.image.title="NYC Landmarks DevContainer"
-LABEL org.opencontainers.image.description="Pre-built development container with Python 3.12, vector database tools, and development dependencies"
+LABEL org.opencontainers.image.description="Pre-built development container with Python 3.13, vector database tools, and development dependencies"
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
