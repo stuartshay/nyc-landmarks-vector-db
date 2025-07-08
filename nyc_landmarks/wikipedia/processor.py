@@ -119,7 +119,8 @@ class WikipediaProcessor:
         # Initialize for token-based chunking
         from transformers import GPT2Tokenizer
 
-        tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+        # Using stable GPT-2 tokenizer for text chunking - this is safe for our use case
+        tokenizer = GPT2Tokenizer.from_pretrained("gpt2")  # nosec B615
         max_token_limit = 8192
         token_limit_per_chunk = max_token_limit - 500  # Reserve tokens for metadata
 

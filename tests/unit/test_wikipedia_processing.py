@@ -250,13 +250,25 @@ class TestProcessLandmarksParallel:
         """Test successful parallel processing of landmarks."""
         landmark_ids = ["landmark_1", "landmark_2", "landmark_3"]
 
-        # Mock processor with successful results
+        # Mock processor with successful results - use a function to ensure deterministic behavior
         mock_processor = Mock()
-        mock_processor.process_landmark_wikipedia.side_effect = [
-            (True, 2, 4),
-            (True, 3, 6),
-            (False, 0, 0),  # One failure
-        ]
+
+        def mock_process_landmark_wikipedia(
+            landmark_id: str, delete_existing: bool = False
+        ) -> Tuple[bool, int, int]:
+            """Return deterministic results based on landmark ID."""
+            if landmark_id == "landmark_1":
+                return (True, 2, 4)
+            elif landmark_id == "landmark_2":
+                return (True, 3, 6)
+            elif landmark_id == "landmark_3":
+                return (False, 0, 0)  # One failure
+            else:
+                return (False, 0, 0)  # Default failure for unknown IDs
+
+        mock_processor.process_landmark_wikipedia.side_effect = (
+            mock_process_landmark_wikipedia
+        )
         mock_get_processor.return_value = mock_processor
 
         result = process_landmarks_parallel(
@@ -299,12 +311,18 @@ class TestProcessLandmarksParallel:
         """Test parallel processing when all landmarks fail."""
         landmark_ids = ["landmark_1", "landmark_2"]
 
-        # Mock processor with all failures
+        # Mock processor with all failures - use a function for deterministic behavior
         mock_processor = Mock()
-        mock_processor.process_landmark_wikipedia.side_effect = [
-            (False, 0, 0),
-            (False, 0, 0),
-        ]
+
+        def mock_process_landmark_wikipedia_failures(
+            landmark_id: str, delete_existing: bool = False
+        ) -> Tuple[bool, int, int]:
+            """Return failure for all landmark IDs."""
+            return (False, 0, 0)
+
+        mock_processor.process_landmark_wikipedia.side_effect = (
+            mock_process_landmark_wikipedia_failures
+        )
         mock_get_processor.return_value = mock_processor
 
         result = process_landmarks_parallel(
@@ -368,13 +386,25 @@ class TestProcessLandmarksSequential:
         """Test successful sequential processing of landmarks."""
         landmark_ids = ["landmark_1", "landmark_2", "landmark_3"]
 
-        # Mock processor
+        # Mock processor with deterministic results based on landmark ID
         mock_processor = Mock()
-        mock_processor.process_landmark_wikipedia.side_effect = [
-            (True, 2, 4),
-            (True, 3, 6),
-            (False, 0, 0),  # One failure
-        ]
+
+        def mock_process_landmark_wikipedia_sequential(
+            landmark_id: str, delete_existing: bool = False
+        ) -> Tuple[bool, int, int]:
+            """Return deterministic results based on landmark ID."""
+            if landmark_id == "landmark_1":
+                return (True, 2, 4)
+            elif landmark_id == "landmark_2":
+                return (True, 3, 6)
+            elif landmark_id == "landmark_3":
+                return (False, 0, 0)  # One failure
+            else:
+                return (False, 0, 0)  # Default failure for unknown IDs
+
+        mock_processor.process_landmark_wikipedia.side_effect = (
+            mock_process_landmark_wikipedia_sequential
+        )
         mock_get_processor.return_value = mock_processor
 
         result = process_landmarks_sequential(landmark_ids, delete_existing=False)
@@ -450,10 +480,21 @@ class TestProcessLandmarksSequential:
         landmark_ids = ["landmark_1", "landmark_2"]
 
         mock_processor = Mock()
-        mock_processor.process_landmark_wikipedia.side_effect = [
-            Exception("Processing failed"),
-            (True, 1, 2),
-        ]
+
+        def mock_process_landmark_with_exception(
+            landmark_id: str, delete_existing: bool = False
+        ) -> Tuple[bool, int, int]:
+            """Return exception for landmark_1, success for landmark_2."""
+            if landmark_id == "landmark_1":
+                raise Exception("Processing failed")
+            elif landmark_id == "landmark_2":
+                return (True, 1, 2)
+            else:
+                return (False, 0, 0)  # Default failure for unknown IDs
+
+        mock_processor.process_landmark_wikipedia.side_effect = (
+            mock_process_landmark_with_exception
+        )
         mock_get_processor.return_value = mock_processor
 
         result = process_landmarks_sequential(landmark_ids, delete_existing=False)

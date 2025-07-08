@@ -83,7 +83,7 @@ setup(
         "install": PostInstallCommand,
     },
     install_requires=[
-        "fastapi>=0.115.14",
+        "fastapi>=0.116.0",
         "uvicorn>=0.35.0",
         "openai>=1.93.1",
         "pinecone>=7.3.0",  # Updated to Pinecone 7.3.0 with 2025-04 API
@@ -96,7 +96,7 @@ setup(
         "python-dotenv>=1.1.1",
         "tiktoken>=0.9.0",
         "numpy>=2.3.1",  # Added for vector tests - latest version as of May 2025
-        "pandas>=2.3.0",  # Updated to latest version - Added for dataframe tests
+        "pandas>=2.3.1",  # Updated to latest version - Added for dataframe tests
         "tenacity>=9.1.2",  # Added for retry logic in API calls
         "beautifulsoup4>=4.13.4",  # Added for Wikipedia scraping
         "requests>=2.32.4",  # Added for HTTP requests
@@ -118,11 +118,11 @@ setup(
             "types-requests>=2.32.4.20250611",  # Added for requests type stubs
             "types-tabulate>=0.9.0.20241207",  # Corrected version constraint
             "types-setuptools>=80.9.0.20250529",  # Added for setuptools types
-            "pandas-stubs>=2.2.3.250527",  # Add pandas-stubs - consolidated to higher version
+            "pandas-stubs>=2.3.0.250703",  # Add pandas-stubs - consolidated to higher version
             "nbstripout>=0.6.1",  # Added for notebook cleaning
             "pytest-cov>=6.2.1",  # Added for coverage
             "pytest-dotenv>=0.5.2",  # Added for loading .env files in tests
-            "pandas>=2.3.0",  # Updated to match main requirements - Added explicitly for tests
+            "pandas>=2.3.1",  # Updated to match main requirements - Added explicitly for tests
             "numpy>=2.3.1",  # Added explicitly for tests - latest version as of May 2025
             "pytest-asyncio>=1.0.0",  # Added for asyncio support in tests
             "pre-commit>=3.8.0",  # Added for pre-commit hooks
