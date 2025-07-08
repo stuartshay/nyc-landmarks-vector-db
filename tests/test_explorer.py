@@ -38,7 +38,7 @@ def test_project_structure() -> None:
 def test_python_environment() -> None:
     """Test that the Python environment is properly configured."""
     # Check Python version
-    assert sys.version_info >= (3, 12), f"Python 3.12+ required, got {sys.version_info}"
+    assert sys.version_info >= (3, 13), f"Python 3.13+ required, got {sys.version_info}"
 
     # Check that project root is in path
     assert str(project_root) in sys.path, "Project root not in Python path"
