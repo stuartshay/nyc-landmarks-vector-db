@@ -52,7 +52,7 @@ if [ "$CONTAINER_MODE" = true ]; then
     fi
 
     # Now create the directories
-    mkdir -p "${HOME}/.local/lib/python3.12/site-packages"
+    mkdir -p "${HOME}/.local/lib/python3.13/site-packages"
     mkdir -p "${HOME}/.local/bin"
     mkdir -p "${HOME}/.cache/pip"
 
@@ -272,7 +272,7 @@ else
 
     echo
     echo -e "${BLUE}===== Container Environment Info =====${NC}"
-    echo -e "Python version: ${GREEN}3.12${NC}"
+    echo -e "Python version: ${GREEN}3.13${NC}"
     echo -e "Container image: ${GREEN}nyc-landmarks-dev${NC}"
 
     echo

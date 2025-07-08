@@ -18,7 +18,7 @@ Container, which provides a consistent development environment for all contribut
 
 ## Features
 
-- **Python 3.12** pre-configured with all dependencies
+- **Python 3.13** pre-configured with all dependencies
 - **Pre-commit hooks** auto-installed and configured
 - **VS Code extensions** for Python development, testing, and documentation
 - **Testing environment** ready to run with pytest
