@@ -120,7 +120,7 @@ flowchart TD
 
 ## Tech Stack
 
-- **Python 3.12w3+**: Primary programming language
+- **Python 3.13+**: Primary programming language
 - **OpenAI API**: For generating text embeddings using text-embedding-3-small/large
   models
 - **Pinecone**: Vector database for storing and searching embeddings with metadata
@@ -541,7 +541,7 @@ If you prefer to set up the development environment locally without containers:
 
 #### Prerequisites
 
-- Python 3.11+
+- Python 3.13+
 - Git
 
 #### Steps
@@ -556,7 +556,7 @@ If you prefer to set up the development environment locally without containers:
 1. **Create and activate a virtual environment:**
 
    ```bash
-   python3.12 -m venv venv
+   python3.13 -m venv venv
 
    # Activate the virtual environment
    # On Unix or MacOS:
