@@ -1,6 +1,75 @@
 # Active Context - NYC Landmarks Vector DB
 
-## Current Status: Environment Setup Complete with Security Tools
+## Current Status: API Query Search Logging Flow Documentation Complete
+
+### Recently Completed Work (January 9, 2025)
+
+#### API Query Search Logging Flow Analysis & Documentation
+
+- **Complete Logging Flow Documentation**: Created comprehensive documentation of the entire logging flow for POST `/api/query/search` requests
+- **Mermaid Sequence Diagrams**: Developed detailed visual representations of the request flow with correlation ID propagation
+- **Correlation ID Verification**: Confirmed that correlation IDs are properly used throughout the entire request lifecycle
+- **Test Script Creation**: Built practical test script to demonstrate correlation ID logging in action
+
+#### Key Deliverables
+
+1. **Documentation Files Created**
+
+   - `docs/api_query_search_logging_flow.md`: Complete step-by-step logging flow analysis
+   - `docs/api_query_search_sequence_diagram.md`: Mermaid diagrams showing request flow and correlation ID lifecycle
+   - `scripts/test_correlation_logging_flow.py`: Test script for demonstrating correlation ID usage
+
+1. **Correlation ID Flow Verification**
+
+   - ✅ Middleware layer: Request body logging, performance monitoring
+   - ✅ API layer: Input validation, embedding generation
+   - ✅ Business logic: Vector database queries with correlation tracking
+   - ✅ All components properly propagate correlation IDs for log aggregation
+
+1. **Logging Components Analyzed**
+
+   - Request Body Logging Middleware (`nyc_landmarks/api/request_body_logging_middleware.py`)
+   - Validation Logger (`nyc_landmarks/utils/validation.py`)
+   - Query API Endpoint (`nyc_landmarks/api/query.py`)
+   - Vector Database (`nyc_landmarks/vectordb/pinecone_db.py`)
+   - Embedding Generator (`nyc_landmarks/embeddings/generator.py`)
+   - Performance Middleware (`nyc_landmarks/api/middleware.py`)
+
+#### Technical Implementation Details
+
+**Correlation ID Propagation Flow:**
+
+1. **Header Extraction**: `get_correlation_id(request)` extracts from X-Request-ID, X-Correlation-ID, etc.
+1. **UUID Generation**: Auto-generates UUID4 if no correlation header found
+1. **Middleware Logging**: All middleware components log with correlation ID
+1. **API Processing**: Validation, embedding generation, and vector queries include correlation ID
+1. **Performance Tracking**: Request timing and metrics logged with correlation ID
+
+**Log Aggregation Strategy:**
+
+- All log entries contain the same correlation ID for a single request
+- Enables complete request tracing across all system components
+- Supports both text-based (`grep`) and JSON-based (`jq`) log analysis
+- Provides structured logging for monitoring and debugging
+
+**Sequence Diagram Components:**
+
+- Request flow through middleware stack
+- API endpoint processing with validation
+- Embedding generation and vector database queries
+- Performance monitoring and response generation
+- Correlation ID lifecycle management
+
+#### Verification Results
+
+- ✅ Correlation ID properly extracted from request headers
+- ✅ UUID4 generation when no correlation header present
+- ✅ All logging components include correlation ID in log entries
+- ✅ Vector database operations propagate correlation ID
+- ✅ Performance metrics include correlation ID for aggregation
+- ✅ Complete request tracing capability confirmed
+
+## Previous Status: Environment Setup Complete with Security Tools
 
 ### Recently Completed Work
 

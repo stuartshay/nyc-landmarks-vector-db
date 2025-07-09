@@ -140,7 +140,12 @@ SHELL ["/bin/zsh", "-c"]
 RUN echo 'export PYTHONPATH="/workspaces/nyc-landmarks-vector-db:$PYTHONPATH"' >> ~/.zshrc \
     && echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc \
     && echo 'echo "🚀 NYC Landmarks Vector DB Development Environment (Pre-built)"' >> ~/.zshrc \
-    && echo 'echo "Ready to use! Run: source venv/bin/activate (if using venv)"' >> ~/.zshrc
+    && echo 'if [ -f "/workspaces/nyc-landmarks-vector-db/.venv/bin/activate" ]; then' >> ~/.zshrc \
+    && echo '    source /workspaces/nyc-landmarks-vector-db/.venv/bin/activate' >> ~/.zshrc \
+    && echo '    echo "✅ Virtual environment activated automatically"' >> ~/.zshrc \
+    && echo 'else' >> ~/.zshrc \
+    && echo '    echo "ℹ️  Virtual environment not found. Create one with: python -m venv .venv"' >> ~/.zshrc \
+    && echo 'fi' >> ~/.zshrc
 
 # Add labels for better maintainability
 LABEL maintainer="NYC Landmarks Team"
