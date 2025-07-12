@@ -265,3 +265,27 @@ jobs:
           package-type: "container"
           min-versions-to-keep: 5
           delete-only-untagged-versions: true
+
+  trigger-tests:
+    runs-on: ubuntu-latest
+    needs: [build, build-dockerhub]
+    if: success()
+    steps:
+      - name: Trigger Test DevContainer workflow
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const result = await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'test-devcontainer.yml',
+              ref: context.ref,
+              inputs: {
+                triggered_by: 'build-devcontainer',
+                build_run_id: '${{ github.run_id }}'
+              }
+            });
+
+            console.log('✅ Test DevContainer workflow triggered successfully');
+            console.log(`Build run ID: ${{ github.run_id }}`);
+            console.log(`Branch: ${context.ref}`);

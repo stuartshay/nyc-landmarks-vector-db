@@ -1,15 +1,17 @@
 name: Test DevContainer
 
 on:
-  push:
-    branches: [master, develop]
-    paths:
-      - ".devcontainer/**"
-  pull_request:
-    branches: [master, develop]
-    paths:
-      - ".devcontainer/**"
   workflow_dispatch:
+    inputs:
+      triggered_by:
+        description: "Workflow that triggered this test"
+        required: false
+        default: "manual"
+        type: string
+      build_run_id:
+        description: "Build workflow run ID"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -19,6 +21,14 @@ jobs:
   test-dockerfile:
     runs-on: ubuntu-latest
     steps:
+      - name: Show trigger information
+        run: |
+          echo "🚀 Test DevContainer workflow started"
+          echo "Triggered by: ${{ inputs.triggered_by || 'manual' }}"
+          echo "Build run ID: ${{ inputs.build_run_id || 'N/A' }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Event: ${{ github.event_name }}"
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
