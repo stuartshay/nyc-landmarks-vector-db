@@ -1,5 +1,8 @@
 FROM python:3.13-slim
 
+# Build arguments
+ARG BUILD_TIMESTAMP
+
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -74,6 +77,14 @@ RUN chsh -s /bin/zsh $USERNAME
 # Install Oh My Zsh for better Zsh experience (optional)
 RUN su $USERNAME -c "curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh"
 
+# Store build timestamp for display in welcome message
+RUN if [ -n "$BUILD_TIMESTAMP" ]; then \
+    echo "$BUILD_TIMESTAMP" > /etc/devcontainer-build-info; \
+    else \
+    date -u '+%Y-%m-%d %H:%M:%S' > /etc/devcontainer-build-info; \
+    fi \
+    && chmod 644 /etc/devcontainer-build-info
+
 # Set up Python environment
 RUN pip install --upgrade pip \
     && pip install pytest pytest-cov pytest-asyncio black isort flake8 mypy pylint pre-commit pip-tools
@@ -100,4 +111,18 @@ ENV PYTHONPATH=/workspace
 SHELL ["/bin/zsh", "-c"]
 
 # Add a welcome message
-RUN echo 'echo "👋 Welcome to NYC Landmarks Vector DB Development Environment\n\nUse the VS Code task \"Check Development Environment\" to verify setup.\nUse the task \"Run All Tests\" to run the test suite.\n"' >> ~/.zshrc
+RUN echo 'if [ -f "/workspaces/nyc-landmarks-vector-db/.devcontainer/show-build-info-source.sh" ]; then' >> ~/.zshrc \
+    && echo '    /workspaces/nyc-landmarks-vector-db/.devcontainer/show-build-info-source.sh' >> ~/.zshrc \
+    && echo 'else' >> ~/.zshrc \
+    && echo '    echo "👋 Welcome to NYC Landmarks Vector DB Development Environment"' >> ~/.zshrc \
+    && echo '    if [ -f "/etc/devcontainer-build-info" ]; then' >> ~/.zshrc \
+    && echo '        BUILD_TIME=$(cat /etc/devcontainer-build-info 2>/dev/null)' >> ~/.zshrc \
+    && echo '        if [ -n "$BUILD_TIME" ]; then' >> ~/.zshrc \
+    && echo '            echo "📅 Build Date: $BUILD_TIME UTC"' >> ~/.zshrc \
+    && echo '        fi' >> ~/.zshrc \
+    && echo '    fi' >> ~/.zshrc \
+    && echo '    echo ""' >> ~/.zshrc \
+    && echo '    echo "Use the VS Code task \"Check Development Environment\" to verify setup."' >> ~/.zshrc \
+    && echo '    echo "Use the task \"Run All Tests\" to run the test suite."' >> ~/.zshrc \
+    && echo '    echo ""' >> ~/.zshrc \
+    && echo 'fi' >> ~/.zshrc

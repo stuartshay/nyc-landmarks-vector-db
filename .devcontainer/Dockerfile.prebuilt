@@ -5,6 +5,7 @@ FROM python:3.13-slim
 # Build arguments
 ARG BUILDKIT_INLINE_CACHE=1
 ARG FORCE_REBUILD=false
+ARG BUILD_TIMESTAMP
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -100,6 +101,14 @@ RUN chsh -s /bin/zsh $USERNAME
 # Install Oh My Zsh for better Zsh experience
 RUN su $USERNAME -c "curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh"
 
+# Store build timestamp for display in welcome message
+RUN if [ -n "$BUILD_TIMESTAMP" ]; then \
+    echo "$BUILD_TIMESTAMP" > /etc/devcontainer-build-info; \
+    else \
+    date -u '+%Y-%m-%d %H:%M:%S' > /etc/devcontainer-build-info; \
+    fi \
+    && chmod 644 /etc/devcontainer-build-info
+
 # Copy requirements and setup files first
 COPY requirements.txt /tmp/requirements.txt
 COPY setup.py /tmp/setup.py
@@ -139,10 +148,14 @@ SHELL ["/bin/zsh", "-c"]
 # Add environment setup to .zshrc
 RUN echo 'export PYTHONPATH="/workspaces/nyc-landmarks-vector-db:$PYTHONPATH"' >> ~/.zshrc \
     && echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc \
-    && echo 'echo "🚀 NYC Landmarks Vector DB Development Environment (Pre-built)"' >> ~/.zshrc \
+    && echo 'if [ -f "/workspaces/nyc-landmarks-vector-db/.devcontainer/show-build-info.sh" ]; then' >> ~/.zshrc \
+    && echo '    /workspaces/nyc-landmarks-vector-db/.devcontainer/show-build-info.sh' >> ~/.zshrc \
+    && echo 'else' >> ~/.zshrc \
+    && echo '    echo "🚀 NYC Landmarks Vector DB Development Environment (Pre-built)"' >> ~/.zshrc \
+    && echo '    echo "📅 Build Date: Unknown"' >> ~/.zshrc \
+    && echo 'fi' >> ~/.zshrc \
     && echo 'if [ -f "/workspaces/nyc-landmarks-vector-db/.venv/bin/activate" ]; then' >> ~/.zshrc \
     && echo '    source /workspaces/nyc-landmarks-vector-db/.venv/bin/activate' >> ~/.zshrc \
-    && echo '    echo "✅ Virtual environment activated automatically"' >> ~/.zshrc \
     && echo 'else' >> ~/.zshrc \
     && echo '    echo "ℹ️  Virtual environment not found. Create one with: python -m venv .venv"' >> ~/.zshrc \
     && echo 'fi' >> ~/.zshrc

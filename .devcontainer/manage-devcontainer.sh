@@ -170,15 +170,21 @@ build_local() {
     echo -e "${YELLOW}Build time: 5-10 minutes${NC}"
     echo ""
 
+    # Generate UTC timestamp for build
+    BUILD_TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S')
+    echo -e "${BLUE}Build timestamp: ${BUILD_TIMESTAMP} UTC${NC}"
+
     # Build the container
     docker build \
         -f "$DEVCONTAINER_DIR/Dockerfile.prebuilt" \
         -t nyc-landmarks-devcontainer:local \
         --build-arg BUILDKIT_INLINE_CACHE=1 \
+        --build-arg BUILD_TIMESTAMP="$BUILD_TIMESTAMP" \
         "$WORKSPACE_ROOT"
 
     echo -e "${GREEN}✅ Container built successfully${NC}"
     echo -e "${BLUE}Image: nyc-landmarks-devcontainer:local${NC}"
+    echo -e "${BLUE}Build timestamp: ${BUILD_TIMESTAMP} UTC${NC}"
     echo -e "${YELLOW}You can now use this image in your devcontainer.json${NC}"
 }
 
