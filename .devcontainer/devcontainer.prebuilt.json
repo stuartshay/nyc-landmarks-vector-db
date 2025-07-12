@@ -113,7 +113,8 @@
                 "donjayamanne.githistory",
                 "hashicorp.terraform",
                 "be5invis.toml",
-                "github.vscode-github-actions"
+                "github.vscode-github-actions",
+                "saoudrizwan.claude-dev"
             ]
         }
     },
