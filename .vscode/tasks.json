@@ -1,232 +1,234 @@
 {
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "Run All Tests",
-      "type": "shell",
-      "command": "${command:python.interpreterPath}",
-      "args": [
-        "-m",
-        "pytest",
-        "tests",
-        "-v"
-      ],
-      "group": {
-        "kind": "test",
-        "isDefault": true
-      },
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Run Unit Tests",
-      "type": "shell",
-      "command": "${command:python.interpreterPath}",
-      "args": [
-        "-m",
-        "pytest",
-        "tests/unit",
-        "-v"
-      ],
-      "group": "test",
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Run Functional Tests",
-      "type": "shell",
-      "command": "${command:python.interpreterPath}",
-      "args": [
-        "-m",
-        "pytest",
-        "tests/functional",
-        "-v"
-      ],
-      "group": "test",
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Run Integration Tests",
-      "type": "shell",
-      "command": "${command:python.interpreterPath}",
-      "args": [
-        "-m",
-        "pytest",
-        "tests/integration",
-        "-v"
-      ],
-      "group": "test",
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Check Development Environment",
-      "type": "shell",
-      "command": "${command:python.interpreterPath}",
-      "args": [
-        "${workspaceFolder}/utils/check_dev_env.py"
-      ],
-      "group": "none",
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated",
-        "clear": true
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "DevContainer: Check Status",
-      "type": "shell",
-      "command": "${workspaceFolder}/.devcontainer/manage-devcontainer.sh",
-      "args": [
-        "status"
-      ],
-      "group": "none",
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated",
-        "clear": true
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "DevContainer: Switch to Pre-built",
-      "type": "shell",
-      "command": "${workspaceFolder}/.devcontainer/manage-devcontainer.sh",
-      "args": [
-        "switch-to-prebuilt"
-      ],
-      "group": "none",
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated",
-        "clear": true
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "DevContainer: Switch to Build-from-Source",
-      "type": "shell",
-      "command": "${workspaceFolder}/.devcontainer/manage-devcontainer.sh",
-      "args": [
-        "switch-to-build"
-      ],
-      "group": "none",
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated",
-        "clear": true
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "DevContainer: Build Local (Pre-built)",
-      "type": "shell",
-      "command": "${workspaceFolder}/.devcontainer/manage-devcontainer.sh",
-      "args": [
-        "build-local"
-      ],
-      "group": {
-        "kind": "build",
-        "isDefault": false
-      },
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated",
-        "clear": true
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "DevContainer: Build and Test Local",
-      "type": "shell",
-      "command": "docker",
-      "args": [
-        "build",
-        "-f",
-        ".devcontainer/Dockerfile.prebuilt",
-        "-t",
-        "nyc-landmarks-devcontainer:local",
-        "."
-      ],
-      "group": "build",
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated",
-        "clear": true
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "DevContainer: Test Local Build",
-      "type": "shell",
-      "command": "docker",
-      "args": [
-        "run",
-        "--rm",
-        "-it",
-        "nyc-landmarks-devcontainer:local",
-        "python",
-        "--version"
-      ],
-      "group": "test",
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated",
-        "clear": true
-      },
-      "problemMatcher": [],
-      "dependsOn": "DevContainer: Build and Test Local"
-    },
-    {
-      "label": "DevContainer: Pull Pre-built Image",
-      "type": "shell",
-      "command": "docker",
-      "args": [
-        "pull",
-        "ghcr.io/stuartshay/nyc-landmarks-devcontainer:develop"
-      ],
-      "group": "build",
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated",
-        "clear": true
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "DevContainer: Test Pre-built Image",
-      "type": "shell",
-      "command": "docker",
-      "args": [
-        "run",
-        "--rm",
-        "-it",
-        "ghcr.io/stuartshay/nyc-landmarks-devcontainer:develop",
-        "python",
-        "--version"
-      ],
-      "group": "test",
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated",
-        "clear": true
-      },
-      "problemMatcher": [],
-      "dependsOn": "DevContainer: Pull Pre-built Image"
-    }
-  ]
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run All Tests",
+            "type": "shell",
+            "command": "${command:python.interpreterPath}",
+            "args": [
+                "-m",
+                "pytest",
+                "tests",
+                "-v"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Unit Tests",
+            "type": "shell",
+            "command": "${command:python.interpreterPath}",
+            "args": [
+                "-m",
+                "pytest",
+                "tests/unit",
+                "-v"
+            ],
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Functional Tests",
+            "type": "shell",
+            "command": "${command:python.interpreterPath}",
+            "args": [
+                "-m",
+                "pytest",
+                "tests/functional",
+                "-v"
+            ],
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Integration Tests",
+            "type": "shell",
+            "command": "${command:python.interpreterPath}",
+            "args": [
+                "-m",
+                "pytest",
+                "tests/integration",
+                "-v"
+            ],
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Check Development Environment",
+            "type": "shell",
+            "command": "${command:python.interpreterPath}",
+            "args": [
+                "${workspaceFolder}/utils/check_dev_env.py"
+            ],
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "DevContainer: Check Status",
+            "type": "shell",
+            "command": "${workspaceFolder}/.devcontainer/manage-devcontainer.sh",
+            "args": [
+                "status"
+            ],
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "DevContainer: Switch to Pre-built",
+            "type": "shell",
+            "command": "${workspaceFolder}/.devcontainer/manage-devcontainer.sh",
+            "args": [
+                "switch-to-prebuilt"
+            ],
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "DevContainer: Switch to Build-from-Source",
+            "type": "shell",
+            "command": "${workspaceFolder}/.devcontainer/manage-devcontainer.sh",
+            "args": [
+                "switch-to-build"
+            ],
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "DevContainer: Build Local (Pre-built)",
+            "type": "shell",
+            "command": "${workspaceFolder}/.devcontainer/manage-devcontainer.sh",
+            "args": [
+                "build-local"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "DevContainer: Build and Test Local",
+            "type": "shell",
+            "command": "docker",
+            "args": [
+                "build",
+                "-f",
+                ".devcontainer/Dockerfile.prebuilt",
+                "-t",
+                "nyc-landmarks-devcontainer:local",
+                "--build-arg",
+                "BUILD_TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S')",
+                "."
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "DevContainer: Test Local Build",
+            "type": "shell",
+            "command": "docker",
+            "args": [
+                "run",
+                "--rm",
+                "-it",
+                "nyc-landmarks-devcontainer:local",
+                "python",
+                "--version"
+            ],
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": [],
+            "dependsOn": "DevContainer: Build and Test Local"
+        },
+        {
+            "label": "DevContainer: Pull Pre-built Image",
+            "type": "shell",
+            "command": "docker",
+            "args": [
+                "pull",
+                "ghcr.io/stuartshay/nyc-landmarks-devcontainer:develop"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "DevContainer: Test Pre-built Image",
+            "type": "shell",
+            "command": "docker",
+            "args": [
+                "run",
+                "--rm",
+                "-it",
+                "ghcr.io/stuartshay/nyc-landmarks-devcontainer:develop",
+                "python",
+                "--version"
+            ],
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": [],
+            "dependsOn": "DevContainer: Pull Pre-built Image"
+        }
+    ]
 }

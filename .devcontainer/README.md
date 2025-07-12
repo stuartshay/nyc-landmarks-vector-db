@@ -26,6 +26,7 @@ Container, which provides a consistent development environment for all contribut
 - **Google Cloud CLI** for cloud operations
 - **Zsh with Oh My Zsh** for better terminal experience
 - **Pre-built images** available on GitHub Container Registry and Docker Hub
+- **Build timestamp display** - Shows when the container was built in the welcome message
 
 ## Getting Started
 
@@ -208,3 +209,25 @@ Add these secrets to your GitHub repository:
 
 - Run `./.devcontainer/manage-devcontainer.sh status` to verify configuration
 - Force rebuild: `Ctrl+Shift+P` → "Dev Containers: Rebuild Container Without Cache"
+
+## Welcome Message
+
+When you open a terminal in the dev container, you'll see a welcome message that includes:
+
+```
+🚀 NYC Landmarks Vector DB Development Environment (Pre-built)
+📅 Build Date: 2025-07-12 15:30:45 UTC
+✅ Virtual environment activated automatically
+```
+
+The build timestamp helps track when the container was last built, which is useful for:
+
+- Debugging environment issues
+- Tracking container versions
+- Understanding if you're using an outdated container
+
+### Customizing the Welcome Message
+
+- **Pre-built containers**: Use `.devcontainer/show-build-info.sh`
+- **Build-from-source containers**: Use `.devcontainer/show-build-info-source.sh`
+- **Disable timestamp**: Remove or comment out the script calls in the Dockerfile
