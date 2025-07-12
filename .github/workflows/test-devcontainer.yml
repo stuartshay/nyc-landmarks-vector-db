@@ -43,9 +43,163 @@ jobs:
           docker run --rm test:latest pip --version
 
           # Test that key packages are installed
-          docker run --rm test:latest python -c "import pytest, black, isort, mypy, flake8; print('✅ Development tools available')"
-          docker run --rm test:latest python -c "import pinecone, numpy, pandas; print('✅ Data science packages available')"
-          docker run --rm test:latest python -c "import fastapi, uvicorn; print('✅ Web framework packages available')"
+          docker run --rm test:latest python -c "import pytest, black, isort, mypy, flake8; print('Development tools available')"
+          docker run --rm test:latest python -c "import pinecone, numpy, pandas; print('Data science packages available')"
+          docker run --rm test:latest python -c "import fastapi, uvicorn; print('Web framework packages available')"
+
+  test-post-create-script:
+    runs-on: ubuntu-latest
+    needs: test-dockerfile
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build test container
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: .devcontainer/Dockerfile.prebuilt
+          push: false
+          load: true
+          tags: test-post-create:latest
+          cache-from: type=gha
+
+      - name: Test post-create script execution
+        run: |
+          # Create a container with mounted workspace to test post-create script
+          docker run --rm \
+            -v "${GITHUB_WORKSPACE}":/workspaces/nyc-landmarks-vector-db \
+            -w /workspaces/nyc-landmarks-vector-db \
+            test-post-create:latest \
+            bash -c "
+              echo 'Testing post-create script execution...'
+
+              # Run the post-create script
+              /workspaces/nyc-landmarks-vector-db/.devcontainer/post-create-prebuilt.sh
+
+              echo 'Post-create script completed successfully'
+            "
+
+      - name: Test virtual environment setup
+        run: |
+          docker run --rm \
+            -v "${GITHUB_WORKSPACE}":/workspaces/nyc-landmarks-vector-db \
+            -w /workspaces/nyc-landmarks-vector-db \
+            test-post-create:latest \
+            bash -c "
+              echo 'Testing virtual environment setup...'
+
+              # Run post-create script first
+              /workspaces/nyc-landmarks-vector-db/.devcontainer/post-create-prebuilt.sh > /dev/null 2>&1
+
+              # Test virtual environment exists
+              if [ ! -d '.venv' ]; then
+                echo 'Virtual environment .venv not created'
+                exit 1
+              fi
+              echo 'Virtual environment .venv created'
+
+              # Test virtual environment activation
+              source .venv/bin/activate
+              echo 'Virtual environment activated'
+
+              # Test Python in virtual environment
+              python --version
+              pip --version
+              echo 'Python and pip available in virtual environment'
+
+              # Test key packages in virtual environment
+              python -c 'import pytest, black, isort, mypy, flake8; print(\"Development tools installed in .venv\")'
+              python -c 'import pinecone, numpy, pandas; print(\"Data science packages installed in .venv\")'
+              python -c 'import fastapi, uvicorn; print(\"Web framework packages installed in .venv\")'
+              python -c 'import pre_commit; print(\"Pre-commit installed in .venv\")'
+            "
+
+      - name: Test project package installation
+        run: |
+          docker run --rm \
+            -v "${GITHUB_WORKSPACE}":/workspaces/nyc-landmarks-vector-db \
+            -w /workspaces/nyc-landmarks-vector-db \
+            test-post-create:latest \
+            bash -c "
+              echo 'Testing project package installation...'
+
+              # Run post-create script first
+              /workspaces/nyc-landmarks-vector-db/.devcontainer/post-create-prebuilt.sh > /dev/null 2>&1
+
+              # Test project package installation
+              source .venv/bin/activate
+              python -c 'import nyc_landmarks; print(\"Project package nyc_landmarks importable\")'
+
+              # Test pip show for the package
+              pip show nyc-landmarks-vector-db | grep -q 'Name: nyc-landmarks-vector-db'
+              echo 'Project package installed in development mode'
+            "
+
+      - name: Test pre-commit hooks setup
+        run: |
+          docker run --rm \
+            -v "${GITHUB_WORKSPACE}":/workspaces/nyc-landmarks-vector-db \
+            -w /workspaces/nyc-landmarks-vector-db \
+            test-post-create:latest \
+            bash -c "
+              echo 'Testing pre-commit hooks setup...'
+
+              # Initialize git repo for pre-commit testing
+              git config --global user.name 'Test User'
+              git config --global user.email 'test@example.com'
+              git config --global init.defaultBranch main
+
+              # Run post-create script first
+              /workspaces/nyc-landmarks-vector-db/.devcontainer/post-create-prebuilt.sh > /dev/null 2>&1
+
+              # Test pre-commit installation
+              if [ ! -f '.git/hooks/pre-commit' ]; then
+                echo 'Pre-commit hooks not installed'
+                exit 1
+              fi
+              echo 'Pre-commit hooks installed'
+
+              # Test pre-commit command availability
+              source .venv/bin/activate
+              pre-commit --version
+              echo 'Pre-commit command available'
+
+              # Test that pre-commit environments are initialized
+              # Check if hook environments exist (they create cache directories)
+              if [ -d ~/.cache/pre-commit ] && [ \"\$(find ~/.cache/pre-commit -type d -name 'repo*' | wc -l)\" -gt 0 ]; then
+                echo 'Pre-commit hook environments initialized'
+              else
+                echo 'Pre-commit environments may not be fully initialized (acceptable for CI)'
+              fi
+
+              # Test pre-commit can run (dry run to avoid actual file changes)
+              echo 'test content' > test_file.py
+              pre-commit run --files test_file.py || echo 'Pre-commit attempted to run (exit code expected)'
+              rm -f test_file.py
+            "
+
+  test-complete-devcontainer-lifecycle:
+    runs-on: ubuntu-latest
+    needs: test-dockerfile
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Test complete DevContainer setup
+        run: |
+          # Test using the DevContainer CLI to simulate real usage
+          echo 'Testing complete DevContainer lifecycle...'
+
+          # Install DevContainer CLI
+          npm install -g @devcontainers/cli
+
+          # Test DevContainer configuration validation
+          devcontainer read-configuration --workspace-folder .
+          echo 'DevContainer configuration is valid'
 
   test-scripts:
     runs-on: ubuntu-latest

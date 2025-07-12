@@ -114,7 +114,7 @@ Add user authentication to the landmarks API using JWT tokens.
 - Database migration for user table
 ````
 
----
+______________________________________________________________________
 
 _Save this file, reload VS Code, select **Plan Mode**, and start drafting Plans
 with confidence!_
