@@ -57,14 +57,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build test container
+      - name: Download built image from previous job
         uses: docker/build-push-action@v5
         with:
           context: .
           file: .devcontainer/Dockerfile.prebuilt
           push: false
           load: true
-          tags: test-post-create:latest
+          tags: test:latest
           cache-from: type=gha
 
       - name: Test post-create script execution
@@ -73,7 +73,7 @@ jobs:
           docker run --rm \
             -v "${GITHUB_WORKSPACE}":/workspaces/nyc-landmarks-vector-db \
             -w /workspaces/nyc-landmarks-vector-db \
-            test-post-create:latest \
+            test:latest \
             bash -c "
               echo 'Testing post-create script execution...'
 
@@ -93,7 +93,7 @@ jobs:
             -v "${GITHUB_WORKSPACE}":/workspaces/nyc-landmarks-vector-db \
             -w /workspaces/nyc-landmarks-vector-db \
             --user 1000:1000 \
-            test-post-create:latest \
+            test:latest \
             bash -c "
               echo 'Testing comprehensive DevContainer environment setup...'
 
