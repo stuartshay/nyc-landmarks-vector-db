@@ -83,103 +83,81 @@ jobs:
               echo 'Post-create script completed successfully'
             "
 
-      - name: Test virtual environment setup
+      - name: Test comprehensive environment setup
         run: |
           docker run --rm \
             -v "${GITHUB_WORKSPACE}":/workspaces/nyc-landmarks-vector-db \
             -w /workspaces/nyc-landmarks-vector-db \
             test-post-create:latest \
             bash -c "
-              echo 'Testing virtual environment setup...'
+              echo 'Testing comprehensive DevContainer environment setup...'
 
-              # Run post-create script first
-              /workspaces/nyc-landmarks-vector-db/.devcontainer/post-create-prebuilt.sh > /dev/null 2>&1
+              # Initialize git repo for testing
+              git config --global user.name 'Test User'
+              git config --global user.email 'test@example.com'
+              git config --global init.defaultBranch main
 
+              # Run post-create script
+              echo '=== Running post-create script ==='
+              /workspaces/nyc-landmarks-vector-db/.devcontainer/post-create-prebuilt.sh
+
+              echo '=== Testing virtual environment ==='
               # Test virtual environment exists
               if [ ! -d '.venv' ]; then
                 echo 'Virtual environment .venv not created'
                 exit 1
               fi
-              echo 'Virtual environment .venv created'
+              echo '✅ Virtual environment .venv created'
 
               # Test virtual environment activation
               source .venv/bin/activate
-              echo 'Virtual environment activated'
+              echo '✅ Virtual environment activated'
 
               # Test Python in virtual environment
               python --version
               pip --version
-              echo 'Python and pip available in virtual environment'
+              echo '✅ Python and pip available in virtual environment'
 
+              echo '=== Testing package installations ==='
               # Test key packages in virtual environment
-              python -c 'import pytest, black, isort, mypy, flake8; print(\"Development tools installed in .venv\")'
-              python -c 'import pinecone, numpy, pandas; print(\"Data science packages installed in .venv\")'
-              python -c 'import fastapi, uvicorn; print(\"Web framework packages installed in .venv\")'
-              python -c 'import pre_commit; print(\"Pre-commit installed in .venv\")'
-            "
-
-      - name: Test project package installation
-        run: |
-          docker run --rm \
-            -v "${GITHUB_WORKSPACE}":/workspaces/nyc-landmarks-vector-db \
-            -w /workspaces/nyc-landmarks-vector-db \
-            test-post-create:latest \
-            bash -c "
-              echo 'Testing project package installation...'
-
-              # Run post-create script first
-              /workspaces/nyc-landmarks-vector-db/.devcontainer/post-create-prebuilt.sh > /dev/null 2>&1
+              python -c 'import pytest, black, isort, mypy, flake8; print(\"✅ Development tools installed in .venv\")'
+              python -c 'import pinecone, numpy, pandas; print(\"✅ Data science packages installed in .venv\")'
+              python -c 'import fastapi, uvicorn; print(\"✅ Web framework packages installed in .venv\")'
+              python -c 'import pre_commit; print(\"✅ Pre-commit installed in .venv\")'
 
               # Test project package installation
-              source .venv/bin/activate
-              python -c 'import nyc_landmarks; print(\"Project package nyc_landmarks importable\")'
+              echo '=== Testing project package ==='
+              python -c 'import nyc_landmarks; print(\"✅ Project package nyc_landmarks importable\")'
 
               # Test pip show for the package
               pip show nyc-landmarks-vector-db | grep -q 'Name: nyc-landmarks-vector-db'
-              echo 'Project package installed in development mode'
-            "
+              echo '✅ Project package installed in development mode'
 
-      - name: Test pre-commit hooks setup
-        run: |
-          docker run --rm \
-            -v "${GITHUB_WORKSPACE}":/workspaces/nyc-landmarks-vector-db \
-            -w /workspaces/nyc-landmarks-vector-db \
-            test-post-create:latest \
-            bash -c "
-              echo 'Testing pre-commit hooks setup...'
-
-              # Initialize git repo for pre-commit testing
-              git config --global user.name 'Test User'
-              git config --global user.email 'test@example.com'
-              git config --global init.defaultBranch main
-
-              # Run post-create script first
-              /workspaces/nyc-landmarks-vector-db/.devcontainer/post-create-prebuilt.sh > /dev/null 2>&1
-
+              echo '=== Testing pre-commit hooks ==='
               # Test pre-commit installation
               if [ ! -f '.git/hooks/pre-commit' ]; then
-                echo 'Pre-commit hooks not installed'
+                echo '❌ Pre-commit hooks not installed'
                 exit 1
               fi
-              echo 'Pre-commit hooks installed'
+              echo '✅ Pre-commit hooks installed'
 
               # Test pre-commit command availability
-              source .venv/bin/activate
               pre-commit --version
-              echo 'Pre-commit command available'
+              echo '✅ Pre-commit command available'
 
-              # Test that pre-commit environments are initialized
-              # Check if hook environments exist (they create cache directories)
+              # Test that pre-commit environments are initialized (optional check)
               if [ -d ~/.cache/pre-commit ] && [ \"\$(find ~/.cache/pre-commit -type d -name 'repo*' | wc -l)\" -gt 0 ]; then
-                echo 'Pre-commit hook environments initialized'
+                echo '✅ Pre-commit hook environments initialized'
               else
-                echo 'Pre-commit environments may not be fully initialized (acceptable for CI)'
+                echo '⚠️  Pre-commit environments may not be fully initialized (acceptable for CI)'
               fi
 
               # Test pre-commit can run (dry run to avoid actual file changes)
               echo 'test content' > test_file.py
-              pre-commit run --files test_file.py || echo 'Pre-commit attempted to run (exit code expected)'
+              pre-commit run --files test_file.py || echo '✅ Pre-commit attempted to run (exit code expected for test file)'
               rm -f test_file.py
+
+              echo '🎉 All DevContainer environment tests passed!'
             "
 
   test-complete-devcontainer-lifecycle:
