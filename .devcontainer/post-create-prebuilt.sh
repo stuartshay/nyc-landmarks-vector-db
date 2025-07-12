@@ -21,8 +21,16 @@ cd /workspaces/nyc-landmarks-vector-db
 echo -e "${BLUE}📦 Setting up Python virtual environment...${NC}"
 if [ ! -d ".venv" ]; then
     echo -e "${BLUE}Creating virtual environment...${NC}"
-    python3 -m venv .venv
-    echo -e "${GREEN}✅ Virtual environment created${NC}"
+    if python3 -m venv .venv; then
+        echo -e "${GREEN}✅ Virtual environment created${NC}"
+    else
+        echo -e "${RED}❌ Failed to create virtual environment${NC}"
+        echo -e "${YELLOW}Checking permissions...${NC}"
+        ls -la . | head -5
+        echo -e "${YELLOW}Current user: $(whoami)${NC}"
+        echo -e "${YELLOW}Current working directory: $(pwd)${NC}"
+        exit 1
+    fi
 else
     echo -e "${YELLOW}⚠️  Virtual environment already exists${NC}"
 fi

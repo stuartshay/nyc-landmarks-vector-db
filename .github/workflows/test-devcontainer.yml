@@ -85,9 +85,14 @@ jobs:
 
       - name: Test comprehensive environment setup
         run: |
+          # Set proper permissions for the workspace directory
+          sudo chmod -R 755 "${GITHUB_WORKSPACE}"
+          sudo chown -R 1000:1000 "${GITHUB_WORKSPACE}"
+
           docker run --rm \
             -v "${GITHUB_WORKSPACE}":/workspaces/nyc-landmarks-vector-db \
             -w /workspaces/nyc-landmarks-vector-db \
+            --user 1000:1000 \
             test-post-create:latest \
             bash -c "
               echo 'Testing comprehensive DevContainer environment setup...'
