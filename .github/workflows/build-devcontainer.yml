@@ -42,6 +42,7 @@ permissions:
   contents: read
   packages: write
   security-events: write
+  actions: write  # Required to trigger other workflows
 
 jobs:
   check-dockerhub-secrets:
