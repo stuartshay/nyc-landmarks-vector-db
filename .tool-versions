@@ -9,3 +9,6 @@ terraform 1.10.3   # Stable release with GCP provider compatibility
 
 # Python Environment
 python 3.13.1      # Latest stable with performance improvements and new features
+
+# Markdown Formatting
+mdformat 0.7.22    # Markdown formatter with plugin support for consistent documentation

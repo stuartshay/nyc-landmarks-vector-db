@@ -217,3 +217,9 @@ actionlint-py==1.7.7.23
 shellcheck-py==0.10.0.1
 huggingface-hub==0.33.2
 shellcheck-py==0.10.0.1
+# Markdown formatting tools for consistency with CI
+mdformat==0.7.22
+mdformat-gfm==0.4.1
+mdformat-black==0.1.1
+mdformat-frontmatter==2.0.8
+mdformat-footnote==0.1.1
