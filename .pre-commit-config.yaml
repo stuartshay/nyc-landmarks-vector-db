@@ -181,3 +181,15 @@ repos:
         args:
           - --args=-no-color
           - --hook-config=--retry-once-with-cleanup=true
+
+  # Tool version management
+  - repo: local
+    hooks:
+      - id: tool-version-consistency
+        name: Validate tool version consistency
+        description: Ensure tool versions are consistent across all configuration files
+        entry: ./scripts/ci/validate_tool_versions.sh
+        language: system
+        files: ^(\.tool-versions|\.devcontainer/.*|\.github/workflows/.*|setup_env\.sh)$
+        pass_filenames: false
+        always_run: false

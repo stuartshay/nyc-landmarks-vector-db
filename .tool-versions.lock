@@ -1,0 +1,22 @@
+# Tool Version Lock File
+# Generated automatically - DO NOT EDIT MANUALLY
+# This file pins exact versions for reproducible builds
+#
+# To update versions:
+#   1. Edit .tool-versions
+#   2. Run ./scripts/ci/generate_tool_lock.sh
+#   3. Commit both files together
+#
+# Generated on: 2025-07-12 17:52:34 UTC
+
+# Tool versions for NYC Landmarks Vector DB
+# This file defines the versions of external tools used across the project
+# Update this file to change versions project-wide
+# Comments explain version rationale for maintenance
+
+# Security and CI Tools
+gitleaks==8.21.4    # Latest version for enhanced secret detection, fixes false positives
+terraform==1.10.3   # Stable release with GCP provider compatibility
+
+# Python Environment
+python==3.13.1      # Latest stable with performance improvements and new features

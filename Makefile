@@ -1,4 +1,4 @@
-.PHONY: help setup lint format test clean run diff pre-commit pre-commit-update check-env sonar sonar-start sonar-stop sonar-reset-password
+.PHONY: help setup lint format test clean run diff pre-commit pre-commit-update check-env sonar sonar-start sonar-stop sonar-reset-password tool-versions tool-versions-list tool-versions-check tool-versions-freeze tool-versions-validate
 
 help:
 	@echo "NYC Landmarks Vector DB Makefile"
@@ -16,6 +16,13 @@ help:
 	@echo "sonar-start        - Start SonarQube containers"
 	@echo "sonar-stop         - Stop SonarQube containers"
 	@echo "sonar-reset-password - Reset SonarQube admin password to 'admin'"
+	@echo ""
+	@echo "Tool Version Management:"
+	@echo "tool-versions          - Show tool version management help"
+	@echo "tool-versions-list     - List current tool versions and status"
+	@echo "tool-versions-check    - Check for available tool updates"
+	@echo "tool-versions-freeze   - Generate .tool-versions.lock file"
+	@echo "tool-versions-validate - Validate version consistency"
 
 setup:
 	pip install -r requirements.txt
@@ -75,3 +82,23 @@ sonar-start:
 sonar-stop:
 	@echo "Stopping SonarQube containers..."
 	@./.sonarqube/stop-sonarqube.sh
+
+# Tool Version Management
+tool-versions:
+	@echo "Tool version management commands:"
+	@echo "  make tool-versions-list     - List current tool versions and status"
+	@echo "  make tool-versions-check    - Check for available tool updates"
+	@echo "  make tool-versions-freeze   - Generate .tool-versions.lock file"
+	@echo "  make tool-versions-validate - Validate version consistency"
+
+tool-versions-list:
+	@./scripts/manage_tool_versions.sh list
+
+tool-versions-check:
+	@./scripts/manage_tool_versions.sh check
+
+tool-versions-freeze:
+	@./scripts/manage_tool_versions.sh freeze
+
+tool-versions-validate:
+	@./scripts/manage_tool_versions.sh validate

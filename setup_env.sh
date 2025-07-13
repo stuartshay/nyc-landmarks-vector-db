@@ -16,12 +16,38 @@ readonly CYAN='\033[0;36m'
 readonly NC='\033[0m' # No Color
 
 # Configuration
-readonly PYTHON_VERSION="3.13"
-readonly PYTHON_FULL_VERSION="3.13.1"
 readonly PROJECT_NAME="NYC Landmarks Vector DB"
 readonly VENV_NAME="venv"
-readonly GITLEAKS_VERSION="8.21.2"
-readonly TERRAFORM_VERSION="1.10.3"
+
+# Load centralized tool versions from .tool-versions
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "$SCRIPT_DIR/scripts/versions.sh" ]]; then
+    source "$SCRIPT_DIR/scripts/versions.sh"
+
+    # Validate that all required versions were loaded
+    if [[ -z "$PYTHON_VERSION" ]] || [[ -z "$GITLEAKS_VERSION" ]] || [[ -z "$TERRAFORM_VERSION" ]]; then
+        echo "❌ ERROR: Failed to load tool versions from .tool-versions"
+        echo "   Missing versions detected. Please ensure .tool-versions file contains:"
+        echo "   - python X.Y.Z"
+        echo "   - gitleaks X.Y.Z"
+        echo "   - terraform X.Y.Z"
+        exit 1
+    fi
+
+    # Use versions from .tool-versions (PYTHON_VERSION from versions.sh is the full version)
+    readonly PYTHON_FULL_VERSION="$PYTHON_VERSION"  # From .tool-versions (e.g., "3.13.1")
+    readonly PYTHON_VERSION="${PYTHON_VERSION%.*}"  # Extract major.minor (e.g., "3.13")
+    # GITLEAKS_VERSION and TERRAFORM_VERSION are already loaded from versions.sh
+    echo "✅ Loaded tool versions from .tool-versions:"
+    echo "   Python: $PYTHON_FULL_VERSION (using $PYTHON_VERSION for installation)"
+    echo "   Gitleaks: $GITLEAKS_VERSION"
+    echo "   Terraform: $TERRAFORM_VERSION"
+else
+    echo "❌ ERROR: Centralized version management system not found"
+    echo "   Required file missing: $SCRIPT_DIR/scripts/versions.sh"
+    echo "   Please ensure the project structure is intact and .tool-versions file exists"
+    exit 1
+fi
 
 # Global variables
 PROJECT_DIR=""

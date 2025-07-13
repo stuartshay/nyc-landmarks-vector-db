@@ -36,13 +36,13 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.13.1"
           cache: "pip"
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "~1.12"
+          terraform_version: "~1.10.3"
 
       - name: Install gitleaks
         run: |
@@ -51,7 +51,8 @@ jobs:
           tar -xzf gitleaks.tar.gz
           sudo mv gitleaks /usr/local/bin/
           rm gitleaks.tar.gz
-          gitleaks version  # Verify installation
+          echo "✅ Gitleaks installed successfully:"
+          gitleaks version
 
       - name: Set up Docker
         run: |
@@ -72,18 +73,25 @@ jobs:
         run: |
           # Install pre-commit hooks first
           pre-commit install-hooks
-          # Verify gitleaks is available
-          echo "Checking gitleaks installation:"
-          which gitleaks && gitleaks version || echo "⚠️ gitleaks not found"
-          # Debug mdformat setup
-          echo "Checking mdformat installation:"
-          mdformat --version
-          echo "Available markdown files:"
-          find . -name "*.md" -type f | head -5
-          # Run mdformat separately first for debugging
-          echo "Testing mdformat separately:"
-          python -m pre_commit run mdformat --all-files --verbose || echo "mdformat had issues"
+
+          # Debug information for troubleshooting
+          echo "🔍 Debug Information:"
+          echo "Working directory: $(pwd)"
+          echo "Git status:"
+          git status --porcelain || echo "No git status changes"
+          echo "Total files to scan: $(find . -type f | grep -v '\.git/' | grep -c .)"
+
+          # Verify tools are available
+          echo "📋 Tool Versions:"
+          echo "gitleaks: $(gitleaks version)"
+          echo "mdformat: $(mdformat --version)"
+
+          # Test gitleaks configuration before full run
+          echo "🧪 Testing gitleaks configuration:"
+          gitleaks detect --source=. --config=.gitleaks.toml --no-git --exit-code=0 && echo "✅ Gitleaks scan passed" || echo "❌ Gitleaks found issues"
+
           # Run all pre-commit checks
+          echo "🚀 Running pre-commit checks:"
           pre-commit run --all-files
 
       # This step will automatically fix code formatting and linting issues
