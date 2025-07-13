@@ -94,16 +94,21 @@ def _generate_query_embedding(
 Updated `search_combined_sources()` and `compare_source_results()` to accept and propagate correlation IDs:
 
 ```python
+from typing import Any, Dict, List, Optional
+
+
 def search_combined_sources(
     query_text: str,
     landmark_id: Optional[str] = None,
     source_type: Optional[str] = None,
     top_k: int = 5,
     correlation_id: Optional[str] = None,  # 🆕 New parameter
-    embedding_generator: Optional[EmbeddingGenerator] = None,
-    vector_db: Optional[PineconeDB] = None,
-    db_client: Optional[DbClient] = None,
+    embedding_generator: Optional["EmbeddingGenerator"] = None,
+    vector_db: Optional["PineconeDB"] = None,
+    db_client: Optional["DbClient"] = None,
 ) -> List[Dict[str, Any]]:
+    """Search combined sources with correlation tracking."""
+    pass
 ```
 
 ## 📊 Logging Structure

@@ -127,6 +127,19 @@ repos:
         exclude: ^(venv|\.venv|env|ENV|\.pytest_cache|\.gcp|\.terraform|\.scannerwork|\.sonarlint|output|logs|temp|test_output|temp_notebooks|verification_results|pinecone_backup|build|dist|\.eggs)/.*$
         args: ["--wrap", "keep"]
 
+  # Strict mdformat check that fails on warnings (matches CI behavior)
+  - repo: local
+    hooks:
+      - id: mdformat-warnings-check
+        name: Check for mdformat warnings (fail on warnings like CI)
+        description: Fails if mdformat produces any warnings about code block formatting
+        entry: bash -c 'output=$(mdformat --wrap keep --check . 2>&1 | grep -E "\.(md|markdown)$" | grep -v "\.venv/" || true); if echo "$output" | grep -q "Warning:"; then echo "❌ mdformat warnings detected:"; echo "$output" | grep "Warning:"; echo "Fix the Python code blocks mentioned above to match CI behavior."; exit 1; fi'
+        language: system
+        files: \.(md|markdown)$
+        exclude: ^(venv|\.venv|env|ENV|\.pytest_cache|\.gcp|\.terraform|\.scannerwork|\.sonarlint|output|logs|temp|test_output|temp_notebooks|verification_results|pinecone_backup|build|dist|\.eggs)/.*$
+        pass_filenames: false
+        always_run: false
+
   # Jupyter notebook output clearing
   - repo: https://github.com/kynan/nbstripout
     rev: 0.8.1

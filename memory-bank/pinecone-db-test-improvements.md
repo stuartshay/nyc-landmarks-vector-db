@@ -89,13 +89,29 @@ Pre-commit mypy checks were failing with 58 type annotation errors:
 1. **Fixed method signatures**:
 
    ```python
+   from unittest.mock import Mock
+
+
    # Before
    def setUp(self):
+       """Set up test fixtures."""
+       pass
+
+
    def test_method(self, mock_param):
+       """Test method with mock parameter."""
+       pass
+
 
    # After
    def setUp(self) -> None:
+       """Set up test fixtures with proper type annotation."""
+       pass
+
+
    def test_method(self, mock_param: Mock) -> None:
+       """Test method with properly typed mock parameter."""
+       pass
    ```
 
 1. **Added variable type annotations**:

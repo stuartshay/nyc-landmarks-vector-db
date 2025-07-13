@@ -80,24 +80,43 @@
 ### Before (Duplicated Code):
 
 ```python
+import uuid
+from typing import Any
+
+
 # In middleware.py
-def _get_correlation_id(request: Request) -> str:
+def _get_correlation_id(request: "Request") -> str:
+    """Get correlation ID from request headers."""
     correlation_id = (
-        request.headers.get("x-request-id") or
-        request.headers.get("x-correlation-id") or
-        # ... duplicate logic
+        request.headers.get("x-request-id")
+        or request.headers.get("x-correlation-id")
+        or str(uuid.uuid4())  # Generate new ID if none found
     )
-    # ... identical implementation
+    return correlation_id
+
 
 # In request_body_logging_middleware.py
-def _get_correlation_id(request: Request) -> str:
+def _get_correlation_id(request: "Request") -> str:
+    """Get correlation ID from request headers (duplicate implementation)."""
     correlation_id = (
-        request.headers.get("x-request-id") or
-        request.headers.get("x-correlation-id") or
-        # ... duplicate logic
+        request.headers.get("x-request-id")
+        or request.headers.get("x-correlation-id")
+        or str(uuid.uuid4())  # Generate new ID if none found
     )
-    # ... identical implementation
+    return correlation_id
 ```
+
+# In request_body_logging_middleware.py
+
+def \_get_correlation_id(request: Request) -> str:
+correlation_id = (
+request.headers.get("x-request-id") or
+request.headers.get("x-correlation-id") or
+\# ... duplicate logic
+)
+\# ... identical implementation
+
+````
 
 ### After (Centralized Utility):
 
@@ -117,7 +136,7 @@ correlation_id = get_correlation_id(request)
 from nyc_landmarks.utils.correlation import get_correlation_id
 
 correlation_id = get_correlation_id(request)
-```
+````
 
 ## ✅ Validation Results
 
