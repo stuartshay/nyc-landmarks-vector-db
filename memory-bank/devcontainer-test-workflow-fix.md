@@ -166,6 +166,8 @@ The workflow now validates:
 1. **Image Tag Communication**: Build workflow passes specific image tag to test workflow
 1. **Authentication**: Proper GHCR authentication for image pulling
 1. **Fallback Support**: Manual workflow runs still work with default image tags
+1. **Pull Request Support**: Fixed ref handling for pull request contexts to prevent "No ref found" errors
+1. **Consistent Image Tagging**: Aligned metadata extraction with trigger logic for PR builds
 
 ## Related Documentation
 
