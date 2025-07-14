@@ -215,5 +215,5 @@ transformers==4.53.1
 hf-xet==1.1.5
 actionlint-py==1.7.7.23
 shellcheck-py==0.10.0.1
-huggingface-hub==0.33.2
+huggingface-hub==0.33.4
 shellcheck-py==0.10.0.1
