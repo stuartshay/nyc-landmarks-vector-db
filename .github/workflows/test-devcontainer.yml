@@ -12,6 +12,11 @@ on:
         description: "Build workflow run ID"
         required: false
         type: string
+      image_tag:
+        description: "Container image tag to test"
+        required: false
+        default: "ghcr.io/stuartshay/nyc-landmarks-devcontainer:latest"
+        type: string
 
 permissions:
   contents: read
@@ -26,25 +31,27 @@ jobs:
           echo "🚀 Test DevContainer workflow started"
           echo "Triggered by: ${{ inputs.triggered_by || 'manual' }}"
           echo "Build run ID: ${{ inputs.build_run_id || 'N/A' }}"
+          echo "Image tag: ${{ inputs.image_tag || 'ghcr.io/stuartshay/nyc-landmarks-devcontainer:latest' }}"
           echo "Branch: ${{ github.ref_name }}"
           echo "Event: ${{ github.event_name }}"
 
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Test build pre-built Dockerfile
-        uses: docker/build-push-action@v5
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          context: .
-          file: .devcontainer/Dockerfile.prebuilt
-          push: false
-          load: true
-          tags: test:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull pre-built image
+        run: |
+          IMAGE_TAG="${{ inputs.image_tag || 'ghcr.io/stuartshay/nyc-landmarks-devcontainer:latest' }}"
+          echo "Pulling image: ${IMAGE_TAG}"
+          docker pull "${IMAGE_TAG}"
+          docker tag "${IMAGE_TAG}" test:latest
+          echo "✅ Image pulled and tagged as test:latest"
 
       - name: Test container functionality
         run: |
@@ -64,34 +71,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Download built image from previous job
-        uses: docker/build-push-action@v5
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          context: .
-          file: .devcontainer/Dockerfile.prebuilt
-          push: false
-          load: true
-          tags: test:latest
-          cache-from: type=gha
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Test post-create script execution
+      - name: Pull pre-built image
         run: |
-          # Create a container with mounted workspace to test post-create script
-          docker run --rm \
-            -v "${GITHUB_WORKSPACE}":/workspaces/nyc-landmarks-vector-db \
-            -w /workspaces/nyc-landmarks-vector-db \
-            test:latest \
-            bash -c "
-              echo 'Testing post-create script execution...'
-
-              # Run the post-create script
-              /workspaces/nyc-landmarks-vector-db/.devcontainer/post-create-prebuilt.sh
-
-              echo 'Post-create script completed successfully'
-            "
+          IMAGE_TAG="${{ inputs.image_tag || 'ghcr.io/stuartshay/nyc-landmarks-devcontainer:latest' }}"
+          echo "Pulling image: ${IMAGE_TAG}"
+          docker pull "${IMAGE_TAG}"
+          docker tag "${IMAGE_TAG}" test:latest
+          echo "✅ Image pulled and tagged as test:latest"
 
       - name: Test comprehensive environment setup
         run: |

@@ -2,85 +2,152 @@
 
 ## Issue Description
 
-The GitHub Actions workflow `test-devcontainer.yml` was failing on the `test-post-create-script` job, specifically in the "Test virtual environment setup" step. The job was failing because the virtual environment `.venv` was not being found.
+The GitHub Actions workflow `test-devcontainer.yml` was failing because:
+
+1. **Container persistence problem**: Virtual environment `.venv` created in one step wasn't available in subsequent steps
+1. **Image reference mismatch**: Test workflow was building images locally instead of using the pre-built images from GHCR
+1. **Dependabot interference**: Build workflow was running unnecessarily on dependabot branches
+1. **Workflow dependency issues**: Test workflow wasn't receiving the correct image tag from the build workflow
 
 ## Root Cause Analysis
 
-The issue was identified as a **container persistence problem**:
+### Primary Issues Identified:
 
-1. **Original Problem**: Each test step in the workflow was running in a separate `docker run --rm` command
-1. **Impact**: The `--rm` flag removes the container after each run, so the `.venv` created in one step wasn't available in the next step
-1. **Specific Failure**: The post-create script would run and create `.venv`, but when the next test tried to check for `.venv`, it was running in a fresh container without the virtual environment
+1. **Container Persistence**: Each test step ran in separate `docker run --rm` commands, losing state between steps
+1. **Image Source**: Test workflow rebuilt images locally instead of pulling from GitHub Container Registry (GHCR)
+1. **Branch Filtering**: Build workflow lacked dependabot branch filtering, causing unnecessary builds
+1. **Communication Gap**: Build workflow didn't pass the specific image tag to test workflow
 
 ## Solution Implemented
 
-### Consolidated Test Steps
+### 1. **Fixed Build Workflow (`build-devcontainer.yml`)**
 
-Replaced multiple separate test steps with a single comprehensive test that runs all validations in one container instance:
+#### Added Dependabot Filtering:
 
 ```yaml
-- name: Test comprehensive environment setup
-  run: |
-    docker run --rm \
-      -v "${GITHUB_WORKSPACE}":/workspaces/nyc-landmarks-vector-db \
-      -w /workspaces/nyc-landmarks-vector-db \
-      test-post-create:latest \
-      bash -c "
-        # All tests run in single container instance
-        # 1. Run post-create script
-        # 2. Test virtual environment creation
-        # 3. Test package installations
-        # 4. Test project package
-        # 5. Test pre-commit hooks
-      "
+build:
+  runs-on: ubuntu-latest
+  # Prevent running on dependabot branches
+  if: github.actor != 'dependabot[bot]' && !startsWith(github.head_ref, 'dependabot/')
 ```
+
+#### Updated Test Triggering:
+
+```yaml
+trigger-tests:
+  runs-on: ubuntu-latest
+  needs: [build]  # Removed build-dockerhub dependency
+  if: success() && github.actor != 'dependabot[bot]'
+  steps:
+    - name: Trigger Test DevContainer workflow
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const imageTag = `ghcr.io/${{ github.repository_owner }}/nyc-landmarks-devcontainer:${{ github.ref_name }}`;
+          const result = await github.rest.actions.createWorkflowDispatch({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            workflow_id: 'test-devcontainer.yml',
+            ref: context.ref,
+            inputs: {
+              triggered_by: 'build-devcontainer',
+              build_run_id: '${{ github.run_id }}',
+              image_tag: imageTag  # Pass specific GHCR image tag
+            }
+          });
+```
+
+### 2. **Fixed Test Workflow (`test-devcontainer.yml`)**
+
+#### Added Image Tag Input:
+
+```yaml
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Container image tag to test"
+        required: false
+        default: "ghcr.io/stuartshay/nyc-landmarks-devcontainer:latest"
+        type: string
+```
+
+#### Replaced Local Builds with GHCR Pulls:
+
+```yaml
+- name: Log in to GitHub Container Registry
+  uses: docker/login-action@v3
+  with:
+    registry: ghcr.io
+    username: ${{ github.actor }}
+    password: ${{ secrets.GITHUB_TOKEN }}
+
+- name: Pull pre-built image
+  run: |
+    IMAGE_TAG="${{ inputs.image_tag || 'ghcr.io/stuartshay/nyc-landmarks-devcontainer:latest' }}"
+    echo "Pulling image: ${IMAGE_TAG}"
+    docker pull "${IMAGE_TAG}"
+    docker tag "${IMAGE_TAG}" test:latest
+    echo "✅ Image pulled and tagged as test:latest"
+```
+
+#### Maintained Consolidated Test Steps:
+
+The comprehensive environment setup test continues to run all validations in a single container instance to ensure state persistence.
 
 ### Test Coverage
 
-The consolidated test now validates:
+The workflow now validates:
+
+1. **Container Functionality**
+
+   - Basic Python/pip functionality
+   - Pre-installed packages availability
 
 1. **Post-create Script Execution**
 
-   - Runs the complete script
-   - Validates successful completion
+   - Virtual environment creation
+   - Package installations in venv
+   - Project package installation
+   - Pre-commit hooks setup
 
-1. **Virtual Environment Setup**
+1. **DevContainer Configuration**
 
-   - Verifies `.venv` directory creation
-   - Tests virtual environment activation
-   - Validates Python and pip availability
-
-1. **Package Installation Verification**
-
-   - Development tools (pytest, black, isort, mypy, flake8)
-   - Data science packages (pinecone, numpy, pandas)
-   - Web framework packages (fastapi, uvicorn)
-   - Pre-commit package
-
-1. **Project Package Installation**
-
-   - Tests importability of `nyc_landmarks` module
-   - Verifies development mode installation
-
-1. **Pre-commit Hooks**
-
-   - Validates hook installation
-   - Tests pre-commit command availability
-   - Checks environment initialization (optional)
-   - Tests basic pre-commit execution
+   - JSON syntax validation
+   - Script syntax validation
+   - Workflow syntax validation
 
 ## Benefits of the Fix
 
-1. **Reliability**: Tests now run in a single container context, ensuring persistence
-1. **Efficiency**: Reduced container creation overhead
-1. **Better Output**: Clearer test progression with section headers
-1. **Comprehensive**: All post-create functionality tested in one place
-1. **Debugging**: Easier to debug issues since all steps are in one execution context
+1. **Efficiency**:
+
+   - No unnecessary builds on dependabot branches
+   - Faster tests using pre-built images from GHCR
+   - Reduced GitHub Actions minutes usage
+
+1. **Reliability**:
+
+   - Tests the exact same image that was built
+   - Container persistence ensures state consistency
+   - Proper GHCR authentication
+
+1. **Maintainability**:
+
+   - Clear separation between build and test workflows
+   - Better error reporting and debugging information
+   - Consistent image tagging strategy
+
+1. **Resource Optimization**:
+
+   - Prevents redundant container builds
+   - Uses GitHub's container registry infrastructure
+   - Eliminates Docker Hub dependencies for testing
 
 ## Files Modified
 
-- `.github/workflows/test-devcontainer.yml`: Consolidated test steps
-- `memory-bank/devcontainer-test-workflow-fix.md`: This documentation
+- `.github/workflows/build-devcontainer.yml`: Added dependabot filtering, updated trigger mechanism
+- `.github/workflows/test-devcontainer.yml`: Added GHCR image pulling, removed local builds
+- `memory-bank/devcontainer-test-workflow-fix.md`: Updated documentation
 
 ## Validation
 
@@ -88,15 +155,21 @@ The consolidated test now validates:
 - ✅ Bash script syntax validated
 - ✅ Workflow structure verified
 - ✅ Container persistence issue resolved
+- ✅ GHCR image reference implemented
+- ✅ Dependabot filtering added
+- ✅ Image tag passing mechanism implemented
 
-## Future Considerations
+## Key Improvements
 
-1. Consider adding more granular failure detection
-1. Potentially add timing measurements for performance monitoring
-1. Could add artifact collection for debugging if needed
+1. **Dependabot Exclusion**: Build workflow no longer runs on dependabot branches
+1. **GHCR Integration**: Test workflow pulls from GitHub Container Registry instead of rebuilding
+1. **Image Tag Communication**: Build workflow passes specific image tag to test workflow
+1. **Authentication**: Proper GHCR authentication for image pulling
+1. **Fallback Support**: Manual workflow runs still work with default image tags
 
 ## Related Documentation
 
 - [DevContainer Test Workflow](../.github/workflows/test-devcontainer.yml)
+- [DevContainer Build Workflow](../.github/workflows/build-devcontainer.yml)
 - [Post-create Script](../.devcontainer/post-create-prebuilt.sh)
 - [Contributing Guidelines](../CONTRIBUTING.md)

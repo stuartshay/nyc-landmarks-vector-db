@@ -1,10 +1,18 @@
 # Active Context - NYC Landmarks Vector DB
 
-## Current Status: API Query Search Logging Flow Documentation Complete
+## Current Status: DevContainer Workflow Optimization Complete
 
-### Recently Completed Work (January 9, 2025)
+### Recently Completed Work (January 14, 2025)
 
-#### API Query Search Logging Flow Analysis & Documentation
+#### DevContainer Test Workflow Fix
+
+- **GitHub Actions Workflow Optimization**: Fixed failing DevContainer test workflow that was causing CI/CD issues
+- **GHCR Integration**: Implemented GitHub Container Registry image pulling instead of local builds for faster, more reliable testing
+- **Dependabot Branch Filtering**: Added filtering to prevent unnecessary container builds on dependabot branches
+- **Container Persistence Fix**: Resolved virtual environment persistence issues in test workflow
+- **Workflow Communication**: Enhanced build-to-test workflow communication with proper image tag passing
+
+#### API Query Search Logging Flow Analysis & Documentation (January 9, 2025)
 
 - **Complete Logging Flow Documentation**: Created comprehensive documentation of the entire logging flow for POST `/api/query/search` requests
 - **Mermaid Sequence Diagrams**: Developed detailed visual representations of the request flow with correlation ID propagation
