@@ -211,7 +211,7 @@ wheel==0.45.1
 widgetsnbextension==4.0.14
 xyzservices==2025.4.0
 tokenizers==0.21.2
-transformers==4.53.1
+transformers==4.53.2
 hf-xet==1.1.5
 actionlint-py==1.7.7.23
 shellcheck-py==0.10.0.1
