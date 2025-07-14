@@ -127,7 +127,7 @@ setup(
             "pytest-asyncio>=1.0.0",  # Added for asyncio support in tests
             "pre-commit>=3.8.0",  # Added for pre-commit hooks
             "pip-tools>=7.4.1",  # Added for managing requirements
-            "pyright>=1.1.402",  # Added for static type checking
+            "pyright>=1.1.403",  # Added for static type checking
             "actionlint-py>=1.7.7.23",  # Python wrapper for actionlint (GitHub Actions linter)
             "shellcheck-py>=0.10.0.1",  # Python wrapper for shellcheck (shell script linter)
             "detect-secrets>=1.5.0",  # Added for secret detection as alternative to gitleaks
