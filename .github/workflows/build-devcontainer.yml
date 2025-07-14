@@ -215,7 +215,7 @@ jobs:
           "
 
       - name: Create Pull Request for DevContainer Update
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "chore: update devcontainer to use pre-built image"
