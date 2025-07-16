@@ -112,6 +112,55 @@ The fix ensures:
 **Comprehensive Solution:**
 The fix leverages the existing sophisticated tool version management system, ensuring that mdformat consistency is maintained through the centralized `.tool-versions` file and validated through the Makefile targets. This approach provides a robust, maintainable solution that prevents future CI/local environment discrepancies.
 
+#### Enhanced Debugging and Root Cause Resolution (January 16, 2025 - Follow-up)
+
+**Issue Persistence Investigation:**
+Despite the initial fix, the CI was still failing with "files were modified by this hook" errors. Enhanced debugging revealed the root cause was **file exclusion scope mismatch** between local and CI environments.
+
+**Root Cause Discovery:**
+
+- **Local environment**: Pre-commit exclusions were working correctly, processing only `docs/`, `memory-bank/`, `README.md`, and `CONTRIBUTING.md`
+- **CI environment**: mdformat was attempting to process additional directories like `.devcontainer/`, `.sonarqube/`, `infrastructure/`, `nyc_landmarks/`, `scripts/`, `tests/` that contained README.md files
+- **Exclusion pattern gap**: The original exclude pattern missed several directories that exist in CI but might not be present locally
+
+**Enhanced Debugging Implementation:**
+
+1. **Created comprehensive debug script** (`scripts/debug-mdformat.sh`) to identify problematic files
+1. **Enhanced GitHub Actions workflow** with detailed debugging output showing:
+   - All markdown files found in the project
+   - Individual file testing results
+   - Git status before and after mdformat runs
+   - Specific content previews of files that would be modified
+
+**Final Solution - Comprehensive File Exclusions:**
+Updated `.pre-commit-config.yaml` to exclude all non-documentation directories:
+
+```yaml
+exclude: ^(venv|\.venv|env|ENV|\.pytest_cache|\.gcp|\.terraform|\.scannerwork|\.sonarlint|\.sonarqube|\.devcontainer|output|logs|temp|test_output|temp_notebooks|verification_results|pinecone_backup|build|dist|\.eggs|infrastructure|nyc_landmarks|scripts|tests)/.*$
+```
+
+**Key Directories Added to Exclusions:**
+
+- `.sonarqube/` - SonarQube analysis files
+- `.devcontainer/` - Development container configuration
+- `infrastructure/` - Terraform and infrastructure files
+- `nyc_landmarks/` - Application source code
+- `scripts/` - Utility scripts
+- `tests/` - Test files
+
+**Verification Results:**
+
+- ✅ All 28 pre-commit hooks now pass locally
+- ✅ mdformat processes only intended documentation files (`docs/`, `memory-bank/`, root-level markdown)
+- ✅ Debug script confirms no files would be modified by mdformat
+- ✅ Enhanced CI debugging will provide clear visibility into any future issues
+
+**Tools Created for Future Debugging:**
+
+- `scripts/debug-mdformat.sh` - Comprehensive mdformat debugging script
+- Enhanced GitHub Actions workflow with detailed debugging output
+- Systematic file-by-file testing approach for identifying problematic markdown files
+
 ### Previous Status: DevContainer Workflow Optimization Complete
 
 ### Recently Completed Work (January 14, 2025)

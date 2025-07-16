@@ -95,6 +95,44 @@ jobs:
           echo "🧪 Testing gitleaks configuration:"
           gitleaks detect --source=. --config=.gitleaks.toml --no-git --exit-code=0 && echo "✅ Gitleaks scan passed" || echo "❌ Gitleaks found issues"
 
+          # Debug mdformat before running pre-commit
+          echo "🔍 Pre-mdformat file state:"
+          find . -name "*.md" -not -path "./.venv/*" -not -path "./.git/*" -exec ls -la {} \; | head -10
+
+          # Check what mdformat would change
+          echo "🧪 Testing mdformat changes:"
+          echo "Files that would be modified by mdformat:"
+
+          # First, let's see what files mdformat is trying to process
+          echo "All markdown files found:"
+          find . -name "*.md" | head -20
+
+          # Test mdformat on specific directories only (like local)
+          echo "Testing mdformat on specific directories:"
+          if ! mdformat --check --wrap keep docs/ memory-bank/ README.md CONTRIBUTING.md 2>&1; then
+            echo "❌ mdformat check failed on specific directories"
+          else
+            echo "✅ mdformat check passed on specific directories"
+          fi
+
+          # Show git status before pre-commit
+          echo "Git status before pre-commit:"
+          git status --porcelain
+
+          # Test individual files to find the problematic one
+          for file in docs/*.md memory-bank/*.md README.md CONTRIBUTING.md; do
+            if [ -f "$file" ]; then
+              if ! mdformat --check --wrap keep "$file" 2>/dev/null; then
+                echo "  📝 $file would be modified"
+                echo "    Current content preview:"
+                head -5 "$file" | sed 's/^/      /'
+                echo "    After mdformat would be:"
+                mdformat --wrap keep "$file" --stdout 2>/dev/null | head -5 | sed 's/^/      /' || echo "      [Failed to format]"
+                echo "    ---"
+              fi
+            fi
+          done
+
           # Run all pre-commit checks
           echo "🚀 Running pre-commit checks:"
           pre-commit run --all-files

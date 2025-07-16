@@ -124,7 +124,7 @@ repos:
           - mdformat-frontmatter==2.0.8 # For YAML frontmatter
           - mdformat-footnote==0.1.1 # For footnote support
         files: \.(md|markdown)$
-        exclude: ^(venv|\.venv|env|ENV|\.pytest_cache|\.gcp|\.terraform|\.scannerwork|\.sonarlint|output|logs|temp|test_output|temp_notebooks|verification_results|pinecone_backup|build|dist|\.eggs)/.*$
+        exclude: ^(venv|\.venv|env|ENV|\.pytest_cache|\.gcp|\.terraform|\.scannerwork|\.sonarlint|\.sonarqube|\.devcontainer|output|logs|temp|test_output|temp_notebooks|verification_results|pinecone_backup|build|dist|\.eggs|infrastructure|nyc_landmarks|scripts|tests)/.*$
         args: ["--wrap", "keep"]
 
   # Strict mdformat check that fails on warnings (matches CI behavior)
@@ -136,7 +136,7 @@ repos:
         entry: bash -c 'output=$(mdformat --wrap keep --check . 2>&1 | grep -E "\.(md|markdown)$" | grep -v "\.venv/" || true); if echo "$output" | grep -q "Warning:"; then echo "❌ mdformat warnings detected:"; echo "$output" | grep "Warning:"; echo "Fix the Python code blocks mentioned above to match CI behavior."; exit 1; fi'
         language: system
         files: \.(md|markdown)$
-        exclude: ^(venv|\.venv|env|ENV|\.pytest_cache|\.gcp|\.terraform|\.scannerwork|\.sonarlint|output|logs|temp|test_output|temp_notebooks|verification_results|pinecone_backup|build|dist|\.eggs)/.*$
+        exclude: ^(venv|\.venv|env|ENV|\.pytest_cache|\.gcp|\.terraform|\.scannerwork|\.sonarlint|\.sonarqube|\.devcontainer|output|logs|temp|test_output|temp_notebooks|verification_results|pinecone_backup|build|dist|\.eggs|infrastructure|nyc_landmarks|scripts|tests)/.*$
         pass_filenames: false
         always_run: false
 
