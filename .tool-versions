@@ -12,3 +12,7 @@ python 3.13.1      # Latest stable with performance improvements and new feature
 
 # Markdown Formatting
 mdformat 0.7.22    # Markdown formatter with plugin support for consistent documentation
+mdformat-gfm 0.4.1 # GitHub-Flavored Markdown support
+mdformat-black 0.1.1 # For code blocks formatting
+mdformat-frontmatter 2.0.8 # For YAML frontmatter
+mdformat-footnote 0.1.1 # For footnote support

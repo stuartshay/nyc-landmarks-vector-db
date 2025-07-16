@@ -50,6 +50,12 @@ pip install pre-commit
 echo -e "${BLUE}Installing project requirements...${NC}"
 pip install -r requirements.txt
 
+# Install mdformat plugins with versions from .tool-versions for consistency
+echo -e "${BLUE}Installing mdformat plugins with consistent versions...${NC}"
+source scripts/versions.sh
+pip install mdformat==$MDFORMAT_VERSION mdformat-gfm==$MDFORMAT_GFM_VERSION mdformat-black==$MDFORMAT_BLACK_VERSION mdformat-frontmatter==$MDFORMAT_FRONTMATTER_VERSION mdformat-footnote==$MDFORMAT_FOOTNOTE_VERSION
+echo -e "${GREEN}✅ mdformat plugins installed with consistent versions${NC}"
+
 # Install only the project package in development mode
 # Dependencies are now installed from requirements.txt
 echo -e "${BLUE}Installing project package in development mode...${NC}"

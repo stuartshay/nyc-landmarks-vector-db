@@ -7,7 +7,7 @@
 #   2. Run ./scripts/ci/generate_tool_lock.sh
 #   3. Commit both files together
 #
-# Generated on: 2025-07-12 17:52:34 UTC
+# Generated on: 2025-07-16 02:13:08 UTC
 
 # Tool versions for NYC Landmarks Vector DB
 # This file defines the versions of external tools used across the project
@@ -20,3 +20,10 @@ terraform==1.10.3   # Stable release with GCP provider compatibility
 
 # Python Environment
 python==3.13.1      # Latest stable with performance improvements and new features
+
+# Markdown Formatting
+mdformat==0.7.22    # Markdown formatter with plugin support for consistent documentation
+mdformat-gfm==0.4.1 # GitHub-Flavored Markdown support
+mdformat-black==0.1.1 # For code blocks formatting
+mdformat-frontmatter==2.0.8 # For YAML frontmatter
+mdformat-footnote==0.1.1 # For footnote support

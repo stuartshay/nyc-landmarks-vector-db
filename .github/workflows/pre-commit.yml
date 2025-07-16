@@ -66,8 +66,13 @@ jobs:
           pip install -r requirements.txt
           # Explicitly install all pre-commit hook dependencies
           pip install black isort flake8 flake8-docstrings flake8-quotes flake8-comprehensions mypy types-requests types-PyYAML bandit detect-secrets
-          # Install mdformat and its dependencies for consistent behavior with exact versions
-          pip install mdformat==0.7.22 mdformat-gfm==0.4.1 mdformat-black==0.1.1 mdformat-frontmatter==2.0.8 mdformat-footnote==0.1.1
+          # Install mdformat and its dependencies using versions from .tool-versions for consistency
+          MDFORMAT_VERSION=$(grep "^mdformat " .tool-versions | awk '{print $2}')
+          MDFORMAT_GFM_VERSION=$(grep "^mdformat-gfm " .tool-versions | awk '{print $2}')
+          MDFORMAT_BLACK_VERSION=$(grep "^mdformat-black " .tool-versions | awk '{print $2}')
+          MDFORMAT_FRONTMATTER_VERSION=$(grep "^mdformat-frontmatter " .tool-versions | awk '{print $2}')
+          MDFORMAT_FOOTNOTE_VERSION=$(grep "^mdformat-footnote " .tool-versions | awk '{print $2}')
+          pip install "mdformat==$MDFORMAT_VERSION" "mdformat-gfm==$MDFORMAT_GFM_VERSION" "mdformat-black==$MDFORMAT_BLACK_VERSION" "mdformat-frontmatter==$MDFORMAT_FRONTMATTER_VERSION" "mdformat-footnote==$MDFORMAT_FOOTNOTE_VERSION"
 
       - name: Run pre-commit checks
         run: |

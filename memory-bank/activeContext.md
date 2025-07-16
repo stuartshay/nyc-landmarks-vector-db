@@ -1,6 +1,118 @@
 # Active Context - NYC Landmarks Vector DB
 
-## Current Status: DevContainer Workflow Optimization Complete
+## Current Status: mdformat CI/Local Consistency Fix Complete
+
+### Recently Completed Work (January 16, 2025)
+
+#### mdformat CI/Local Environment Consistency Fix
+
+- **Root Cause Identified**: CI and local environments were using different mdformat plugin versions, causing formatting inconsistencies
+- **Version Management Centralization**: Updated `.tool-versions` to include all mdformat plugins with exact versions
+- **CI Workflow Standardization**: Modified GitHub Actions workflow to use versions from `.tool-versions` instead of hardcoded values
+- **Development Environment Alignment**: Updated setup scripts to install consistent mdformat plugin versions
+
+#### Key Deliverables
+
+1. **Centralized Version Management**
+
+   - Updated `.tool-versions` to include:
+     - `mdformat 0.7.22`
+     - `mdformat-gfm 0.4.1` (GitHub-Flavored Markdown support)
+     - `mdformat-black 0.1.1` (For code blocks formatting)
+     - `mdformat-frontmatter 2.0.8` (For YAML frontmatter)
+     - `mdformat-footnote 0.1.1` (For footnote support)
+
+1. **CI Workflow Improvements**
+
+   - Modified `.github/workflows/pre-commit.yml` to dynamically read versions from `.tool-versions`
+   - Eliminated hardcoded version dependencies in CI
+   - Ensured exact version matching between local and CI environments
+
+1. **Development Environment Updates**
+
+   - Enhanced `scripts/versions.sh` to export mdformat plugin versions
+   - Updated `.devcontainer/post-create-prebuilt.sh` to install consistent plugin versions
+   - Improved version display in `show_versions()` function
+
+#### Technical Implementation Details
+
+**Version Management Strategy:**
+
+- Single source of truth: `.tool-versions` file contains all tool versions
+- Dynamic version extraction in CI using bash commands
+- Consistent installation across all environments (local, devcontainer, CI)
+
+**CI Workflow Changes:**
+
+```bash
+# Before: Hardcoded versions
+pip install mdformat==0.7.22 mdformat-gfm==0.4.1 ...
+
+# After: Dynamic version loading
+MDFORMAT_VERSION=$(grep "^mdformat " .tool-versions | awk '{print $2}')
+pip install mdformat==$MDFORMAT_VERSION ...
+```
+
+**Development Environment Alignment:**
+
+- DevContainer setup now sources `scripts/versions.sh` for consistent plugin installation
+- Local setup scripts use the same version management approach
+- All environments install identical mdformat plugin versions
+
+#### Problem Resolution
+
+**Original Issue:**
+
+- mdformat hook was failing in CI with "files were modified by this hook"
+- Local pre-commit passed but CI failed due to formatting differences
+- Inconsistent behavior between local and CI environments
+
+**Root Cause:**
+
+- CI was installing specific mdformat plugin versions
+- Local environment might have different or missing plugin versions
+- `mdformat-black` plugin behavior varied between environments
+
+**Solution:**
+
+- Centralized all mdformat tool versions in `.tool-versions`
+- Updated all installation scripts to use these versions
+- Ensured CI and local environments use identical tool configurations
+
+#### Verification Strategy
+
+The fix ensures:
+
+- ✅ Local pre-commit and CI use identical mdformat versions
+- ✅ All mdformat plugins installed with exact version matching
+- ✅ No formatting differences between environments
+- ✅ Consistent markdown formatting across all development workflows
+
+#### Final Validation Results
+
+**Tool Version Management Integration:**
+
+- ✅ Makefile-based tool version management system utilized
+- ✅ `make tool-versions-list` shows all mdformat tools properly configured
+- ✅ `make tool-versions-validate` confirms version consistency across all files
+- ✅ `make tool-versions-freeze` generated updated `.tool-versions.lock` with mdformat plugins
+
+**Pre-commit Hook Validation:**
+
+- ✅ `pre-commit run mdformat --all-files` passes without modifications
+- ✅ `pre-commit run actionlint --all-files` passes after quoting fix
+- ✅ All mdformat plugins working with exact versions from `.tool-versions`
+
+**GitHub Actions Workflow Improvements:**
+
+- ✅ Fixed shellcheck warnings by adding proper quoting to pip install commands
+- ✅ Dynamic version extraction from `.tool-versions` working correctly
+- ✅ CI workflow now uses identical tool versions as local development
+
+**Comprehensive Solution:**
+The fix leverages the existing sophisticated tool version management system, ensuring that mdformat consistency is maintained through the centralized `.tool-versions` file and validated through the Makefile targets. This approach provides a robust, maintainable solution that prevents future CI/local environment discrepancies.
+
+### Previous Status: DevContainer Workflow Optimization Complete
 
 ### Recently Completed Work (January 14, 2025)
 

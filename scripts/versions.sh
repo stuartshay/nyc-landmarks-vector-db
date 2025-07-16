@@ -21,6 +21,11 @@ get_tool_version() {
 export GITLEAKS_VERSION=$(get_tool_version "gitleaks")
 export TERRAFORM_VERSION=$(get_tool_version "terraform")
 export PYTHON_VERSION=$(get_tool_version "python")
+export MDFORMAT_VERSION=$(get_tool_version "mdformat")
+export MDFORMAT_GFM_VERSION=$(get_tool_version "mdformat-gfm")
+export MDFORMAT_BLACK_VERSION=$(get_tool_version "mdformat-black")
+export MDFORMAT_FRONTMATTER_VERSION=$(get_tool_version "mdformat-frontmatter")
+export MDFORMAT_FOOTNOTE_VERSION=$(get_tool_version "mdformat-footnote")
 
 # Validate that versions were loaded
 if [[ -z "$GITLEAKS_VERSION" ]]; then
@@ -41,6 +46,11 @@ show_versions() {
     echo "Gitleaks: ${GITLEAKS_VERSION:-'NOT SET'}"
     echo "Terraform: ${TERRAFORM_VERSION:-'NOT SET'}"
     echo "Python: ${PYTHON_VERSION:-'NOT SET'}"
+    echo "mdformat: ${MDFORMAT_VERSION:-'NOT SET'}"
+    echo "mdformat-gfm: ${MDFORMAT_GFM_VERSION:-'NOT SET'}"
+    echo "mdformat-black: ${MDFORMAT_BLACK_VERSION:-'NOT SET'}"
+    echo "mdformat-frontmatter: ${MDFORMAT_FRONTMATTER_VERSION:-'NOT SET'}"
+    echo "mdformat-footnote: ${MDFORMAT_FOOTNOTE_VERSION:-'NOT SET'}"
     echo "===================="
 }
 

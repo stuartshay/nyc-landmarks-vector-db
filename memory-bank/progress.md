@@ -79,6 +79,7 @@ This document tracks the project's progress, detailing what works, what's left t
   - [x] DevContainer workflow optimization
   - [x] GHCR integration for pre-built images
   - [x] Dependabot branch filtering
+  - [x] mdformat CI/Local consistency fix
 
 ### Development Environment
 
