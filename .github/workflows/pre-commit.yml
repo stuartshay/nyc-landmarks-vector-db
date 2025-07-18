@@ -116,7 +116,11 @@ jobs:
 
           # Show first 10 markdown files with their sizes and permissions
           echo "📝 First 10 markdown files (with permissions and sizes):"
-          find . -name "*.md" -not -path "./.venv/*" -not -path "./.git/*" -exec ls -la {} \; | head -10
+          find . -name "*.md" -not -path "./.venv/*" -not -path "./.git/*" | head -10 | while read -r file; do
+            if [ -f "$file" ]; then
+              stat -c "%n: %s bytes, %A" "$file" 2>/dev/null || echo "$file: [stat failed]"
+            fi
+          done
 
           # Test mdformat on individual files with detailed output
           echo "🧪 Testing mdformat on individual files:"
@@ -127,7 +131,7 @@ jobs:
             if [ -f "$file" ]; then
               echo "Testing: $file"
               echo "  File size: $(wc -c < "$file") bytes"
-              echo "  File permissions: $(ls -la "$file")"
+              echo "  File permissions: $(stat -c "%A" "$file" 2>/dev/null || echo "unknown")"
 
               # Check if mdformat would modify this file
               if mdformat --check --wrap keep "$file" 2>&1; then
