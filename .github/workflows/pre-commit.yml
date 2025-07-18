@@ -95,50 +95,144 @@ jobs:
           echo "🧪 Testing gitleaks configuration:"
           gitleaks detect --source=. --config=.gitleaks.toml --no-git --exit-code=0 && echo "✅ Gitleaks scan passed" || echo "❌ Gitleaks found issues"
 
-          # Debug mdformat before running pre-commit
-          echo "🔍 Pre-mdformat file state:"
+          # Enhanced mdformat debugging with detailed logging
+          echo "🔍 Enhanced mdformat debugging:"
+          echo "================================"
+
+          # Show current working directory and permissions
+          echo "📁 Working directory: $(pwd)"
+          echo "📋 Directory permissions:"
+          find . -maxdepth 1 -type f -exec ls -la {} \; | head -5
+
+          # Show git configuration that might affect line endings
+          echo "🔧 Git configuration:"
+          git config --get core.autocrlf || echo "core.autocrlf not set"
+          git config --get core.eol || echo "core.eol not set"
+
+          # Count and list all markdown files
+          echo "📄 Markdown files analysis:"
+          TOTAL_MD_FILES=$(find . -name "*.md" -not -path "./.venv/*" -not -path "./.git/*" | wc -l)
+          echo "Total markdown files found: $TOTAL_MD_FILES"
+
+          # Show first 10 markdown files with their sizes and permissions
+          echo "📝 First 10 markdown files (with permissions and sizes):"
           find . -name "*.md" -not -path "./.venv/*" -not -path "./.git/*" -exec ls -la {} \; | head -10
 
-          # Check what mdformat would change
-          echo "🧪 Testing mdformat changes:"
-          echo "Files that would be modified by mdformat:"
+          # Test mdformat on individual files with detailed output
+          echo "🧪 Testing mdformat on individual files:"
+          echo "========================================"
 
-          # First, let's see what files mdformat is trying to process
-          echo "All markdown files found:"
-          find . -name "*.md" | head -20
-
-          # Test mdformat on specific directories only (like local)
-          echo "Testing mdformat on specific directories:"
-          if ! mdformat --check --wrap keep docs/ memory-bank/ README.md CONTRIBUTING.md 2>&1; then
-            echo "❌ mdformat check failed on specific directories"
-          else
-            echo "✅ mdformat check passed on specific directories"
-          fi
-
-          # Show git status before pre-commit
-          echo "Git status before pre-commit:"
-          git status --porcelain
-
-          # Test individual files to find the problematic one
-          for file in docs/*.md memory-bank/*.md README.md CONTRIBUTING.md; do
+          # Test key files individually
+          for file in README.md CONTRIBUTING.md docs/environment_setup.md memory-bank/activeContext.md; do
             if [ -f "$file" ]; then
-              if ! mdformat --check --wrap keep "$file" 2>/dev/null; then
-                echo "  📝 $file would be modified"
-                echo "    Current content preview:"
-                head -5 "$file" | sed 's/^/      /'
-                echo "    After mdformat would be:"
-                mdformat --wrap keep "$file" --stdout 2>/dev/null | head -5 | sed 's/^/      /' || echo "      [Failed to format]"
-                echo "    ---"
+              echo "Testing: $file"
+              echo "  File size: $(wc -c < "$file") bytes"
+              echo "  File permissions: $(ls -la "$file")"
+
+              # Check if mdformat would modify this file
+              if mdformat --check --wrap keep "$file" 2>&1; then
+                echo "  ✅ $file - No changes needed"
+              else
+                echo "  ❌ $file - Would be modified"
+                echo "    Showing differences that would be made:"
+
+                # Create a temporary file to show the diff
+                TEMP_FILE=$(mktemp)
+                mdformat --wrap keep "$file" --stdout > "$TEMP_FILE" 2>/dev/null || echo "    [Failed to format to temp file]"
+
+                if [ -f "$TEMP_FILE" ]; then
+                  echo "    Diff output:"
+                  diff -u "$file" "$TEMP_FILE" | head -20 || echo "    [No diff output or files identical]"
+                  rm -f "$TEMP_FILE"
+                fi
               fi
+              echo "  ---"
+            else
+              echo "File not found: $file"
             fi
           done
 
+          # Test mdformat on directories
+          echo "🏗️ Testing mdformat on directories:"
+          echo "==================================="
+
+          for dir in docs memory-bank; do
+            if [ -d "$dir" ]; then
+              echo "Testing directory: $dir"
+              if mdformat --check --wrap keep "$dir"/ 2>&1; then
+                echo "  ✅ $dir/ - No changes needed"
+              else
+                echo "  ❌ $dir/ - Would be modified"
+                echo "    Files in $dir that would be changed:"
+                find "$dir" -name "*.md" -exec sh -c 'if ! mdformat --check --wrap keep "$1" 2>/dev/null; then echo "      - $1"; fi' _ {} \;
+              fi
+              echo "  ---"
+            fi
+          done
+
+          # Show git status before pre-commit
+          echo "📊 Git status before pre-commit:"
+          git status --porcelain || echo "No changes in git status"
+
+          # Test the exact pre-commit mdformat command
+          echo "🎯 Testing exact pre-commit mdformat command:"
+          echo "============================================="
+          echo "Running: pre-commit run mdformat --all-files --verbose"
+
+          # Run mdformat specifically first to see detailed output
+          if pre-commit run mdformat --all-files --verbose; then
+            echo "✅ mdformat pre-commit hook passed"
+          else
+            echo "❌ mdformat pre-commit hook failed"
+            echo "📊 Git status after mdformat:"
+            git status --porcelain
+            echo "📝 Files modified by mdformat:"
+            git diff --name-only || echo "No files in git diff"
+            echo "🔍 Showing first few lines of diff for modified files:"
+            git diff --unified=3 | head -50 || echo "No diff output"
+          fi
+
           # Run all pre-commit checks
-          echo "🚀 Running pre-commit checks:"
+          echo "🚀 Running all pre-commit checks:"
           pre-commit run --all-files
 
-      # This step will automatically fix code formatting and linting issues
-      - name: Fix code formatting and linting issues
+      # This step will automatically fix mdformat issues specifically
+      - name: Auto-fix mdformat issues
+        if: failure()
+        run: |
+          echo "🔧 Attempting to auto-fix mdformat issues..."
+
+          # Configure git for automated commits
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+          # Show current git status
+          echo "📊 Current git status:"
+          git status --porcelain
+
+          # Run mdformat to fix formatting issues
+          echo "🎯 Running mdformat to fix formatting..."
+          mdformat --wrap keep docs/ memory-bank/ README.md CONTRIBUTING.md || echo "mdformat completed with some issues"
+
+          # Show what changed
+          echo "📝 Files modified by mdformat:"
+          git status --porcelain
+
+          # If there are changes, commit them
+          if ! git diff --quiet; then
+            echo "💾 Committing mdformat fixes..."
+            git add -A
+            git commit -m "Auto-fix: Format Markdown files with mdformat - Applied consistent markdown formatting, fixed line wrapping and code block formatting. Automated fix by GitHub Actions CI." || echo "No changes to commit"
+
+            # Push the changes back
+            git push || echo "Failed to push changes"
+            echo "✅ mdformat fixes committed and pushed"
+          else
+            echo "ℹ️ No mdformat changes to commit"
+          fi
+
+      # This step will automatically fix other code formatting and linting issues
+      - name: Fix other code formatting and linting issues
         if: failure()
         run: |
           pip install autoflake
