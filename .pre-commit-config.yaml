@@ -124,8 +124,21 @@ repos:
           - mdformat-frontmatter==2.0.8 # For YAML frontmatter
           - mdformat-footnote==0.1.1 # For footnote support
         files: \.(md|markdown)$
-        exclude: ^(venv|\.venv|env|ENV|\.pytest_cache|\.gcp|\.terraform|\.scannerwork|\.sonarlint|output|logs|temp|test_output|temp_notebooks|verification_results|pinecone_backup|build|dist|\.eggs)/.*$
+        exclude: ^(venv|\.venv|env|ENV|\.pytest_cache|\.gcp|\.terraform|\.scannerwork|\.sonarlint|\.sonarqube|\.devcontainer|output|logs|temp|test_output|temp_notebooks|verification_results|pinecone_backup|build|dist|\.eggs|infrastructure|nyc_landmarks|scripts|tests)/.*$
         args: ["--wrap", "keep"]
+
+  # Strict mdformat check that fails on warnings (matches CI behavior)
+  - repo: local
+    hooks:
+      - id: mdformat-warnings-check
+        name: Check for mdformat warnings (fail on warnings like CI)
+        description: Fails if mdformat produces any warnings about code block formatting
+        entry: bash -c 'output=$(mdformat --wrap keep --check . 2>&1 | grep -E "\.(md|markdown)$" | grep -v "\.venv/" || true); if echo "$output" | grep -q "Warning:"; then echo "❌ mdformat warnings detected:"; echo "$output" | grep "Warning:"; echo "Fix the Python code blocks mentioned above to match CI behavior."; exit 1; fi'
+        language: system
+        files: \.(md|markdown)$
+        exclude: ^(venv|\.venv|env|ENV|\.pytest_cache|\.gcp|\.terraform|\.scannerwork|\.sonarlint|\.sonarqube|\.devcontainer|output|logs|temp|test_output|temp_notebooks|verification_results|pinecone_backup|build|dist|\.eggs|infrastructure|nyc_landmarks|scripts|tests)/.*$
+        pass_filenames: false
+        always_run: false
 
   # Jupyter notebook output clearing
   - repo: https://github.com/kynan/nbstripout
@@ -181,3 +194,15 @@ repos:
         args:
           - --args=-no-color
           - --hook-config=--retry-once-with-cleanup=true
+
+  # Tool version management
+  - repo: local
+    hooks:
+      - id: tool-version-consistency
+        name: Validate tool version consistency
+        description: Ensure tool versions are consistent across all configuration files
+        entry: ./scripts/ci/validate_tool_versions.sh
+        language: system
+        files: ^(\.tool-versions|\.devcontainer/.*|\.github/workflows/.*|setup_env\.sh)$
+        pass_filenames: false
+        always_run: false

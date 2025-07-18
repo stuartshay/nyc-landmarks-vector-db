@@ -69,4 +69,5 @@ regexes = [
   '''this\..*Token.*''', # JavaScript patterns like this.addTokenUsingPush
   '''this\.gullet\..*''', # JavaScript patterns like this.gullet.expandNextToken
   '''this\.view\.win\..*''', # JavaScript patterns like this.view.win.requestAnimationFrame
+  '''\+%Y-%m-%d %H:%M:%S''', # Date format strings in shell scripts and Dockerfiles
 ]

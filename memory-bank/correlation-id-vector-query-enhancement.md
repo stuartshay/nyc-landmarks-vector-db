@@ -13,6 +13,9 @@ Added comprehensive correlation ID support to the vector database query operatio
 #### Method Signature Update
 
 ```python
+from typing import Any, Dict, List, Optional
+
+
 def query_vectors(
     self,
     query_vector: Optional[List[float]] = None,
@@ -25,6 +28,8 @@ def query_vectors(
     namespace_override: Optional[str] = None,
     correlation_id: Optional[str] = None,  # NEW PARAMETER
 ) -> List[Dict[str, Any]]:
+    """Query vectors with correlation ID support."""
+    pass
 ```
 
 #### Enhanced Logging
@@ -59,6 +64,9 @@ Updated the following methods to support correlation ID propagation:
 #### query_semantic_search
 
 ```python
+from typing import Any, Dict, List, Optional
+
+
 def query_semantic_search(
     self,
     query_vector: List[float],
@@ -68,11 +76,16 @@ def query_semantic_search(
     source_type: Optional[str] = None,
     correlation_id: Optional[str] = None,  # NEW
 ) -> List[Dict[str, Any]]:
+    """Query semantic search with correlation ID support."""
+    pass
 ```
 
 #### list_vectors
 
 ```python
+from typing import Any, Dict, List, Optional
+
+
 def list_vectors(
     self,
     limit: int = 100,
@@ -84,6 +97,8 @@ def list_vectors(
     namespace_override: Optional[str] = None,
     correlation_id: Optional[str] = None,  # NEW
 ) -> List[Dict[str, Any]]:
+    """List vectors with correlation ID support."""
+    pass
 ```
 
 ### 3. API Layer Integration
@@ -105,13 +120,18 @@ matches = vector_db.query_vectors(
 Updated `_perform_vector_search` to accept and pass correlation ID:
 
 ```python
+from typing import Any, Dict, List, Optional
+
+
 def _perform_vector_search(
     embedding: List[float],
     top_k: int,
     filter_dict: Optional[Dict[str, Any]],
-    vector_db: PineconeDB,
+    vector_db: "PineconeDB",
     correlation_id: Optional[str] = None,  # NEW
 ) -> List[Dict[str, Any]]:
+    """Perform vector search with correlation ID support."""
+    pass
 ```
 
 ### 4. Test Updates

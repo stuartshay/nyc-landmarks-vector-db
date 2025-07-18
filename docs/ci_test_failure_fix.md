@@ -3,6 +3,7 @@
 ## Problem Description
 
 The test `tests/unit/test_wikipedia_processing.py::TestProcessLandmarksParallel::test_process_landmarks_parallel_success` was failing in the CI environment with the error:
+
 ```
 FAILED tests/unit/test_wikipedia_processing.py::TestProcessLandmarksParallel::test_process_landmarks_parallel_success - assert False is True
 ```
@@ -14,6 +15,7 @@ However, the test was passing consistently in local development environments.
 The issue was identified as a **race condition in the test mocking strategy**:
 
 1. **Non-deterministic execution order**: The test used `mock.side_effect` with a static list of return values:
+
    ```python
    mock_processor.process_landmark_wikipedia.side_effect = [
        (True, 2, 4),
@@ -22,11 +24,11 @@ The issue was identified as a **race condition in the test mocking strategy**:
    ]
    ```
 
-2. **Concurrent execution**: The function `process_landmarks_parallel` uses `concurrent.futures.ThreadPoolExecutor` with multiple workers, which means the order of execution is not guaranteed to match the order of landmark IDs in the input list.
+1. **Concurrent execution**: The function `process_landmarks_parallel` uses `concurrent.futures.ThreadPoolExecutor` with multiple workers, which means the order of execution is not guaranteed to match the order of landmark IDs in the input list.
 
-3. **Side effect consumption**: The `side_effect` list gets consumed in the order the mocked methods are called, not necessarily in the order of landmark IDs. In a multi-threaded environment, this causes unpredictable test results.
+1. **Side effect consumption**: The `side_effect` list gets consumed in the order the mocked methods are called, not necessarily in the order of landmark IDs. In a multi-threaded environment, this causes unpredictable test results.
 
-4. **CI environment differences**: CI environments may have different CPU scheduling, thread timing, or resource constraints that make the race condition more likely to manifest.
+1. **CI environment differences**: CI environments may have different CPU scheduling, thread timing, or resource constraints that make the race condition more likely to manifest.
 
 ## Solution
 
@@ -46,6 +48,7 @@ def mock_process_landmark_wikipedia(landmark_id: str, delete_existing: bool = Fa
     else:
         return (False, 0, 0)  # Default failure for unknown IDs
 
+
 mock_processor.process_landmark_wikipedia.side_effect = mock_process_landmark_wikipedia
 ```
 
@@ -54,16 +57,16 @@ mock_processor.process_landmark_wikipedia.side_effect = mock_process_landmark_wi
 Applied the same fix to all affected tests:
 
 1. `TestProcessLandmarksParallel::test_process_landmarks_parallel_success`
-2. `TestProcessLandmarksParallel::test_process_landmarks_parallel_all_failures`
-3. `TestProcessLandmarksSequential::test_process_landmarks_sequential_success`
-4. `TestProcessLandmarksSequential::test_process_landmarks_sequential_exception_handling`
+1. `TestProcessLandmarksParallel::test_process_landmarks_parallel_all_failures`
+1. `TestProcessLandmarksSequential::test_process_landmarks_sequential_success`
+1. `TestProcessLandmarksSequential::test_process_landmarks_sequential_exception_handling`
 
 ## Benefits of the Fix
 
 1. **Deterministic results**: Each landmark ID always returns the same result regardless of execution order
-2. **Thread-safe**: No shared state between concurrent executions
-3. **CI/local consistency**: Eliminates environment-specific race conditions
-4. **Maintainable**: Clear mapping between input and expected output
+1. **Thread-safe**: No shared state between concurrent executions
+1. **CI/local consistency**: Eliminates environment-specific race conditions
+1. **Maintainable**: Clear mapping between input and expected output
 
 ## Verification
 
@@ -84,9 +87,9 @@ Applied the same fix to all affected tests:
 ## Lessons Learned
 
 1. **Avoid order-dependent mocking in concurrent tests**: Use function-based mocks that return values based on input parameters rather than execution order
-2. **Test for race conditions**: Consider running tests multiple times to catch intermittent failures
-3. **Environment parity**: Be aware that CI environments may expose race conditions not visible in development
-4. **Mock design**: Design mocks to be as deterministic as the real implementation would be
+1. **Test for race conditions**: Consider running tests multiple times to catch intermittent failures
+1. **Environment parity**: Be aware that CI environments may expose race conditions not visible in development
+1. **Mock design**: Design mocks to be as deterministic as the real implementation would be
 
 ## Impact
 

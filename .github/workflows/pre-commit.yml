@@ -36,13 +36,13 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.13.1"
           cache: "pip"
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "~1.12"
+          terraform_version: "~1.10.3"
 
       - name: Install gitleaks
         run: |
@@ -51,7 +51,8 @@ jobs:
           tar -xzf gitleaks.tar.gz
           sudo mv gitleaks /usr/local/bin/
           rm gitleaks.tar.gz
-          gitleaks version  # Verify installation
+          echo "✅ Gitleaks installed successfully:"
+          gitleaks version
 
       - name: Set up Docker
         run: |
@@ -65,29 +66,177 @@ jobs:
           pip install -r requirements.txt
           # Explicitly install all pre-commit hook dependencies
           pip install black isort flake8 flake8-docstrings flake8-quotes flake8-comprehensions mypy types-requests types-PyYAML bandit detect-secrets
-          # Install mdformat and its dependencies for consistent behavior with exact versions
-          pip install mdformat==0.7.22 mdformat-gfm==0.4.1 mdformat-black==0.1.1 mdformat-frontmatter==2.0.8 mdformat-footnote==0.1.1
+          # Install mdformat and its dependencies using versions from .tool-versions for consistency
+          MDFORMAT_VERSION=$(grep "^mdformat " .tool-versions | awk '{print $2}')
+          MDFORMAT_GFM_VERSION=$(grep "^mdformat-gfm " .tool-versions | awk '{print $2}')
+          MDFORMAT_BLACK_VERSION=$(grep "^mdformat-black " .tool-versions | awk '{print $2}')
+          MDFORMAT_FRONTMATTER_VERSION=$(grep "^mdformat-frontmatter " .tool-versions | awk '{print $2}')
+          MDFORMAT_FOOTNOTE_VERSION=$(grep "^mdformat-footnote " .tool-versions | awk '{print $2}')
+          pip install "mdformat==$MDFORMAT_VERSION" "mdformat-gfm==$MDFORMAT_GFM_VERSION" "mdformat-black==$MDFORMAT_BLACK_VERSION" "mdformat-frontmatter==$MDFORMAT_FRONTMATTER_VERSION" "mdformat-footnote==$MDFORMAT_FOOTNOTE_VERSION"
 
       - name: Run pre-commit checks
         run: |
           # Install pre-commit hooks first
           pre-commit install-hooks
-          # Verify gitleaks is available
-          echo "Checking gitleaks installation:"
-          which gitleaks && gitleaks version || echo "⚠️ gitleaks not found"
-          # Debug mdformat setup
-          echo "Checking mdformat installation:"
-          mdformat --version
-          echo "Available markdown files:"
-          find . -name "*.md" -type f | head -5
-          # Run mdformat separately first for debugging
-          echo "Testing mdformat separately:"
-          python -m pre_commit run mdformat --all-files --verbose || echo "mdformat had issues"
+
+          # Debug information for troubleshooting
+          echo "🔍 Debug Information:"
+          echo "Working directory: $(pwd)"
+          echo "Git status:"
+          git status --porcelain || echo "No git status changes"
+          echo "Total files to scan: $(find . -type f | grep -v '\.git/' | grep -c .)"
+
+          # Verify tools are available
+          echo "📋 Tool Versions:"
+          echo "gitleaks: $(gitleaks version)"
+          echo "mdformat: $(mdformat --version)"
+
+          # Test gitleaks configuration before full run
+          echo "🧪 Testing gitleaks configuration:"
+          gitleaks detect --source=. --config=.gitleaks.toml --no-git --exit-code=0 && echo "✅ Gitleaks scan passed" || echo "❌ Gitleaks found issues"
+
+          # Enhanced mdformat debugging with detailed logging
+          echo "🔍 Enhanced mdformat debugging:"
+          echo "================================"
+
+          # Show current working directory and permissions
+          echo "📁 Working directory: $(pwd)"
+          echo "📋 Directory permissions:"
+          find . -maxdepth 1 -type f -exec ls -la {} \; | head -5
+
+          # Show git configuration that might affect line endings
+          echo "🔧 Git configuration:"
+          git config --get core.autocrlf || echo "core.autocrlf not set"
+          git config --get core.eol || echo "core.eol not set"
+
+          # Count and list all markdown files
+          echo "📄 Markdown files analysis:"
+          TOTAL_MD_FILES=$(find . -name "*.md" -not -path "./.venv/*" -not -path "./.git/*" | wc -l)
+          echo "Total markdown files found: $TOTAL_MD_FILES"
+
+          # Show first 10 markdown files with their sizes and permissions
+          echo "📝 First 10 markdown files (with permissions and sizes):"
+          find . -name "*.md" -not -path "./.venv/*" -not -path "./.git/*" | head -10 | while read -r file; do
+            if [ -f "$file" ]; then
+              stat -c "%n: %s bytes, %A" "$file" 2>/dev/null || echo "$file: [stat failed]"
+            fi
+          done
+
+          # Test mdformat on individual files with detailed output
+          echo "🧪 Testing mdformat on individual files:"
+          echo "========================================"
+
+          # Test key files individually
+          for file in README.md CONTRIBUTING.md docs/environment_setup.md memory-bank/activeContext.md; do
+            if [ -f "$file" ]; then
+              echo "Testing: $file"
+              echo "  File size: $(wc -c < "$file") bytes"
+              echo "  File permissions: $(stat -c "%A" "$file" 2>/dev/null || echo "unknown")"
+
+              # Check if mdformat would modify this file
+              if mdformat --check --wrap keep "$file" 2>&1; then
+                echo "  ✅ $file - No changes needed"
+              else
+                echo "  ❌ $file - Would be modified"
+                echo "    Showing differences that would be made:"
+
+                # Create a temporary file to show the diff
+                TEMP_FILE=$(mktemp)
+                mdformat --wrap keep "$file" --stdout > "$TEMP_FILE" 2>/dev/null || echo "    [Failed to format to temp file]"
+
+                if [ -f "$TEMP_FILE" ]; then
+                  echo "    Diff output:"
+                  diff -u "$file" "$TEMP_FILE" | head -20 || echo "    [No diff output or files identical]"
+                  rm -f "$TEMP_FILE"
+                fi
+              fi
+              echo "  ---"
+            else
+              echo "File not found: $file"
+            fi
+          done
+
+          # Test mdformat on directories
+          echo "🏗️ Testing mdformat on directories:"
+          echo "==================================="
+
+          for dir in docs memory-bank; do
+            if [ -d "$dir" ]; then
+              echo "Testing directory: $dir"
+              if mdformat --check --wrap keep "$dir"/ 2>&1; then
+                echo "  ✅ $dir/ - No changes needed"
+              else
+                echo "  ❌ $dir/ - Would be modified"
+                echo "    Files in $dir that would be changed:"
+                find "$dir" -name "*.md" -exec sh -c 'if ! mdformat --check --wrap keep "$1" 2>/dev/null; then echo "      - $1"; fi' _ {} \;
+              fi
+              echo "  ---"
+            fi
+          done
+
+          # Show git status before pre-commit
+          echo "📊 Git status before pre-commit:"
+          git status --porcelain || echo "No changes in git status"
+
+          # Test the exact pre-commit mdformat command
+          echo "🎯 Testing exact pre-commit mdformat command:"
+          echo "============================================="
+          echo "Running: pre-commit run mdformat --all-files --verbose"
+
+          # Run mdformat specifically first to see detailed output
+          if pre-commit run mdformat --all-files --verbose; then
+            echo "✅ mdformat pre-commit hook passed"
+          else
+            echo "❌ mdformat pre-commit hook failed"
+            echo "📊 Git status after mdformat:"
+            git status --porcelain
+            echo "📝 Files modified by mdformat:"
+            git diff --name-only || echo "No files in git diff"
+            echo "🔍 Showing first few lines of diff for modified files:"
+            git diff --unified=3 | head -50 || echo "No diff output"
+          fi
+
           # Run all pre-commit checks
+          echo "🚀 Running all pre-commit checks:"
           pre-commit run --all-files
 
-      # This step will automatically fix code formatting and linting issues
-      - name: Fix code formatting and linting issues
+      # This step will automatically fix mdformat issues specifically
+      - name: Auto-fix mdformat issues
+        if: failure()
+        run: |
+          echo "🔧 Attempting to auto-fix mdformat issues..."
+
+          # Configure git for automated commits
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+          # Show current git status
+          echo "📊 Current git status:"
+          git status --porcelain
+
+          # Run mdformat to fix formatting issues
+          echo "🎯 Running mdformat to fix formatting..."
+          mdformat --wrap keep docs/ memory-bank/ README.md CONTRIBUTING.md || echo "mdformat completed with some issues"
+
+          # Show what changed
+          echo "📝 Files modified by mdformat:"
+          git status --porcelain
+
+          # If there are changes, commit them
+          if ! git diff --quiet; then
+            echo "💾 Committing mdformat fixes..."
+            git add -A
+            git commit -m "Auto-fix: Format Markdown files with mdformat - Applied consistent markdown formatting, fixed line wrapping and code block formatting. Automated fix by GitHub Actions CI." || echo "No changes to commit"
+
+            # Push the changes back
+            git push || echo "Failed to push changes"
+            echo "✅ mdformat fixes committed and pushed"
+          else
+            echo "ℹ️ No mdformat changes to commit"
+          fi
+
+      # This step will automatically fix other code formatting and linting issues
+      - name: Fix other code formatting and linting issues
         if: failure()
         run: |
           pip install autoflake

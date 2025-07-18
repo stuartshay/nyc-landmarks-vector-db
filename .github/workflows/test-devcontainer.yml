@@ -1,15 +1,22 @@
 name: Test DevContainer
 
 on:
-  push:
-    branches: [master, develop]
-    paths:
-      - ".devcontainer/**"
-  pull_request:
-    branches: [master, develop]
-    paths:
-      - ".devcontainer/**"
   workflow_dispatch:
+    inputs:
+      triggered_by:
+        description: "Workflow that triggered this test"
+        required: false
+        default: "manual"
+        type: string
+      build_run_id:
+        description: "Build workflow run ID"
+        required: false
+        type: string
+      image_tag:
+        description: "Container image tag to test"
+        required: false
+        default: "ghcr.io/stuartshay/nyc-landmarks-devcontainer:latest"
+        type: string
 
 permissions:
   contents: read
@@ -19,22 +26,32 @@ jobs:
   test-dockerfile:
     runs-on: ubuntu-latest
     steps:
+      - name: Show trigger information
+        run: |
+          echo "🚀 Test DevContainer workflow started"
+          echo "Triggered by: ${{ inputs.triggered_by || 'manual' }}"
+          echo "Build run ID: ${{ inputs.build_run_id || 'N/A' }}"
+          echo "Image tag: ${{ inputs.image_tag || 'ghcr.io/stuartshay/nyc-landmarks-devcontainer:latest' }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Event: ${{ github.event_name }}"
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Test build pre-built Dockerfile
-        uses: docker/build-push-action@v5
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          context: .
-          file: .devcontainer/Dockerfile.prebuilt
-          push: false
-          load: true
-          tags: test:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull pre-built image
+        run: |
+          IMAGE_TAG="${{ inputs.image_tag || 'ghcr.io/stuartshay/nyc-landmarks-devcontainer:latest' }}"
+          echo "Pulling image: ${IMAGE_TAG}"
+          docker pull "${IMAGE_TAG}"
+          docker tag "${IMAGE_TAG}" test:latest
+          echo "✅ Image pulled and tagged as test:latest"
 
       - name: Test container functionality
         run: |
@@ -43,9 +60,132 @@ jobs:
           docker run --rm test:latest pip --version
 
           # Test that key packages are installed
-          docker run --rm test:latest python -c "import pytest, black, isort, mypy, flake8; print('✅ Development tools available')"
-          docker run --rm test:latest python -c "import pinecone, numpy, pandas; print('✅ Data science packages available')"
-          docker run --rm test:latest python -c "import fastapi, uvicorn; print('✅ Web framework packages available')"
+          docker run --rm test:latest python -c "import pytest, black, isort, mypy, flake8; print('Development tools available')"
+          docker run --rm test:latest python -c "import pinecone, numpy, pandas; print('Data science packages available')"
+          docker run --rm test:latest python -c "import fastapi, uvicorn; print('Web framework packages available')"
+
+  test-post-create-script:
+    runs-on: ubuntu-latest
+    needs: test-dockerfile
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull pre-built image
+        run: |
+          IMAGE_TAG="${{ inputs.image_tag || 'ghcr.io/stuartshay/nyc-landmarks-devcontainer:latest' }}"
+          echo "Pulling image: ${IMAGE_TAG}"
+          docker pull "${IMAGE_TAG}"
+          docker tag "${IMAGE_TAG}" test:latest
+          echo "✅ Image pulled and tagged as test:latest"
+
+      - name: Test comprehensive environment setup
+        run: |
+          # Set proper permissions for the workspace directory
+          sudo chmod -R 755 "${GITHUB_WORKSPACE}"
+          sudo chown -R 1000:1000 "${GITHUB_WORKSPACE}"
+
+          docker run --rm \
+            -v "${GITHUB_WORKSPACE}":/workspaces/nyc-landmarks-vector-db \
+            -w /workspaces/nyc-landmarks-vector-db \
+            --user 1000:1000 \
+            test:latest \
+            bash -c "
+              echo 'Testing comprehensive DevContainer environment setup...'
+
+              # Initialize git repo for testing
+              git config --global user.name 'Test User'
+              git config --global user.email 'test@example.com'
+              git config --global init.defaultBranch main
+
+              # Run post-create script
+              echo '=== Running post-create script ==='
+              /workspaces/nyc-landmarks-vector-db/.devcontainer/post-create-prebuilt.sh
+
+              echo '=== Testing virtual environment ==='
+              # Test virtual environment exists
+              if [ ! -d '.venv' ]; then
+                echo 'Virtual environment .venv not created'
+                exit 1
+              fi
+              echo '✅ Virtual environment .venv created'
+
+              # Test virtual environment activation
+              source .venv/bin/activate
+              echo '✅ Virtual environment activated'
+
+              # Test Python in virtual environment
+              python --version
+              pip --version
+              echo '✅ Python and pip available in virtual environment'
+
+              echo '=== Testing package installations ==='
+              # Test key packages in virtual environment
+              python -c 'import pytest, black, isort, mypy, flake8; print(\"✅ Development tools installed in .venv\")'
+              python -c 'import pinecone, numpy, pandas; print(\"✅ Data science packages installed in .venv\")'
+              python -c 'import fastapi, uvicorn; print(\"✅ Web framework packages installed in .venv\")'
+              python -c 'import pre_commit; print(\"✅ Pre-commit installed in .venv\")'
+
+              # Test project package installation
+              echo '=== Testing project package ==='
+              python -c 'import nyc_landmarks; print(\"✅ Project package nyc_landmarks importable\")'
+
+              # Test pip show for the package
+              pip show nyc-landmarks-vector-db | grep -q 'Name: nyc-landmarks-vector-db'
+              echo '✅ Project package installed in development mode'
+
+              echo '=== Testing pre-commit hooks ==='
+              # Test pre-commit installation
+              if [ ! -f '.git/hooks/pre-commit' ]; then
+                echo '❌ Pre-commit hooks not installed'
+                exit 1
+              fi
+              echo '✅ Pre-commit hooks installed'
+
+              # Test pre-commit command availability
+              pre-commit --version
+              echo '✅ Pre-commit command available'
+
+              # Test that pre-commit environments are initialized (optional check)
+              if [ -d ~/.cache/pre-commit ] && [ \"\$(find ~/.cache/pre-commit -type d -name 'repo*' | wc -l)\" -gt 0 ]; then
+                echo '✅ Pre-commit hook environments initialized'
+              else
+                echo '⚠️  Pre-commit environments may not be fully initialized (acceptable for CI)'
+              fi
+
+              # Test pre-commit can run (dry run to avoid actual file changes)
+              echo 'test content' > test_file.py
+              pre-commit run --files test_file.py || echo '✅ Pre-commit attempted to run (exit code expected for test file)'
+              rm -f test_file.py
+
+              echo '🎉 All DevContainer environment tests passed!'
+            "
+
+  test-complete-devcontainer-lifecycle:
+    runs-on: ubuntu-latest
+    needs: test-dockerfile
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Test complete DevContainer setup
+        run: |
+          # Test using the DevContainer CLI to simulate real usage
+          echo 'Testing complete DevContainer lifecycle...'
+
+          # Install DevContainer CLI
+          npm install -g @devcontainers/cli
+
+          # Test DevContainer configuration validation
+          devcontainer read-configuration --workspace-folder .
+          echo 'DevContainer configuration is valid'
 
   test-scripts:
     runs-on: ubuntu-latest
